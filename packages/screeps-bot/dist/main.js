@@ -302,7 +302,7 @@ return C("".concat(e, ": ").concat(a.toFixed(3), " CPU"), r), n;
 
 var O = new Set([ "type", "key", "value", "tick", "unit", "subsystem", "room", "shard" ]);
 
-function U(e, t, r, o) {
+function M(e, t, r, o) {
 var n = {
 type: "stat",
 key: e,
@@ -315,7 +315,7 @@ o.room && (n.room = o.room), o.meta)) for (var a in o.meta) O.has(a) || (n[a] = 
 h(JSON.stringify(n));
 }
 
-function M(e) {
+function U(e) {
 return {
 debug: function(t, r) {
 C(t, "string" == typeof r ? {
@@ -350,7 +350,7 @@ subsystem: e
 }, r));
 },
 stat: function(t, r, n, a) {
-U(t, r, n, "string" == typeof a ? {
+M(t, r, n, "string" == typeof a ? {
 subsystem: e,
 room: a
 } : o({
@@ -368,12 +368,12 @@ subsystem: e
 };
 }
 
-var _, k = {
+var k, _ = {
 debug: C,
 info: S,
 warn: x,
 error: w,
-stat: U,
+stat: M,
 measureCpu: b,
 configure: function(e) {
 g = o(o({}, g), e);
@@ -381,38 +381,38 @@ g = o(o({}, g), e);
 getConfig: function() {
 return o({}, g);
 },
-createLogger: M,
+createLogger: U,
 flush: R
 };
 
 !function(e) {
 e[e.CRITICAL = 100] = "CRITICAL", e[e.HIGH = 75] = "HIGH", e[e.NORMAL = 50] = "NORMAL", 
 e[e.LOW = 25] = "LOW", e[e.BACKGROUND = 10] = "BACKGROUND";
-}(_ || (_ = {}));
+}(k || (k = {}));
 
 var A = {
-"hostile.detected": _.CRITICAL,
-"nuke.detected": _.CRITICAL,
-"safemode.activated": _.CRITICAL,
-"structure.destroyed": _.HIGH,
-"hostile.cleared": _.HIGH,
-"creep.died": _.HIGH,
-"energy.critical": _.HIGH,
-"spawn.emergency": _.HIGH,
-"posture.change": _.HIGH,
-"spawn.completed": _.NORMAL,
-"rcl.upgrade": _.NORMAL,
-"construction.complete": _.NORMAL,
-"remote.lost": _.NORMAL,
-"squad.formed": _.NORMAL,
-"squad.dissolved": _.NORMAL,
-"market.transaction": _.LOW,
-"pheromone.update": _.LOW,
-"cluster.update": _.LOW,
-"expansion.candidate": _.LOW,
-"powerbank.discovered": _.LOW,
-"cpu.spike": _.BACKGROUND,
-"bucket.modeChange": _.BACKGROUND
+"hostile.detected": k.CRITICAL,
+"nuke.detected": k.CRITICAL,
+"safemode.activated": k.CRITICAL,
+"structure.destroyed": k.HIGH,
+"hostile.cleared": k.HIGH,
+"creep.died": k.HIGH,
+"energy.critical": k.HIGH,
+"spawn.emergency": k.HIGH,
+"posture.change": k.HIGH,
+"spawn.completed": k.NORMAL,
+"rcl.upgrade": k.NORMAL,
+"construction.complete": k.NORMAL,
+"remote.lost": k.NORMAL,
+"squad.formed": k.NORMAL,
+"squad.dissolved": k.NORMAL,
+"market.transaction": k.LOW,
+"pheromone.update": k.LOW,
+"cluster.update": k.LOW,
+"expansion.candidate": k.LOW,
+"powerbank.discovered": k.LOW,
+"cpu.spike": k.BACKGROUND,
+"bucket.modeChange": k.BACKGROUND
 }, N = {
 maxEventsPerTick: 50,
 maxQueueSize: 200,
@@ -439,14 +439,14 @@ var o, n, a, i, s = this;
 void 0 === r && (r = {});
 var c = {
 handler: t,
-priority: null !== (o = r.priority) && void 0 !== o ? o : _.NORMAL,
+priority: null !== (o = r.priority) && void 0 !== o ? o : k.NORMAL,
 minBucket: null !== (n = r.minBucket) && void 0 !== n ? n : 0,
 once: null !== (a = r.once) && void 0 !== a && a,
 id: "handler_".concat(++this.handlerIdCounter)
 }, l = null !== (i = this.handlers.get(e)) && void 0 !== i ? i : [];
 return l.push(c), l.sort(function(e, t) {
 return t.priority - e.priority;
-}), this.handlers.set(e, l), this.config.enableLogging && k.debug('EventBus: Registered handler for "'.concat(e, '" (id: ').concat(c.id, ")"), {
+}), this.handlers.set(e, l), this.config.enableLogging && _.debug('EventBus: Registered handler for "'.concat(e, '" (id: ').concat(c.id, ")"), {
 subsystem: "EventBus"
 }), function() {
 return s.off(e, c.id);
@@ -461,12 +461,12 @@ if (r) {
 var o = r.findIndex(function(e) {
 return e.id === t;
 });
--1 !== o && (r.splice(o, 1), this.config.enableLogging && k.debug('EventBus: Unregistered handler "'.concat(t, '" from "').concat(e, '"'), {
+-1 !== o && (r.splice(o, 1), this.config.enableLogging && _.debug('EventBus: Unregistered handler "'.concat(t, '" from "').concat(e, '"'), {
 subsystem: "EventBus"
 }));
 }
 }, e.prototype.offAll = function(e) {
-this.handlers.delete(e), this.config.enableLogging && k.debug('EventBus: Removed all handlers for "'.concat(e, '"'), {
+this.handlers.delete(e), this.config.enableLogging && _.debug('EventBus: Removed all handlers for "'.concat(e, '"'), {
 subsystem: "EventBus"
 });
 }, e.prototype.getCoalescingKey = function(e, t) {
@@ -481,10 +481,10 @@ var n, a, i, s;
 void 0 === r && (r = {});
 var c = o(o({}, t), {
 tick: Game.time
-}), l = null !== (a = null !== (n = r.priority) && void 0 !== n ? n : A[e]) && void 0 !== a ? a : _.NORMAL, u = null !== (i = r.immediate) && void 0 !== i ? i : l >= _.CRITICAL, m = null === (s = r.allowCoalescing) || void 0 === s || s;
+}), l = null !== (a = null !== (n = r.priority) && void 0 !== n ? n : A[e]) && void 0 !== a ? a : k.NORMAL, u = null !== (i = r.immediate) && void 0 !== i ? i : l >= k.CRITICAL, m = null === (s = r.allowCoalescing) || void 0 === s || s;
 if (this.config.enableCoalescing && m && !u) {
 var d = this.getCoalescingKey(e, c), p = this.tickEvents.get(d);
-if (p) return p.count++, this.stats.eventsCoalesced++, void (this.config.enableLogging && k.debug('EventBus: Coalesced "'.concat(e, '" (count: ').concat(p.count, ")"), {
+if (p) return p.count++, this.stats.eventsCoalesced++, void (this.config.enableLogging && _.debug('EventBus: Coalesced "'.concat(e, '" (count: ').concat(p.count, ")"), {
 subsystem: "EventBus"
 }));
 this.tickEvents.set(d, {
@@ -494,12 +494,12 @@ priority: l,
 count: 1
 });
 }
-this.stats.eventsEmitted++, this.config.enableLogging && k.debug('EventBus: Emitting "'.concat(e, '" (priority: ').concat(l, ", immediate: ").concat(String(u), ")"), {
+this.stats.eventsEmitted++, this.config.enableLogging && _.debug('EventBus: Emitting "'.concat(e, '" (priority: ').concat(l, ", immediate: ").concat(String(u), ")"), {
 subsystem: "EventBus"
 });
 var f = Game.cpu.bucket;
-u || f >= this.config.lowBucketThreshold ? this.processEvent(e, c) : f >= this.config.criticalBucketThreshold ? this.queueEvent(e, c, l) : l >= _.CRITICAL ? this.processEvent(e, c) : (this.stats.eventsDropped++, 
-this.config.enableLogging && k.warn('EventBus: Dropped event "'.concat(e, '" due to critical bucket'), {
+u || f >= this.config.lowBucketThreshold ? this.processEvent(e, c) : f >= this.config.criticalBucketThreshold ? this.queueEvent(e, c, l) : l >= k.CRITICAL ? this.processEvent(e, c) : (this.stats.eventsDropped++, 
+this.config.enableLogging && _.warn('EventBus: Dropped event "'.concat(e, '" due to critical bucket'), {
 subsystem: "EventBus"
 }));
 }, e.prototype.processEvent = function(e, t) {
@@ -513,7 +513,7 @@ if (!(c < d.minBucket)) try {
 d.handler(t), this.stats.handlersInvoked++, d.once && l.push(d.id);
 } catch (t) {
 var p = t instanceof Error ? t.message : String(t);
-k.error('EventBus: Handler error for "'.concat(e, '": ').concat(p), {
+_.error('EventBus: Handler error for "'.concat(e, '": ').concat(p), {
 subsystem: "EventBus"
 });
 }
@@ -555,7 +555,7 @@ event: e,
 index: t
 };
 }).filter(function(e) {
-return e.event.priority < _.HIGH;
+return e.event.priority < k.HIGH;
 }).sort(function(e, t) {
 return e.event.queuedAt - t.event.queuedAt;
 })[0];
@@ -629,7 +629,7 @@ return this.getHandlerCount(e) > 0;
 }, e.prototype.logStats = function() {
 if (Game.time % this.config.statsLogInterval === 0) {
 var e = this.getStats();
-k.debug("EventBus stats: ".concat(e.eventsEmitted, " emitted, ").concat(e.eventsProcessed, " processed, ") + "".concat(e.eventsDeferred, " deferred, ").concat(e.eventsDropped, " dropped, ") + "".concat(e.eventsCoalesced, " coalesced, ") + "".concat(e.queueSize, " queued, ").concat(e.handlerCount, " handlers"), {
+_.debug("EventBus stats: ".concat(e.eventsEmitted, " emitted, ").concat(e.eventsProcessed, " processed, ") + "".concat(e.eventsDeferred, " deferred, ").concat(e.eventsDropped, " dropped, ") + "".concat(e.eventsCoalesced, " coalesced, ") + "".concat(e.queueSize, " queued, ").concat(e.handlerCount, " handlers"), {
 subsystem: "EventBus"
 });
 }
@@ -649,9 +649,9 @@ if (!a) {
 var i = (null !== (o = this.budgetViolations.get(e)) && void 0 !== o ? o : 0) + 1;
 this.budgetViolations.set(e, i);
 var s = ((r - n) / n * 100).toFixed(1);
-this.config.strictMode ? k.error("CPU budget violation: ".concat(e, " used ").concat(r.toFixed(3), " CPU (limit: ").concat(n, ", overage: ").concat(s, "%)"), {
+this.config.strictMode ? _.error("CPU budget violation: ".concat(e, " used ").concat(r.toFixed(3), " CPU (limit: ").concat(n, ", overage: ").concat(s, "%)"), {
 subsystem: "CPUBudget"
-}) : k.warn("CPU budget exceeded: ".concat(e, " used ").concat(r.toFixed(3), " CPU (limit: ").concat(n, ", overage: ").concat(s, "%)"), {
+}) : _.warn("CPU budget exceeded: ".concat(e, " used ").concat(r.toFixed(3), " CPU (limit: ").concat(n, ", overage: ").concat(s, "%)"), {
 subsystem: "CPUBudget"
 });
 }
@@ -677,7 +677,7 @@ var n = r(), a = Game.cpu.getUsed() - o;
 return this.checkBudget(e, t, a), n;
 } catch (t) {
 var i = t instanceof Error ? t.message : String(t);
-return k.error("Error in ".concat(e, ": ").concat(i), {
+return _.error("Error in ".concat(e, ": ").concat(i), {
 subsystem: "CPUBudget"
 }), null;
 }
@@ -686,12 +686,12 @@ var o = t ? "warRoom" : "ecoRoom", n = Game.cpu.getUsed();
 try {
 r();
 var a = Game.cpu.getUsed() - n;
-!this.checkBudget(e, o, a) && this.config.strictMode && k.warn("Skipping ".concat(e, " due to budget violation"), {
+!this.checkBudget(e, o, a) && this.config.strictMode && _.warn("Skipping ".concat(e, " due to budget violation"), {
 subsystem: "CPUBudget"
 });
 } catch (t) {
 var i = t instanceof Error ? t.message : String(t);
-k.error("Error in room ".concat(e, ": ").concat(i), {
+_.error("Error in room ".concat(e, ": ").concat(i), {
 subsystem: "CPUBudget"
 });
 }
@@ -1109,8 +1109,8 @@ return m.store[t] - m.store[e];
 }).slice(0, 3);
 try {
 for (var b = a(w), O = b.next(); !O.done; O = b.next()) {
-var U = O.value;
-e.resource(U, m.pos.x + S, m.pos.y + x, .3), S += .6;
+var M = O.value;
+e.resource(M, m.pos.x + S, m.pos.y + x, .3), S += .6;
 }
 } catch (e) {
 s = {
@@ -1124,15 +1124,15 @@ if (s) throw s.error;
 }
 }
 }
-var M = t.terminal;
-if (M && M.store.getUsedCapacity() > 0) {
-S = .8, x = -.8, w = Object.keys(M.store).filter(function(e) {
-return M.store[e] > 1e3;
+var U = t.terminal;
+if (U && U.store.getUsedCapacity() > 0) {
+S = .8, x = -.8, w = Object.keys(U.store).filter(function(e) {
+return U.store[e] > 1e3;
 }).sort(function(e, t) {
-return M.store[t] - M.store[e];
+return U.store[t] - U.store[e];
 }).slice(0, 3);
 try {
-for (var _ = a(w), k = _.next(); !k.done; k = _.next()) U = k.value, e.resource(U, M.pos.x + S, M.pos.y + x, .3), 
+for (var k = a(w), _ = k.next(); !_.done; _ = k.next()) M = _.value, e.resource(M, U.pos.x + S, U.pos.y + x, .3), 
 S += .6;
 } catch (e) {
 l = {
@@ -1140,7 +1140,7 @@ error: e
 };
 } finally {
 try {
-k && !k.done && (u = _.return) && u.call(_);
+_ && !_.done && (u = k.return) && u.call(k);
 } finally {
 if (l) throw l.error;
 }
@@ -2710,14 +2710,14 @@ if (t) throw t.error;
 }
 }
 try {
-for (var O = a(this.stores.values()), U = O.next(); !U.done; U = O.next()) x += U.value.size();
+for (var O = a(this.stores.values()), M = O.next(); !M.done; M = O.next()) x += M.value.size();
 } catch (e) {
 o = {
 error: e
 };
 } finally {
 try {
-U && !U.done && (n = O.return) && n.call(O);
+M && !M.done && (n = O.return) && n.call(O);
 } finally {
 if (o) throw o.error;
 }
@@ -2892,17 +2892,17 @@ filterKey: t
 }) : we(e, FIND_MY_STRUCTURES);
 }
 
-var Ue, Me = "closest";
+var Me, Ue = "closest";
 
-function _e(e, t) {
+function ke(e, t) {
 return "".concat(e, ":").concat(t);
 }
 
-function ke(e, t, r, o) {
+function _e(e, t, r, o) {
 if (void 0 === o && (o = 10), 0 === t.length) return Ae(e, r), null;
 if (1 === t.length) return t[0];
-var n = _e(e.name, r), a = ve.get(n, {
-namespace: Me,
+var n = ke(e.name, r), a = ve.get(n, {
+namespace: Ue,
 ttl: o
 });
 if (a) {
@@ -2913,18 +2913,18 @@ return e.id === i.id;
 }
 var s = e.pos.findClosestByRange(t);
 return s ? ve.set(n, s.id, {
-namespace: Me,
+namespace: Ue,
 ttl: o
 }) : Ae(e, r), s;
 }
 
 function Ae(e, t) {
 if (t) {
-var r = _e(e.name, t);
-ve.invalidate(r, Me);
+var r = ke(e.name, t);
+ve.invalidate(r, Ue);
 } else {
 var o = new RegExp("^".concat(e.name, ":"));
-ve.invalidatePattern(o, Me);
+ve.invalidatePattern(o, Ue);
 }
 }
 
@@ -2935,7 +2935,7 @@ Ae(e);
 !function(e) {
 e[e.DEBUG = 0] = "DEBUG", e[e.INFO = 1] = "INFO", e[e.WARN = 2] = "WARN", e[e.ERROR = 3] = "ERROR", 
 e[e.NONE = 4] = "NONE";
-}(Ue || (Ue = {}));
+}(Me || (Me = {}));
 
 var Pe, Ie = (Pe = "console", {
 debug: function(e) {
@@ -3329,15 +3329,15 @@ return null !== t && (e === t || Object.getPrototypeOf(e) === t || e === Object.
 function e() {}
 e.prototype.setLogLevel = function(e) {
 return void 0 === {
-debug: Ue.DEBUG,
-info: Ue.INFO,
-warn: Ue.WARN,
-error: Ue.ERROR,
-none: Ue.NONE
+debug: Me.DEBUG,
+info: Me.INFO,
+warn: Me.WARN,
+error: Me.ERROR,
+none: Me.NONE
 }[e.toLowerCase()] ? "Invalid log level: ".concat(e, ". Valid levels: debug, info, warn, error, none") : "Log level set to: ".concat(e.toUpperCase());
 }, e.prototype.toggleDebug = function() {
 var e = !{}.debug;
-return e ? Ue.DEBUG : Ue.INFO, "Debug mode: ".concat(e ? "ENABLED" : "DISABLED", " (Log level: ").concat(e ? "DEBUG" : "INFO", ")");
+return e ? Me.DEBUG : Me.INFO, "Debug mode: ".concat(e ? "ENABLED" : "DISABLED", " (Log level: ").concat(e ? "DEBUG" : "INFO", ")");
 }, n([ qe({
 name: "setLogLevel",
 description: "Set the log level for the bot",
@@ -3586,9 +3586,9 @@ d.push("=== Subsystem CPU Usage ==="), y = b.sort(function(e, t) {
 return t.avg_cpu - e.avg_cpu;
 });
 try {
-for (var O = a(y.slice(0, 10)), U = O.next(); !U.done; U = O.next()) {
-var M = U.value, _ = M.name || "unknown";
-d.push("  ".concat(_, ": ").concat(M.avg_cpu.toFixed(3), " CPU (calls: ").concat(M.calls, ")"));
+for (var O = a(y.slice(0, 10)), M = O.next(); !M.done; M = O.next()) {
+var U = M.value, k = U.name || "unknown";
+d.push("  ".concat(k, ": ").concat(U.avg_cpu.toFixed(3), " CPU (calls: ").concat(U.calls, ")"));
 }
 } catch (e) {
 i = {
@@ -3596,7 +3596,7 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (s = O.return) && s.call(O);
+M && !M.done && (s = O.return) && s.call(O);
 } finally {
 if (i) throw i.error;
 }
@@ -3605,7 +3605,7 @@ d.push("");
 }
 }
 if (m || "creep" === e) {
-var k = u.creeps || {}, A = Object.values(k);
+var _ = u.creeps || {}, A = Object.values(_);
 if (A.length > 0) {
 d.push("=== Top Creeps by CPU (Top 10) ==="), y = A.sort(function(e, t) {
 return t.cpu - e.cpu;
@@ -3846,10 +3846,10 @@ category: "Statistics"
 function e() {}
 e.prototype.showConfig = function() {
 var e = {}, t = {
-level: Ue.INFO,
+level: Me.INFO,
 categories: {}
 };
-return "=== SwarmBot Config ===\nDebug: ".concat(String(e.debug), "\nProfiling: ").concat(String(e.profiling), "\nVisualizations: ").concat(String(e.visualizations), "\nLogger Level: ").concat(Ue[t.level], "\nCPU Logging: ").concat(String(t.cpuLogging));
+return "=== SwarmBot Config ===\nDebug: ".concat(String(e.debug), "\nProfiling: ").concat(String(e.profiling), "\nVisualizations: ").concat(String(e.visualizations), "\nLogger Level: ").concat(Me[t.level], "\nCPU Logging: ").concat(String(t.cpuLogging));
 }, n([ qe({
 name: "showConfig",
 description: "Show current bot configuration",
@@ -3910,8 +3910,8 @@ return t.priority - e.priority;
 });
 try {
 for (var S = a(C), x = S.next(); !x.done; x = S.next()) {
-var w = x.value, b = (null !== (o = null === (r = w.stats) || void 0 === r ? void 0 : r.avgCpu) && void 0 !== o ? o : 0).toFixed(4), O = (null !== (c = null === (n = w.stats) || void 0 === n ? void 0 : n.healthScore) && void 0 !== c ? c : 0).toFixed(0), U = (null !== (u = null === (l = w.stats) || void 0 === l ? void 0 : l.healthScore) && void 0 !== u ? u : 0) >= 80 ? "✓" : (null !== (d = null === (m = w.stats) || void 0 === m ? void 0 : m.healthScore) && void 0 !== d ? d : 0) >= 50 ? "⚠" : "✗";
-T += "".concat(w.id, " | ").concat(w.name, " | ").concat(w.priority, " | ").concat(null !== (p = w.frequency) && void 0 !== p ? p : "N/A", " | ").concat(w.state, " | ").concat(null !== (y = null === (f = w.stats) || void 0 === f ? void 0 : f.runCount) && void 0 !== y ? y : 0, " | ").concat(b, " | ").concat(U).concat(O, " | ").concat(null !== (v = null === (g = w.stats) || void 0 === g ? void 0 : g.errorCount) && void 0 !== v ? v : 0, "(").concat(null !== (R = null === (h = w.stats) || void 0 === h ? void 0 : h.consecutiveErrors) && void 0 !== R ? R : 0, ")\n");
+var w = x.value, b = (null !== (o = null === (r = w.stats) || void 0 === r ? void 0 : r.avgCpu) && void 0 !== o ? o : 0).toFixed(4), O = (null !== (c = null === (n = w.stats) || void 0 === n ? void 0 : n.healthScore) && void 0 !== c ? c : 0).toFixed(0), M = (null !== (u = null === (l = w.stats) || void 0 === l ? void 0 : l.healthScore) && void 0 !== u ? u : 0) >= 80 ? "✓" : (null !== (d = null === (m = w.stats) || void 0 === m ? void 0 : m.healthScore) && void 0 !== d ? d : 0) >= 50 ? "⚠" : "✗";
+T += "".concat(w.id, " | ").concat(w.name, " | ").concat(w.priority, " | ").concat(null !== (p = w.frequency) && void 0 !== p ? p : "N/A", " | ").concat(w.state, " | ").concat(null !== (y = null === (f = w.stats) || void 0 === f ? void 0 : f.runCount) && void 0 !== y ? y : 0, " | ").concat(b, " | ").concat(M).concat(O, " | ").concat(null !== (v = null === (g = w.stats) || void 0 === g ? void 0 : g.errorCount) && void 0 !== v ? v : 0, "(").concat(null !== (R = null === (h = w.stats) || void 0 === h ? void 0 : h.consecutiveErrors) && void 0 !== R ? R : 0, ")\n");
 }
 } catch (t) {
 e = {
@@ -3943,8 +3943,8 @@ return (null !== (o = null === (r = e.stats) || void 0 === r ? void 0 : r.health
 w += "Name | Health | Errors | Consecutive | Status | Last Success\n", w += "-".repeat(80) + "\n";
 try {
 for (var b = a(x), O = b.next(); !O.done; O = b.next()) {
-var U = O.value, M = (null !== (o = null === (r = U.stats) || void 0 === r ? void 0 : r.healthScore) && void 0 !== o ? o : 0).toFixed(0), _ = (null !== (c = null === (n = U.stats) || void 0 === n ? void 0 : n.healthScore) && void 0 !== c ? c : 0) >= 80 ? "✓" : (null !== (u = null === (l = U.stats) || void 0 === l ? void 0 : l.healthScore) && void 0 !== u ? u : 0) >= 50 ? "⚠" : "✗", k = (null !== (d = null === (m = U.stats) || void 0 === m ? void 0 : m.lastSuccessfulRunTick) && void 0 !== d ? d : 0) > 0 ? Game.time - (null !== (f = null === (p = U.stats) || void 0 === p ? void 0 : p.lastSuccessfulRunTick) && void 0 !== f ? f : 0) : "never", A = "suspended" === U.state ? "SUSPENDED (".concat(null !== (g = null === (y = U.stats) || void 0 === y ? void 0 : y.suspensionReason) && void 0 !== g ? g : "unknown", ")") : U.state.toUpperCase();
-w += "".concat(U.name, " | ").concat(_, " ").concat(M, "/100 | ").concat(null !== (h = null === (v = U.stats) || void 0 === v ? void 0 : v.errorCount) && void 0 !== h ? h : 0, " | ").concat(null !== (E = null === (R = U.stats) || void 0 === R ? void 0 : R.consecutiveErrors) && void 0 !== E ? E : 0, " | ").concat(A, " | ").concat(k, "\n");
+var M = O.value, U = (null !== (o = null === (r = M.stats) || void 0 === r ? void 0 : r.healthScore) && void 0 !== o ? o : 0).toFixed(0), k = (null !== (c = null === (n = M.stats) || void 0 === n ? void 0 : n.healthScore) && void 0 !== c ? c : 0) >= 80 ? "✓" : (null !== (u = null === (l = M.stats) || void 0 === l ? void 0 : l.healthScore) && void 0 !== u ? u : 0) >= 50 ? "⚠" : "✗", _ = (null !== (d = null === (m = M.stats) || void 0 === m ? void 0 : m.lastSuccessfulRunTick) && void 0 !== d ? d : 0) > 0 ? Game.time - (null !== (f = null === (p = M.stats) || void 0 === p ? void 0 : p.lastSuccessfulRunTick) && void 0 !== f ? f : 0) : "never", A = "suspended" === M.state ? "SUSPENDED (".concat(null !== (g = null === (y = M.stats) || void 0 === y ? void 0 : y.suspensionReason) && void 0 !== g ? g : "unknown", ")") : M.state.toUpperCase();
+w += "".concat(M.name, " | ").concat(k, " ").concat(U, "/100 | ").concat(null !== (h = null === (v = M.stats) || void 0 === v ? void 0 : v.errorCount) && void 0 !== h ? h : 0, " | ").concat(null !== (E = null === (R = M.stats) || void 0 === R ? void 0 : R.consecutiveErrors) && void 0 !== E ? E : 0, " | ").concat(A, " | ").concat(_, "\n");
 }
 } catch (t) {
 e = {
@@ -4183,7 +4183,7 @@ return e.prototype.findMyCreeps = function(e, t) {
 return e.find(FIND_MY_CREEPS).filter(t);
 }, e.prototype.predictEnergyInTicks = function(e, t) {
 if (t < 0) throw new Error("Cannot predict negative ticks");
-t > this.config.maxPredictionTicks && (k.warn("Prediction horizon ".concat(t, " exceeds max ").concat(this.config.maxPredictionTicks, ", clamping"), {
+t > this.config.maxPredictionTicks && (_.warn("Prediction horizon ".concat(t, " exceeds max ").concat(this.config.maxPredictionTicks, ", clamping"), {
 subsystem: "EnergyFlowPredictor"
 }), t = this.config.maxPredictionTicks);
 var r = this.calculateEnergyIncome(e), o = this.calculateEnergyConsumption(e), n = e.energyAvailable, a = r.total * this.config.safetyMargin - o.total, i = Math.max(0, n + a * t), s = {
@@ -4194,7 +4194,7 @@ consumption: o,
 netFlow: a,
 ticks: t
 };
-return this.config.enableLogging && k.debug("Energy prediction for ".concat(e.name, ": ").concat(n, " → ").concat(i, " (").concat(t, " ticks, ").concat(a.toFixed(2), "/tick)"), {
+return this.config.enableLogging && _.debug("Energy prediction for ".concat(e.name, ": ").concat(n, " → ").concat(i, " (").concat(t, " ticks, ").concat(a.toFixed(2), "/tick)"), {
 subsystem: "EnergyFlowPredictor"
 }), s;
 }, e.prototype.calculateEnergyIncome = function(e) {
@@ -4503,7 +4503,7 @@ l && !l.done && (t = c.return) && t.call(c);
 if (e) throw e.error;
 }
 }
-n > 0 && Game.time % 100 == 0 && k.info("Rehydrated ".concat(n, " entries from Memory"), {
+n > 0 && Game.time % 100 == 0 && _.info("Rehydrated ".concat(n, " entries from Memory"), {
 subsystem: "HeapCache",
 meta: {
 rehydratedCount: n,
@@ -4626,7 +4626,7 @@ if (r) throw r.error;
 }
 return c;
 }, e;
-}(), ct = new st, lt = M("MemoryMonitor"), ut = 2097152, mt = new (function() {
+}(), ct = new st, lt = U("MemoryMonitor"), ut = 2097152, mt = new (function() {
 function e() {
 this.lastCheckTick = 0, this.lastStatus = "normal";
 }
@@ -4752,7 +4752,7 @@ return e.prototype.requestSegment = function(e) {
 if (e < 0 || e > 99) throw new Error("Invalid segment ID: ".concat(e, ". Must be 0-99."));
 this.activeSegments.add(e);
 var t = Array.from(this.activeSegments);
-if (t.length > 10) throw k.error("Cannot have more than 10 active segments", {
+if (t.length > 10) throw _.error("Cannot have more than 10 active segments", {
 subsystem: "MemorySegmentManager",
 meta: {
 requested: e,
@@ -4766,7 +4766,7 @@ this.activeSegments.delete(e), this.segmentCache.delete(e), RawMemory.setActiveS
 }, e.prototype.isSegmentLoaded = function(e) {
 return void 0 !== RawMemory.segments[e];
 }, e.prototype.writeSegment = function(e, t, r, o) {
-if (void 0 === o && (o = 1), !this.isSegmentLoaded(e)) return k.warn("Attempted to write to unloaded segment", {
+if (void 0 === o && (o = 1), !this.isSegmentLoaded(e)) return _.warn("Attempted to write to unloaded segment", {
 subsystem: "MemorySegmentManager",
 meta: {
 segmentId: e,
@@ -4781,7 +4781,7 @@ version: o
 };
 a[t] = i;
 var s = JSON.stringify(a);
-return s.length > 102400 ? (k.error("Segment data exceeds 100KB limit", {
+return s.length > 102400 ? (_.error("Segment data exceeds 100KB limit", {
 subsystem: "MemorySegmentManager",
 meta: {
 segmentId: e,
@@ -4790,7 +4790,7 @@ size: s.length
 }
 }), !1) : (RawMemory.segments[e] = s, this.segmentCache.set(e, a), !0);
 } catch (r) {
-return k.error("Failed to write segment data", {
+return _.error("Failed to write segment data", {
 subsystem: "MemorySegmentManager",
 meta: {
 segmentId: e,
@@ -4800,7 +4800,7 @@ error: String(r)
 }), !1;
 }
 }, e.prototype.readSegment = function(e, t) {
-if (!this.isSegmentLoaded(e)) return k.warn("Attempted to read from unloaded segment", {
+if (!this.isSegmentLoaded(e)) return _.warn("Attempted to read from unloaded segment", {
 subsystem: "MemorySegmentManager",
 meta: {
 segmentId: e,
@@ -4818,7 +4818,7 @@ this.segmentCache.set(e, r);
 var n = r[t];
 return n ? n.data : null;
 } catch (r) {
-return k.error("Failed to read segment data", {
+return _.error("Failed to read segment data", {
 subsystem: "MemorySegmentManager",
 meta: {
 segmentId: e,
@@ -4852,7 +4852,7 @@ return delete o[t], RawMemory.segments[e] = JSON.stringify(o), this.segmentCache
 return !1;
 }
 }, e.prototype.clearSegment = function(e) {
-this.isSegmentLoaded(e) ? (RawMemory.segments[e] = "", this.segmentCache.delete(e)) : k.warn("Attempted to clear unloaded segment", {
+this.isSegmentLoaded(e) ? (RawMemory.segments[e] = "", this.segmentCache.delete(e)) : _.warn("Attempted to clear unloaded segment", {
 subsystem: "MemorySegmentManager",
 meta: {
 segmentId: e
@@ -4882,7 +4882,7 @@ var o, n, i = e.split("."), s = Memory;
 try {
 for (var c = a(i), l = c.next(); !l.done; l = c.next()) {
 var u = l.value;
-if (!s || "object" != typeof s || !(u in s)) return k.warn("Memory path not found for migration", {
+if (!s || "object" != typeof s || !(u in s)) return _.warn("Memory path not found for migration", {
 subsystem: "MemorySegmentManager",
 meta: {
 memoryPath: e,
@@ -4903,7 +4903,7 @@ l && !l.done && (n = c.return) && n.call(c);
 if (o) throw o.error;
 }
 }
-if (!this.isSegmentLoaded(t)) return this.requestSegment(t), k.info("Segment not loaded, will migrate next tick", {
+if (!this.isSegmentLoaded(t)) return this.requestSegment(t), _.info("Segment not loaded, will migrate next tick", {
 subsystem: "MemorySegmentManager",
 meta: {
 memoryPath: e,
@@ -4912,7 +4912,7 @@ key: r
 }
 }), !1;
 var m = this.writeSegment(t, r, s);
-return m && k.info("Successfully migrated data to segment", {
+return m && _.info("Successfully migrated data to segment", {
 subsystem: "MemorySegmentManager",
 meta: {
 memoryPath: e,
@@ -5158,11 +5158,11 @@ version: t
 }, e.prototype.decompress = function(e) {
 try {
 var t = "string" == typeof e ? e : e.compressed, r = Tt.decompressFromUTF16(t);
-return r ? JSON.parse(r) : (k.error("Decompression returned null", {
+return r ? JSON.parse(r) : (_.error("Decompression returned null", {
 subsystem: "MemoryCompressor"
 }), null);
 } catch (e) {
-return k.error("Failed to decompress data", {
+return _.error("Failed to decompress data", {
 subsystem: "MemoryCompressor",
 meta: {
 error: String(e)
@@ -5229,7 +5229,7 @@ bytesSaved: 0
 t.deadCreeps = this.pruneDeadCreeps(), t.eventLogs = this.pruneEventLogs(20), t.staleIntel = this.pruneStaleIntel(xt), 
 t.marketHistory = this.pruneMarketHistory(5e3), this.pruneStaleRoomMemory();
 var r = this.getRawMemorySize();
-return t.bytesSaved = Math.max(0, e - r), t.bytesSaved > 0 && k.info("Memory pruning complete", {
+return t.bytesSaved = Math.max(0, e - r), t.bytesSaved > 0 && _.info("Memory pruning complete", {
 subsystem: "MemoryPruner",
 meta: t
 }), t;
@@ -5315,7 +5315,7 @@ for (var i in Memory.rooms) {
 var s = Memory.rooms[i], c = null == s ? void 0 : s.swarm, l = null !== (r = null === (t = null === (e = Game.rooms[i]) || void 0 === e ? void 0 : e.controller) || void 0 === t ? void 0 : t.my) && void 0 !== r && r, u = null !== (o = null == c ? void 0 : c.lastUpdate) && void 0 !== o ? o : 0;
 !l && u < a && (delete Memory.rooms[i], n++);
 }
-return n > 0 && k.info("Pruned ".concat(n, " stale room memory entries"), {
+return n > 0 && _.info("Pruned ".concat(n, " stale room memory entries"), {
 subsystem: "MemoryPruner"
 }), n;
 }, e.prototype.getRecommendations = function() {
@@ -5349,19 +5349,19 @@ c.lastSeen >= i || (null === (r = null === (t = Game.rooms[s]) || void 0 === t ?
 }
 if (Object.keys(a).length > 0) {
 var l = ft.suggestSegmentForType("HISTORICAL_INTEL");
-if (!ft.isSegmentLoaded(l)) return ft.requestSegment(l), void k.info("Segment not loaded, migration will continue next tick", {
+if (!ft.isSegmentLoaded(l)) return ft.requestSegment(l), void _.info("Segment not loaded, migration will continue next tick", {
 subsystem: "MemoryMigrations",
 meta: {
 segmentId: l
 }
 });
-if (!ft.writeSegment(l, "historicalIntel", a)) return void k.error("Failed to write historical intel to segment", {
+if (!ft.writeSegment(l, "historicalIntel", a)) return void _.error("Failed to write historical intel to segment", {
 subsystem: "MemoryMigrations",
 meta: {
 segmentId: l
 }
 });
-o.knownRooms = n, k.info("Migrated historical intel to segments", {
+o.knownRooms = n, _.info("Migrated historical intel to segments", {
 subsystem: "MemoryMigrations",
 meta: {
 historicalCount: Object.keys(a).length,
@@ -5381,7 +5381,7 @@ if (t) {
 var r = t, o = r.portals;
 if (o && !St.isCompressed(o)) {
 var n = St.compressPortalMap(o);
-r.compressedPortals = n, delete r.portals, k.info("Compressed portal map data", {
+r.compressedPortals = n, delete r.portals, _.info("Compressed portal map data", {
 subsystem: "MemoryMigrations",
 meta: {
 originalSize: n.originalSize,
@@ -5401,20 +5401,20 @@ if (null == t ? void 0 : t.market) {
 var r = t.market, o = r.priceHistory;
 if (o) {
 var n = St.compressMarketHistory(o), a = ft.suggestSegmentForType("MARKET_HISTORY");
-if (!ft.isSegmentLoaded(a)) return ft.requestSegment(a), void k.info("Segment not loaded, migration will continue next tick", {
+if (!ft.isSegmentLoaded(a)) return ft.requestSegment(a), void _.info("Segment not loaded, migration will continue next tick", {
 subsystem: "MemoryMigrations",
 meta: {
 segmentId: a
 }
 });
-ft.writeSegment(a, "priceHistory", n) ? (delete r.priceHistory, k.info("Migrated market history to segments", {
+ft.writeSegment(a, "priceHistory", n) ? (delete r.priceHistory, _.info("Migrated market history to segments", {
 subsystem: "MemoryMigrations",
 meta: {
 originalSize: n.originalSize,
 compressedSize: n.compressedSize,
 segmentId: a
 }
-})) : k.error("Failed to write market history to segment", {
+})) : _.error("Failed to write market history to segment", {
 subsystem: "MemoryMigrations",
 meta: {
 segmentId: a
@@ -5436,7 +5436,7 @@ n.squads || (n.squads = [], r++), n.defenseRequests || (n.defenseRequests = [],
 r++), n.resourceRequests || (n.resourceRequests = [], r++), n.rallyPoints || (n.rallyPoints = [], 
 r++);
 }
-r > 0 && k.info("Migrated ".concat(r, " cluster array properties"), {
+r > 0 && _.info("Migrated ".concat(r, " cluster array properties"), {
 subsystem: "MemoryMigrations",
 meta: {
 clustersProcessed: Object.keys(t).length
@@ -5444,14 +5444,14 @@ clustersProcessed: Object.keys(t).length
 });
 }
 }
-} ], Ut = function() {
+} ], Mt = function() {
 function e() {}
 return e.prototype.runMigrations = function() {
 var e, t, r, o = Memory, n = null !== (r = o.memoryVersion) && void 0 !== r ? r : 0, i = Ot.filter(function(e) {
 return e.version > n;
 });
 if (0 !== i.length) {
-k.info("Running ".concat(i.length, " memory migration(s)"), {
+_.info("Running ".concat(i.length, " memory migration(s)"), {
 subsystem: "MigrationRunner",
 meta: {
 fromVersion: n,
@@ -5462,13 +5462,13 @@ try {
 for (var s = a(i), c = s.next(); !c.done; c = s.next()) {
 var l = c.value;
 try {
-k.info("Running migration v".concat(l.version, ": ").concat(l.description), {
+_.info("Running migration v".concat(l.version, ": ").concat(l.description), {
 subsystem: "MigrationRunner"
-}), l.migrate(Memory), o.memoryVersion = l.version, k.info("Migration v".concat(l.version, " complete"), {
+}), l.migrate(Memory), o.memoryVersion = l.version, _.info("Migration v".concat(l.version, " complete"), {
 subsystem: "MigrationRunner"
 });
 } catch (e) {
-k.error("Migration v".concat(l.version, " failed"), {
+_.error("Migration v".concat(l.version, " failed"), {
 subsystem: "MigrationRunner",
 meta: {
 error: String(e)
@@ -5505,7 +5505,7 @@ return t.version > e;
 });
 }, e.prototype.rollbackToVersion = function(e) {
 var t = Memory;
-k.warn("Rolling back memory version to ".concat(e), {
+_.warn("Rolling back memory version to ".concat(e), {
 subsystem: "MigrationRunner",
 meta: {
 fromVersion: this.getCurrentVersion(),
@@ -5513,20 +5513,20 @@ toVersion: e
 }
 }), t.memoryVersion = e, Game.notify("Memory version rolled back to ".concat(e, ". Data may be inconsistent!"));
 }, e;
-}(), Mt = new Ut, _t = "empire", kt = "clusters", At = function() {
+}(), Ut = new Mt, kt = "empire", _t = "clusters", At = function() {
 function e() {
 this.lastInitializeTick = null, this.lastCleanupTick = 0, this.lastPruningTick = 0, 
 this.lastMonitoringTick = 0, this.deadCreepCleanupCursor = 0, this.deadCreepCleanupCandidates = [];
 }
 return e.prototype.initialize = function() {
 this.lastInitializeTick !== Game.time && (this.lastInitializeTick = Game.time, ct.initialize(), 
-Mt.runMigrations(), this.ensureEmpireMemory(), this.ensureClustersMemory(), Game.time - this.lastCleanupTick >= 10 && (this.cleanDeadCreeps(), 
+Ut.runMigrations(), this.ensureEmpireMemory(), this.ensureClustersMemory(), Game.time - this.lastCleanupTick >= 10 && (this.cleanDeadCreeps(), 
 this.lastCleanupTick = Game.time), Game.time - this.lastPruningTick >= 100 && (bt.pruneAll(), 
 this.lastPruningTick = Game.time), Game.time - this.lastMonitoringTick >= 50 && (mt.checkMemoryUsage(), 
 this.lastMonitoringTick = Game.time));
 }, e.prototype.ensureEmpireMemory = function() {
 var e = Memory;
-e[_t] || (e[_t] = {
+e[kt] || (e[kt] = {
 knownRooms: {},
 clusters: [],
 warTargets: [],
@@ -5556,18 +5556,18 @@ lastUpdate: 0
 });
 }, e.prototype.ensureClustersMemory = function() {
 var e = Memory;
-e[kt] || (e[kt] = {});
+e[_t] || (e[_t] = {});
 }, e.prototype.getEmpire = function() {
-var e = "memory:".concat(_t), t = ct.get(e);
+var e = "memory:".concat(kt), t = ct.get(e);
 this.ensureEmpireMemory();
 var r = Memory;
-return t && t === r[_t] || (ct.set(e, r[_t], ot), t = r[_t]), t;
+return t && t === r[kt] || (ct.set(e, r[kt], ot), t = r[kt]), t;
 }, e.prototype.getClusters = function() {
-var e = "memory:".concat(kt), t = ct.get(e);
+var e = "memory:".concat(_t), t = ct.get(e);
 if (!t) {
 this.ensureClustersMemory();
 var r = Memory;
-ct.set(e, r[kt], ot), t = r[kt];
+ct.set(e, r[_t], ot), t = r[_t];
 }
 return t;
 }, e.prototype.getCluster = function(e, t) {
@@ -5753,7 +5753,7 @@ filter: function(e) {
 return (e.structureType === STRUCTURE_SPAWN || e.structureType === STRUCTURE_STORAGE || e.structureType === STRUCTURE_TERMINAL) && e.hits < .8 * e.hitsMax;
 }
 }).length > 0 && (c.urgency = 3, c.reasons.push("Critical structures under attack!")), 
-k.info("Defender analysis for ".concat(e.name, ": ").concat(c.guards, " guards, ").concat(c.rangers, " rangers, ").concat(c.healers, " healers (urgency: ").concat(c.urgency, "x) - ").concat(c.reasons.join(", ")), {
+_.info("Defender analysis for ".concat(e.name, ": ").concat(c.guards, " guards, ").concat(c.rangers, " rangers, ").concat(c.healers, " healers (urgency: ").concat(c.urgency, "x) - ").concat(c.reasons.join(", ")), {
 subsystem: "Defense"
 }), c;
 }
@@ -5808,7 +5808,7 @@ urgency: r.urgency,
 createdAt: Game.time,
 threat: r.reasons.join("; ")
 };
-return k.warn("Defense assistance requested for ".concat(e.name, ": ").concat(n.guardsNeeded, " guards, ").concat(n.rangersNeeded, " rangers, ").concat(n.healersNeeded, " healers - ").concat(n.threat), {
+return _.warn("Defense assistance requested for ".concat(e.name, ": ").concat(n.guardsNeeded, " guards, ").concat(n.rangersNeeded, " rangers, ").concat(n.healersNeeded, " healers - ").concat(n.threat), {
 subsystem: "Defense"
 }), n;
 }
@@ -5887,7 +5887,7 @@ v && !v.done && (r = g.return) && r.call(g);
 if (t) throw t.error;
 }
 }
-var O, U = e.find(FIND_MY_STRUCTURES, {
+var O, M = e.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return e.structureType === STRUCTURE_TOWER;
 }
@@ -5899,7 +5899,7 @@ var a, s = i.reduce(function(e, r) {
 return e + t.pos.getRangeTo(r.pos);
 }, 0);
 return e + ((a = s / i.length) <= 5 ? 600 : a >= 20 ? 150 : 600 - 30 * (a - 5));
-}, 0), M = c > 1.5 * U, _ = Math.min(100, Math.max(0, (c - U) / 10)), k = function(e, t, r) {
+}, 0), U = c > 1.5 * M, k = Math.min(100, Math.max(0, (c - M) / 10)), _ = function(e, t, r) {
 if (Array.isArray(e)) {
 var o = e.reduce(function(e, t) {
 var r = t.body.filter(function(e) {
@@ -5919,7 +5919,7 @@ return t <= 0 && (t = 300, r = 1300), Math.ceil(e / t) * r;
 }(c), A = Math.max(1, function(e) {
 return 0 === e || e < Bt ? 0 : e < Ht ? 1 : e < Wt ? 2 : 3;
 }(s));
-return O = s < 100 ? "monitor" : s < 500 && !M ? "defend" : M && s < 1e3 ? "assist" : s > 1e3 || u > 3 ? "safemode" : "defend", 
+return O = s < 100 ? "monitor" : s < 500 && !U ? "defend" : U && s < 1e3 ? "assist" : s > 1e3 || u > 3 ? "safemode" : "defend", 
 e.find(FIND_NUKES).length > 0 && (s += 500, O = "safemode", A = 3), {
 roomName: e.name,
 dangerLevel: A,
@@ -5932,9 +5932,9 @@ rangedCount: d,
 meleeCount: p,
 boostedCount: u,
 dismantlerCount: f,
-estimatedDefenderCost: k,
-assistanceRequired: M,
-assistancePriority: _,
+estimatedDefenderCost: _,
+assistanceRequired: U,
+assistancePriority: k,
 recommendedResponse: O
 };
 }
@@ -6008,7 +6008,7 @@ avgDps: n
 }
 
 function Qt(e) {
-k.info("Threat Assessment for ".concat(e.roomName, ": ") + "Danger=".concat(e.dangerLevel, ", Score=").concat(e.threatScore, ", ") + "Hostiles=".concat(e.hostileCount, ", DPS=").concat(e.totalHostileDPS, ", ") + "Response=".concat(e.recommendedResponse), {
+_.info("Threat Assessment for ".concat(e.roomName, ": ") + "Danger=".concat(e.dangerLevel, ", Score=").concat(e.threatScore, ", ") + "Hostiles=".concat(e.hostileCount, ", DPS=").concat(e.totalHostileDPS, ", ") + "Response=".concat(e.recommendedResponse), {
 subsystem: "Defense",
 room: e.roomName,
 meta: {
@@ -6728,7 +6728,7 @@ return fr(e, t);
 })), !1));
 }
 
-var Rr = "spawn", Er = "extension", Tr = "road", Cr = "rampart", Sr = "container", xr = "tower", wr = "storage", br = "link", Or = "terminal", Ur = "extractor", Mr = "lab", _r = "factory", kr = "nuker", Ar = "observer", Nr = "powerSpawn", Pr = [ Rr, Er, xr, wr, br, Or, Ur, Mr, _r, kr, Ar, Nr ];
+var Rr = "spawn", Er = "extension", Tr = "road", Cr = "rampart", Sr = "container", xr = "tower", wr = "storage", br = "link", Or = "terminal", Mr = "extractor", Ur = "lab", kr = "factory", _r = "nuker", Ar = "observer", Nr = "powerSpawn", Pr = [ Rr, Er, xr, wr, br, Or, Mr, Ur, kr, _r, Ar, Nr ];
 
 function Ir(e) {
 return Math.min(8, Math.max(1, Math.floor(Number.isFinite(e) ? e : 1)));
@@ -8083,8 +8083,8 @@ var r, o, n, i, s, c = e.controller;
 if (!c) return null;
 var l = e.find(FIND_SOURCES), u = c.pos.x, m = c.pos.y;
 try {
-for (var d = a(l), p = d.next(); !p.done; p = d.next()) u += (_ = p.value).pos.x, 
-m += _.pos.y;
+for (var d = a(l), p = d.next(); !p.done; p = d.next()) u += (k = p.value).pos.x, 
+m += k.pos.y;
 } catch (e) {
 r = {
 error: e
@@ -8106,9 +8106,9 @@ var w = 1e3, b = S.getRangeTo(c);
 b >= 4 && b <= 8 ? w += 100 : b < 4 ? w -= 50 : b > 12 && (w -= 30);
 var O = 0;
 try {
-for (var U = (n = void 0, a(l)), M = U.next(); !M.done; M = U.next()) {
-var _ = M.value;
-O += S.getRangeTo(_);
+for (var M = (n = void 0, a(l)), U = M.next(); !U.done; U = M.next()) {
+var k = U.value;
+O += S.getRangeTo(k);
 }
 } catch (e) {
 n = {
@@ -8116,13 +8116,13 @@ error: e
 };
 } finally {
 try {
-M && !M.done && (i = U.return) && i.call(U);
+U && !U.done && (i = M.return) && i.call(M);
 } finally {
 if (n) throw n.error;
 }
 }
-var k = O / l.length;
-k >= 5 && k <= 10 ? w += 80 : k < 5 && (w -= 20);
+var _ = O / l.length;
+_ >= 5 && _ <= 10 ? w += 80 : _ < 5 && (w -= 20);
 var A = Math.abs(T - 25) + Math.abs(C - 25);
 if (A < 10 ? w += 50 : A > 20 && (w -= 30), void 0 !== x.wallCount && void 0 !== x.totalTiles) {
 var N = x.wallCount / x.totalTiles * 100;
@@ -8229,7 +8229,7 @@ var o, n, a, i = null === (o = e.storage) || void 0 === o ? void 0 : o.pos, s = 
 return [ e.name, "anchor:".concat(t.x, ",").concat(t.y), "storage:".concat(s), "rcl:".concat(c), "ops:".concat(r.maxPathOps), "remote:".concat(r.includeRemoteRoads ? 1 : 0) ].join("|");
 }(e, t, C), x = eo.get(S);
 if (x && Game.time - x.lastCalculated < C.recalculateInterval) return x;
-var w = new Set, b = null !== (E = null === (R = e.controller) || void 0 === R ? void 0 : R.level) && void 0 !== E ? E : 0, O = e.find(FIND_SOURCES), U = e.controller, M = e.storage, _ = e.find(FIND_MINERALS)[0], A = null !== (T = null == M ? void 0 : M.pos) && void 0 !== T ? T : t;
+var w = new Set, b = null !== (E = null === (R = e.controller) || void 0 === R ? void 0 : R.level) && void 0 !== E ? E : 0, O = e.find(FIND_SOURCES), M = e.controller, U = e.storage, k = e.find(FIND_MINERALS)[0], A = null !== (T = null == U ? void 0 : U.pos) && void 0 !== T ? T : t;
 try {
 for (var N = a(O), P = N.next(); !P.done; P = N.next()) {
 var I = so(A, P.value.pos, e.name, C.maxPathOps);
@@ -8261,8 +8261,8 @@ P && !P.done && (i = N.return) && i.call(N);
 if (n) throw n.error;
 }
 }
-if (U) {
-I = so(A, U.pos, e.name, C.maxPathOps);
+if (M) {
+I = so(A, M.pos, e.name, C.maxPathOps);
 try {
 for (var F = a(I), B = F.next(); !B.done; B = F.next()) D = B.value, w.add("".concat(D.x, ",").concat(D.y));
 } catch (e) {
@@ -8277,8 +8277,8 @@ if (l) throw l.error;
 }
 }
 }
-if (_ && b >= 6) {
-I = so(A, _.pos, e.name, C.maxPathOps);
+if (k && b >= 6) {
+I = so(A, k.pos, e.name, C.maxPathOps);
 try {
 for (var H = a(I), W = H.next(); !W.done; W = H.next()) D = W.value, w.add("".concat(D.x, ",").concat(D.y));
 } catch (e) {
@@ -8293,7 +8293,7 @@ if (m) throw m.error;
 }
 }
 }
-if (!M) {
+if (!U) {
 try {
 for (var K = a(O), Y = K.next(); !Y.done; Y = K.next()) {
 I = so(t, Y.value.pos, e.name, C.maxPathOps);
@@ -8323,8 +8323,8 @@ Y && !Y.done && (f = K.return) && f.call(K);
 if (p) throw p.error;
 }
 }
-if (U) {
-I = so(t, U.pos, e.name, C.maxPathOps);
+if (M) {
+I = so(t, M.pos, e.name, C.maxPathOps);
 try {
 for (var j = a(I), z = j.next(); !z.done; z = j.next()) D = z.value, w.add("".concat(D.x, ",").concat(D.y));
 } catch (e) {
@@ -8345,7 +8345,7 @@ roomName: e.name,
 positions: w,
 lastCalculated: Game.time
 };
-return eo.set(S, Q), k.debug("Calculated road network for ".concat(e.name, ": ").concat(w.size, " positions"), {
+return eo.set(S, Q), _.debug("Calculated road network for ".concat(e.name, ": ").concat(w.size, " positions"), {
 subsystem: "RoadNetwork"
 }), Q;
 }
@@ -8420,14 +8420,14 @@ var T = E.value;
 try {
 var C = oo(e.name, T);
 if (!C) {
-k.warn("Cannot determine exit direction from ".concat(e.name, " to ").concat(T), {
+_.warn("Cannot determine exit direction from ".concat(e.name, " to ").concat(T), {
 subsystem: "RoadNetwork"
 });
 continue;
 }
 var S = no(e.name, C);
 if (0 === S.length) {
-k.warn("No valid exit positions found in ".concat(e.name, " towards ").concat(T), {
+_.warn("No valid exit positions found in ".concat(e.name, " towards ").concat(T), {
 subsystem: "RoadNetwork"
 });
 continue;
@@ -8447,8 +8447,8 @@ return t === e.name && co(t);
 });
 if (!w.incomplete) try {
 for (var b = (s = void 0, a(w.path)), O = b.next(); !O.done; O = b.next()) {
-var U = O.value;
-y.has(U.roomName) || y.set(U.roomName, new Set), null === (d = y.get(U.roomName)) || void 0 === d || d.add("".concat(U.x, ",").concat(U.y));
+var M = O.value;
+y.has(M.roomName) || y.set(M.roomName, new Set), null === (d = y.get(M.roomName)) || void 0 === d || d.add("".concat(M.x, ",").concat(M.y));
 }
 } catch (e) {
 s = {
@@ -8461,8 +8461,8 @@ O && !O.done && (c = b.return) && c.call(b);
 if (s) throw s.error;
 }
 }
-var M = new RoomPosition(25, 25, T), _ = PathFinder.search(h, {
-pos: M,
+var U = new RoomPosition(25, 25, T), k = PathFinder.search(h, {
+pos: U,
 range: 20
 }, {
 plainCost: 2,
@@ -8472,9 +8472,9 @@ roomCallback: function(e) {
 return co(e);
 }
 });
-if (!_.incomplete) try {
-for (var A = (l = void 0, a(_.path)), N = A.next(); !N.done; N = A.next()) U = N.value, 
-y.has(U.roomName) || y.set(U.roomName, new Set), null === (p = y.get(U.roomName)) || void 0 === p || p.add("".concat(U.x, ",").concat(U.y));
+if (!k.incomplete) try {
+for (var A = (l = void 0, a(k.path)), N = A.next(); !N.done; N = A.next()) M = N.value, 
+y.has(M.roomName) || y.set(M.roomName, new Set), null === (p = y.get(M.roomName)) || void 0 === p || p.add("".concat(M.x, ",").concat(M.y));
 } catch (e) {
 l = {
 error: e
@@ -8488,7 +8488,7 @@ if (l) throw l.error;
 }
 } catch (e) {
 var P = e instanceof Error ? e.message : String(e);
-k.warn("Failed to calculate remote road to ".concat(T, ": ").concat(P), {
+_.warn("Failed to calculate remote road to ".concat(T, ": ").concat(P), {
 subsystem: "RoadNetwork"
 });
 }
@@ -8619,9 +8619,9 @@ if (c) throw c.error;
 }
 var b = ro(e, t);
 try {
-for (var O = a(b.positions), U = O.next(); !U.done; U = O.next()) {
-var M = U.value;
-R.add(M);
+for (var O = a(b.positions), M = O.next(); !M.done; M = O.next()) {
+var U = M.value;
+R.add(U);
 }
 } catch (e) {
 u = {
@@ -8629,12 +8629,12 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (m = O.return) && m.call(O);
+M && !M.done && (m = O.return) && m.call(O);
 } finally {
 if (u) throw u.error;
 }
 }
-var _ = e.storage, A = e.find(FIND_MY_SPAWNS)[0], N = null !== (g = null == _ ? void 0 : _.pos) && void 0 !== g ? g : null == A ? void 0 : A.pos;
+var k = e.storage, A = e.find(FIND_MY_SPAWNS)[0], N = null !== (g = null == k ? void 0 : k.pos) && void 0 !== g ? g : null == A ? void 0 : A.pos;
 if (N) {
 var P = function(e, t, r) {
 var n, i, s, c;
@@ -8659,7 +8659,7 @@ roomCallback: function(t) {
 return t === e.name && co(t);
 }
 });
-if (g.incomplete) k.warn("Incomplete path when calculating exit road for ".concat(p, " in ").concat(e.name, " (target exit: ").concat(y.x, ",").concat(y.y, "). Path length: ").concat(g.path.length), {
+if (g.incomplete) _.warn("Incomplete path when calculating exit road for ".concat(p, " in ").concat(e.name, " (target exit: ").concat(y.x, ",").concat(y.y, "). Path length: ").concat(g.path.length), {
 subsystem: "RoadNetwork"
 }); else try {
 for (var v = (s = void 0, a(g.path)), h = v.next(); !h.done; h = v.next()) {
@@ -8679,7 +8679,7 @@ if (s) throw s.error;
 }
 } catch (t) {
 var E = t instanceof Error ? t.message : String(t);
-k.warn("Failed to calculate exit road for ".concat(p, " in ").concat(e.name, ": ").concat(E), {
+_.warn("Failed to calculate exit road for ".concat(p, " in ").concat(e.name, ": ").concat(E), {
 subsystem: "RoadNetwork"
 });
 }
@@ -8698,7 +8698,7 @@ if (n) throw n.error;
 return u;
 }(e, N);
 try {
-for (var I = a(P), G = I.next(); !G.done; G = I.next()) M = G.value, R.add(M);
+for (var I = a(P), G = I.next(); !G.done; G = I.next()) U = G.value, R.add(U);
 } catch (e) {
 d = {
 error: e
@@ -8714,7 +8714,7 @@ if (d) throw d.error;
 if (n.length > 0) {
 var L = io(e, n).get(e.name);
 if (L) try {
-for (var D = a(L), F = D.next(); !F.done; F = D.next()) M = F.value, R.add(M);
+for (var D = a(L), F = D.next(); !F.done; F = D.next()) U = F.value, R.add(U);
 } catch (e) {
 f = {
 error: e
@@ -8936,7 +8936,7 @@ fallback: "nearStorage",
 rampart: !0
 }, {
 id: "factory",
-structureType: _r,
+structureType: kr,
 dx: 1,
 dy: 1,
 minRcl: 7,
@@ -9194,7 +9194,7 @@ priority: 211
 } ].map(function(e, t) {
 return {
 id: "lab-".concat(t + 1),
-structureType: Mr,
+structureType: Ur,
 dx: e.dx,
 dy: e.dy,
 minRcl: e.minRcl,
@@ -9314,7 +9314,7 @@ fallback: "nearStorage",
 rampart: !0
 }, {
 id: "nuker",
-structureType: kr,
+structureType: _r,
 dx: 2,
 dy: 0,
 minRcl: 8,
@@ -9365,7 +9365,7 @@ id: "MINERAL_STAMP",
 name: "Fixed mineral extractor support",
 members: [ {
 id: "extractor",
-structureType: Ur,
+structureType: Mr,
 dx: 0,
 dy: 0,
 minRcl: 6,
@@ -9408,7 +9408,7 @@ return e.terrain instanceof Map ? null !== (o = e.terrain.get("".concat(t, ",").
 }
 
 function xo(e) {
-return e === Rr || e === xr || e === wr || e === Or || e === _r || e === br || e === Mr || e === Nr || e === kr || e === Ar;
+return e === Rr || e === xr || e === wr || e === Or || e === kr || e === br || e === Ur || e === Nr || e === _r || e === Ar;
 }
 
 function wo(e, t, r) {
@@ -9478,8 +9478,8 @@ if (o) throw o.error;
 return i;
 }(t, o, n), d = Math.min(o, n, 49 - o, 49 - n), p = 1e3 - 18 * s - 2 * c + m + 2 * Math.min(d, 10);
 return r.structureType === xr && (p += 4 * Math.max(0, 14 - Math.min(c, l))), r.structureType === Er && (p += m + 2 * Math.max(0, 16 - c)), 
-r.structureType === br && (p += 4 * Math.max(0, 10 - Math.min(u, l, c))), r.structureType === Mr && (p += 8 * Math.max(0, 8 - c)), 
-r.structureType === Ur && e.mineral && (p += e.mineral.x === o && e.mineral.y === n ? 1e4 : -1e4), 
+r.structureType === br && (p += 4 * Math.max(0, 10 - Math.min(u, l, c))), r.structureType === Ur && (p += 8 * Math.max(0, 8 - c)), 
+r.structureType === Mr && e.mineral && (p += e.mineral.x === o && e.mineral.y === n ? 1e4 : -1e4), 
 {
 x: o,
 y: n,
@@ -9488,8 +9488,8 @@ reason: "fallback ".concat(r.fallback, " score ").concat(Math.round(p))
 };
 }
 
-function Uo(e, t, r, o) {
-if (void 0 === o && (o = "global"), r.structureType === Ur && e.mineral) return bo(e, t, e.mineral.x, e.mineral.y) ? [ Oo(e, t, r, e.mineral.x, e.mineral.y) ] : [];
+function Mo(e, t, r, o) {
+if (void 0 === o && (o = "global"), r.structureType === Mr && e.mineral) return bo(e, t, e.mineral.x, e.mineral.y) ? [ Oo(e, t, r, e.mineral.x, e.mineral.y) ] : [];
 for (var n = wo(e, t, r), a = "local" === o ? 6 : 22, i = [], s = 0; s <= a; s++) {
 for (var c = -s; c <= s; c++) for (var l = -s; l <= s; l++) if (!(s > 0 && Math.abs(c) !== s && Math.abs(l) !== s)) {
 var u = n.x + c, m = n.y + l;
@@ -9502,11 +9502,11 @@ return t.score - e.score;
 });
 }
 
-function Mo(e) {
+function Uo(e) {
 return e.length > 0 ? e[0] : null;
 }
 
-var _o, ko = "stamp-v1";
+var ko, _o = "stamp-v1";
 
 function Ao(e) {
 return Math.max(5, Math.min(44, Math.round(e)));
@@ -9699,7 +9699,7 @@ return null !== (o = null == n ? void 0 : n.point) && void 0 !== o ? o : null;
 
 function Vo(e, t) {
 if (!Bo(e, t)) return !0;
-var r = Mo(Uo(e.facts, e.plan, t, "local")), o = null != r ? r : Mo(Uo(e.facts, e.plan, t, "global"));
+var r = Uo(Mo(e.facts, e.plan, t, "local")), o = null != r ? r : Uo(Mo(e.facts, e.plan, t, "global"));
 if (!o) return !1;
 var n = function(e, t, r) {
 var o;
@@ -9777,14 +9777,14 @@ return "defenseCoverage";
 
 case wr:
 case Or:
-case _r:
+case kr:
 case Nr:
 return "nearStorage";
 
-case Mr:
+case Ur:
 return "labCluster";
 
-case Ur:
+case Mr:
 return "nearMineral";
 
 default:
@@ -9820,9 +9820,9 @@ case Cr:
 return "P2";
 
 case Or:
-case Mr:
 case Ur:
-case _r:
+case Mr:
+case kr:
 return "P3";
 
 default:
@@ -9936,34 +9936,34 @@ return t.score - e.score || e.structureType.localeCompare(t.structureType);
 !function(e) {
 e[e.DEBUG = 0] = "DEBUG", e[e.INFO = 1] = "INFO", e[e.WARN = 2] = "WARN", e[e.ERROR = 3] = "ERROR", 
 e[e.NONE = 4] = "NONE";
-}(_o || (_o = {}));
+}(ko || (ko = {}));
 
 var Jo, $o = new (function() {
 function e() {
-this.level = _o.INFO;
+this.level = ko.INFO;
 }
 return e.prototype.setLevel = function(e) {
 this.level = e;
 }, e.prototype.debug = function(e, t) {
-this.level <= _o.DEBUG && console.log(JSON.stringify(o({
+this.level <= ko.DEBUG && console.log(JSON.stringify(o({
 level: "DEBUG",
 message: e,
 tick: Game.time
 }, t)));
 }, e.prototype.info = function(e, t) {
-this.level <= _o.INFO && console.log(JSON.stringify(o({
+this.level <= ko.INFO && console.log(JSON.stringify(o({
 level: "INFO",
 message: e,
 tick: Game.time
 }, t)));
 }, e.prototype.warn = function(e, t) {
-this.level <= _o.WARN && console.log(JSON.stringify(o({
+this.level <= ko.WARN && console.log(JSON.stringify(o({
 level: "WARN",
 message: e,
 tick: Game.time
 }, t)));
 }, e.prototype.error = function(e, t) {
-this.level <= _o.ERROR && console.log(JSON.stringify(o({
+this.level <= ko.ERROR && console.log(JSON.stringify(o({
 level: "ERROR",
 message: e,
 tick: Game.time
@@ -10655,9 +10655,9 @@ if (!S) break;
 }
 if (T.size > 0) {
 try {
-for (var O = a(T), U = O.next(); !U.done; U = O.next()) {
-var M = U.value;
-E.push(M);
+for (var O = a(T), M = O.next(); !M.done; M = O.next()) {
+var U = M.value;
+E.push(U);
 }
 } catch (e) {
 c = {
@@ -10665,7 +10665,7 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (l = O.return) && l.call(O);
+M && !M.done && (l = O.return) && l.call(O);
 } finally {
 if (c) throw c.error;
 }
@@ -11137,7 +11137,7 @@ targetRoom: e,
 assignedAt: Game.time,
 eta: h
 };
-this.assignments.set(g.name, R), g.memory.assistTarget = e, l++, k.info("Assigned ".concat(t, " ").concat(g.name, " from ").concat(d.name, " to assist ").concat(e, " (ETA: ").concat(h - Game.time, " ticks)"), {
+this.assignments.set(g.name, R), g.memory.assistTarget = e, l++, _.info("Assigned ".concat(t, " ").concat(g.name, " from ").concat(d.name, " to assist ").concat(e, " (ETA: ").concat(h - Game.time, " ticks)"), {
 subsystem: "Defense"
 });
 }
@@ -11154,7 +11154,7 @@ m && !m.done && (i = u.return) && i.call(u);
 if (n) throw n.error;
 }
 }
-l > 0 && k.info("Defense coordination: Assigned ".concat(l, "/").concat(r, " ").concat(t, "s to ").concat(e), {
+l > 0 && _.info("Defense coordination: Assigned ".concat(l, "/").concat(r, " ").concat(t, "s to ").concat(e), {
 subsystem: "Defense"
 });
 }, e.prototype.findHelperRooms = function(e, t) {
@@ -11213,10 +11213,10 @@ try {
 for (var s = a(this.assignments.entries()), c = s.next(); !c.done; c = s.next()) {
 var l = i(c.value, 2), u = l[0], m = l[1], d = Game.creeps[u];
 d ? (d.room.name === m.targetRoom && 0 === Y(d.room).length && (delete d.memory.assistTarget, 
-n.push(u), k.debug("Released ".concat(u, " from defense assistance (no hostiles in ").concat(m.targetRoom, ")"), {
+n.push(u), _.debug("Released ".concat(u, " from defense assistance (no hostiles in ").concat(m.targetRoom, ")"), {
 subsystem: "Defense"
 })), Game.time - m.assignedAt > 1e3 && (delete d.memory.assistTarget, n.push(u), 
-k.debug("Removed stale defense assignment for ".concat(u), {
+_.debug("Removed stale defense assignment for ".concat(u), {
 subsystem: "Defense"
 }))) : n.push(u);
 }
@@ -11251,7 +11251,7 @@ return Array.from(this.assignments.values());
 }, e.prototype.cancelAssignment = function(e) {
 if (this.assignments.get(e)) {
 var t = Game.creeps[e];
-t && delete t.memory.assistTarget, this.assignments.delete(e), k.info("Cancelled defense assignment for ".concat(e), {
+t && delete t.memory.assistTarget, this.assignments.delete(e), _.info("Cancelled defense assignment for ".concat(e), {
 subsystem: "Defense"
 });
 }
@@ -11272,7 +11272,7 @@ var t = e.memory;
 return "defender" === t.role || "rangedDefender" === t.role || "guard" === t.role || "ranger" === t.role;
 }
 });
-if (t.hostileCount > 3 * r.length) return k.info("Creep ".concat(e.name, " retreating: heavily outnumbered (").concat(t.hostileCount, " hostiles vs ").concat(r.length, " defenders)"), {
+if (t.hostileCount > 3 * r.length) return _.info("Creep ".concat(e.name, " retreating: heavily outnumbered (").concat(t.hostileCount, " hostiles vs ").concat(r.length, " defenders)"), {
 subsystem: "Defense",
 room: e.room.name,
 creep: e.name
@@ -11282,11 +11282,11 @@ filter: function(e) {
 return "healer" === e.memory.role;
 }
 });
-return e.hits < .3 * e.hitsMax && t.healerCount > 0 && 0 === o.length ? (k.info("Creep ".concat(e.name, " retreating: damaged (").concat(e.hits, "/").concat(e.hitsMax, ") facing ").concat(t.healerCount, " enemy healers without friendly healer support"), {
+return e.hits < .3 * e.hitsMax && t.healerCount > 0 && 0 === o.length ? (_.info("Creep ".concat(e.name, " retreating: damaged (").concat(e.hits, "/").concat(e.hitsMax, ") facing ").concat(t.healerCount, " enemy healers without friendly healer support"), {
 subsystem: "Defense",
 room: e.room.name,
 creep: e.name
-}), !0) : t.boostedCount > 0 && r.length < 2 * t.boostedCount && (k.info("Creep ".concat(e.name, " retreating: facing ").concat(t.boostedCount, " boosted hostiles without sufficient support"), {
+}), !0) : t.boostedCount > 0 && r.length < 2 * t.boostedCount && (_.info("Creep ".concat(e.name, " retreating: facing ").concat(t.boostedCount, " boosted hostiles without sufficient support"), {
 subsystem: "Defense",
 room: e.room.name,
 creep: e.name
@@ -11382,7 +11382,7 @@ return t.assistancePriority - e.assistancePriority;
 try {
 for (var f = a(p), y = f.next(); !y.done; y = f.next()) {
 var g = y.value, v = this.findAvailableDefenders(i, g.roomName);
-v.length > 0 && (this.sendDefenders(v, g.roomName), k.info("Cluster Defense: Sending ".concat(v.length, " defenders to ").concat(g.roomName), {
+v.length > 0 && (this.sendDefenders(v, g.roomName), _.info("Cluster Defense: Sending ".concat(v.length, " defenders to ").concat(g.roomName), {
 subsystem: "Defense",
 room: g.roomName,
 meta: {
@@ -11461,7 +11461,7 @@ return t.threatScore > e.threatScore ? t : e;
 }), n = Game.rooms[o.roomName];
 if ((null === (t = null == n ? void 0 : n.controller) || void 0 === t ? void 0 : t.my) && n.controller.safeModeAvailable > 0 && !n.controller.safeMode && !n.controller.safeModeCooldown) {
 var a = n.controller.activateSafeMode();
-a === OK ? k.warn("Activated safe mode in ".concat(o.roomName), {
+a === OK ? _.warn("Activated safe mode in ".concat(o.roomName), {
 subsystem: "Defense",
 room: o.roomName,
 meta: {
@@ -11469,7 +11469,7 @@ threatScore: o.threatScore,
 hostiles: o.hostileCount,
 dangerLevel: o.dangerLevel
 }
-}) : k.error("Failed to activate safe mode in ".concat(o.roomName, ": ").concat(a), {
+}) : _.error("Failed to activate safe mode in ".concat(o.roomName, ": ").concat(a), {
 subsystem: "Defense",
 room: o.roomName,
 meta: {
@@ -11498,9 +11498,9 @@ startedAt: Game.time,
 assistanceRequested: !1,
 boostsAllocated: !1,
 lastEscalation: 0
-}, this.emergencyStates.set(e.name, r)), n === En.NONE ? (o && (k.info("Emergency resolved in ".concat(e.name), {
+}, this.emergencyStates.set(e.name, r)), n === En.NONE ? (o && (_.info("Emergency resolved in ".concat(e.name), {
 subsystem: "Defense"
-}), this.emergencyStates.delete(e.name)), r) : (o && n > o.level && (k.warn("Emergency escalated in ".concat(e.name, ": Level ").concat(o.level, " → ").concat(n), {
+}), this.emergencyStates.delete(e.name)), r) : (o && n > o.level && (_.warn("Emergency escalated in ".concat(e.name, ": Level ").concat(o.level, " → ").concat(n), {
 subsystem: "Defense"
 }), r.lastEscalation = Game.time), this.executeEmergencyResponse(e, t, r), r)) : {
 level: En.NONE,
@@ -11536,39 +11536,39 @@ if (!o) return !1;
 var n = Memory, a = (null !== (r = n.defenseRequests) && void 0 !== r ? r : []).filter(function(t) {
 return t.roomName !== e.name || Game.time - t.createdAt < 500;
 });
-return a.push(o), n.defenseRequests = a, k.warn("Defense assistance requested for ".concat(e.name, ": ") + "".concat(o.guardsNeeded, " guards, ").concat(o.rangersNeeded, " rangers - ").concat(o.threat), {
+return a.push(o), n.defenseRequests = a, _.warn("Defense assistance requested for ".concat(e.name, ": ") + "".concat(o.guardsNeeded, " guards, ").concat(o.rangersNeeded, " rangers - ").concat(o.threat), {
 subsystem: "Defense"
 }), !0;
 }, e.prototype.allocateBoostsForDefense = function(e, t) {
 var r, o = Memory, n = null !== (r = o.boostDefensePriority) && void 0 !== r ? r : {};
-n[e.name] = !0, o.boostDefensePriority = n, k.info("Allocated boost priority for defenders in ".concat(e.name), {
+n[e.name] = !0, o.boostDefensePriority = n, _.info("Allocated boost priority for defenders in ".concat(e.name), {
 subsystem: "Defense"
 });
 }, e.prototype.updateDefensePosture = function(e, t, r) {
 switch (r.level) {
 case En.CRITICAL:
 "evacuate" !== t.posture && (t.posture = "war", t.pheromones.war = 100, t.pheromones.defense = 100, 
-k.warn("".concat(e.name, " posture: CRITICAL DEFENSE"), {
+_.warn("".concat(e.name, " posture: CRITICAL DEFENSE"), {
 subsystem: "Defense"
 }));
 break;
 
 case En.HIGH:
 "war" !== t.posture && "evacuate" !== t.posture && (t.posture = "defensive", t.pheromones.defense = 80, 
-t.pheromones.war = 40, k.info("".concat(e.name, " posture: HIGH DEFENSE"), {
+t.pheromones.war = 40, _.info("".concat(e.name, " posture: HIGH DEFENSE"), {
 subsystem: "Defense"
 }));
 break;
 
 case En.MEDIUM:
 "eco" !== t.posture && "expand" !== t.posture || (t.posture = "defensive", t.pheromones.defense = 60, 
-k.info("".concat(e.name, " posture: MEDIUM DEFENSE"), {
+_.info("".concat(e.name, " posture: MEDIUM DEFENSE"), {
 subsystem: "Defense"
 }));
 break;
 
 case En.LOW:
-"eco" !== t.posture && "expand" !== t.posture || (t.pheromones.defense = 30, k.debug("".concat(e.name, ": LOW DEFENSE alert"), {
+"eco" !== t.posture && "expand" !== t.posture || (t.pheromones.defense = 30, _.debug("".concat(e.name, ": LOW DEFENSE alert"), {
 subsystem: "Defense"
 }));
 }
@@ -11632,17 +11632,17 @@ return e.hits > 0 && e.boost;
 }) || bn(e, WORK) >= 5 || bn(e, HEAL) >= 3;
 }
 
-var Un = function() {
+var Mn = function() {
 function e() {}
 return e.prototype.checkSafeMode = function(e, t) {
 var r, o, n, a, i;
 if (!(null === (r = e.controller) || void 0 === r ? void 0 : r.safeMode) && !(null === (o = e.controller) || void 0 === o ? void 0 : o.safeModeCooldown) && 0 !== (null !== (a = null === (n = e.controller) || void 0 === n ? void 0 : n.safeModeAvailable) && void 0 !== a ? a : 0) && this.shouldTriggerSafeMode(e, t)) {
 var s = null === (i = e.controller) || void 0 === i ? void 0 : i.activateSafeMode();
-if (s === OK) k.warn("SAFE MODE ACTIVATED in ".concat(e.name), {
+if (s === OK) _.warn("SAFE MODE ACTIVATED in ".concat(e.name), {
 subsystem: "Defense"
 }); else {
 var c = void 0 !== s ? String(s) : "undefined";
-k.error("Failed to activate safe mode in ".concat(e.name, ": ").concat(c), {
+_.error("Failed to activate safe mode in ".concat(e.name, ": ").concat(c), {
 subsystem: "Defense"
 });
 }
@@ -11659,7 +11659,7 @@ var l = e.find(FIND_MY_SPAWNS);
 try {
 for (var u = a(l), m = u.next(); !m.done; m = u.next()) {
 var d = m.value;
-if (d.hits < .2 * d.hitsMax) return k.warn("Spawn ".concat(d.name, " critical: ").concat(d.hits, "/").concat(d.hitsMax), {
+if (d.hits < .2 * d.hitsMax) return _.warn("Spawn ".concat(d.name, " critical: ").concat(d.hits, "/").concat(d.hitsMax), {
 subsystem: "Defense"
 }), !0;
 }
@@ -11674,10 +11674,10 @@ m && !m.done && (o = u.return) && o.call(u);
 if (r) throw r.error;
 }
 }
-if (e.storage && e.storage.hits < .2 * e.storage.hitsMax) return k.warn("Storage critical: ".concat(e.storage.hits, "/").concat(e.storage.hitsMax), {
+if (e.storage && e.storage.hits < .2 * e.storage.hitsMax) return _.warn("Storage critical: ".concat(e.storage.hits, "/").concat(e.storage.hitsMax), {
 subsystem: "Defense"
 }), !0;
-if (e.terminal && e.terminal.hits < .2 * e.terminal.hitsMax) return k.warn("Terminal critical: ".concat(e.terminal.hits, "/").concat(e.terminal.hitsMax), {
+if (e.terminal && e.terminal.hits < .2 * e.terminal.hitsMax) return _.warn("Terminal critical: ".concat(e.terminal.hits, "/").concat(e.terminal.hitsMax), {
 subsystem: "Defense"
 }), !0;
 var p = e.find(FIND_MY_CREEPS, {
@@ -11686,24 +11686,24 @@ var t = e.memory.role;
 return "guard" === t || "ranger" === t || "soldier" === t;
 }
 });
-if (c.length > 3 * p.length) return k.warn("Overwhelmed: ".concat(c.length, " safe-mode-relevant hostiles vs ").concat(p.length, " defenders"), {
+if (c.length > 3 * p.length) return _.warn("Overwhelmed: ".concat(c.length, " safe-mode-relevant hostiles vs ").concat(p.length, " defenders"), {
 subsystem: "Defense"
 }), !0;
 var f = c.filter(On);
-return f.length > 0 && p.length < 2 * f.length && (k.warn("High-impact siege hostiles detected: ".concat(f.length), {
+return f.length > 0 && p.length < 2 * f.length && (_.warn("High-impact siege hostiles detected: ".concat(f.length), {
 subsystem: "Defense"
 }), !0);
 }, e;
-}(), Mn = new Un, _n = {
+}(), Un = new Mn, kn = {
 triggerDangerLevel: 3,
 nukeEvacuationLeadTime: 5e3,
 minStorageEnergy: 5e4,
 priorityResources: [ RESOURCE_ENERGY, RESOURCE_POWER, RESOURCE_GHODIUM, RESOURCE_CATALYZED_GHODIUM_ACID, RESOURCE_CATALYZED_UTRIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ACID, RESOURCE_CATALYZED_KEANIUM_ACID, RESOURCE_CATALYZED_ZYNTHIUM_ACID, RESOURCE_OPS ],
 maxTransfersPerTick: 2
-}, kn = function() {
+}, _n = function() {
 function e(e) {
 void 0 === e && (e = {}), this.evacuations = new Map, this.lastTransferTick = 0, 
-this.transfersThisTick = 0, this.config = o(o({}, _n), e);
+this.transfersThisTick = 0, this.config = o(o({}, kn), e);
 }
 return e.prototype.run = function() {
 var e, t, r, o;
@@ -11754,7 +11754,7 @@ return (null !== (r = e.timeToLand) && void 0 !== r ? r : 1 / 0) < (null !== (o 
 if ((null !== (t = c.timeToLand) && void 0 !== t ? t : 1 / 0) <= this.config.nukeEvacuationLeadTime) {
 i.nukeDetected || (i.nukeDetected = !0);
 var l = s.length;
-k.warn("Triggering evacuation for ".concat(n, ": ").concat(l, " nuke(s) detected, impact in ").concat(null !== (r = c.timeToLand) && void 0 !== r ? r : 0, " ticks"), {
+_.warn("Triggering evacuation for ".concat(n, ": ").concat(l, " nuke(s) detected, impact in ").concat(null !== (r = c.timeToLand) && void 0 !== r ? r : 0, " ticks"), {
 subsystem: "Evacuation"
 }), this.startEvacuation(n, "nuke", Game.time + (null !== (o = c.timeToLand) && void 0 !== o ? o : 0));
 continue;
@@ -11783,7 +11783,7 @@ if (this.evacuations.has(e)) return !1;
 var n = Game.rooms[e];
 if (!n || !(null === (o = n.controller) || void 0 === o ? void 0 : o.my)) return !1;
 var a = this.findEvacuationTarget(e);
-if (!a) return k.error("Cannot evacuate ".concat(e, ": no valid target room found"), {
+if (!a) return _.error("Cannot evacuate ".concat(e, ": no valid target room found"), {
 subsystem: "Evacuation"
 }), !1;
 var i = {
@@ -11799,7 +11799,7 @@ deadline: r
 };
 this.evacuations.set(e, i);
 var s = Nt.getSwarmState(e);
-return s && (s.posture = "evacuate"), k.warn("Starting evacuation of ".concat(e, " (").concat(t, "), target: ").concat(a) + (r ? ", deadline: ".concat(r - Game.time, " ticks") : ""), {
+return s && (s.posture = "evacuate"), _.warn("Starting evacuation of ".concat(e, " (").concat(t, "), target: ").concat(a) + (r ? ", deadline: ".concat(r - Game.time, " ticks") : ""), {
 subsystem: "Evacuation"
 }), !0;
 }, e.prototype.findEvacuationTarget = function(e) {
@@ -11835,16 +11835,16 @@ return t.score - e.score;
 return n.length > 0 && null !== (r = null === (t = n[0]) || void 0 === t ? void 0 : t.room.name) && void 0 !== r ? r : null;
 }, e.prototype.processEvacuation = function(e) {
 var t = Game.rooms[e.roomName], r = Game.rooms[e.targetRoom];
-if (!t) return e.complete = !0, void k.error("Lost room ".concat(e.roomName, " during evacuation"), {
+if (!t) return e.complete = !0, void _.error("Lost room ".concat(e.roomName, " during evacuation"), {
 subsystem: "Evacuation"
 });
 this.transfersThisTick < this.config.maxTransfersPerTick && this.transferResources(e, t, r), 
 this.recallCreeps(e, t), e.progress = this.calculateProgress(e, t), e.progress >= 100 && (e.complete = !0, 
-k.info("Evacuation of ".concat(e.roomName, " complete: ") + "".concat(e.resourcesEvacuated.reduce(function(e, t) {
+_.info("Evacuation of ".concat(e.roomName, " complete: ") + "".concat(e.resourcesEvacuated.reduce(function(e, t) {
 return e + t.amount;
 }, 0), " resources, ") + "".concat(e.creepsRecalled.length, " creeps"), {
 subsystem: "Evacuation"
-})), e.deadline && Game.time >= e.deadline && (e.complete = !0, k.warn("Evacuation of ".concat(e.roomName, " reached deadline"), {
+})), e.deadline && Game.time >= e.deadline && (e.complete = !0, _.warn("Evacuation of ".concat(e.roomName, " reached deadline"), {
 subsystem: "Evacuation"
 }));
 }, e.prototype.transferResources = function(e, t, r) {
@@ -11861,7 +11861,7 @@ var y = m(R), g = c.store.getUsedCapacity(RESOURCE_ENERGY);
 if (!(f !== RESOURCE_ENERGY && y > g || (T = Math.min(R, E, 5e4)) <= 0 || c.send(f, T, e.targetRoom) !== OK)) return e.resourcesEvacuated.push({
 resourceType: f,
 amount: T
-}), this.transfersThisTick++, void k.debug("Evacuated ".concat(T, " ").concat(f, " from ").concat(t.name, " to ").concat(e.targetRoom), {
+}), this.transfersThisTick++, void _.debug("Evacuated ".concat(T, " ").concat(f, " from ").concat(t.name, " to ").concat(e.targetRoom), {
 subsystem: "Evacuation"
 });
 }
@@ -11946,7 +11946,7 @@ if (t) throw t.error;
 }
 }
 var u = Nt.getSwarmState(e);
-u && (u.posture = "eco"), k.info("Evacuation of ".concat(e, " cancelled"), {
+u && (u.posture = "eco"), _.info("Evacuation of ".concat(e, " cancelled"), {
 subsystem: "Evacuation"
 });
 }
@@ -11965,7 +11965,7 @@ interval: 5,
 minBucket: 0,
 cpuBudget: .02
 }) ], e.prototype, "run", null), n([ gn() ], e);
-}(), An = new kn;
+}(), An = new _n;
 
 function Nn(e) {
 var t = Math.floor(e.bucketThresholds.lowMode / 2), r = {
@@ -12346,9 +12346,9 @@ this.memoryAccessor = e;
 }, e.prototype.run = function() {
 this.config.enabled && (this.lastRun = Game.time, this.memoryAccessor && this.memoryAccessor.ensurePixelBuyingMemory(), 
 this.isPurchaseCooldownComplete() && (this.hasSurplusResources() ? this.hasEnoughCredits() ? (this.attemptPixelPurchase(), 
-this.updateMemory()) : k.debug("Pixel buying skipped: insufficient credits", {
+this.updateMemory()) : _.debug("Pixel buying skipped: insufficient credits", {
 subsystem: "PixelBuying"
-}) : k.debug("Pixel buying skipped: no resource surplus", {
+}) : _.debug("Pixel buying skipped: no resource surplus", {
 subsystem: "PixelBuying"
 })));
 }, e.prototype.getPixelBuyingMemory = function() {
@@ -12362,13 +12362,13 @@ var e, t, r, o, n, s, c = this.calculateTotalResources(), l = Object.values(Game
 var t;
 return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
 }).length, u = l * this.config.energyThresholdPerRoom;
-if (c.energy < u + this.config.minEnergySurplus) return k.debug("Pixel buying: energy below surplus (".concat(c.energy, " < ").concat(u + this.config.minEnergySurplus, ")"), {
+if (c.energy < u + this.config.minEnergySurplus) return _.debug("Pixel buying: energy below surplus (".concat(c.energy, " < ").concat(u + this.config.minEnergySurplus, ")"), {
 subsystem: "PixelBuying"
 }), !1;
 try {
 for (var m = a(Object.entries(this.config.criticalResourceThresholds)), d = m.next(); !d.done; d = m.next()) {
 var p = i(d.value, 2), f = p[0], y = p[1];
-if ((R = null !== (n = c[f]) && void 0 !== n ? n : 0) < y) return k.debug("Pixel buying: ".concat(f, " below threshold (").concat(R, " < ").concat(y, ")"), {
+if ((R = null !== (n = c[f]) && void 0 !== n ? n : 0) < y) return _.debug("Pixel buying: ".concat(f, " below threshold (").concat(R, " < ").concat(y, ")"), {
 subsystem: "PixelBuying"
 }), !1;
 }
@@ -12387,7 +12387,7 @@ var g = [ RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_UTRIUM, RESOURCE_LEMERGIU
 try {
 for (var v = a(g), h = v.next(); !h.done; h = v.next()) {
 var R, E = h.value;
-if ((R = null !== (s = c[E]) && void 0 !== s ? s : 0) < this.config.minBaseMineralReserve) return k.debug("Pixel buying: ".concat(E, " below reserve (").concat(R, " < ").concat(this.config.minBaseMineralReserve, ")"), {
+if ((R = null !== (s = c[E]) && void 0 !== s ? s : 0) < this.config.minBaseMineralReserve) return _.debug("Pixel buying: ".concat(E, " below reserve (").concat(R, " < ").concat(this.config.minBaseMineralReserve, ")"), {
 subsystem: "PixelBuying"
 }), !1;
 }
@@ -12438,11 +12438,11 @@ return e.terminal && (null === (t = e.controller) || void 0 === t ? void 0 : t.m
 });
 if (null == a ? void 0 : a.terminal) {
 var i = Game.market.credits - this.config.creditReserve, s = Math.floor(i / o.price), c = Math.min(this.config.maxPixelsPerTransaction, o.amount, s);
-if (c <= 0) k.debug("Cannot afford any pixels after reserve", {
+if (c <= 0) _.debug("Cannot afford any pixels after reserve", {
 subsystem: "PixelBuying"
 }); else {
 var l = o.roomName ? Game.market.calcTransactionCost(c, a.name, o.roomName) : 0;
-if (a.terminal.store[RESOURCE_ENERGY] < l) k.debug("Not enough energy for pixel transaction (need ".concat(l, ")"), {
+if (a.terminal.store[RESOURCE_ENERGY] < l) _.debug("Not enough energy for pixel transaction (need ".concat(l, ")"), {
 subsystem: "PixelBuying"
 }); else {
 var u = Game.market.deal(o.id, c, a.name);
@@ -12455,24 +12455,24 @@ pricePerUnit: o.price,
 totalCost: m,
 orderId: o.id,
 fromRoom: a.name
-}), k.info("Purchased ".concat(c, " pixels at ").concat(o.price.toFixed(2), " credits each ") + "(total: ".concat(m.toFixed(0), " credits)").concat(n ? " (GOOD PRICE!)" : ""), {
+}), _.info("Purchased ".concat(c, " pixels at ").concat(o.price.toFixed(2), " credits each ") + "(total: ".concat(m.toFixed(0), " credits)").concat(n ? " (GOOD PRICE!)" : ""), {
 subsystem: "PixelBuying"
 });
-} else k.warn("Failed to purchase pixels: error code ".concat(u), {
+} else _.warn("Failed to purchase pixels: error code ".concat(u), {
 subsystem: "PixelBuying"
 });
 }
 }
-} else k.debug("No terminal available for pixel purchase", {
+} else _.debug("No terminal available for pixel purchase", {
 subsystem: "PixelBuying"
 });
-} else k.debug("Pixel price (".concat(o.price, ") above target (").concat(this.config.targetPixelPrice, "), waiting"), {
+} else _.debug("Pixel price (".concat(o.price, ") above target (").concat(this.config.targetPixelPrice, "), waiting"), {
 subsystem: "PixelBuying"
 });
-} else k.debug("No pixel orders below max price (".concat(this.config.maxPixelPrice, ")"), {
+} else _.debug("No pixel orders below max price (".concat(this.config.maxPixelPrice, ")"), {
 subsystem: "PixelBuying"
 });
-} else k.debug("No pixel sell orders available", {
+} else _.debug("No pixel sell orders available", {
 subsystem: "PixelBuying"
 });
 }, e.prototype.recordPurchase = function(e) {
@@ -12507,11 +12507,11 @@ this.config = o(o({}, this.config), e);
 }, e.prototype.getConfig = function() {
 return o({}, this.config);
 }, e.prototype.enable = function() {
-this.config.enabled = !0, k.info("Pixel buying enabled", {
+this.config.enabled = !0, _.info("Pixel buying enabled", {
 subsystem: "PixelBuying"
 });
 }, e.prototype.disable = function() {
-this.config.enabled = !1, k.info("Pixel buying disabled", {
+this.config.enabled = !1, _.info("Pixel buying disabled", {
 subsystem: "PixelBuying"
 });
 }, e;
@@ -12545,14 +12545,14 @@ var t = Game.cpu.generatePixel();
 if (t === OK) {
 e.totalPixelsGenerated++, e.lastGenerationTick = Game.time;
 var r = e.bucketFullSince > 0 ? Game.time - e.bucketFullSince : e.consecutiveFullTicks;
-e.consecutiveFullTicks = 0, e.bucketFullSince = 0, k.info("Generated pixel from CPU bucket (total generated: ".concat(e.totalPixelsGenerated, ")"), {
+e.consecutiveFullTicks = 0, e.bucketFullSince = 0, _.info("Generated pixel from CPU bucket (total generated: ".concat(e.totalPixelsGenerated, ")"), {
 subsystem: "PixelGeneration",
 meta: {
 bucket: Game.cpu.bucket,
 ticksWaited: r
 }
 });
-} else k.warn("Failed to generate pixel: error code ".concat(t), {
+} else _.warn("Failed to generate pixel: error code ".concat(t), {
 subsystem: "PixelGeneration",
 meta: {
 bucket: Game.cpu.bucket,
@@ -12571,11 +12571,11 @@ canGenerate: a,
 ticksUntilGeneration: i
 };
 }, e.prototype.enable = function() {
-this.config.enabled = !0, k.info("Pixel generation enabled", {
+this.config.enabled = !0, _.info("Pixel generation enabled", {
 subsystem: "PixelGeneration"
 });
 }, e.prototype.disable = function() {
-this.config.enabled = !1, k.info("Pixel generation disabled", {
+this.config.enabled = !1, _.info("Pixel generation disabled", {
 subsystem: "PixelGeneration"
 });
 }, e.prototype.updateConfig = function(e) {
@@ -12702,7 +12702,7 @@ enabled: !0,
 spikeThreshold: 2,
 minSamples: 10
 }
-}, Ua = 1e-9, Ma = function() {
+}, Ma = 1e-9, Ua = function() {
 function e(e) {
 void 0 === e && (e = {}), this.subsystemMeasurements = new Map, this.cpuDetailMeasurements = new Map, 
 this.roomMeasurements = new Map, this.lastSegmentUpdate = 0, this.lastBudgetAlertLogTick = -1 / 0, 
@@ -12893,10 +12893,10 @@ return "string" == typeof e;
 }) : [], h = this.getMyUsername(), R = null !== (i = null === (n = Memory.empire) || void 0 === n ? void 0 : n.knownRooms) && void 0 !== i ? i : {}, E = 0, T = 0, C = 0, S = 1 / 0, x = 0;
 try {
 for (var w = a(v), b = w.next(); !b.done; b = w.next()) {
-var O = b.value, U = Game.rooms[O], M = R[O];
-U && E++;
-var _ = null !== (l = null === (c = null === (s = null == U ? void 0 : U.controller) || void 0 === s ? void 0 : s.owner) || void 0 === c ? void 0 : c.username) && void 0 !== l ? l : null == M ? void 0 : M.owner, k = null !== (d = null === (m = null === (u = null == U ? void 0 : U.controller) || void 0 === u ? void 0 : u.reservation) || void 0 === m ? void 0 : m.username) && void 0 !== d ? d : null == M ? void 0 : M.reserver, A = null === (f = null === (p = null == U ? void 0 : U.controller) || void 0 === p ? void 0 : p.reservation) || void 0 === f ? void 0 : f.ticksToEnd;
-k === h ? (T++, "number" == typeof A && (S = Math.min(S, A))) : k && C++, (_ && _ !== h || k && k !== h || (null !== (y = null == M ? void 0 : M.threatLevel) && void 0 !== y ? y : 0) >= 2) && x++;
+var O = b.value, M = Game.rooms[O], U = R[O];
+M && E++;
+var k = null !== (l = null === (c = null === (s = null == M ? void 0 : M.controller) || void 0 === s ? void 0 : s.owner) || void 0 === c ? void 0 : c.username) && void 0 !== l ? l : null == U ? void 0 : U.owner, _ = null !== (d = null === (m = null === (u = null == M ? void 0 : M.controller) || void 0 === u ? void 0 : u.reservation) || void 0 === m ? void 0 : m.username) && void 0 !== d ? d : null == U ? void 0 : U.reserver, A = null === (f = null === (p = null == M ? void 0 : M.controller) || void 0 === p ? void 0 : p.reservation) || void 0 === f ? void 0 : f.ticksToEnd;
+_ === h ? (T++, "number" == typeof A && (S = Math.min(S, A))) : _ && C++, (k && k !== h || _ && _ !== h || (null !== (y = null == U ? void 0 : U.threatLevel) && void 0 !== y ? y : 0) >= 2) && x++;
 }
 } catch (e) {
 r = {
@@ -13078,11 +13078,11 @@ idleSpawnTicks: n.idleSpawnTicks
 }
 }
 }, e.prototype.recordRoom = function(e, t) {
-var r, o, n, s, c, l, u, m, d, p, f, y, g, v, h, R, E, T, C, S, x, w, b, O, U;
+var r, o, n, s, c, l, u, m, d, p, f, y, g, v, h, R, E, T, C, S, x, w, b, O, M;
 if (this.config.enabled) {
-var M = Sa(e.name), _ = Object.values(Game.creeps).filter(function(t) {
+var U = Sa(e.name), k = Object.values(Game.creeps).filter(function(t) {
 return t.room.name === e.name;
-}).length, k = Y(e), A = this.getRoomTaskBoardStats(e.name), N = this.getRemoteStats(e.name, M), P = this.getDefenseStats(e, k, M), I = this.getControllerDowngradeStats(e), G = this.currentSnapshot.rooms[e.name];
+}).length, _ = Y(e), A = this.getRoomTaskBoardStats(e.name), N = this.getRemoteStats(e.name, U), P = this.getDefenseStats(e, _, U), I = this.getControllerDowngradeStats(e), G = this.currentSnapshot.rooms[e.name];
 G || (G = {
 name: e.name,
 rcl: null !== (s = null === (n = e.controller) || void 0 === n ? void 0 : n.level) && void 0 !== s ? s : 0,
@@ -13099,12 +13099,12 @@ progressPercent: 0,
 ticksToDowngrade: I.ticksToDowngrade,
 downgradeRisk: I.downgradeRisk
 },
-creeps: _,
-hostiles: k.length,
+creeps: k,
+hostiles: _.length,
 brain: {
-danger: null !== (g = null == M ? void 0 : M.danger) && void 0 !== g ? g : 0,
-postureCode: this.postureToCode(null !== (v = null == M ? void 0 : M.posture) && void 0 !== v ? v : "eco"),
-colonyLevelCode: this.colonyLevelToCode(null !== (h = null == M ? void 0 : M.colonyLevel) && void 0 !== h ? h : "seedNest")
+danger: null !== (g = null == U ? void 0 : U.danger) && void 0 !== g ? g : 0,
+postureCode: this.postureToCode(null !== (v = null == U ? void 0 : U.posture) && void 0 !== v ? v : "eco"),
+colonyLevelCode: this.colonyLevelToCode(null !== (h = null == U ? void 0 : U.colonyLevel) && void 0 !== h ? h : "seedNest")
 },
 pheromones: {},
 metrics: {
@@ -13117,7 +13117,7 @@ energyAvailableForSharing: 0,
 energyCapacityTotal: 0,
 energyNeed: 0,
 controllerProgress: 0,
-hostileCount: k.length,
+hostileCount: _.length,
 damageReceived: 0,
 constructionSites: 0
 },
@@ -13134,12 +13134,12 @@ var L = this.getProfilerMemory().rooms[e.name], D = null !== (E = null === (R = 
 if (G.taskBoard = A, G.remote = N, G.defense = P, G.rcl = null !== (x = null === (S = e.controller) || void 0 === S ? void 0 : S.level) && void 0 !== x ? x : 0, 
 G.energy.available = e.energyAvailable, G.energy.capacity = e.energyCapacityAvailable, 
 G.energy.storage = F, G.energy.terminal = null !== (b = null === (w = e.terminal) || void 0 === w ? void 0 : w.store.getUsedCapacity(RESOURCE_ENERGY)) && void 0 !== b ? b : 0, 
-G.controller.progress = D, G.controller.progressTotal = null !== (U = null === (O = e.controller) || void 0 === O ? void 0 : O.progressTotal) && void 0 !== U ? U : 1, 
+G.controller.progress = D, G.controller.progressTotal = null !== (M = null === (O = e.controller) || void 0 === O ? void 0 : O.progressTotal) && void 0 !== M ? M : 1, 
 G.controller.ticksToDowngrade = I.ticksToDowngrade, G.controller.downgradeRisk = I.downgradeRisk, 
-G.creeps = _, G.hostiles = k.length, G.controller.progressPercent = G.controller.progressTotal > 0 ? G.controller.progress / G.controller.progressTotal * 100 : 0, 
-M) {
-if (M.pheromones && "object" == typeof M.pheromones) try {
-for (var B = a(Object.entries(M.pheromones)), H = B.next(); !H.done; H = B.next()) {
+G.creeps = k, G.hostiles = _.length, G.controller.progressPercent = G.controller.progressTotal > 0 ? G.controller.progress / G.controller.progressTotal * 100 : 0, 
+U) {
+if (U.pheromones && "object" == typeof U.pheromones) try {
+for (var B = a(Object.entries(U.pheromones)), H = B.next(); !H.done; H = B.next()) {
 var W = i(H.value, 2), K = W[0], V = W[1];
 G.pheromones[K] = V;
 }
@@ -13154,19 +13154,19 @@ H && !H.done && (o = B.return) && o.call(B);
 if (r) throw r.error;
 }
 }
-M.metrics && "object" == typeof M.metrics && (G.metrics = {
-energyHarvested: M.metrics.energyHarvested,
-energySpawning: M.metrics.energySpawning,
-energyConstruction: M.metrics.energyConstruction,
-energyRepair: M.metrics.energyRepair,
-energyTower: M.metrics.energyTower,
-energyAvailableForSharing: M.metrics.energyAvailable,
-energyCapacityTotal: M.metrics.energyCapacity,
-energyNeed: M.metrics.energyNeed,
-controllerProgress: M.metrics.controllerProgress,
-hostileCount: M.metrics.hostileCount,
-damageReceived: M.metrics.damageReceived,
-constructionSites: M.metrics.constructionSites
+U.metrics && "object" == typeof U.metrics && (G.metrics = {
+energyHarvested: U.metrics.energyHarvested,
+energySpawning: U.metrics.energySpawning,
+energyConstruction: U.metrics.energyConstruction,
+energyRepair: U.metrics.energyRepair,
+energyTower: U.metrics.energyTower,
+energyAvailableForSharing: U.metrics.energyAvailable,
+energyCapacityTotal: U.metrics.energyCapacity,
+energyNeed: U.metrics.energyNeed,
+controllerProgress: U.metrics.controllerProgress,
+hostileCount: U.metrics.hostileCount,
+damageReceived: U.metrics.damageReceived,
+constructionSites: U.metrics.constructionSites
 });
 }
 var q = void 0 !== (null == L ? void 0 : L.controllerProgress) ? Math.max(0, D - L.controllerProgress) : 0, j = void 0 !== (null == L ? void 0 : L.storageEnergy) ? Math.max(0, F - L.storageEnergy) : 0;
@@ -13199,8 +13199,8 @@ try {
 for (var n = a(Object.entries(this.currentSnapshot.rooms)), s = n.next(); !s.done; s = n.next()) {
 var c = i(s.value, 2), l = c[0], u = c[1];
 o.roomsEvaluated++;
-var m = this.isWarRoom(l) ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom, d = "room:".concat(l), p = this.currentSnapshot.processes[d], f = m * (null !== (r = null == p ? void 0 : p.tickModulo) && void 0 !== r ? r : 1), y = u.profiler.avgCpu, g = y / f, v = this.config.budgetAlertThresholds.warning, h = this.config.budgetAlertThresholds.critical, R = Math.abs(g - h) <= Ua ? h : Math.abs(g - v) <= Ua ? v : g;
-g + Ua >= h ? (o.roomsOverBudget++, o.alerts.push({
+var m = this.isWarRoom(l) ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom, d = "room:".concat(l), p = this.currentSnapshot.processes[d], f = m * (null !== (r = null == p ? void 0 : p.tickModulo) && void 0 !== r ? r : 1), y = u.profiler.avgCpu, g = y / f, v = this.config.budgetAlertThresholds.warning, h = this.config.budgetAlertThresholds.critical, R = Math.abs(g - h) <= Ma ? h : Math.abs(g - v) <= Ma ? v : g;
+g + Ma >= h ? (o.roomsOverBudget++, o.alerts.push({
 severity: "critical",
 target: l,
 targetType: "room",
@@ -13208,7 +13208,7 @@ cpuUsed: y,
 budgetLimit: f,
 percentUsed: R,
 tick: Game.time
-})) : g + Ua >= v ? (o.alerts.push({
+})) : g + Ma >= v ? (o.alerts.push({
 severity: "warning",
 target: l,
 targetType: "room",
@@ -13525,8 +13525,8 @@ return e.memory.role === g;
 }), h = v.length, R = 0, E = 0, T = 0, C = 0, S = 0;
 try {
 for (var x = (i = void 0, a(v)), w = x.next(); !w.done; w = x.next()) {
-var b = w.value, O = b.memory, U = null !== (o = null === (r = O.state) || void 0 === r ? void 0 : r.action) && void 0 !== o ? o : "idle", M = null !== (n = O.working) && void 0 !== n ? n : "idle" !== U;
-S += b.body.length, C += null !== (s = b.ticksToLive) && void 0 !== s ? s : 0, b.spawning ? R++ : M && "idle" !== U ? T++ : E++;
+var b = w.value, O = b.memory, M = null !== (o = null === (r = O.state) || void 0 === r ? void 0 : r.action) && void 0 !== o ? o : "idle", U = null !== (n = O.working) && void 0 !== n ? n : "idle" !== M;
+S += b.body.length, C += null !== (s = b.ticksToLive) && void 0 !== s ? s : 0, b.spawning ? R++ : U && "idle" !== M ? T++ : E++;
 }
 } catch (e) {
 i = {
@@ -13539,11 +13539,11 @@ w && !w.done && (d = x.return) && d.call(x);
 if (i) throw i.error;
 }
 }
-var _ = t.length > 0 ? f / t.length : 0, k = (N = null === (c = m.roles) || void 0 === c ? void 0 : c[g]) ? N.avgCpu * (1 - p.config.smoothingFactor) + _ * p.config.smoothingFactor : _, A = N ? Math.max(N.peakCpu, _) : _;
+var k = t.length > 0 ? f / t.length : 0, _ = (N = null === (c = m.roles) || void 0 === c ? void 0 : c[g]) ? N.avgCpu * (1 - p.config.smoothingFactor) + k * p.config.smoothingFactor : k, A = N ? Math.max(N.peakCpu, k) : k;
 p.currentSnapshot.roles[g] = {
 name: g,
 count: h,
-avgCpu: k,
+avgCpu: _,
 peakCpu: A,
 calls: t.length,
 samples: (null !== (l = null == N ? void 0 : N.samples) && void 0 !== l ? l : 0) + 1,
@@ -13553,22 +13553,22 @@ activeCount: T,
 avgTicksToLive: h > 0 ? C / h : 0,
 totalBodyParts: S
 }, m.roles || (m.roles = {}), m.roles[g] = {
-avgCpu: k,
+avgCpu: _,
 peakCpu: A,
 samples: p.currentSnapshot.roles[g].samples,
 callsThisTick: t.length
 };
 } else {
 var N;
-k = (N = m.subsystems[g]) ? N.avgCpu * (1 - p.config.smoothingFactor) + f * p.config.smoothingFactor : f, 
+_ = (N = m.subsystems[g]) ? N.avgCpu * (1 - p.config.smoothingFactor) + f * p.config.smoothingFactor : f, 
 A = N ? Math.max(N.peakCpu, f) : f, p.currentSnapshot.subsystems[g] = {
 name: g,
-avgCpu: k,
+avgCpu: _,
 peakCpu: A,
 calls: t.length,
 samples: (null !== (u = null == N ? void 0 : N.samples) && void 0 !== u ? u : 0) + 1
 }, m.subsystems[g] = {
-avgCpu: k,
+avgCpu: _,
 peakCpu: A,
 samples: p.currentSnapshot.subsystems[g].samples,
 callsThisTick: t.length
@@ -13939,18 +13939,18 @@ if (r) throw r.error;
 }
 try {
 for (var b = a(Object.entries(f.roles)), O = b.next(); !O.done; O = b.next()) {
-var U = i(O.value, 2), M = (x = U[0], U[1]);
+var M = i(O.value, 2), U = (x = M[0], M[1]);
 p.stats.roles[x] = {
-count: M.count,
-avg_cpu: M.avgCpu,
-peak_cpu: M.peakCpu,
-calls: M.calls,
-samples: M.samples,
-spawning_count: M.spawningCount,
-idle_count: M.idleCount,
-active_count: M.activeCount,
-avg_ticks_to_live: M.avgTicksToLive,
-total_body_parts: M.totalBodyParts
+count: U.count,
+avg_cpu: U.avgCpu,
+peak_cpu: U.peakCpu,
+calls: U.calls,
+samples: U.samples,
+spawning_count: U.spawningCount,
+idle_count: U.idleCount,
+active_count: U.activeCount,
+avg_ticks_to_live: U.avgTicksToLive,
+total_body_parts: U.totalBodyParts
 };
 }
 } catch (e) {
@@ -13966,8 +13966,8 @@ if (s) throw s.error;
 }
 p.stats.processes = {};
 try {
-for (var _ = a(Object.entries(f.processes)), k = _.next(); !k.done; k = _.next()) {
-var A = i(k.value, 2), N = A[0], P = A[1];
+for (var k = a(Object.entries(f.processes)), _ = k.next(); !_.done; _ = k.next()) {
+var A = i(_.value, 2), N = A[0], P = A[1];
 p.stats.processes[N] = {
 name: P.name,
 priority: P.priority,
@@ -13990,7 +13990,7 @@ error: e
 };
 } finally {
 try {
-k && !k.done && (u = _.return) && u.call(_);
+_ && !_.done && (u = k.return) && u.call(k);
 } finally {
 if (l) throw l.error;
 }
@@ -14157,15 +14157,15 @@ if (s) throw s.error;
 }
 }
 }
-var U = Object.values(m.creeps).sort(function(e, t) {
+var M = Object.values(m.creeps).sort(function(e, t) {
 return t.cpu - e.cpu;
 }).slice(0, 5);
-if (U.length > 0) {
+if (M.length > 0) {
 Ca.info("Top Creeps by CPU:");
 try {
-for (var M = a(U), _ = M.next(); !_.done; _ = M.next()) {
-var k = _.value;
-Ca.info("  ".concat(k.name, " (").concat(k.role, "): ").concat(k.cpu.toFixed(3), " CPU in ").concat(k.currentRoom));
+for (var U = a(M), k = U.next(); !k.done; k = U.next()) {
+var _ = k.value;
+Ca.info("  ".concat(_.name, " (").concat(_.role, "): ").concat(_.cpu.toFixed(3), " CPU in ").concat(_.currentRoom));
 }
 } catch (e) {
 l = {
@@ -14173,7 +14173,7 @@ error: e
 };
 } finally {
 try {
-_ && !_.done && (u = M.return) && u.call(M);
+k && !k.done && (u = U.return) && u.call(U);
 } finally {
 if (l) throw l.error;
 }
@@ -14225,7 +14225,7 @@ lastUpdate: 0
 return o({}, this.currentSnapshot);
 }, e.POSTURE_NAMES = [ "eco", "expand", "defensive", "war", "siege", "evacuate", "nukePrep" ], 
 e;
-}(), _a = new Ma, ka = {
+}(), ka = new Ua, _a = {
 primarySegment: 90,
 backupSegment: 91,
 retentionPeriod: 1e4,
@@ -14234,7 +14234,7 @@ maxDataPoints: 1e3
 }, Aa = function() {
 function e(e) {
 void 0 === e && (e = {}), this.statsData = null, this.segmentRequested = !1, this.lastUpdate = 0, 
-this.config = o(o({}, ka), e);
+this.config = o(o({}, _a), e);
 }
 return e.prototype.initialize = function() {
 RawMemory.setActiveSegments([ this.config.primarySegment ]), this.segmentRequested = !0;
@@ -14704,10 +14704,10 @@ if (h) {
 var C = Math.min(v.link.store.getUsedCapacity(RESOURCE_ENERGY), h.link.store.getFreeCapacity(RESOURCE_ENERGY));
 if (!(C < this.config.transferThreshold)) {
 var S = v.link.transferEnergy(h.link, C);
-S === OK ? k.debug("Link transfer: ".concat(C, " energy from ").concat(v.link.pos, " to ").concat(h.link.pos, " (").concat(h.role, ")"), {
+S === OK ? _.debug("Link transfer: ".concat(C, " energy from ").concat(v.link.pos, " to ").concat(h.link.pos, " (").concat(h.role, ")"), {
 subsystem: "Link",
 room: e.name
-}) : S !== ERR_TIRED && S !== ERR_FULL && k.warn("Link transfer failed: ".concat(S, " from ").concat(v.link.pos, " to ").concat(h.link.pos), {
+}) : S !== ERR_TIRED && S !== ERR_FULL && _.warn("Link transfer failed: ".concat(S, " from ").concat(v.link.pos, " to ").concat(h.link.pos), {
 subsystem: "Link",
 room: e.name
 });
@@ -14931,7 +14931,7 @@ n && !n.done && (t = o.return) && t.call(o);
 if (e) throw e.error;
 }
 }
-r.market.lastScan = Game.time, k.debug("Updated market prices for ".concat(this.config.trackedResources.length, " resources"), {
+r.market.lastScan = Game.time, _.debug("Updated market prices for ".concat(this.config.trackedResources.length, " resources"), {
 subsystem: "Market"
 });
 }
@@ -15105,7 +15105,7 @@ return 0 !== r.length && r[r.length - 1].avgPrice >= t.avgPrice * this.config.se
 var e = Game.market.orders;
 for (var t in e) {
 var r = e[t];
-Game.time - r.created > 1e4 && (Game.market.cancelOrder(t), k.info("Cancelled old order: ".concat(r.type, " ").concat(r.resourceType), {
+Game.time - r.created > 1e4 && (Game.market.cancelOrder(t), _.info("Cancelled old order: ".concat(r.type, " ").concat(r.resourceType), {
 subsystem: "Market"
 })), r.remainingAmount < 100 && Game.market.cancelOrder(t);
 }
@@ -15115,7 +15115,7 @@ for (var o in this.config.buyThresholds) {
 var n = this.config.buyThresholds[o], a = null !== (e = r[o]) && void 0 !== e ? e : 0;
 if (a < n) {
 var i = this.isBuyOpportunity(o);
-t || i ? this.buyMissingResource(o, n - a, t) || this.createBuyOrder(o, n - a, t, i) : k.debug("Skipping buy for ".concat(o, ": waiting for better price"), {
+t || i ? this.buyMissingResource(o, n - a, t) || this.createBuyOrder(o, n - a, t, i) : _.debug("Skipping buy for ".concat(o, ": waiting for better price"), {
 subsystem: "Market"
 });
 }
@@ -15145,7 +15145,7 @@ roomName: l.name
 }) === OK) {
 this.trackCreatedOrder("buy", e, l.name);
 var u = o ? " (LOW PRICE!)" : r ? " (WAR MODE)" : "";
-k.info("Created buy order: ".concat(t, " ").concat(e, " at ").concat(i.toFixed(3), " credits").concat(u), {
+_.info("Created buy order: ".concat(t, " ").concat(e, " at ").concat(i.toFixed(3), " credits").concat(u), {
 subsystem: "Market"
 });
 }
@@ -15181,8 +15181,8 @@ var b = Math.min(t, E.remainingAmount, this.config.maxActiveBuyAmount, w);
 if (!(b <= 0)) {
 var O = Game.market.calcTransactionCost(b, S.name, E.roomName);
 if (!(x.store.getUsedCapacity(RESOURCE_ENERGY) - O < this.config.terminalEnergyReserve)) {
-var U = E.price * b;
-if (!(Game.market.credits - U < this.config.minCredits) && Game.market.deal(E.id, b, S.name) === OK) return k.info("Bought ".concat(b, " ").concat(e, " at ").concat(E.price.toFixed(3), " credits/unit"), {
+var M = E.price * b;
+if (!(Game.market.credits - M < this.config.minCredits) && Game.market.deal(E.id, b, S.name) === OK) return _.info("Bought ".concat(b, " ").concat(e, " at ").concat(E.price.toFixed(3), " credits/unit"), {
 subsystem: "Market"
 }), !0;
 }
@@ -15215,12 +15215,12 @@ if (o) throw o.error;
 return !1;
 }, e.prototype.sellSurplusFromTerminal = function(e, t, r) {
 var o, n = Game.rooms[e];
-if (!(null == n ? void 0 : n.terminal) || !(null === (o = n.controller) || void 0 === o ? void 0 : o.my)) return k.warn("Cannot sell from ".concat(e, ": no terminal or not owned"), {
+if (!(null == n ? void 0 : n.terminal) || !(null === (o = n.controller) || void 0 === o ? void 0 : o.my)) return _.warn("Cannot sell from ".concat(e, ": no terminal or not owned"), {
 subsystem: "Market"
 }), !1;
 this.ensureMarketMemory();
 var a = n.terminal.store.getUsedCapacity(t);
-if (a < r) return k.debug("Cannot sell ".concat(r, " ").concat(t, " from ").concat(e, ": only ").concat(a, " available"), {
+if (a < r) return _.debug("Cannot sell ".concat(r, " ").concat(t, " from ").concat(e, ": only ").concat(a, " available"), {
 subsystem: "Market"
 }), !1;
 if (this.executeActiveSell(n, t, r)) return !0;
@@ -15253,9 +15253,9 @@ price: c,
 totalAmount: r,
 roomName: e
 });
-return m === OK ? (this.trackCreatedOrder("sell", t, e), k.info("Created surplus sell order: ".concat(r, " ").concat(t, " from ").concat(e, " at ").concat(c.toFixed(3), " credits/unit"), {
+return m === OK ? (this.trackCreatedOrder("sell", t, e), _.info("Created surplus sell order: ".concat(r, " ").concat(t, " from ").concat(e, " at ").concat(c.toFixed(3), " credits/unit"), {
 subsystem: "Market"
-}), !0) : (k.warn("Failed to create sell order: ".concat(m, " for ").concat(r, " ").concat(t, " from ").concat(e), {
+}), !0) : (_.warn("Failed to create sell order: ".concat(m, " for ").concat(r, " ").concat(t, " from ").concat(e), {
 subsystem: "Market"
 }), !1);
 }, e.prototype.executeActiveSell = function(e, t, r) {
@@ -15294,7 +15294,7 @@ var p = d.value, f = p.order, y = p.dealAmount, g = p.energyCost, v = c.store.ge
 if (!(v < R || E < this.config.terminalEnergyReserve || Game.market.deal(f.id, y, e.name) !== OK)) {
 var T = this.getEmpireMemory(), C = f.price * y;
 return T.market && (T.market.totalProfit = (null !== (i = T.market.totalProfit) && void 0 !== i ? i : 0) + C), 
-k.info("Sold ".concat(y, " ").concat(t, " at ").concat(f.price.toFixed(3), " credits/unit"), {
+_.info("Sold ".concat(y, " ").concat(t, " at ").concat(f.price.toFixed(3), " credits/unit"), {
 subsystem: "Market"
 }), !0;
 }
@@ -15317,7 +15317,7 @@ for (var r in this.config.sellThresholds) if (r !== RESOURCE_ENERGY) {
 var o = this.config.sellThresholds[r], n = null !== (e = t[r]) && void 0 !== e ? e : 0;
 if (n > o) {
 var a = this.isSellOpportunity(r);
-a ? this.createSellOrder(r, n - o, a) : k.debug("Holding ".concat(r, " surplus: waiting for better price"), {
+a ? this.createSellOrder(r, n - o, a) : _.debug("Holding ".concat(r, " surplus: waiting for better price"), {
 subsystem: "Market"
 });
 }
@@ -15346,7 +15346,7 @@ roomName: c.name
 }) === OK) {
 this.trackCreatedOrder("sell", e, c.name);
 var l = r ? " (HIGH PRICE!)" : "";
-k.info("Created sell order: ".concat(t, " ").concat(e, " at ").concat(a.toFixed(3), " credits").concat(l), {
+_.info("Created sell order: ".concat(t, " ").concat(e, " at ").concat(a.toFixed(3), " credits").concat(l), {
 subsystem: "Market"
 });
 }
@@ -15367,7 +15367,7 @@ c > 0 && (a.totalTraded = s, a.totalValue += c * i.price);
 if (a.totalTraded > 0) {
 var l = "sell" === a.type ? a.totalValue : -a.totalValue;
 r.market.totalProfit = (null !== (t = r.market.totalProfit) && void 0 !== t ? t : 0) + l, 
-k.info("Order completed: ".concat(a.resource, " ").concat(a.type, " - Traded: ").concat(a.totalTraded, ", Value: ").concat(a.totalValue.toFixed(0), ", Profit: ").concat(l.toFixed(0)), {
+_.info("Order completed: ".concat(a.resource, " ").concat(a.type, " - Traded: ").concat(a.totalTraded, ", Value: ").concat(a.totalValue.toFixed(0), ", Profit: ").concat(l.toFixed(0)), {
 subsystem: "Market"
 });
 }
@@ -15395,7 +15395,7 @@ return e.terminal && (null === (t = e.controller) || void 0 === t ? void 0 : t.m
 });
 if (l && c.price < 10) {
 var u = Math.min(c.amount, 1e3);
-Game.market.deal(c.id, u, l.name) === OK && k.info("Bought ".concat(u, " ").concat(i, " for ").concat(c.price.toFixed(3), " credits/unit"), {
+Game.market.deal(c.id, u, l.name) === OK && _.info("Bought ".concat(u, " ").concat(i, " for ").concat(c.price.toFixed(3), " credits/unit"), {
 subsystem: "Market"
 });
 }
@@ -15496,7 +15496,7 @@ var h = Game.market.calcTransactionCost(v, g.roomName, c.name);
 if (e === RESOURCE_ENERGY) for (;v > 0 && !(v + h <= Math.max(0, l.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve)) && !((v -= 1) <= 0); ) h = Game.market.calcTransactionCost(v, g.roomName, c.name); else for (;v > 0 && !(h <= Math.max(0, l.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve)) && !((v -= 1) <= 0); ) h = Game.market.calcTransactionCost(v, g.roomName, c.name);
 if (!(v <= 0)) {
 var R = Math.max(0, Math.floor((Game.market.credits - this.config.emergencyCredits) / g.price));
-if (!((v = Math.min(v, R)) <= 0) && Game.market.deal(g.id, v, c.name) === OK) return k.warn("EMERGENCY BUY: ".concat(v, " ").concat(e, " for ").concat(c.name, " at ").concat(g.price.toFixed(3), " credits/unit"), {
+if (!((v = Math.min(v, R)) <= 0) && Game.market.deal(g.id, v, c.name) === OK) return _.warn("EMERGENCY BUY: ".concat(v, " ").concat(e, " for ").concat(c.name, " at ").concat(g.price.toFixed(3), " credits/unit"), {
 subsystem: "Market"
 }), !0;
 }
@@ -15526,11 +15526,11 @@ if (0 !== n.length) {
 var a = n[n.length - 1].avgPrice;
 if (r.type === ORDER_BUY) {
 var i = a * this.config.buyOpportunityAdjustment;
-r.price < .9 * i && r.remainingAmount > 1e3 && Game.market.changeOrderPrice(t, i) === OK && k.debug("Repriced buy order for ".concat(r.resourceType, ": ").concat(r.price.toFixed(3), " -> ").concat(i.toFixed(3)), {
+r.price < .9 * i && r.remainingAmount > 1e3 && Game.market.changeOrderPrice(t, i) === OK && _.debug("Repriced buy order for ".concat(r.resourceType, ": ").concat(r.price.toFixed(3), " -> ").concat(i.toFixed(3)), {
 subsystem: "Market"
 });
 }
-r.type === ORDER_SELL && (i = a * this.config.sellOpportunityAdjustment, r.price > 1.1 * i && r.remainingAmount > 1e3 && Game.market.changeOrderPrice(t, i) === OK && k.debug("Repriced sell order for ".concat(r.resourceType, ": ").concat(r.price.toFixed(3), " -> ").concat(i.toFixed(3)), {
+r.type === ORDER_SELL && (i = a * this.config.sellOpportunityAdjustment, r.price > 1.1 * i && r.remainingAmount > 1e3 && Game.market.changeOrderPrice(t, i) === OK && _.debug("Repriced sell order for ".concat(r.resourceType, ": ").concat(r.price.toFixed(3), " -> ").concat(i.toFixed(3)), {
 subsystem: "Market"
 }));
 }
@@ -15556,7 +15556,7 @@ if (p.store.getUsedCapacity(RESOURCE_ENERGY) - h >= this.config.terminalEnergyRe
 var R = m.transportCost * (v / m.amount), E = (g.price - m.buyPrice) * v - R * this.config.energyCreditValue;
 s.totalProfit = (null !== (o = s.totalProfit) && void 0 !== o ? o : 0) + E, s.arbitrageProfit = (null !== (n = s.arbitrageProfit) && void 0 !== n ? n : 0) + E, 
 s.completedArbitrage = (null !== (i = s.completedArbitrage) && void 0 !== i ? i : 0) + 1, 
-k.info("Arbitrage complete: sold ".concat(v, " ").concat(m.resource, " from ").concat(p.room.name, " at ").concat(g.price.toFixed(3), ", profit ").concat(E.toFixed(2)), {
+_.info("Arbitrage complete: sold ".concat(v, " ").concat(m.resource, " from ").concat(p.room.name, " at ").concat(g.price.toFixed(3), ", profit ").concat(E.toFixed(2)), {
 subsystem: "Market"
 }), y = !0;
 }
@@ -15568,7 +15568,7 @@ resourceType: m.resource,
 price: m.targetSellPrice,
 totalAmount: m.amount,
 roomName: p.room.name
-}) === OK && (this.trackCreatedOrder("sell", m.resource, p.room.name), k.info("Arbitrage posted sell order: ".concat(m.amount, " ").concat(m.resource, " at ").concat(m.targetSellPrice.toFixed(3), " from ").concat(p.room.name), {
+}) === OK && (this.trackCreatedOrder("sell", m.resource, p.room.name), _.info("Arbitrage posted sell order: ".concat(m.amount, " ").concat(m.resource, " at ").concat(m.targetSellPrice.toFixed(3), " from ").concat(p.room.name), {
 subsystem: "Market"
 }), y = !0), y || c.push(m);
 }
@@ -15631,11 +15631,11 @@ try {
 for (var R = (t = void 0, a(c)), E = R.next(); !E.done; E = R.next()) {
 var T = E.value, C = T.terminal;
 if (!((null !== (o = C.store.getFreeCapacity(e)) && void 0 !== o ? o : 0) < h)) {
-var S = Game.market.calcTransactionCost(h, T.name, g.roomName) + Game.market.calcTransactionCost(h, T.name, y.roomName), x = S * d.config.energyCreditValue, w = (y.price - g.price) * h - x, b = g.price * h, O = b > 0 ? w / b : 0, U = b > 0 ? x / b : 1 / 0;
-if (!(w < d.config.minArbitrageProfit || O < d.config.minArbitrageMargin || U > d.config.maxTransportCostRatio || C.store.getUsedCapacity(RESOURCE_ENERGY) - S < d.config.terminalEnergyReserve)) {
-var M = g.price * h;
-if (!(Game.market.credits - M < d.config.minCredits) && Game.market.deal(g.id, h, T.name) === OK) {
-var _ = {
+var S = Game.market.calcTransactionCost(h, T.name, g.roomName) + Game.market.calcTransactionCost(h, T.name, y.roomName), x = S * d.config.energyCreditValue, w = (y.price - g.price) * h - x, b = g.price * h, O = b > 0 ? w / b : 0, M = b > 0 ? x / b : 1 / 0;
+if (!(w < d.config.minArbitrageProfit || O < d.config.minArbitrageMargin || M > d.config.maxTransportCostRatio || C.store.getUsedCapacity(RESOURCE_ENERGY) - S < d.config.terminalEnergyReserve)) {
+var U = g.price * h;
+if (!(Game.market.credits - U < d.config.minCredits) && Game.market.deal(g.id, h, T.name) === OK) {
+var k = {
 id: "".concat(e, "-").concat(Game.time, "-").concat(g.id),
 resource: e,
 amount: h,
@@ -15647,7 +15647,7 @@ expectedArrival: Game.time + (null !== (n = C.cooldown) && void 0 !== n ? n : 0)
 buyPrice: g.price,
 transportCost: S
 };
-null === (i = s.pendingArbitrage) || void 0 === i || i.push(_), u++, k.info("Arbitrage started: bought ".concat(h, " ").concat(e, " at ").concat(g.price.toFixed(3), " to sell @ ").concat(y.price.toFixed(3), " (net profit ~").concat(w.toFixed(2), ")"), {
+null === (i = s.pendingArbitrage) || void 0 === i || i.push(k), u++, _.info("Arbitrage started: bought ".concat(h, " ").concat(e, " at ").concat(g.price.toFixed(3), " to sell @ ").concat(y.price.toFixed(3), " (net profit ~").concat(w.toFixed(2), ")"), {
 subsystem: "Market"
 });
 break;
@@ -15725,7 +15725,7 @@ return t.amount - e.amount;
 var g = u[0], v = u[u.length - 1], h = g.amount - v.amount;
 if (h > .5 * y && g.amount > 5e3 && g.room.terminal && v.room.terminal) {
 var R = Math.min(Math.floor(h / 2), 1e4), E = Game.market.calcTransactionCost(R, g.room.name, v.room.name);
-(l === RESOURCE_ENERGY && E < .1 * R || l !== RESOURCE_ENERGY && E < 1e3) && g.room.terminal.send(l, R, v.room.name) === OK && k.info("Balanced ".concat(R, " ").concat(l, ": ").concat(g.room.name, " -> ").concat(v.room.name, " (cost: ").concat(E, " energy)"), {
+(l === RESOURCE_ENERGY && E < .1 * R || l !== RESOURCE_ENERGY && E < 1e3) && g.room.terminal.send(l, R, v.room.name) === OK && _.info("Balanced ".concat(R, " ").concat(l, ": ").concat(g.room.name, " -> ").concat(v.room.name, " (cost: ").concat(E, " energy)"), {
 subsystem: "Market"
 });
 }
@@ -15815,12 +15815,12 @@ if (i) throw i.error;
 if (!C || S === 1 / 0) break;
 if (C === t) break;
 if (h.delete(C), !(this.getPathLength(C, v) >= this.MAX_HOPS)) try {
-for (var U = (c = void 0, a(y)), M = U.next(); !M.done; M = U.next()) {
-var _ = M.value;
-if (h.has(_.roomName) && _.roomName !== C) {
-var A = this.calculateTransferCost(r, C, _.roomName), N = (null !== (m = g.get(C)) && void 0 !== m ? m : 1 / 0) + A;
-N < (null !== (d = g.get(_.roomName)) && void 0 !== d ? d : 1 / 0) && (g.set(_.roomName, N), 
-v.set(_.roomName, C));
+for (var M = (c = void 0, a(y)), U = M.next(); !U.done; U = M.next()) {
+var k = U.value;
+if (h.has(k.roomName) && k.roomName !== C) {
+var A = this.calculateTransferCost(r, C, k.roomName), N = (null !== (m = g.get(C)) && void 0 !== m ? m : 1 / 0) + A;
+N < (null !== (d = g.get(k.roomName)) && void 0 !== d ? d : 1 / 0) && (g.set(k.roomName, N), 
+v.set(k.roomName, C));
 }
 }
 } catch (e) {
@@ -15829,7 +15829,7 @@ error: e
 };
 } finally {
 try {
-M && !M.done && (l = U.return) && l.call(U);
+U && !U.done && (l = M.return) && l.call(M);
 } finally {
 if (c) throw c.error;
 }
@@ -15842,7 +15842,7 @@ I.length > 0 && I[0] === e && (f = {
 path: I,
 cost: P,
 isDirect: !1
-}, k.debug("Multi-hop route found: ".concat(I.join(" -> "), " (cost: ").concat(P, " vs direct: ").concat(p, ")"), {
+}, _.debug("Multi-hop route found: ".concat(I.join(" -> "), " (cost: ").concat(P, " vs direct: ").concat(p, ")"), {
 subsystem: "TerminalRouter"
 }));
 }
@@ -15897,7 +15897,7 @@ void 0 === e && (e = {}), this.transferQueue = [], this.config = o(o({}, si), e)
 return e.prototype.requestTransfer = function(e, t, r, o, n) {
 if (void 0 === n && (n = 3), this.transferQueue.some(function(o) {
 return o.fromRoom === e && o.toRoom === t && o.resourceType === r;
-})) return k.debug("Transfer already queued: ".concat(o, " ").concat(r, " from ").concat(e, " to ").concat(t), {
+})) return _.debug("Transfer already queued: ".concat(o, " ").concat(r, " from ").concat(e, " to ").concat(t), {
 subsystem: "Terminal"
 }), !1;
 var a = Game.rooms[e], i = Game.rooms[t];
@@ -15907,9 +15907,9 @@ toRoom: t,
 resourceType: r,
 amount: o,
 priority: n
-}), k.info("Queued transfer request: ".concat(o, " ").concat(r, " from ").concat(e, " to ").concat(t, " (priority: ").concat(n, ")"), {
+}), _.info("Queued transfer request: ".concat(o, " ").concat(r, " from ").concat(e, " to ").concat(t, " (priority: ").concat(n, ")"), {
 subsystem: "Terminal"
-}), !0) : (k.warn("Cannot queue transfer: rooms or terminals not available", {
+}), !0) : (_.warn("Cannot queue transfer: rooms or terminals not available", {
 subsystem: "Terminal"
 }), !1);
 }, e.prototype.run = function() {
@@ -15955,7 +15955,7 @@ amount: c.config.emergencyEnergyAmount,
 priority: 10,
 route: m,
 isEmergency: !0
-}), k.warn("Emergency energy transfer queued: ".concat(c.config.emergencyEnergyAmount, " from ").concat(u.name, " to ").concat(t.name, " (danger: ").concat(r.danger, ")"), {
+}), _.warn("Emergency energy transfer queued: ".concat(c.config.emergencyEnergyAmount, " from ").concat(u.name, " to ").concat(t.name, " (danger: ").concat(r.danger, ")"), {
 subsystem: "Terminal"
 }));
 }
@@ -15981,7 +15981,7 @@ var t, r;
 try {
 for (var o = a(e), n = o.next(); !n.done; n = o.next()) {
 var i = n.value, s = i.terminal, c = s.store.getCapacity(), l = s.store.getUsedCapacity(), u = l / c;
-u >= this.config.capacityWarningThreshold && u < this.config.capacityClearanceThreshold && Game.time % 100 == 0 && k.warn("Terminal ".concat(i.name, " at ").concat((100 * u).toFixed(1), "% capacity (").concat(l, "/").concat(c, ")"), {
+u >= this.config.capacityWarningThreshold && u < this.config.capacityClearanceThreshold && Game.time % 100 == 0 && _.warn("Terminal ".concat(i.name, " at ").concat((100 * u).toFixed(1), "% capacity (").concat(l, "/").concat(c, ")"), {
 subsystem: "Terminal"
 }), u >= this.config.capacityClearanceThreshold && this.clearExcessTerminalResources(i, s);
 }
@@ -15998,7 +15998,7 @@ if (t) throw t.error;
 }
 }, e.prototype.clearExcessTerminalResources = function(e, t) {
 var r, o, n, i, s, c;
-k.info("Auto-clearing terminal ".concat(e.name, " (").concat((t.store.getUsedCapacity() / t.store.getCapacity() * 100).toFixed(1), "% full)"), {
+_.info("Auto-clearing terminal ".concat(e.name, " (").concat((t.store.getUsedCapacity() / t.store.getCapacity() * 100).toFixed(1), "% full)"), {
 subsystem: "Terminal"
 });
 var l, u = Nt.getClusters();
@@ -16046,14 +16046,14 @@ resourceType: T,
 amount: x,
 priority: 5,
 route: b
-}), k.info("Queued clearance transfer: ".concat(x, " ").concat(T, " from ").concat(e.name, " to hub ").concat(l), {
+}), _.info("Queued clearance transfer: ".concat(x, " ").concat(T, " from ").concat(e.name, " to hub ").concat(l), {
 subsystem: "Terminal"
 });
 continue;
 }
 }
 }
-Game.time % 10 == 0 && ni.sellSurplusFromTerminal(e.name, T, x) && k.info("Sold ".concat(x, " ").concat(T, " from ").concat(e.name, " terminal via market"), {
+Game.time % 10 == 0 && ni.sellSurplusFromTerminal(e.name, T, x) && _.info("Sold ".concat(x, " ").concat(T, " from ").concat(e.name, " terminal via market"), {
 subsystem: "Terminal"
 });
 }
@@ -16101,7 +16101,7 @@ if (r < l.config.minTransferAmount) return "continue";
 var o = ii.findOptimalRoute(t.room.name, e.room.name, r);
 if (!o) return "continue";
 var n = o.cost / r;
-if (n > l.config.maxTransferCostRatio) return k.debug("Skipping terminal transfer from ".concat(t.room.name, " to ").concat(e.room.name, ": cost ratio ").concat(n.toFixed(2), " too high"), {
+if (n > l.config.maxTransferCostRatio) return _.debug("Skipping terminal transfer from ".concat(t.room.name, " to ").concat(e.room.name, ": cost ratio ").concat(n.toFixed(2), " too high"), {
 subsystem: "Terminal"
 }), "continue";
 l.transferQueue.push({
@@ -16113,7 +16113,7 @@ priority: 2,
 route: o
 });
 var a = o.isDirect ? "direct" : "multi-hop (".concat(o.path.length, " hops)");
-return k.info("Queued energy transfer: ".concat(r, " from ").concat(t.room.name, " to ").concat(e.room.name, " (").concat(a, ", cost: ").concat(o.cost, ")"), {
+return _.info("Queued energy transfer: ".concat(r, " from ").concat(t.room.name, " to ").concat(e.room.name, " (").concat(a, ", cost: ").concat(o.cost, ")"), {
 subsystem: "Terminal"
 }), "break";
 };
@@ -16201,7 +16201,7 @@ toRoom: o.room.name,
 resourceType: e,
 amount: a,
 priority: 1
-}), k.info("Queued mineral transfer: ".concat(a, " ").concat(e, " from ").concat(r.room.name, " to ").concat(o.room.name), {
+}), _.info("Queued mineral transfer: ".concat(a, " ").concat(e, " from ").concat(r.room.name, " to ").concat(o.room.name), {
 subsystem: "Terminal"
 });
 }, E = this;
@@ -16240,19 +16240,19 @@ var c = ii.getNextHop(t.route, t.fromRoom);
 c && (i = c);
 }
 var l = null === (o = Game.rooms[i]) || void 0 === o ? void 0 : o.terminal;
-if (!l) return k.debug("Terminal transfer cancelled: destination terminal unavailable in ".concat(i), {
+if (!l) return _.debug("Terminal transfer cancelled: destination terminal unavailable in ".concat(i), {
 subsystem: "Terminal"
 }), s.transferQueue = s.transferQueue.filter(function(e) {
 return e !== t;
 }), "continue";
 var u = l.store.getFreeCapacity(t.resourceType);
-if (u < t.amount) return k.debug("Terminal transfer cancelled: insufficient ".concat(t.resourceType, " capacity in ").concat(i, " (need ").concat(t.amount, ", free ").concat(u, ")"), {
+if (u < t.amount) return _.debug("Terminal transfer cancelled: insufficient ".concat(t.resourceType, " capacity in ").concat(i, " (need ").concat(t.amount, ", free ").concat(u, ")"), {
 subsystem: "Terminal"
 }), s.transferQueue = s.transferQueue.filter(function(e) {
 return e !== t;
 }), "continue";
 var m = a.store.getUsedCapacity(t.resourceType), d = Game.market.calcTransactionCost(t.amount, t.fromRoom, i), p = a.store.getUsedCapacity(RESOURCE_ENERGY);
-if (m < (t.resourceType === RESOURCE_ENERGY ? t.amount + d : t.amount) || p < d) return k.debug("Terminal transfer cancelled: insufficient ".concat(t.resourceType, "/energy in ").concat(t.fromRoom, " (need ").concat(t.amount, " + ").concat(d, " energy, have ").concat(m, " ").concat(t.resourceType, ", ").concat(p, " energy)"), {
+if (m < (t.resourceType === RESOURCE_ENERGY ? t.amount + d : t.amount) || p < d) return _.debug("Terminal transfer cancelled: insufficient ".concat(t.resourceType, "/energy in ").concat(t.fromRoom, " (need ").concat(t.amount, " + ").concat(d, " energy, have ").concat(m, " ").concat(t.resourceType, ", ").concat(p, " energy)"), {
 subsystem: "Terminal"
 }), s.transferQueue = s.transferQueue.filter(function(e) {
 return e !== t;
@@ -16260,12 +16260,12 @@ return e !== t;
 var f = a.send(t.resourceType, t.amount, i, "Terminal auto-balance".concat(t.isEmergency ? " [EMERGENCY]" : ""));
 if (f === OK) {
 var y = t.route && !t.route.isDirect, g = i === t.toRoom;
-k.info("Terminal transfer executed: ".concat(t.amount, " ").concat(t.resourceType, " from ").concat(t.fromRoom, " to ").concat(i).concat(y && !g ? " (hop to ".concat(t.toRoom, ")") : "").concat(t.isEmergency ? " [EMERGENCY]" : ""), {
+_.info("Terminal transfer executed: ".concat(t.amount, " ").concat(t.resourceType, " from ").concat(t.fromRoom, " to ").concat(i).concat(y && !g ? " (hop to ".concat(t.toRoom, ")") : "").concat(t.isEmergency ? " [EMERGENCY]" : ""), {
 subsystem: "Terminal"
 }), n.add(t.fromRoom), y && !g ? t.fromRoom = i : s.transferQueue = s.transferQueue.filter(function(e) {
 return e !== t;
 });
-} else k.warn("Terminal transfer failed: ".concat(f, " for ").concat(t.amount, " ").concat(t.resourceType, " from ").concat(t.fromRoom, " to ").concat(i), {
+} else _.warn("Terminal transfer failed: ".concat(f, " for ").concat(t.amount, " ").concat(t.resourceType, " from ").concat(t.fromRoom, " to ").concat(i), {
 subsystem: "Terminal"
 }), s.transferQueue = s.transferQueue.filter(function(e) {
 return e !== t;
@@ -16350,7 +16350,7 @@ try {
 for (var p = (n = void 0, a(c)), f = p.next(); !f.done; f = p.next()) {
 var y = f.value, g = Math.min(Math.floor((d.amount - s) / 2), Math.floor((s - y.amount) / 2), 3e3), v = e === RESOURCE_CATALYZED_UTRIUM_ACID || e === RESOURCE_CATALYZED_KEANIUM_ALKALIDE || e === RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE || e === RESOURCE_CATALYZED_GHODIUM_ACID || e === RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE || e === RESOURCE_CATALYZED_GHODIUM_ALKALIDE;
 g >= (v ? 300 : 500) && (T.queueTransfer(d.roomName, y.roomName, e, g, v ? 8 : 5), 
-k.info("Queued compound balance: ".concat(g, " ").concat(e, " from ").concat(d.roomName, " to ").concat(y.roomName), {
+_.info("Queued compound balance: ".concat(g, " ").concat(e, " from ").concat(d.roomName, " to ").concat(y.roomName), {
 subsystem: "Terminal"
 }), d.amount -= g, y.amount += g);
 }
@@ -16485,9 +16485,9 @@ if (t) throw t.error;
 }
 if (u) {
 var g = n.produce(c);
-g === OK ? k.info("Factory in ".concat(e.name, " producing ").concat(c), {
+g === OK ? _.info("Factory in ".concat(e.name, " producing ").concat(c), {
 subsystem: "Factory"
-}) : g !== ERR_TIRED && k.debug("Factory production failed in ".concat(e.name, ": ").concat(g), {
+}) : g !== ERR_TIRED && _.debug("Factory production failed in ".concat(e.name, ": ").concat(g), {
 subsystem: "Factory"
 });
 }
@@ -16524,11 +16524,11 @@ if (s) throw s.error;
 if (v) {
 var b = t.store.getUsedCapacity(g) + r.store.getUsedCapacity(g);
 if (!(b > this.config.outputBufferAmount)) {
-var O = null !== (l = di[g]) && void 0 !== l ? l : 1, U = O * h * (1 - b / this.config.outputBufferAmount);
+var O = null !== (l = di[g]) && void 0 !== l ? l : 1, M = O * h * (1 - b / this.config.outputBufferAmount);
 u.push({
 commodity: g,
 priority: O,
-score: U
+score: M
 });
 }
 }
@@ -16645,7 +16645,7 @@ if (e) throw e.error;
 }
 this.detectTradingOpportunities();
 var c = Game.cpu.getUsed() - r;
-Game.time % 1e3 == 0 && k.info("Market trend analysis completed in ".concat(c.toFixed(2), " CPU, ").concat(this.opportunities.length, " opportunities detected"), {
+Game.time % 1e3 == 0 && _.info("Market trend analysis completed in ".concat(c.toFixed(2), " CPU, ").concat(this.opportunities.length, " opportunities detected"), {
 subsystem: "MarketTrends"
 });
 }, e.prototype.analyzeSupplyDemand = function(e) {
@@ -16722,7 +16722,7 @@ urgency: 3,
 createdAt: Game.time
 });
 }
-(null !== (u = v.volatility) && void 0 !== u ? u : 0) >= this.config.highVolatilityThreshold && k.warn("High volatility detected for ".concat(g, ": ").concat((100 * (null !== (m = v.volatility) && void 0 !== m ? m : 0)).toFixed(1), "%"), {
+(null !== (u = v.volatility) && void 0 !== u ? u : 0) >= this.config.highVolatilityThreshold && _.warn("High volatility detected for ".concat(g, ": ").concat((100 * (null !== (m = v.volatility) && void 0 !== m ? m : 0)).toFixed(1), "%"), {
 subsystem: "MarketTrends"
 });
 }
@@ -16743,7 +16743,7 @@ this.opportunities = p;
 try {
 for (var x = a(p), w = x.next(); !w.done; w = x.next()) {
 var b = w.value;
-b.urgency >= 2 && k.info("Trading opportunity: ".concat(b.action, ", expected value: ").concat(b.expectedValue.toFixed(0), " credits, confidence: ").concat((100 * b.confidence).toFixed(0), "%"), {
+b.urgency >= 2 && _.info("Trading opportunity: ".concat(b.action, ", expected value: ").concat(b.expectedValue.toFixed(0), " credits, confidence: ").concat((100 * b.confidence).toFixed(0), "%"), {
 subsystem: "MarketTrends"
 });
 }
@@ -16811,10 +16811,10 @@ return e.includes(STRUCTURE_SPAWN) || e.includes(STRUCTURE_STORAGE) || e.include
 }
 
 function Ti(e, t, r) {
-t.timeToLand < 5e3 ? (r.posture = "evacuate", k.warn("EVACUATION TRIGGERED for ".concat(e.name, ": Critical structures threatened by nuke!"), {
+t.timeToLand < 5e3 ? (r.posture = "evacuate", _.warn("EVACUATION TRIGGERED for ".concat(e.name, ": Critical structures threatened by nuke!"), {
 subsystem: "Nuke"
 })) : ("war" !== r.posture && "evacuate" !== r.posture && (r.posture = "defensive"), 
-k.warn("NUKE DEFENSE PREPARATION in ".concat(e.name, ": Critical structures in blast radius"), {
+_.warn("NUKE DEFENSE PREPARATION in ".concat(e.name, ": Critical structures in blast radius"), {
 subsystem: "Nuke"
 })), r.pheromones.defense = 100;
 }
@@ -16937,7 +16937,7 @@ l && !l.done && (n = c.return) && n.call(c);
 if (o) throw o.error;
 }
 }
-if (!s) return k.warn("Cannot deploy siege squad for nuke on ".concat(e.targetRoom, ": No clusters available"), {
+if (!s) return _.warn("Cannot deploy siege squad for nuke on ".concat(e.targetRoom, ": No clusters available"), {
 subsystem: "Nuke"
 }), !1;
 var d = t[s.id];
@@ -16948,7 +16948,7 @@ return "siege" === t.type && t.targetRooms.includes(e.targetRoom);
 if (p) return e.siegeSquadId = p.id, !0;
 var f = r(e.targetRoom);
 f && (f.pheromones.siege = Math.min(100, f.pheromones.siege + 80), f.pheromones.war = Math.min(100, f.pheromones.war + 60), 
-k.info("Siege pheromones increased for ".concat(e.targetRoom, " to coordinate with nuke strike"), {
+_.info("Siege pheromones increased for ".concat(e.targetRoom, " to coordinate with nuke strike"), {
 subsystem: "Nuke"
 }));
 var y = "siege-nuke-".concat(e.targetRoom, "-").concat(Game.time), g = {
@@ -16961,12 +16961,12 @@ state: "gathering",
 createdAt: Game.time,
 retreatThreshold: .3
 };
-return d.squads || (d.squads = []), d.squads.push(g), e.siegeSquadId = y, k.warn("SIEGE SQUAD DEPLOYED: Squad ".concat(y, " will coordinate with nuke on ").concat(e.targetRoom), {
+return d.squads || (d.squads = []), d.squads.push(g), e.siegeSquadId = y, _.warn("SIEGE SQUAD DEPLOYED: Squad ".concat(y, " will coordinate with nuke on ").concat(e.targetRoom), {
 subsystem: "Nuke"
 }), !0;
 }
 
-var Ui = function() {
+var Mi = function() {
 function e(e, t) {
 void 0 === e && (e = {}), this.nukerReadyLogged = new Set, this.config = o(o({}, gi), e), 
 this.getEmpire = t.getEmpire, this.getSwarmState = t.getSwarmState, this.getClusters = t.getClusters;
@@ -17033,7 +17033,7 @@ return n;
 }(s, t.pos);
 n.threatenedStructures = i, e.incomingNukes.push(n), c.nukeDetected || (c.nukeDetected = !0, 
 c.pheromones.defense = Math.min(100, c.pheromones.defense + 50), c.pheromones.siege = Math.min(100, c.pheromones.siege + 30), 
-c.danger = 3, k.warn("INCOMING NUKE DETECTED in ".concat(o, "! ") + "Landing at (".concat(t.pos.x, ", ").concat(t.pos.y, "), impact in ").concat(t.timeToLand, " ticks. ") + "Source: ".concat(t.launchRoomName || "unknown", ". ") + "Threatened structures: ".concat(i.length), {
+c.danger = 3, _.warn("INCOMING NUKE DETECTED in ".concat(o, "! ") + "Landing at (".concat(t.pos.x, ", ").concat(t.pos.y, "), impact in ").concat(t.timeToLand, " ticks. ") + "Source: ".concat(t.launchRoomName || "unknown", ". ") + "Threatened structures: ".concat(i.length), {
 subsystem: "Nuke"
 }), c.eventLog.push({
 type: "nuke_incoming",
@@ -17055,7 +17055,7 @@ d && !d.done && (i = m.return) && i.call(m);
 if (n) throw n.error;
 }
 }
-} else c.nukeDetected && (c.nukeDetected = !1, k.info("Nuke threat cleared in ".concat(o), {
+} else c.nukeDetected && (c.nukeDetected = !1, _.info("Nuke threat cleared in ".concat(o), {
 subsystem: "Nuke"
 }));
 };
@@ -17067,19 +17067,19 @@ for (var c = a(e.incomingNukes), l = c.next(); !l.done; l = c.next()) {
 var u = l.value;
 if (u.sourceRoom && !e.warTargets.includes(u.sourceRoom)) {
 var m = e.knownRooms[u.sourceRoom];
-if (m) if (F(u.sourceRoom) || m.owner && F(m.owner) || m.reserver && F(m.reserver)) k.warn("Ignoring allied nuke source ".concat(u.sourceRoom, "; no counter-nuke target will be created"), {
+if (m) if (F(u.sourceRoom) || m.owner && F(m.owner) || m.reserver && F(m.reserver)) _.warn("Ignoring allied nuke source ".concat(u.sourceRoom, "; no counter-nuke target will be created"), {
 subsystem: "Nuke"
 }); else if (!(m.controllerLevel < 8)) {
 var d = r(u.roomName);
 if (d && !(d.pheromones.war < t.counterNukeWarThreshold)) if (o()) {
 if (!e.warTargets.includes(u.sourceRoom)) for (var p in e.warTargets.push(u.sourceRoom), 
-k.warn("COUNTER-NUKE AUTHORIZED: ".concat(u.sourceRoom, " added to war targets for nuke retaliation"), {
+_.warn("COUNTER-NUKE AUTHORIZED: ".concat(u.sourceRoom, " added to war targets for nuke retaliation"), {
 subsystem: "Nuke"
 }), Game.rooms) if (null === (s = Game.rooms[p].controller) || void 0 === s ? void 0 : s.my) {
 var f = r(p);
 f && (f.pheromones.war = Math.min(100, f.pheromones.war + 30));
 }
-} else k.warn("Counter-nuke desired against ".concat(u.sourceRoom, " but insufficient resources"), {
+} else _.warn("Counter-nuke desired against ".concat(u.sourceRoom, " but insufficient resources"), {
 subsystem: "Nuke"
 });
 }
@@ -17115,7 +17115,7 @@ var d = null !== (a = l.store.getUsedCapacity(RESOURCE_GHODIUM)) && void 0 !== a
 d < m && o(i, RESOURCE_GHODIUM, m - d);
 }
 var p = "".concat(i, "-nuker");
-0 === u && 0 === m ? r.has(p) || (k.info("Nuker in ".concat(i, " is fully loaded and ready to launch"), {
+0 === u && 0 === m ? r.has(p) || (_.info("Nuker in ".concat(i, " is fully loaded and ready to launch"), {
 subsystem: "Nuke"
 }), r.add(p)) : r.delete(p);
 }
@@ -17136,7 +17136,7 @@ return e.structureType === STRUCTURE_NUKER;
 })[0];
 if (o) {
 var n = o.store.getFreeCapacity(RESOURCE_ENERGY), a = o.store.getFreeCapacity(RESOURCE_GHODIUM);
-(n > 0 || a > 0) && k.debug("Nuker in ".concat(t, " needs ").concat(n, " energy, ").concat(a, " ghodium"), {
+(n > 0 || a > 0) && _.debug("Nuker in ".concat(t, " needs ").concat(n, " energy, ").concat(a, " ghodium"), {
 subsystem: "Nuke"
 });
 }
@@ -17148,7 +17148,7 @@ if (e.nukeCandidates = [], e.objectives.warMode) {
 try {
 for (var i = a(e.warTargets), s = i.next(); !s.done; s = i.next()) {
 var c = s.value, l = e.knownRooms[c];
-if (F(c) || (null == l ? void 0 : l.owner) && F(l.owner) || (null == l ? void 0 : l.reserver) && F(l.reserver)) k.warn("Skipping allied nuke target candidate: ".concat(c), {
+if (F(c) || (null == l ? void 0 : l.owner) && F(l.owner) || (null == l ? void 0 : l.reserver) && F(l.reserver)) _.warn("Skipping allied nuke target candidate: ".concat(c), {
 subsystem: "Nuke"
 }); else {
 var u = Si(c, e, t, r);
@@ -17157,7 +17157,7 @@ roomName: c,
 score: u.score,
 launched: !1,
 launchTick: 0
-}), k.info("Nuke candidate: ".concat(c, " (score: ").concat(u.score, ") - ").concat(u.reasons.join(", ")), {
+}), _.info("Nuke candidate: ".concat(c, " (score: ").concat(u.score, ") - ").concat(u.reasons.join(", ")), {
 subsystem: "Nuke"
 }));
 }
@@ -17183,7 +17183,7 @@ if (e.nukeEconomics) {
 var r = e.nukeEconomics, o = r.totalEnergyCost + r.totalGhodiumCost;
 if (o > 0) {
 var n = r.totalValueDestroyed;
-r.lastROI = n / o, r.nukesLaunched > 0 && r.nukesLaunched % 5 == 0 && k.info("Nuke economics: ".concat(r.nukesLaunched, " nukes, ROI: ").concat(null === (t = r.lastROI) || void 0 === t ? void 0 : t.toFixed(2), "x, ") + "Value destroyed: ".concat((r.totalValueDestroyed / 1e3).toFixed(0), "k"), {
+r.lastROI = n / o, r.nukesLaunched > 0 && r.nukesLaunched % 5 == 0 && _.info("Nuke economics: ".concat(r.nukesLaunched, " nukes, ROI: ").concat(null === (t = r.lastROI) || void 0 === t ? void 0 : t.toFixed(2), "x, ") + "Value destroyed: ".concat((r.totalValueDestroyed / 1e3).toFixed(0), "k"), {
 subsystem: "Nuke"
 });
 }
@@ -17195,7 +17195,7 @@ var d = r();
 try {
 for (var p = a(e.nukesInFlight), f = p.next(); !f.done; f = p.next()) {
 var y = f.value, g = y.impactTick - Game.time;
-y.siegeSquadId || g <= t.siegeCoordinationWindow && g > 0 && Oi(y, d, o) && k.info("Siege squad deployment coordinated with nuke on ".concat(y.targetRoom, ", ") + "impact in ".concat(g, " ticks"), {
+y.siegeSquadId || g <= t.siegeCoordinationWindow && g > 0 && Oi(y, d, o) && _.info("Siege squad deployment coordinated with nuke on ".concat(y.targetRoom, ", ") + "impact in ".concat(g, " ticks"), {
 subsystem: "Nuke"
 });
 }
@@ -17223,7 +17223,7 @@ if (!r) return "continue";
 var o = null === (m = e.nukesInFlight) || void 0 === m ? void 0 : m.find(function(e) {
 return e.targetRoom === r;
 });
-o && !o.siegeSquadId && (o.siegeSquadId = t.id, k.info("Linked siege squad ".concat(t.id, " with nuke on ").concat(r), {
+o && !o.siegeSquadId && (o.siegeSquadId = t.id, _.info("Linked siege squad ".concat(t.id, " with nuke on ").concat(r), {
 subsystem: "Nuke"
 }));
 };
@@ -17296,10 +17296,10 @@ b && !b.done && (u = w.return) && u.call(w);
 if (l) throw l.error;
 }
 }
-k.info("Nuke salvo ".concat(x, " coordinated: ").concat(E.length, " nukes on ").concat(R, ", impact spread: ").concat(S, " ticks"), {
+_.info("Nuke salvo ".concat(x, " coordinated: ").concat(E.length, " nukes on ").concat(R, ", impact spread: ").concat(S, " ticks"), {
 subsystem: "Nuke"
 });
-} else k.warn("Nukes on ".concat(R, " not synchronized (spread: ").concat(S, " ticks > ").concat(t.salvoSyncWindow, ")"), {
+} else _.warn("Nukes on ".concat(R, " not synchronized (spread: ").concat(S, " ticks > ").concat(t.salvoSyncWindow, ")"), {
 subsystem: "Nuke"
 });
 }
@@ -17337,7 +17337,7 @@ for (var f = (n = void 0, a(c)), y = f.next(); !y.done; y = f.next()) {
 var g = y.value;
 if (!(Game.map.getRoomLinearDistance(g.room.name, p.roomName) > 10)) {
 var v = new RoomPosition(25, 25, p.roomName), h = xi(p.roomName, v, e), R = wi(p.roomName, v, e);
-if (R < t.roiThreshold) k.warn("Skipping nuke launch on ".concat(p.roomName, ": ROI ").concat(R.toFixed(2), "x below threshold ").concat(t.roiThreshold, "x"), {
+if (R < t.roiThreshold) _.warn("Skipping nuke launch on ".concat(p.roomName, ": ROI ").concat(R.toFixed(2), "x below threshold ").concat(t.roiThreshold, "x"), {
 subsystem: "Nuke"
 }); else {
 var E = g.launchNuke(v);
@@ -17364,14 +17364,14 @@ totalDamageDealt: 0,
 totalValueDestroyed: 0
 }), e.nukeEconomics.nukesLaunched++, e.nukeEconomics.totalEnergyCost += 3e5, e.nukeEconomics.totalGhodiumCost += 5e3, 
 e.nukeEconomics.totalDamageDealt += h.estimatedDamage, e.nukeEconomics.totalValueDestroyed += h.estimatedValue, 
-e.nukeEconomics.lastLaunchTick = Game.time, k.warn("NUKE LAUNCHED from ".concat(g.room.name, " to ").concat(p.roomName, "! ") + "Impact in ".concat(t.nukeFlightTime, " ticks. ") + "Predicted damage: ".concat((h.estimatedDamage / 1e6).toFixed(1), "M hits, ") + "value: ".concat((h.estimatedValue / 1e3).toFixed(0), "k, ROI: ").concat(R.toFixed(2), "x"), {
+e.nukeEconomics.lastLaunchTick = Game.time, _.warn("NUKE LAUNCHED from ".concat(g.room.name, " to ").concat(p.roomName, "! ") + "Impact in ".concat(t.nukeFlightTime, " ticks. ") + "Predicted damage: ".concat((h.estimatedDamage / 1e6).toFixed(1), "M hits, ") + "value: ".concat((h.estimatedValue / 1e3).toFixed(0), "k, ROI: ").concat(R.toFixed(2), "x"), {
 subsystem: "Nuke"
 });
 var C = c.indexOf(g);
 C > -1 && c.splice(C, 1);
 break;
 }
-k.error("Failed to launch nuke: ".concat(E), {
+_.error("Failed to launch nuke: ".concat(E), {
 subsystem: "Nuke"
 });
 }
@@ -17412,7 +17412,7 @@ e.incomingNukes = e.incomingNukes.filter(function(e) {
 return e.impactTick > Game.time;
 });
 var r = t - e.incomingNukes.length;
-r > 0 && k.info("Cleaned up ".concat(r, " impacted nuke alert(s)"), {
+r > 0 && _.info("Cleaned up ".concat(r, " impacted nuke alert(s)"), {
 subsystem: "Nuke"
 });
 }
@@ -17466,9 +17466,9 @@ return 0 === c.length ? null : (c.sort(function(e, t) {
 return e.distance - t.distance;
 }), null !== (s = null === (i = c[0]) || void 0 === i ? void 0 : i.room) && void 0 !== s ? s : null);
 }(e, t, r, o);
-a ? n.requestTransfer(a, e, t, r, o.terminalPriority) && k.info("Requested ".concat(r, " ").concat(t, " transfer from ").concat(a, " to ").concat(e, " for nuker"), {
+a ? n.requestTransfer(a, e, t, r, o.terminalPriority) && _.info("Requested ".concat(r, " ").concat(t, " transfer from ").concat(a, " to ").concat(e, " for nuker"), {
 subsystem: "Nuke"
-}) : k.debug("No donor room found for ".concat(r, " ").concat(t, " to ").concat(e), {
+}) : _.debug("No donor room found for ".concat(r, " ").concat(t, " to ").concat(e), {
 subsystem: "Nuke"
 });
 }(e, t, r, this.config, li);
@@ -17477,7 +17477,7 @@ return o({}, this.config);
 }, e.prototype.updateConfig = function(e) {
 this.config = o(o({}, this.config), e);
 }, e;
-}(), Mi = [ {
+}(), Ui = [ {
 carryParts: 4,
 capacity: 200,
 moveParts: 4,
@@ -17499,7 +17499,7 @@ moveParts: 24,
 cost: 2400
 } ];
 
-function _i(e, t, r, o, n) {
+function ki(e, t, r, o, n) {
 var i, s;
 void 0 === n && (n = {});
 var c, l, u, m, d = n.reserved, p = void 0 !== d && d, f = n.pathLength, y = n.terrainFactor, g = void 0 === y ? 1.2 : y, v = n.safetyBuffer, h = void 0 === v ? 1.2 : v, R = (c = t, 
@@ -17520,9 +17520,9 @@ var r = 50 * e * t;
 return Math.ceil(2 * r);
 }(R, g), T = function(e, t) {
 return e * (t ? 3e3 : 1500) / 300;
-}(r, p), C = Mi[0];
+}(r, p), C = Ui[0];
 try {
-for (var S = a(Mi), x = S.next(); !x.done; x = S.next()) {
+for (var S = a(Ui), x = S.next(); !x.done; x = S.next()) {
 var w = x.value;
 if (!(w.cost <= o)) break;
 C = w;
@@ -17538,12 +17538,12 @@ x && !x.done && (s = S.return) && s.call(S);
 if (i) throw i.error;
 }
 }
-var b = T * E, O = Math.max(1, Math.ceil(b / C.capacity)), U = Math.max(O, Math.ceil(O * h));
-return k.debug("Remote hauler calculation: ".concat(e, " -> ").concat(t, " (").concat(r, " sources, ").concat(R, " rooms away, reserved=").concat(p, ") - RT: ").concat(E, " ticks, E/tick: ").concat(T, ", Min: ").concat(O, ", Rec: ").concat(U, ", Cap: ").concat(C.capacity), {
+var b = T * E, O = Math.max(1, Math.ceil(b / C.capacity)), M = Math.max(O, Math.ceil(O * h));
+return _.debug("Remote hauler calculation: ".concat(e, " -> ").concat(t, " (").concat(r, " sources, ").concat(R, " rooms away, reserved=").concat(p, ") - RT: ").concat(E, " ticks, E/tick: ").concat(T, ", Min: ").concat(O, ", Rec: ").concat(M, ", Cap: ").concat(C.capacity), {
 subsystem: "HaulerDimensioning"
 }), {
 minHaulers: O,
-recommendedHaulers: U,
+recommendedHaulers: M,
 haulerConfig: C,
 distance: R,
 roundTripTicks: E,
@@ -17551,10 +17551,10 @@ energyPerTick: T
 };
 }
 
-var ki = /^([WE])(\d+)([NS])(\d+)$/;
+var _i = /^([WE])(\d+)([NS])(\d+)$/;
 
 function Ai(e) {
-var t = ki.exec(e);
+var t = _i.exec(e);
 if (!t) return null;
 var r = Number.parseInt(t[2], 10), o = Number.parseInt(t[4], 10);
 return {
@@ -17576,7 +17576,7 @@ return e % 10 == 0;
 
 function Ii(e) {
 var t = Ai(e), r = function(e) {
-var t = ki.exec(e);
+var t = _i.exec(e);
 return t ? {
 x: Number.parseInt(t[2], 10),
 y: Number.parseInt(t[4], 10)
@@ -17693,7 +17693,7 @@ var n, a = Game.map.getRoomLinearDistance(t, e);
 if (!Number.isFinite(a) || a <= 0) throw new Error("calculateRemoteProfitability: invalid distance ".concat(a, " between ").concat(t, " and ").concat(e));
 if (r.sources <= 0) throw new Error("calculateRemoteProfitability: intel.sources must be positive, got ".concat(r.sources, " for ").concat(e));
 if (void 0 !== r.threatLevel && null !== r.threatLevel && (r.threatLevel < 0 || r.threatLevel > 3)) throw new Error("calculateRemoteProfitability: intel.threatLevel must be in [0, 3], got ".concat(r.threatLevel, " for ").concat(e));
-var i, s, c, l, u, m = Boolean(r.reserver), d = (m ? 3e3 : 1500) / 300 * r.sources, p = _i(t, e, r.sources, 800, {
+var i, s, c, l, u, m = Boolean(r.reserver), d = (m ? 3e3 : 1500) / 300 * r.sources, p = ki(t, e, r.sources, 800, {
 reserved: m
 }), f = (650 * r.sources + p.haulerConfig.cost * p.recommendedHaulers) / 1500, y = 5e3 * r.sources + 50 * a * 300, g = y / 5e4, v = d * (null !== (n = [ 0, .1, .3, .6 ][r.threatLevel]) && void 0 !== n ? n : 0), h = d - f - g - v, R = f + g, E = R > 0 ? h / R : 0;
 return {
@@ -17753,7 +17753,7 @@ var v = this.findRemoteCandidates(d.name, e, y), h = g - y.length, R = v.slice(0
 try {
 for (var E = (o = void 0, a(R)), T = E.next(); !T.done; T = E.next()) {
 var C = T.value;
-y.includes(C) || (y.push(C), k.info("Assigned remote room ".concat(C, " to ").concat(d.name), {
+y.includes(C) || (y.push(C), _.info("Assigned remote room ".concat(C, " to ").concat(d.name), {
 subsystem: "Expansion"
 }));
 }
@@ -17799,17 +17799,17 @@ return e.filter(function(e) {
 var n = t.knownRooms[e];
 if (!n) return !0;
 var a = null;
-n.owner && (k.info("Removing remote ".concat(e, " - now owned by ").concat(n.owner), {
+n.owner && (_.info("Removing remote ".concat(e, " - now owned by ").concat(n.owner), {
 subsystem: "Expansion"
 }), a = "claimed");
 var i = o.getMyUsername();
-if (!a && n.reserver && n.reserver !== i && (k.info("Removing remote ".concat(e, " - reserved by ").concat(n.reserver), {
+if (!a && n.reserver && n.reserver !== i && (_.info("Removing remote ".concat(e, " - reserved by ").concat(n.reserver), {
 subsystem: "Expansion"
-}), a = "hostile"), !a && n.threatLevel >= 3 && (k.info("Removing remote ".concat(e, " - threat level ").concat(n.threatLevel), {
+}), a = "hostile"), !a && n.threatLevel >= 3 && (_.info("Removing remote ".concat(e, " - threat level ").concat(n.threatLevel), {
 subsystem: "Expansion"
 }), a = "hostile"), !a) {
 var s = Game.map.getRoomLinearDistance(r, e);
-s > o.config.maxRemoteDistance && (k.info("Removing remote ".concat(e, " - too far (").concat(s, ")"), {
+s > o.config.maxRemoteDistance && (_.info("Removing remote ".concat(e, " - too far (").concat(s, ")"), {
 subsystem: "Expansion"
 }), a = "unreachable");
 }
@@ -17833,7 +17833,7 @@ n.push({
 roomName: i,
 score: u
 });
-} else Game.time % 1e3 == 0 && k.debug("Skipping remote ".concat(i, " - not profitable (ROI: ").concat(l.roi.toFixed(2), ")"), {
+} else Game.time % 1e3 == 0 && _.debug("Skipping remote ".concat(i, " - not profitable (ROI: ").concat(l.roi.toFixed(2), ")"), {
 subsystem: "Expansion"
 });
 }
@@ -17924,7 +17924,7 @@ try {
 for (var c = a(Object.values(Game.creeps)), l = c.next(); !l.done; l = c.next()) {
 var u = l.value.memory;
 if ("claimer" === u.role && !u.targetRoom) return u.targetRoom = s, u.task = "claim", 
-void k.info("Assigned recovery claimer to ".concat(s), {
+void _.info("Assigned recovery claimer to ".concat(s), {
 subsystem: "Expansion"
 });
 }
@@ -17962,7 +17962,7 @@ try {
 for (var u = (r = void 0, a(Object.values(Game.creeps))), m = u.next(); !m.done; m = u.next()) {
 var d = m.value.memory;
 if ("claimer" === d.role && !d.targetRoom) {
-d.targetRoom = t.targetRoom, d.task = "claim", k.info("Assigned conquering claimer to ".concat(t.targetRoom), {
+d.targetRoom = t.targetRoom, d.task = "claim", _.info("Assigned conquering claimer to ".concat(t.targetRoom), {
 subsystem: "Expansion"
 }), l = !0;
 break;
@@ -18008,7 +18008,7 @@ try {
 for (var s = a(Object.values(Game.creeps)), c = s.next(); !c.done; c = s.next()) {
 var l = c.value, u = l.memory;
 if ("claimer" === u.role && !u.targetRoom) {
-u.targetRoom = o.roomName, u.task = "claim", k.info("Assigned claim target ".concat(o.roomName, " to ").concat(l.name), {
+u.targetRoom = o.roomName, u.task = "claim", _.info("Assigned claim target ".concat(o.roomName, " to ").concat(l.name), {
 subsystem: "Expansion"
 }), o.claimed = !0, i = !0;
 break;
@@ -18057,7 +18057,7 @@ if (r) throw r.error;
 if (c) {
 var f = Nt.getSwarmState(c.name);
 f && "defensive" !== f.posture && "evacuate" !== f.posture && f.danger < 2 && "expand" !== f.posture && (f.posture = "expand", 
-k.info("Set ".concat(c.name, " to expand posture for claiming ").concat(e, " (distance: ").concat(l, ")"), {
+_.info("Set ".concat(c.name, " to expand posture for claiming ").concat(e, " (distance: ").concat(l, ")"), {
 subsystem: "Expansion"
 }));
 }
@@ -18075,7 +18075,7 @@ if (null === (n = null == m ? void 0 : m.remoteAssignments) || void 0 === n ? vo
 for (var d = (r = void 0, a(m.remoteAssignments)), p = d.next(); !p.done; p = d.next()) {
 var f = p.value;
 if (!this.hasReserverAssigned(f)) {
-l.targetRoom = f, l.task = "reserve", k.info("Assigned reserve target ".concat(f, " to ").concat(c.name), {
+l.targetRoom = f, l.task = "reserve", _.info("Assigned reserve target ".concat(f, " to ").concat(c.name), {
 subsystem: "Expansion"
 });
 break;
@@ -18141,7 +18141,7 @@ if (o) return !1;
 if (r.length >= Game.gcl.level) return !1;
 if (this.config.minGclProgressForClaim > 0) {
 var n = Game.gcl.progress / Game.gcl.progressTotal;
-if (n < this.config.minGclProgressForClaim) return Game.time % 500 == 0 && k.info("Waiting for GCL progress: ".concat((100 * n).toFixed(1), "% (need ").concat((100 * this.config.minGclProgressForClaim).toFixed(0), "%)"), {
+if (n < this.config.minGclProgressForClaim) return Game.time % 500 == 0 && _.info("Waiting for GCL progress: ".concat((100 * n).toFixed(1), "% (need ").concat((100 * this.config.minGclProgressForClaim).toFixed(0), "%)"), {
 subsystem: "Expansion"
 }), !1;
 }
@@ -18149,7 +18149,7 @@ var a = r.filter(function(e) {
 var r, o;
 return (null !== (o = null === (r = e.controller) || void 0 === r ? void 0 : r.level) && void 0 !== o ? o : 0) >= t.config.minRclForClaiming;
 }), i = a.length / r.length;
-return !(i < this.config.minStableRoomPercentage && (Game.time % 500 == 0 && k.info("Waiting for room stability: ".concat(a.length, "/").concat(r.length, " rooms stable (").concat((100 * i).toFixed(0), "%, need ").concat((100 * this.config.minStableRoomPercentage).toFixed(0), "%)"), {
+return !(i < this.config.minStableRoomPercentage && (Game.time % 500 == 0 && _.info("Waiting for room stability: ".concat(a.length, "/").concat(r.length, " rooms stable (").concat((100 * i).toFixed(0), "%, need ").concat((100 * this.config.minStableRoomPercentage).toFixed(0), "%)"), {
 subsystem: "Expansion"
 }), 1));
 }, e.prototype.getNextExpansionTarget = function(e) {
@@ -18173,7 +18173,7 @@ if (a.sort(function(e, t) {
 return t.clusterScore - e.clusterScore;
 }), Game.time % 100 == 0 && a.length > 0) {
 var i = a[0];
-k.info("Next expansion target: ".concat(i.roomName, " (score: ").concat(i.score, ", cluster bonus: ").concat(i.clusterScore - i.score, ", distance: ").concat(i.distanceToCluster, ")"), {
+_.info("Next expansion target: ".concat(i.roomName, " (score: ").concat(i.score, ", cluster bonus: ").concat(i.clusterScore - i.score, ", distance: ").concat(i.distanceToCluster, ")"), {
 subsystem: "Expansion"
 });
 }
@@ -18260,20 +18260,20 @@ if (!t.claimed) return "continue";
 var r = n - t.lastEvaluated;
 if (r > 5e3) {
 var a = Game.rooms[t.roomName];
-return (null === (o = null == a ? void 0 : a.controller) || void 0 === o ? void 0 : o.my) ? (k.info("Expansion to ".concat(t.roomName, " completed successfully"), {
+return (null === (o = null == a ? void 0 : a.controller) || void 0 === o ? void 0 : o.my) ? (_.info("Expansion to ".concat(t.roomName, " completed successfully"), {
 subsystem: "Expansion"
-}), s.removeFromClaimQueue(e, t.roomName), "continue") : (k.warn("Expansion to ".concat(t.roomName, " timed out after ").concat(r, " ticks"), {
+}), s.removeFromClaimQueue(e, t.roomName), "continue") : (_.warn("Expansion to ".concat(t.roomName, " timed out after ").concat(r, " ticks"), {
 subsystem: "Expansion"
 }), s.cancelExpansion(e, t.roomName, "timeout"), "continue");
 }
 if (!Object.values(Game.creeps).some(function(e) {
 var r = e.memory;
 return "claimer" === r.role && r.targetRoom === t.roomName && "claim" === r.task;
-}) && r > 1e3) return k.warn("No active claimer for ".concat(t.roomName, " expansion"), {
+}) && r > 1e3) return _.warn("No active claimer for ".concat(t.roomName, " expansion"), {
 subsystem: "Expansion"
 }), s.cancelExpansion(e, t.roomName, "claimer_died"), "continue";
 var i = e.knownRooms[t.roomName];
-if ((null == i ? void 0 : i.owner) && i.owner !== s.getMyUsername()) return k.warn("".concat(t.roomName, " claimed by ").concat(i.owner, " before we could claim it"), {
+if ((null == i ? void 0 : i.owner) && i.owner !== s.getMyUsername()) return _.warn("".concat(t.roomName, " claimed by ").concat(i.owner, " before we could claim it"), {
 subsystem: "Expansion"
 }), s.cancelExpansion(e, t.roomName, "hostile_claim"), "continue";
 var c = Object.values(Game.rooms).filter(function(e) {
@@ -18285,7 +18285,7 @@ return e.storage;
 var r, o;
 return e + (null !== (o = null === (r = t.storage) || void 0 === r ? void 0 : r.store.getUsedCapacity(RESOURCE_ENERGY)) && void 0 !== o ? o : 0);
 }, 0), m = l.length > 0 ? u / l.length : 1 / 0;
-return m < 1e4 ? (k.warn("Cancelling expansion to ".concat(t.roomName, " due to low stored energy (avg: ").concat(m, ")"), {
+return m < 1e4 ? (_.warn("Cancelling expansion to ".concat(t.roomName, " due to low stored energy (avg: ").concat(m, ")"), {
 subsystem: "Expansion"
 }), s.cancelExpansion(e, t.roomName, "low_energy"), "continue") : void 0;
 }, s = this;
@@ -18309,7 +18309,7 @@ try {
 for (var i = a(Object.values(Game.creeps)), s = i.next(); !s.done; s = i.next()) {
 var c = s.value, l = c.memory;
 "claimer" === l.role && l.targetRoom === t && "claim" === l.task && (l.targetRoom = void 0, 
-l.task = void 0, k.info("Cleared target for ".concat(c.name, " due to expansion cancellation"), {
+l.task = void 0, _.info("Cleared target for ".concat(c.name, " due to expansion cancellation"), {
 subsystem: "Expansion"
 }));
 }
@@ -18324,7 +18324,7 @@ s && !s.done && (n = i.return) && n.call(i);
 if (o) throw o.error;
 }
 }
-k.info("Cancelled expansion to ".concat(t, ", reason: ").concat(r), {
+_.info("Cancelled expansion to ".concat(t, ", reason: ").concat(r), {
 subsystem: "Expansion"
 });
 }, e.prototype.removeFromClaimQueue = function(e, t) {
@@ -18334,18 +18334,18 @@ return e.roomName === t;
 -1 !== r && e.claimQueue.splice(r, 1);
 }, e.prototype.addRemoteRoom = function(e, t) {
 var r = Nt.getSwarmState(e);
-return r ? (r.remoteAssignments || (r.remoteAssignments = []), r.remoteAssignments.includes(t) ? (k.warn("Remote ".concat(t, " already assigned to ").concat(e), {
+return r ? (r.remoteAssignments || (r.remoteAssignments = []), r.remoteAssignments.includes(t) ? (_.warn("Remote ".concat(t, " already assigned to ").concat(e), {
 subsystem: "Expansion"
-}), !1) : (r.remoteAssignments.push(t), k.info("Manually added remote ".concat(t, " to ").concat(e), {
+}), !1) : (r.remoteAssignments.push(t), _.info("Manually added remote ".concat(t, " to ").concat(e), {
 subsystem: "Expansion"
-}), !0)) : (k.error("Cannot add remote: ".concat(e, " not found"), {
+}), !0)) : (_.error("Cannot add remote: ".concat(e, " not found"), {
 subsystem: "Expansion"
 }), !1);
 }, e.prototype.removeRemoteRoom = function(e, t) {
 var r = Nt.getSwarmState(e);
 if (!(null == r ? void 0 : r.remoteAssignments)) return !1;
 var o = r.remoteAssignments.indexOf(t);
-return -1 !== o && (r.remoteAssignments.splice(o, 1), k.info("Manually removed remote ".concat(t, " from ").concat(e), {
+return -1 !== o && (r.remoteAssignments.splice(o, 1), _.info("Manually removed remote ".concat(t, " from ").concat(e), {
 subsystem: "Expansion"
 }), !0);
 }, n([ ua("expansion:manager", "Expansion Manager", {
@@ -18392,23 +18392,23 @@ C += "\n";
 }
 if (E > 0) {
 C += "=== Active Expansion Attempts ===\n";
-var U = m.claimQueue.filter(function(e) {
+var M = m.claimQueue.filter(function(e) {
 return e.claimed;
-}), M = function(e) {
+}), U = function(e) {
 var t = Game.time - e.lastEvaluated, r = T.find(function(t) {
 return t.memory.targetRoom === e.roomName;
 }), o = r ? "".concat(r.name, " en route") : "No claimer assigned";
 C += "  ".concat(e.roomName, ": ").concat(o, ", Age ").concat(t, " ticks\n");
 };
 try {
-for (var _ = a(U), k = _.next(); !k.done; k = _.next()) M(b = k.value);
+for (var k = a(M), _ = k.next(); !_.done; _ = k.next()) U(b = _.value);
 } catch (e) {
 r = {
 error: e
 };
 } finally {
 try {
-k && !k.done && (o = _.return) && o.call(_);
+_ && !_.done && (o = k.return) && o.call(k);
 } finally {
 if (r) throw r.error;
 }
@@ -18566,7 +18566,7 @@ var t = $i(e);
 if (!t) return null;
 try {
 var r = JSON.parse(t);
-if ("quest" === r.type && r.id && r.room && r.quest && "number" == typeof r.end) return !r.result && r.end <= Game.time ? (k.debug("Ignoring quest ".concat(r.id, " with past deadline: ").concat(r.end, " (current: ").concat(Game.time, ")"), {
+if ("quest" === r.type && r.id && r.room && r.quest && "number" == typeof r.end) return !r.result && r.end <= Game.time ? (_.debug("Ignoring quest ".concat(r.id, " with past deadline: ").concat(r.end, " (current: ").concat(Game.time, ")"), {
 subsystem: "TooAngel"
 }), null) : r;
 } catch (e) {}
@@ -18590,7 +18590,7 @@ return ns.SUPPORTED_TYPES.includes(e);
 
 function ls(e, t, r) {
 var o, n;
-if (!ss()) return k.debug("Cannot accept more quests (at max capacity)", {
+if (!ss()) return _.debug("Cannot accept more quests (at max capacity)", {
 subsystem: "TooAngel"
 }), !1;
 if (r) n = Game.rooms[r]; else {
@@ -18603,11 +18603,11 @@ c < a && (a = c, n = s);
 }
 }
 }
-if (!n || !n.terminal || !n.terminal.my) return k.warn("No terminal available to apply for quest", {
+if (!n || !n.terminal || !n.terminal.my) return _.warn("No terminal available to apply for quest", {
 subsystem: "TooAngel"
 }), !1;
 var l = n.terminal, u = l.store[RESOURCE_ENERGY];
-if (u < ns.MIN_APPLICATION_ENERGY) return k.warn("Insufficient energy for quest application: ".concat(u, " < ").concat(ns.MIN_APPLICATION_ENERGY), {
+if (u < ns.MIN_APPLICATION_ENERGY) return _.warn("Insufficient energy for quest application: ".concat(u, " < ").concat(ns.MIN_APPLICATION_ENERGY), {
 subsystem: "TooAngel"
 }), !1;
 var m = {
@@ -18615,7 +18615,7 @@ type: "quest",
 id: e,
 action: "apply"
 }, d = l.send(RESOURCE_ENERGY, ns.MIN_APPLICATION_ENERGY, t, JSON.stringify(m));
-return d === OK ? (k.info("Applied for quest ".concat(e, " from ").concat(n.name, " to ").concat(t), {
+return d === OK ? (_.info("Applied for quest ".concat(e, " from ").concat(n.name, " to ").concat(t), {
 subsystem: "TooAngel"
 }), os().activeQuests[e] = {
 id: e,
@@ -18625,18 +18625,18 @@ targetRoom: "",
 originRoom: t,
 deadline: 0,
 appliedAt: Game.time
-}, !0) : (k.warn("Failed to apply for quest: ".concat(d), {
+}, !0) : (_.warn("Failed to apply for quest: ".concat(d), {
 subsystem: "TooAngel"
 }), !1);
 }
 
 function us(e) {
 var t = os(), r = t.activeQuests[e.id];
-r ? ("won" === e.result ? (k.info("Quest ".concat(e.id, " completed successfully!"), {
+r ? ("won" === e.result ? (_.info("Quest ".concat(e.id, " completed successfully!"), {
 subsystem: "TooAngel"
-}), r.status = "completed") : (k.warn("Quest ".concat(e.id, " failed"), {
+}), r.status = "completed") : (_.warn("Quest ".concat(e.id, " failed"), {
 subsystem: "TooAngel"
-}), r.status = "failed"), r.completedAt = Game.time, t.completedQuests.includes(e.id) || t.completedQuests.push(e.id)) : k.warn("Received completion for unknown quest: ".concat(e.id), {
+}), r.status = "failed"), r.completedAt = Game.time, t.completedQuests.includes(e.id) || t.completedQuests.push(e.id)) : _.warn("Received completion for unknown quest: ".concat(e.id), {
 subsystem: "TooAngel"
 });
 }
@@ -18658,7 +18658,7 @@ return null;
 
 function ps(e) {
 var t, r, o, n = os(), a = (null === (t = n.reputation) || void 0 === t ? void 0 : t.lastRequestedAt) || 0;
-if (Game.time - a < 1e3) return k.debug("Reputation request on cooldown (".concat(1e3 - (Game.time - a), " ticks remaining)"), {
+if (Game.time - a < 1e3) return _.debug("Reputation request on cooldown (".concat(1e3 - (Game.time - a), " ticks remaining)"), {
 subsystem: "TooAngel"
 }), !1;
 if (e) o = Game.rooms[e]; else for (var i in Game.rooms) {
@@ -18668,7 +18668,7 @@ o = s;
 break;
 }
 }
-if (!o || !o.terminal || !o.terminal.my) return k.warn("No terminal available to request reputation", {
+if (!o || !o.terminal || !o.terminal.my) return _.warn("No terminal available to request reputation", {
 subsystem: "TooAngel"
 }), !1;
 var c = function(e) {
@@ -18679,19 +18679,19 @@ a < o && (o = a, r = t[n]);
 }
 return r;
 }(o.name);
-if (!c || !c.hasTerminal) return k.warn("No TooAngel NPC room with terminal found", {
+if (!c || !c.hasTerminal) return _.warn("No TooAngel NPC room with terminal found", {
 subsystem: "TooAngel"
 }), !1;
 var l = o.terminal, u = l.store[RESOURCE_ENERGY];
-if (u < 100) return k.warn("Insufficient energy for reputation request: ".concat(u, " < ").concat(100), {
+if (u < 100) return _.warn("Insufficient energy for reputation request: ".concat(u, " < ").concat(100), {
 subsystem: "TooAngel"
 }), !1;
 var m = l.send(RESOURCE_ENERGY, 100, c.roomName, JSON.stringify({
 type: "reputation"
 }));
-return m === OK ? (k.info("Sent reputation request to ".concat(c.roomName, " from ").concat(o.name), {
+return m === OK ? (_.info("Sent reputation request to ".concat(c.roomName, " from ").concat(o.name), {
 subsystem: "TooAngel"
-}), n.reputation.lastRequestedAt = Game.time, !0) : (k.warn("Failed to send reputation request: ".concat(m), {
+}), n.reputation.lastRequestedAt = Game.time, !0) : (_.warn("Failed to send reputation request: ".concat(m), {
 subsystem: "TooAngel"
 }), !1);
 }
@@ -18700,7 +18700,7 @@ function fs(e) {
 var t, r, o = Game.rooms[e.targetRoom];
 if (o) {
 var n = o.find(FIND_CONSTRUCTION_SITES);
-k.debug("Quest ".concat(e.id, " (buildcs): ").concat(n.length, " construction sites remaining in ").concat(e.targetRoom), {
+_.debug("Quest ".concat(e.id, " (buildcs): ").concat(n.length, " construction sites remaining in ").concat(e.targetRoom), {
 subsystem: "TooAngel"
 });
 var c = (e.assignedCreeps || []).filter(function(e) {
@@ -18782,13 +18782,13 @@ return e.name;
 maxBuilders: 3
 });
 e.assignedCreeps = u.assignedCreeps, u.status && (e.status = u.status, e.completedAt = u.completedAt), 
-u.notifyComplete && (k.info("Quest ".concat(e.id, " (buildcs) completed! All construction sites built in ").concat(e.targetRoom), {
+u.notifyComplete && (_.info("Quest ".concat(e.id, " (buildcs) completed! All construction sites built in ").concat(e.targetRoom), {
 subsystem: "TooAngel"
 }), function(e, t) {
 var r, o, n = function(e) {
 return is()[e] || null;
 }(e);
-if (!n) return k.warn("Cannot notify completion for unknown quest: ".concat(e), {
+if (!n) return _.warn("Cannot notify completion for unknown quest: ".concat(e), {
 subsystem: "TooAngel"
 }), !1;
 for (var a in Game.rooms) {
@@ -18807,7 +18807,7 @@ quest: n.type,
 end: n.deadline,
 result: t ? "won" : "lost"
 };
-o.terminal.send(RESOURCE_ENERGY, 100, n.originRoom, JSON.stringify(s)) === OK && k.info("Notified quest completion: ".concat(e, " (").concat(t ? "won" : "lost", ")"), {
+o.terminal.send(RESOURCE_ENERGY, 100, n.originRoom, JSON.stringify(s)) === OK && _.info("Notified quest completion: ".concat(e, " (").concat(t ? "won" : "lost", ")"), {
 subsystem: "TooAngel"
 });
 }(u.notifyComplete.questId, u.notifyComplete.success));
@@ -18817,7 +18817,7 @@ var p = d.value, f = Game.creeps[p.creepName];
 if (f) {
 var y = f.memory, g = y.questId === p.questId;
 y.questId = p.questId, y.questTarget = p.questTarget, y.questAction = p.questAction, 
-g || k.info("Assigned ".concat(f.name, " to quest ").concat(e.id, " (buildcs)"), {
+g || _.info("Assigned ".concat(f.name, " to quest ").concat(e.id, " (buildcs)"), {
 subsystem: "TooAngel"
 });
 }
@@ -18833,7 +18833,7 @@ d && !d.done && (r = m.return) && r.call(m);
 if (t) throw t.error;
 }
 }
-} else k.debug("Cannot execute buildcs quest ".concat(e.id, ": room ").concat(e.targetRoom, " not visible"), {
+} else _.debug("Cannot execute buildcs quest ".concat(e.id, ": room ").concat(e.targetRoom, " not visible"), {
 subsystem: "TooAngel"
 });
 }
@@ -18847,12 +18847,12 @@ var e, t;
 return null === (t = null === (e = Memory.tooangel) || void 0 === e ? void 0 : e.enabled) || void 0 === t || t;
 }, e.prototype.enable = function() {
 var e = Memory;
-e.tooangel || (e.tooangel = {}), e.tooangel.enabled = !0, k.info("TooAngel integration enabled", {
+e.tooangel || (e.tooangel = {}), e.tooangel.enabled = !0, _.info("TooAngel integration enabled", {
 subsystem: "TooAngel"
 });
 }, e.prototype.disable = function() {
 var e = Memory;
-e.tooangel || (e.tooangel = {}), e.tooangel.enabled = !1, k.info("TooAngel integration disabled", {
+e.tooangel || (e.tooangel = {}), e.tooangel.enabled = !1, _.info("TooAngel integration disabled", {
 subsystem: "TooAngel"
 });
 }, e.prototype.run = function() {
@@ -18868,14 +18868,14 @@ try {
 if (i.order) continue;
 if (!i.description) continue;
 var s = ds(i.description);
-null !== s && (k.info("Received reputation update from TooAngel: ".concat(s), {
+null !== s && (_.info("Received reputation update from TooAngel: ".concat(s), {
 subsystem: "TooAngel"
 }), r.reputation = {
 value: s,
 lastUpdated: Game.time
 });
 } catch (e) {
-k.warn("Skipping malformed TooAngel reputation transaction: ".concat(e), {
+_.warn("Skipping malformed TooAngel reputation transaction: ".concat(e), {
 subsystem: "TooAngel"
 });
 }
@@ -18905,7 +18905,7 @@ if (i.order) continue;
 if (!i.description) continue;
 var s = as(i.description);
 if (s) {
-if (k.info("Received quest ".concat(s.id, ": ").concat(s.quest, " in ").concat(s.room, " (deadline: ").concat(s.end, ")"), {
+if (_.info("Received quest ".concat(s.id, ": ").concat(s.quest, " in ").concat(s.room, " (deadline: ").concat(s.end, ")"), {
 subsystem: "TooAngel"
 }), s.result) {
 us(s);
@@ -18922,12 +18922,12 @@ deadline: s.end,
 appliedAt: null == c ? void 0 : c.appliedAt,
 receivedAt: Game.time,
 assignedCreeps: []
-}, cs(s.quest) || (k.warn("Received unsupported quest type: ".concat(s.quest), {
+}, cs(s.quest) || (_.warn("Received unsupported quest type: ".concat(s.quest), {
 subsystem: "TooAngel"
 }), r.activeQuests[s.id].status = "failed");
 }
 } catch (e) {
-k.warn("Skipping malformed TooAngel quest transaction: ".concat(e), {
+_.warn("Skipping malformed TooAngel quest transaction: ".concat(e), {
 subsystem: "TooAngel"
 });
 }
@@ -18957,9 +18957,9 @@ return void 0 !== Game.creeps[e];
 var e, t = (null === (e = Memory.tooangel) || void 0 === e ? void 0 : e.activeQuests) || {};
 for (var r in t) {
 var o = t[r];
-"active" === o.status && (o.deadline > 0 && Game.time > o.deadline ? (k.warn("Quest ".concat(r, " missed deadline (").concat(o.deadline, ")"), {
+"active" === o.status && (o.deadline > 0 && Game.time > o.deadline ? (_.warn("Quest ".concat(r, " missed deadline (").concat(o.deadline, ")"), {
 subsystem: "TooAngel"
-}), o.status = "failed", o.completedAt = Game.time) : "buildcs" === o.type ? fs(o) : (k.warn("Unsupported quest type for execution: ".concat(o.type), {
+}), o.status = "failed", o.completedAt = Game.time) : "buildcs" === o.type ? fs(o) : (_.warn("Unsupported quest type for execution: ".concat(o.type), {
 subsystem: "TooAngel"
 }), o.status = "failed", o.completedAt = Game.time));
 }
@@ -18967,7 +18967,7 @@ subsystem: "TooAngel"
 var e = os().activeQuests || {};
 for (var t in e) {
 var r = e[t];
-r.deadline > 0 && Game.time >= r.deadline - ns.DEADLINE_BUFFER && ("active" !== r.status && "applied" !== r.status || (k.warn("Quest ".concat(t, " expired (deadline: ").concat(r.deadline, ", current: ").concat(Game.time, ")"), {
+r.deadline > 0 && Game.time >= r.deadline - ns.DEADLINE_BUFFER && ("active" !== r.status && "applied" !== r.status || (_.warn("Quest ".concat(t, " expired (deadline: ").concat(r.deadline, ", current: ").concat(Game.time, ")"), {
 subsystem: "TooAngel"
 }), r.status = "failed", r.completedAt = Game.time)), ("completed" === r.status || "failed" === r.status) && r.completedAt && Game.time - r.completedAt > 1e4 && delete e[t];
 }
@@ -18976,7 +18976,7 @@ Game.time - this.lastReputationRequestTick >= 2e3 && (this.updateReputation(), t
 Game.time - this.lastQuestDiscoveryTick >= 1e3 && (this.discoverQuests(), this.lastQuestDiscoveryTick = Game.time);
 } catch (t) {
 var e = "tooangel_error_".concat(Game.time % 100);
-Memory[e] || (k.error("TooAngel manager error: ".concat(t), {
+Memory[e] || (_.error("TooAngel manager error: ".concat(t), {
 subsystem: "TooAngel"
 }), Memory[e] = !0);
 }
@@ -18985,7 +18985,7 @@ var e, t, r = function() {
 var e = [];
 for (var t in Game.rooms) {
 var r = es(Game.rooms[t]);
-r && (k.info("Detected TooAngel NPC room: ".concat(t), {
+r && (_.info("Detected TooAngel NPC room: ".concat(t), {
 subsystem: "TooAngel"
 }), e.push(r));
 }
@@ -19004,7 +19004,7 @@ n && !n.done && (t = o.return) && t.call(o);
 if (e) throw e.error;
 }
 }
-r.length > 0 && k.info("Scanned ".concat(r.length, " TooAngel NPC rooms"), {
+r.length > 0 && _.info("Scanned ".concat(r.length, " TooAngel NPC rooms"), {
 subsystem: "TooAngel"
 });
 }, e.prototype.updateReputation = function() {
@@ -19019,7 +19019,7 @@ var i = r[n];
 try {
 for (var s = (e = void 0, a(i.availableQuests)), c = s.next(); !c.done; c = s.next()) {
 var l = c.value;
-if (!o[l]) return k.info("Auto-applying for quest ".concat(l, " from ").concat(n), {
+if (!o[l]) return _.info("Auto-applying for quest ".concat(l, " from ").concat(n), {
 subsystem: "TooAngel"
 }), void ls(l, n);
 }
@@ -19203,18 +19203,18 @@ u += "  Compressed size:  ".concat(mt.formatBytes(l.compressedSize), "\n"), u +=
 (u += "  Compression ratio: ".concat((100 * l.ratio).toFixed(1), "%\n")) + "  Worth compressing: ".concat(l.ratio < .9 ? "YES" : "NO", "\n");
 }, e.prototype.migrations = function() {
 return e = {
-currentVersion: Mt.getCurrentVersion(),
-latestVersion: Mt.getLatestVersion(),
-pending: Mt.getPendingMigrations()
+currentVersion: Ut.getCurrentVersion(),
+latestVersion: Ut.getLatestVersion(),
+pending: Ut.getPendingMigrations()
 }, t = [ "Memory Migration Status:", "  Current version: ".concat(e.currentVersion), "  Latest version:  ".concat(e.latestVersion), "  Status: ".concat(e.pending.length > 0 ? "PENDING" : "UP TO DATE"), "" ], 
 e.pending.length > 0 && t.push.apply(t, s(s([ "Pending Migrations:" ], i(e.pending.map(function(e) {
 return "  v".concat(e.version, ": ").concat(e.description);
 })), !1), [ "", "Migrations will run automatically on next tick." ], !1)), "".concat(t.join("\n"), "\n");
 var e, t;
 }, e.prototype.migrate = function() {
-var e = Mt.getCurrentVersion();
-Mt.runMigrations();
-var t = Mt.getCurrentVersion();
+var e = Ut.getCurrentVersion();
+Ut.runMigrations();
+var t = Ut.getCurrentVersion();
 return t > e ? "Migrated from v".concat(e, " to v").concat(t) : "No migrations needed (current: v".concat(t, ")");
 }, e.prototype.reset = function(e) {
 if ("CONFIRM" !== e) return "WARNING: This will clear ALL memory!\nTo confirm, use: memory.reset('CONFIRM')";
@@ -19308,7 +19308,7 @@ power: a.power,
 decayTick: Game.time + (null !== (e = a.ticksToDecay) && void 0 !== e ? e : 5e3),
 active: !1
 };
-r.powerBanks.push(s), a.power >= n.config.minPower && k.info("Power bank discovered in ".concat(o, ": ").concat(a.power, " power"), {
+r.powerBanks.push(s), a.power >= n.config.minPower && _.info("Power bank discovered in ".concat(o, ": ").concat(a.power, " power"), {
 subsystem: "PowerBank"
 });
 }
@@ -19373,11 +19373,11 @@ filter: function(t) {
 return t.structureType === STRUCTURE_POWER_BANK && t.pos.x === e.pos.x && t.pos.y === e.pos.y;
 }
 })[0];
-if (!o) return e.state = "failed", void k.warn("Power bank in ".concat(e.roomName, " disappeared"), {
+if (!o) return e.state = "failed", void _.warn("Power bank in ".concat(e.roomName, " disappeared"), {
 subsystem: "PowerBank"
 });
 e.power = o.power, e.decayTick = Game.time + (null !== (t = o.ticksToDecay) && void 0 !== t ? t : 0), 
-e.assignedCreeps.attackers.length > 0 && (e.state = "attacking", k.info("Starting attack on power bank in ".concat(e.roomName), {
+e.assignedCreeps.attackers.length > 0 && (e.state = "attacking", _.info("Starting attack on power bank in ".concat(e.roomName), {
 subsystem: "PowerBank"
 }));
 }
@@ -19393,13 +19393,13 @@ filter: function(t) {
 return t.structureType === STRUCTURE_POWER_BANK && t.pos.x === e.pos.x && t.pos.y === e.pos.y;
 }
 })[0];
-if (!o) return e.state = "collecting", void k.info("Power bank destroyed in ".concat(e.roomName, ", collecting power"), {
+if (!o) return e.state = "collecting", void _.info("Power bank destroyed in ".concat(e.roomName, ", collecting power"), {
 subsystem: "PowerBank"
 });
 var n = null !== (t = e.lastHits) && void 0 !== t ? t : 2e6;
 e.lastHits = o.hits, n > o.hits && (e.damageDealt += n - o.hits);
 var a = e.decayTick - Game.time, i = e.damageDealt / Math.max(1, Game.time - e.startedAt), s = o.hits / Math.max(1, i);
-s > .9 * a && k.warn("Power bank in ".concat(e.roomName, " may decay before completion (").concat(Math.round(s), " > ").concat(a, ")"), {
+s > .9 * a && _.warn("Power bank in ".concat(e.roomName, " may decay before completion (").concat(Math.round(s), " > ").concat(a, ")"), {
 subsystem: "PowerBank"
 }), e.estimatedCompletion = Game.time + Math.round(s);
 } else 0 === e.assignedCreeps.attackers.length && 0 === e.assignedCreeps.healers.length && (e.state = "failed");
@@ -19417,7 +19417,7 @@ filter: function(e) {
 return e.store.getUsedCapacity(RESOURCE_POWER) > 0;
 }
 });
-0 === r.length && 0 === o.length && (e.state = "complete", k.info("Power bank operation complete in ".concat(e.roomName, ": ").concat(e.powerCollected, " power collected"), {
+0 === r.length && 0 === o.length && (e.state = "complete", _.info("Power bank operation complete in ".concat(e.roomName, ": ").concat(e.powerCollected, " power collected"), {
 subsystem: "PowerBank"
 }));
 } else 0 === e.assignedCreeps.carriers.length && (e.state = "failed");
@@ -19508,7 +19508,7 @@ powerCollected: 0,
 startedAt: Game.time,
 estimatedCompletion: 0
 };
-this.operations.set(e.roomName, m), e.active = !0, k.info("Started power bank operation in ".concat(e.roomName, " (").concat(e.power, " power, home: ").concat(n.name, ")"), {
+this.operations.set(e.roomName, m), e.active = !0, _.info("Started power bank operation in ".concat(e.roomName, " (").concat(e.power, " power, home: ").concat(n.name, ")"), {
 subsystem: "PowerBank"
 });
 }
@@ -19596,7 +19596,7 @@ return "complete" !== e.state && "failed" !== e.state;
 try {
 for (var o = a(r), n = o.next(); !n.done; n = o.next()) {
 var i = n.value;
-k.info("Power bank op ".concat(i.roomName, ": ").concat(i.state, ", ") + "".concat(i.assignedCreeps.attackers.length, "A/").concat(i.assignedCreeps.healers.length, "H/").concat(i.assignedCreeps.carriers.length, "C, ") + "".concat(Math.round(i.damageDealt / 1e3), "k damage, ").concat(i.powerCollected, " collected"), {
+_.info("Power bank op ".concat(i.roomName, ": ").concat(i.state, ", ") + "".concat(i.assignedCreeps.attackers.length, "A/").concat(i.assignedCreeps.healers.length, "H/").concat(i.assignedCreeps.carriers.length, "C, ") + "".concat(Math.round(i.damageDealt / 1e3), "k damage, ").concat(i.powerCollected, " collected"), {
 subsystem: "PowerBank"
 });
 }
@@ -19623,7 +19623,7 @@ minPowerReserve: 1e4,
 energyPerPower: 50,
 minEnergyReserve: 1e5,
 gplMilestones: [ 1, 2, 5, 10, 15, 20 ]
-}, Us = [ PWR_GENERATE_OPS, PWR_OPERATE_SPAWN, PWR_OPERATE_EXTENSION, PWR_OPERATE_TOWER, PWR_OPERATE_LAB, PWR_OPERATE_STORAGE, PWR_REGEN_SOURCE, PWR_OPERATE_FACTORY ], Ms = [ PWR_GENERATE_OPS, PWR_OPERATE_SPAWN, PWR_SHIELD, PWR_DISRUPT_SPAWN, PWR_DISRUPT_TOWER, PWR_FORTIFY, PWR_OPERATE_TOWER, PWR_DISRUPT_TERMINAL ], _s = function() {
+}, Ms = [ PWR_GENERATE_OPS, PWR_OPERATE_SPAWN, PWR_OPERATE_EXTENSION, PWR_OPERATE_TOWER, PWR_OPERATE_LAB, PWR_OPERATE_STORAGE, PWR_REGEN_SOURCE, PWR_OPERATE_FACTORY ], Us = [ PWR_GENERATE_OPS, PWR_OPERATE_SPAWN, PWR_SHIELD, PWR_DISRUPT_SPAWN, PWR_DISRUPT_TOWER, PWR_FORTIFY, PWR_OPERATE_TOWER, PWR_DISRUPT_TERMINAL ], ks = function() {
 function e(e) {
 void 0 === e && (e = {}), this.assignments = new Map, this.gplState = null, this.lastGPLUpdate = 0, 
 this.config = o(o({}, Os), e);
@@ -19648,7 +19648,7 @@ totalPowerProcessed: (null !== (n = null === (o = this.gplState) || void 0 === o
 ticksToNextLevel: m,
 targetMilestone: d,
 lastUpdate: Game.time
-}, this.lastGPLUpdate !== a && a > 0 && (k.info("GPL milestone reached: Level ".concat(a), {
+}, this.lastGPLUpdate !== a && a > 0 && (_.info("GPL milestone reached: Level ".concat(a), {
 subsystem: "PowerCreep"
 }), this.lastGPLUpdate = a);
 } else this.gplState = null;
@@ -19667,7 +19667,7 @@ return e.structureType === STRUCTURE_POWER_SPAWN;
 })[0];
 if (c) {
 var l = c.store.getUsedCapacity(RESOURCE_POWER) > 0, u = c.store.getUsedCapacity(RESOURCE_ENERGY) >= 50;
-l && u && c.processPower() === OK && k.debug("Processing power in ".concat(i.roomName, ": ").concat(i.reason), {
+l && u && c.processPower() === OK && _.debug("Processing power in ".concat(i.roomName, ": ").concat(i.reason), {
 subsystem: "PowerCreep"
 });
 }
@@ -19776,11 +19776,11 @@ lastRespawnTick: void 0 !== e.ticksToLive ? Game.time : void 0,
 priority: "powerQueen" === o ? 100 : 80,
 powerPath: c
 }, u = e.memory;
-return u.homeRoom = a, u.role = o, k.info("Power creep ".concat(e.name, " assigned as ").concat(o, " to ").concat(a), {
+return u.homeRoom = a, u.role = o, _.info("Power creep ".concat(e.name, " assigned as ").concat(o, " to ").concat(a), {
 subsystem: "PowerCreep"
 }), l;
 }, e.prototype.generatePowerPath = function(e) {
-var t = this, r = ("powerQueen" === e ? Us : Ms).filter(function(e) {
+var t = this, r = ("powerQueen" === e ? Ms : Us).filter(function(e) {
 var r, o, n = POWER_INFO[e];
 return n && void 0 !== n.level && n.level[0] <= (null !== (o = null === (r = t.gplState) || void 0 === r ? void 0 : r.currentLevel) && void 0 !== o ? o : 0);
 });
@@ -19794,9 +19794,9 @@ if (l && !(l.level >= this.gplState.currentLevel)) {
 var u = this.selectNextPower(l, c);
 if (u) {
 var m = l.upgrade(u);
-m === OK ? (k.info("Upgraded ".concat(l.name, " to level ").concat(l.level + 1, " with ").concat(u), {
+m === OK ? (_.info("Upgraded ".concat(l.name, " to level ").concat(l.level + 1, " with ").concat(u), {
 subsystem: "PowerCreep"
-}), c.level = l.level) : m !== ERR_NOT_ENOUGH_RESOURCES && k.warn("Failed to upgrade ".concat(l.name, ": ").concat(m), {
+}), c.level = l.level) : m !== ERR_NOT_ENOUGH_RESOURCES && _.warn("Failed to upgrade ".concat(l.name, ": ").concat(m), {
 subsystem: "PowerCreep"
 });
 }
@@ -19846,9 +19846,9 @@ return "powerWarrior" === e.role;
 }).length, n = r < Math.ceil(.7 * t), a = o < Math.floor(.3 * t);
 if (n || a) {
 var i = "operator_".concat(Game.time), s = POWER_CLASS.OPERATOR, c = PowerCreep.create(i, s);
-c === OK ? k.info("Created new power creep: ".concat(i, " (").concat(s, ")"), {
+c === OK ? _.info("Created new power creep: ".concat(i, " (").concat(s, ")"), {
 subsystem: "PowerCreep"
-}) : k.warn("Failed to create power creep: ".concat(c), {
+}) : _.warn("Failed to create power creep: ".concat(c), {
 subsystem: "PowerCreep"
 });
 }
@@ -19865,7 +19865,7 @@ if (!(u = Game.rooms[c.assignedRoom])) continue;
 filter: function(e) {
 return e.structureType === STRUCTURE_POWER_SPAWN;
 }
-})[0]) && l.spawn(m) === OK && (k.info("Power creep ".concat(s, " spawned at ").concat(u.name), {
+})[0]) && l.spawn(m) === OK && (_.info("Power creep ".concat(s, " spawned at ").concat(u.name), {
 subsystem: "PowerCreep"
 }), c.spawned = !0, c.lastRespawnTick = Game.time);
 } else if (l.ticksToLive < 500) {
@@ -19875,7 +19875,7 @@ if (!(u = l.room)) continue;
 filter: function(e) {
 return e.structureType === STRUCTURE_POWER_SPAWN;
 }
-})[0]) && l.pos.getRangeTo(m) <= 1 && l.renew(m) === OK && k.debug("Power creep ".concat(s, " renewed"), {
+})[0]) && l.pos.getRangeTo(m) <= 1 && l.renew(m) === OK && _.debug("Power creep ".concat(s, " renewed"), {
 subsystem: "PowerCreep"
 });
 }
@@ -19902,7 +19902,7 @@ var r = this.assignments.get(e);
 if (!r) return !1;
 r.assignedRoom = t;
 var o = Game.powerCreeps[e];
-return o && (o.memory.homeRoom = t), k.info("Power creep ".concat(e, " reassigned to ").concat(t), {
+return o && (o.memory.homeRoom = t), _.info("Power creep ".concat(e, " reassigned to ").concat(t), {
 subsystem: "PowerCreep"
 }), !0;
 }, e.prototype.logStatus = function() {
@@ -19914,7 +19914,7 @@ return "powerQueen" === e.role;
 }).length, r = e.filter(function(e) {
 return "powerWarrior" === e.role;
 }).length;
-k.info("Power System: GPL ".concat(this.gplState.currentLevel, " ") + "(".concat(this.gplState.currentProgress, "/").concat(this.gplState.progressNeeded, "), ") + "Operators: ".concat(e.length, "/").concat(this.gplState.currentLevel, " ") + "(".concat(t, " eco, ").concat(r, " combat)"), {
+_.info("Power System: GPL ".concat(this.gplState.currentLevel, " ") + "(".concat(this.gplState.currentProgress, "/").concat(this.gplState.progressNeeded, "), ") + "Operators: ".concat(e.length, "/").concat(this.gplState.currentLevel, " ") + "(".concat(t, " eco, ").concat(r, " combat)"), {
 subsystem: "PowerCreep"
 });
 }
@@ -19924,7 +19924,7 @@ interval: 20,
 minBucket: 6e3,
 cpuBudget: .03
 }) ], e.prototype, "run", null), n([ pa() ], e);
-}(), ks = new _s, As = {
+}(), _s = new ks, As = {
 info: function() {},
 warn: function() {},
 error: function() {},
@@ -20220,11 +20220,11 @@ var T = E.value, C = Ns[T];
 if (C) {
 var S = null !== (d = v.store[T]) && void 0 !== d ? d : 0, x = Is(T, t), w = x - S;
 if (w > 0) {
-var b = w / x, O = C.priority * (1 + Math.min(b, .5)), U = {};
+var b = w / x, O = C.priority * (1 + Math.min(b, .5)), M = {};
 try {
-for (var M = (c = void 0, a(Object.entries(v.store))), _ = M.next(); !_.done; _ = M.next()) {
-var k = i(_.value, 2), A = k[0], N = k[1];
-U[A] = N;
+for (var U = (c = void 0, a(Object.entries(v.store))), k = U.next(); !k.done; k = U.next()) {
+var _ = i(k.value, 2), A = _[0], N = _[1];
+M[A] = N;
 }
 } catch (e) {
 c = {
@@ -20232,12 +20232,12 @@ error: e
 };
 } finally {
 try {
-_ && !_.done && (l = M.return) && l.call(M);
+k && !k.done && (l = U.return) && l.call(U);
 } finally {
 if (c) throw c.error;
 }
 }
-var P = this.calculateReactionChain(T, U);
+var P = this.calculateReactionChain(T, M);
 try {
 for (var I = (u = void 0, a(P)), G = I.next(); !G.done; G = I.next()) {
 var L = G.value;
@@ -20547,8 +20547,8 @@ for (var x = a(e.labs), w = x.next(); !w.done; w = x.next()) {
 var b = w.value;
 if (b.labId === C.id) b.role = "input1", b.lastConfigured = Game.time; else if (b.labId === S.id) b.role = "input2", 
 b.lastConfigured = Game.time; else {
-var O = C.pos.getRangeTo(Game.getObjectById(b.labId)) <= 2, U = S.pos.getRangeTo(Game.getObjectById(b.labId)) <= 2;
-b.role = O && U ? "output" : "boost", b.lastConfigured = Game.time;
+var O = C.pos.getRangeTo(Game.getObjectById(b.labId)) <= 2, M = S.pos.getRangeTo(Game.getObjectById(b.labId)) <= 2;
+b.role = O && M ? "output" : "boost", b.lastConfigured = Game.time;
 }
 }
 } catch (e) {
@@ -20713,7 +20713,7 @@ c.push(t);
 var r = s.find(function(e) {
 return e.mineralType === t && e.store[t] >= 30;
 });
-if (!r) return k.debug("Lab not ready with ".concat(t, " for ").concat(e.name), {
+if (!r) return _.debug("Lab not ready with ".concat(t, " for ").concat(e.name), {
 subsystem: "Boost"
 }), {
 value: !1
@@ -20726,9 +20726,9 @@ stroke: "#ffaa00"
 value: !1
 };
 var o = r.boostCreep(e);
-if (o === OK) k.info("Boosted ".concat(e.name, " with ").concat(t), {
+if (o === OK) _.info("Boosted ".concat(e.name, " with ").concat(t), {
 subsystem: "Boost"
-}); else if (o !== ERR_NOT_FOUND) return k.error("Failed to boost ".concat(e.name, ": ").concat(function(e) {
+}); else if (o !== ERR_NOT_FOUND) return _.error("Failed to boost ".concat(e.name, ": ").concat(function(e) {
 switch (e) {
 case ERR_NOT_OWNER:
 return "not owner of lab";
@@ -20773,7 +20773,7 @@ m && !m.done && (o = u.return) && o.call(u);
 if (r) throw r.error;
 }
 }
-return 0 === c.length && (n.boosted = !0, k.info("".concat(e.name, " fully boosted (all ").concat(i.boosts.length, " boosts applied)"), {
+return 0 === c.length && (n.boosted = !0, _.info("".concat(e.name, " fully boosted (all ").concat(i.boosts.length, " boosts applied)"), {
 subsystem: "Boost"
 }), !0);
 }, e.prototype.areBoostLabsReady = function(e, t) {
@@ -20880,7 +20880,7 @@ var R = 0;
 try {
 for (var E = a(m), T = E.next(); !(T.done || (h = T.value, R >= u.length)); T = E.next()) {
 var C = u[R];
-(C.mineralType !== h || C.store[h] < 1e3) && k.debug("Lab ".concat(C.id, " needs ").concat(h, " for boosting"), {
+(C.mineralType !== h || C.store[h] < 1e3) && _.debug("Lab ".concat(C.id, " needs ").concat(h, " for boosting"), {
 subsystem: "Boost"
 }), R++;
 }
@@ -20945,16 +20945,16 @@ reasoning: m
 }, e;
 }(), Ks = new Ws, Ys = {
 info: function(e, t) {
-return k.info(e, t);
+return _.info(e, t);
 },
 warn: function(e, t) {
-return k.warn(e, t);
+return _.warn(e, t);
 },
 error: function(e, t) {
-return k.error(e, t);
+return _.error(e, t);
 },
 debug: function(e, t) {
-return k.debug(e, t);
+return _.debug(e, t);
 }
 }, Vs = function() {
 function e() {
@@ -21002,7 +21002,7 @@ var n = o.labs.find(function(e) {
 return e.labId === t;
 });
 return !!n && (n.role = r, n.lastConfigured = Game.time, o.lastUpdate = Game.time, 
-this.manager.importConfig(o), k.info("Set ".concat(t, " to role ").concat(r, " in ").concat(e), {
+this.manager.importConfig(o), _.info("Set ".concat(t, " to role ").concat(r, " in ").concat(e), {
 subsystem: "Labs"
 }), !0);
 }, e.prototype.runReactions = function(e) {
@@ -21172,12 +21172,12 @@ if (r) throw r.error;
 }
 return !0;
 }, e.prototype.clearReactions = function(e) {
-qs.clearActiveReaction(e), k.info("Cleared active reactions in ".concat(e), {
+qs.clearActiveReaction(e), _.info("Cleared active reactions in ".concat(e), {
 subsystem: "Labs"
 });
 }, e.prototype.setActiveReaction = function(e, t, r, o) {
 var n = qs.setActiveReaction(e, t, r, o);
-return n && k.info("Set active reaction: ".concat(t, " + ").concat(r, " -> ").concat(o), {
+return n && _.info("Set active reaction: ".concat(t, " + ").concat(r, " -> ").concat(o), {
 subsystem: "Labs",
 room: e
 }), n;
@@ -21273,7 +21273,7 @@ for (var i = a(n), s = i.next(); !s.done; s = i.next()) {
 var c = s.value, l = c.store.getFreeCapacity();
 if (null !== l && l >= 50) {
 if (!e.pos.isNearTo(c)) return e.moveTo(c), !1;
-if (c.unboostCreep(e) === OK) return k.info("Unboosted ".concat(e.name, ", recovered resources"), {
+if (c.unboostCreep(e) === OK) return _.info("Unboosted ".concat(e.name, ", recovered resources"), {
 subsystem: "Labs",
 room: t.name
 }), !0;
@@ -21479,7 +21479,7 @@ category: "Market"
 }(), Zs = function() {
 function e() {}
 return e.prototype.gpl = function() {
-var e = ks.getGPLState();
+var e = _s.getGPLState();
 if (!e) return "GPL tracking not available (no power unlocked)";
 var t = "=== GPL Status ===\n";
 t += "Level: ".concat(e.currentLevel, "\n"), t += "Progress: ".concat(e.currentProgress, " / ").concat(e.progressNeeded, "\n"), 
@@ -21488,7 +21488,7 @@ t += "Target Milestone: ".concat(e.targetMilestone, "\n");
 var r = e.ticksToNextLevel === 1 / 0 ? "N/A (no progress yet)" : "".concat(e.ticksToNextLevel.toLocaleString(), " ticks");
 return (t += "Estimated Time: ".concat(r, "\n")) + "\nTotal Power Processed: ".concat(e.totalPowerProcessed.toLocaleString(), "\n");
 }, e.prototype.creeps = function() {
-var e, t, r = ks.getAssignments();
+var e, t, r = _s.getAssignments();
 if (0 === r.length) return "No power creeps created yet";
 var o = "=== Power Creeps (".concat(r.length, ") ===\n");
 o += "Name | Role | Room | Level | Spawned\n", o += "-".repeat(70) + "\n";
@@ -21535,7 +21535,7 @@ if (e) throw e.error;
 }
 return o;
 }, e.prototype.assign = function(e, t) {
-return ks.reassignPowerCreep(e, t) ? "Reassigned ".concat(e, " to ").concat(t) : "Failed to reassign ".concat(e, " (not found)");
+return _s.reassignPowerCreep(e, t) ? "Reassigned ".concat(e, " to ").concat(t) : "Failed to reassign ".concat(e, " (not found)");
 }, e.prototype.create = function(e, t) {
 var r = "string" == typeof t && "operator" === t.toLowerCase() ? POWER_CLASS.OPERATOR : t;
 if (Game.powerCreeps[e]) return 'Power creep "'.concat(e, '" already exists');
@@ -21621,7 +21621,7 @@ usage: "showConfig()",
 examples: [ "showConfig()" ],
 category: "Configuration"
 }) ], e.prototype, "showConfig", null), e;
-}(), rc = M("CreepContext"), oc = ((Bs = {})[STRUCTURE_SPAWN] = 100, Bs[STRUCTURE_EXTENSION] = 90, 
+}(), rc = U("CreepContext"), oc = ((Bs = {})[STRUCTURE_SPAWN] = 100, Bs[STRUCTURE_EXTENSION] = 90, 
 Bs[STRUCTURE_TOWER] = 80, Bs[STRUCTURE_RAMPART] = 75, Bs[STRUCTURE_WALL] = 70, Bs[STRUCTURE_STORAGE] = 70, 
 Bs[STRUCTURE_CONTAINER] = 60, Bs[STRUCTURE_ROAD] = 30, Bs), nc = new Map;
 
@@ -21852,16 +21852,16 @@ return R.apply(e, arguments);
 };
 }, C = T, S = C({}.toString), x = C("".slice), w = function(e) {
 return x(S(e), 8, -1);
-}, b = n, O = w, U = Object, M = T("".split), _ = b(function() {
-return !U("z").propertyIsEnumerable(0);
+}, b = n, O = w, M = Object, U = T("".split), k = b(function() {
+return !M("z").propertyIsEnumerable(0);
 }) ? function(e) {
-return "String" === O(e) ? M(e, "") : U(e);
-} : U, k = function(e) {
+return "String" === O(e) ? U(e, "") : M(e);
+} : M, _ = function(e) {
 return null == e;
-}, A = k, N = TypeError, P = function(e) {
+}, A = _, N = TypeError, P = function(e) {
 if (A(e)) throw new N("Can't call method on " + e);
 return e;
-}, I = _, G = P, L = function(e) {
+}, I = k, G = P, L = function(e) {
 return I(G(e));
 }, D = "object" == typeof document && document.all, F = void 0 === D && void 0 !== D ? function(e) {
 return "function" == typeof e || e === D;
@@ -21891,7 +21891,7 @@ return ue(e);
 return "Object";
 }
 }(e) + " is not a function");
-}, fe = pe, ye = k, ge = l, ve = F, he = H, Re = TypeError, Ee = {
+}, fe = pe, ye = _, ge = l, ve = F, he = H, Re = TypeError, Ee = {
 exports: {}
 }, Te = r, Ce = Object.defineProperty, Se = function(e, t) {
 try {
@@ -21912,15 +21912,15 @@ copyright: "© 2013–2025 Denis Pushkarev (zloirock.ru), 2025–2026 CoreJS Com
 license: "https://github.com/zloirock/core-js/blob/v3.48.0/LICENSE",
 source: "https://github.com/zloirock/core-js"
 });
-var Ue = Ee.exports, Me = Ue, _e = function(e, t) {
-return Me[e] || (Me[e] = t || {});
-}, ke = P, Ae = Object, Ne = function(e) {
-return Ae(ke(e));
+var Me = Ee.exports, Ue = Me, ke = function(e, t) {
+return Ue[e] || (Ue[e] = t || {});
+}, _e = P, Ae = Object, Ne = function(e) {
+return Ae(_e(e));
 }, Pe = Ne, Ie = T({}.hasOwnProperty), Ge = Object.hasOwn || function(e, t) {
 return Ie(Pe(e), t);
 }, Le = T, De = 0, Fe = Math.random(), Be = Le(1.1.toString), He = function(e) {
 return "Symbol(" + (void 0 === e ? "" : e) + ")_" + Be(++De + Fe, 36);
-}, We = _e, Ke = Ge, Ye = He, Ve = oe, qe = ne, je = r.Symbol, ze = We("wks"), Qe = qe ? je.for || je : je && je.withoutSetter || Ye, Xe = function(e) {
+}, We = ke, Ke = Ge, Ye = He, Ve = oe, qe = ne, je = r.Symbol, ze = We("wks"), Qe = qe ? je.for || je : je && je.withoutSetter || Ye, Xe = function(e) {
 return Ke(ze, e) || (ze[e] = Ve && Ke(je, e) ? je[e] : Qe("Symbol." + e)), ze[e];
 }, Ze = l, Je = H, $e = le, et = TypeError, tt = Xe("toPrimitive"), rt = le, ot = function(e) {
 var t = function(e, t) {
@@ -21962,9 +21962,9 @@ writable: !1
 }), Ct = H, St = String, xt = TypeError, wt = function(e) {
 if (Ct(e)) return e;
 throw new xt(St(e) + " is not an object");
-}, bt = a, Ot = lt, Ut = Tt, Mt = wt, _t = ot, kt = TypeError, At = Object.defineProperty, Nt = Object.getOwnPropertyDescriptor, Pt = "enumerable", It = "configurable", Gt = "writable";
-Et.f = bt ? Ut ? function(e, t, r) {
-if (Mt(e), t = _t(t), Mt(r), "function" == typeof e && "prototype" === t && "value" in r && Gt in r && !r[Gt]) {
+}, bt = a, Ot = lt, Mt = Tt, Ut = wt, kt = ot, _t = TypeError, At = Object.defineProperty, Nt = Object.getOwnPropertyDescriptor, Pt = "enumerable", It = "configurable", Gt = "writable";
+Et.f = bt ? Mt ? function(e, t, r) {
+if (Ut(e), t = kt(t), Ut(r), "function" == typeof e && "prototype" === t && "value" in r && Gt in r && !r[Gt]) {
 var o = Nt(e, t);
 o && o[Gt] && (e[t] = r.value, r = {
 configurable: It in r ? r[It] : o[It],
@@ -21974,10 +21974,10 @@ writable: !1
 }
 return At(e, t, r);
 } : At : function(e, t, r) {
-if (Mt(e), t = _t(t), Mt(r), Ot) try {
+if (Ut(e), t = kt(t), Ut(r), Ot) try {
 return At(e, t, r);
 } catch (e) {}
-if ("get" in r || "set" in r) throw new kt("Accessors not supported");
+if ("get" in r || "set" in r) throw new _t("Accessors not supported");
 return "value" in r && (e[t] = r.value), e;
 };
 var Lt = Et, Dt = g, Ft = a ? function(e, t, r) {
@@ -21988,13 +21988,13 @@ return e[t] = r, e;
 exports: {}
 }, Ht = a, Wt = Ge, Kt = Function.prototype, Yt = Ht && Object.getOwnPropertyDescriptor, Vt = {
 CONFIGURABLE: Wt(Kt, "name") && (!Ht || Ht && Yt(Kt, "name").configurable)
-}, qt = F, jt = Ue, zt = T(Function.toString);
+}, qt = F, jt = Me, zt = T(Function.toString);
 qt(jt.inspectSource) || (jt.inspectSource = function(e) {
 return zt(e);
 });
-var Qt, Xt, Zt, Jt = jt.inspectSource, $t = F, er = r.WeakMap, tr = $t(er) && /native code/.test(String(er)), rr = He, or = _e("keys"), nr = function(e) {
+var Qt, Xt, Zt, Jt = jt.inspectSource, $t = F, er = r.WeakMap, tr = $t(er) && /native code/.test(String(er)), rr = He, or = ke("keys"), nr = function(e) {
 return or[e] || (or[e] = rr(e));
-}, ar = {}, ir = tr, sr = r, cr = Ft, lr = Ge, ur = Ue, mr = nr, dr = ar, pr = "Object already initialized", fr = sr.TypeError, yr = sr.WeakMap;
+}, ar = {}, ir = tr, sr = r, cr = Ft, lr = Ge, ur = Me, mr = nr, dr = ar, pr = "Object already initialized", fr = sr.TypeError, yr = sr.WeakMap;
 if (ir || ur.state) {
 var gr = ur.state || (ur.state = new yr);
 gr.get = gr.get, gr.has = gr.has, gr.set = gr.set, Qt = function(e, t) {
@@ -22021,20 +22021,20 @@ get: Xt,
 enforce: function(e) {
 return Zt(e) ? Xt(e) : Qt(e, {});
 }
-}, Rr = T, Er = n, Tr = F, Cr = Ge, Sr = a, xr = Vt.CONFIGURABLE, wr = Jt, br = hr.enforce, Or = hr.get, Ur = String, Mr = Object.defineProperty, _r = Rr("".slice), kr = Rr("".replace), Ar = Rr([].join), Nr = Sr && !Er(function() {
-return 8 !== Mr(function() {}, "length", {
+}, Rr = T, Er = n, Tr = F, Cr = Ge, Sr = a, xr = Vt.CONFIGURABLE, wr = Jt, br = hr.enforce, Or = hr.get, Mr = String, Ur = Object.defineProperty, kr = Rr("".slice), _r = Rr("".replace), Ar = Rr([].join), Nr = Sr && !Er(function() {
+return 8 !== Ur(function() {}, "length", {
 value: 8
 }).length;
 }), Pr = String(String).split("String"), Ir = Bt.exports = function(e, t, r) {
-"Symbol(" === _r(Ur(t), 0, 7) && (t = "[" + kr(Ur(t), /^Symbol\(([^)]*)\).*$/, "$1") + "]"), 
-r && r.getter && (t = "get " + t), r && r.setter && (t = "set " + t), (!Cr(e, "name") || xr && e.name !== t) && (Sr ? Mr(e, "name", {
+"Symbol(" === kr(Mr(t), 0, 7) && (t = "[" + _r(Mr(t), /^Symbol\(([^)]*)\).*$/, "$1") + "]"), 
+r && r.getter && (t = "get " + t), r && r.setter && (t = "set " + t), (!Cr(e, "name") || xr && e.name !== t) && (Sr ? Ur(e, "name", {
 value: t,
 configurable: !0
-}) : e.name = t), Nr && r && Cr(r, "arity") && e.length !== r.arity && Mr(e, "length", {
+}) : e.name = t), Nr && r && Cr(r, "arity") && e.length !== r.arity && Ur(e, "length", {
 value: r.arity
 });
 try {
-r && Cr(r, "constructor") && r.constructor ? Sr && Mr(e, "prototype", {
+r && Cr(r, "constructor") && r.constructor ? Sr && Ur(e, "prototype", {
 writable: !1
 }) : e.prototype && (e.prototype = void 0);
 } catch (e) {}
@@ -22079,10 +22079,10 @@ var t = po.f(yo(e)), r = fo.f;
 return r ? go(t, r(e)) : t;
 }, ho = Ge, Ro = vo, Eo = o, To = Et, Co = n, So = F, xo = /#|\.prototype\./, wo = function(e, t) {
 var r = Oo[bo(e)];
-return r === Mo || r !== Uo && (So(t) ? Co(t) : !!t);
+return r === Uo || r !== Mo && (So(t) ? Co(t) : !!t);
 }, bo = wo.normalize = function(e) {
 return String(e).replace(xo, ".").toLowerCase();
-}, Oo = wo.data = {}, Uo = wo.NATIVE = "N", Mo = wo.POLYFILL = "P", _o = wo, ko = r, Ao = o.f, No = Ft, Po = function(e, t, r, o) {
+}, Oo = wo.data = {}, Mo = wo.NATIVE = "N", Uo = wo.POLYFILL = "P", ko = wo, _o = r, Ao = o.f, No = Ft, Po = function(e, t, r, o) {
 o || (o = {});
 var n = o.enumerable, a = void 0 !== o.name ? o.name : t;
 if (Lr(r) && Fr(r, a, o), o.global) n ? e[t] = r : Br(t, r); else {
@@ -22102,9 +22102,9 @@ for (var o = Ro(t), n = To.f, a = Eo.f, i = 0; i < o.length; i++) {
 var s = o[i];
 ho(e, s) || r && ho(r, s) || n(e, s, a(t, s));
 }
-}, Lo = _o, Do = function(e, t) {
+}, Lo = ko, Do = function(e, t) {
 var r, o, n, a, i, s = e.target, c = e.global, l = e.stat;
-if (r = c ? ko : l ? ko[s] || Io(s, {}) : ko[s] && ko[s].prototype) for (o in t) {
+if (r = c ? _o : l ? _o[s] || Io(s, {}) : _o[s] && _o[s].prototype) for (o in t) {
 if (a = t[o], n = e.dontCallGetSet ? (i = Ao(r, o)) && i.value : r[o], !Lo(c ? o : s + (l ? "." : "#") + o, e.forced) && void 0 !== n) {
 if (typeof a == typeof n) continue;
 Go(a, n);
@@ -22166,20 +22166,20 @@ var e;
 return Cn(Cn.call) || !Cn(Object) || !Cn(function() {
 e = !0;
 }) || e;
-}) ? Sn : Cn, wn = Bo, bn = xn, On = H, Un = Xe("species"), Mn = Array, _n = function(e, t) {
+}) ? Sn : Cn, wn = Bo, bn = xn, On = H, Mn = Xe("species"), Un = Array, kn = function(e, t) {
 return new (function(e) {
 var t;
-return wn(e) && (t = e.constructor, (bn(t) && (t === Mn || wn(t.prototype)) || On(t) && null === (t = t[Un])) && (t = void 0)), 
-void 0 === t ? Mn : t;
+return wn(e) && (t = e.constructor, (bn(t) && (t === Un || wn(t.prototype)) || On(t) && null === (t = t[Mn])) && (t = void 0)), 
+void 0 === t ? Un : t;
 }(e))(0 === t ? 0 : t);
-}, kn = rn, An = pe, Nn = Ne, Pn = Zr, In = _n;
+}, _n = rn, An = pe, Nn = Ne, Pn = Zr, In = kn;
 Do({
 target: "Array",
 proto: !0
 }, {
 flatMap: function(e) {
 var t, r = Nn(this), o = Pn(r);
-return An(e), t = In(r, 0), kn(t, r, r, o, 0, 1, e, arguments.length > 1 ? arguments[1] : void 0), 
+return An(e), t = In(r, 0), _n(t, r, r, o, 0, 1, e, arguments.length > 1 ? arguments[1] : void 0), 
 t;
 }
 });
@@ -22227,7 +22227,7 @@ var pa = r, fa = T, ya = function(e, t) {
 return fa(pa[e].prototype[t]);
 };
 ya("Array", "flatMap");
-var ga = rn, va = Ne, ha = Zr, Ra = Vr, Ea = _n;
+var ga = rn, va = Ne, ha = Zr, Ra = Vr, Ea = kn;
 Do({
 target: "Array",
 proto: !0
@@ -22399,54 +22399,54 @@ if (void 0 !== e) return ba.encode(e);
 deserialize(e) {
 if (void 0 !== e) return ba.decode(e);
 }
-}, Ua = (e, t) => `cg_${e.key}_${t}`, Ma = (e, t) => Object.assign(Object.assign({}, e), {
+}, Ma = (e, t) => `cg_${e.key}_${t}`, Ua = (e, t) => Object.assign(Object.assign({}, e), {
 get(r) {
 var o;
 const n = e.get(r);
 if (n) try {
-const e = null !== (o = xa.get(Ua(t, n))) && void 0 !== o ? o : t.deserialize(n);
-return void 0 !== e && xa.set(Ua(t, n), e, Game.time + CREEP_LIFE_TIME), e;
+const e = null !== (o = xa.get(Ma(t, n))) && void 0 !== o ? o : t.deserialize(n);
+return void 0 !== e && xa.set(Ma(t, n), e, Game.time + CREEP_LIFE_TIME), e;
 } catch (o) {
-return e.delete(r), void xa.delete(Ua(t, n));
+return e.delete(r), void xa.delete(Ma(t, n));
 }
 },
 set(r, o, n) {
 const a = e.get(r);
-a && xa.delete(Ua(t, a));
+a && xa.delete(Ma(t, a));
 const i = t.serialize(o);
-i ? (e.set(r, i, n), xa.set(Ua(t, i), o, Game.time + CREEP_LIFE_TIME)) : e.delete(r);
+i ? (e.set(r, i, n), xa.set(Ma(t, i), o, Game.time + CREEP_LIFE_TIME)) : e.delete(r);
 },
 delete(r) {
 const o = e.get(r);
-o && xa.delete(Ua(t, o)), e.delete(r);
+o && xa.delete(Ma(t, o)), e.delete(r);
 },
-with: t => Ma(e, t)
+with: t => Ua(e, t)
 });
-function _a() {
+function ka() {
 var e, t;
 return null !== (e = Memory[t = Ta.MEMORY_CACHE_PATH]) && void 0 !== e || (Memory[t] = {}), 
 Memory[Ta.MEMORY_CACHE_PATH];
 }
-function ka() {
+function _a() {
 var e, t;
 return null !== (e = Memory[t = Ta.MEMORY_CACHE_EXPIRATION_PATH]) && void 0 !== e || (Memory[t] = {}), 
 Memory[Ta.MEMORY_CACHE_EXPIRATION_PATH];
 }
 const Aa = {
 set(e, t, r) {
-if (_a()[e] = t, void 0 !== r) {
+if (ka()[e] = t, void 0 !== r) {
 const t = Oa.serialize(r);
-t && (ka()[e] = t);
+t && (_a()[e] = t);
 }
 },
-get: e => _a()[e],
-expires: e => Oa.deserialize(ka()[e]),
+get: e => ka()[e],
+expires: e => Oa.deserialize(_a()[e]),
 delete(e) {
-delete _a()[e];
+delete ka()[e];
 },
-with: e => Ma(Aa, e),
+with: e => Ua(Aa, e),
 clean() {
-const e = ka();
+const e = _a();
 for (const t in e) {
 const r = Oa.deserialize(e[t]);
 void 0 !== r && Game.time >= r && (Aa.delete(t), delete e[t]);
@@ -22760,14 +22760,14 @@ return !(o.get(e.x, e.y) === TERRAIN_MASK_WALL || Game.rooms[e.roomName] && e.lo
 let t = e.match(/^[WE]([0-9]+)[NS]([0-9]+)$/);
 if (!t) throw new Error("Invalid room name");
 return Number(t[1]) % 10 == 0 || Number(t[2]) % 10 == 0;
-}, Ui = e => {
+}, Mi = e => {
 let t = e.match(/^[WE]([0-9]+)[NS]([0-9]+)$/);
 if (!t) throw new Error("Invalid room name");
 let r = Number(t[1]) % 10, o = Number(t[2]) % 10;
 return !(5 === r && 5 === o) && r >= 4 && r <= 6 && o >= 4 && o <= 6;
-}, Mi = (e, t, r) => r ? e.slice(0, t) : e.slice(t + 1), _i = e => "_ck" + e;
-function ki(e) {
-Ui(e) && !Aa.get(_i(e)) && Aa.with(di).set(_i(e), [ ...Game.rooms[e].find(FIND_SOURCES), ...Game.rooms[e].find(FIND_MINERALS) ].map(e => e.pos));
+}, Ui = (e, t, r) => r ? e.slice(0, t) : e.slice(t + 1), ki = e => "_ck" + e;
+function _i(e) {
+Mi(e) && !Aa.get(ki(e)) && Aa.with(di).set(ki(e), [ ...Game.rooms[e].find(FIND_SOURCES), ...Game.rooms[e].find(FIND_MINERALS) ].map(e => e.pos));
 }
 class Ai extends Map {
 get(e) {
@@ -22918,7 +22918,7 @@ if (r.avoidCreeps && (null === (o = Game.rooms[t]) || void 0 === o || o.find(FIN
 null === (n = Game.rooms[t]) || void 0 === n || n.find(FIND_POWER_CREEPS).forEach(t => e.set(t.pos.x, t.pos.y, 255))), 
 r.avoidSourceKeepers && function(e, t) {
 var r;
-const o = null !== (r = Aa.with(di).get(_i(e))) && void 0 !== r ? r : [];
+const o = null !== (r = Aa.with(di).get(ki(e))) && void 0 !== r ? r : [];
 for (const e of o) Si(e, 5, !0).forEach(e => t.set(e.x, e.y, 255));
 }(t, e), (r.avoidObstacleStructures || r.roadCost) && (r.avoidObstacleStructures && (null === (a = Game.rooms[t]) || void 0 === a || a.find(FIND_MY_CONSTRUCTION_SITES).forEach(t => {
 OBSTACLE_OBJECT_TYPES.includes(t.structureType) && e.set(t.pos.x, t.pos.y, 255);
@@ -23035,7 +23035,7 @@ let p = function(e, t, r) {
 const o = Object.assign(Object.assign({}, Ta.DEFAULT_MOVE_OPTS), r), n = Na((e, t) => e + t, (e, t) => {
 var r;
 const n = null === (r = o.routeCallback) || void 0 === r ? void 0 : r.call(o, e, t);
-return void 0 !== n ? n : Oi(e) ? o.highwayRoomCost : Ui(e) ? o.sourceKeeperRoomCost : o.defaultRoomCost;
+return void 0 !== n ? n : Oi(e) ? o.highwayRoomCost : Mi(e) ? o.sourceKeeperRoomCost : o.defaultRoomCost;
 }), a = function(e, t, r, o) {
 var n, a;
 if (t.includes(e)) return [];
@@ -23378,7 +23378,7 @@ void 0 === c) return ERR_NOT_FOUND;
 xa.set(qi(e, fs), c);
 let l = Math.max(0, Math.min(s.length - 1, (null == r ? void 0 : r.reverse) ? c - 1 : c + 1));
 if (null == r ? void 0 : r.visualizePathStyle) {
-const t = Object.assign(Object.assign({}, Ta.DEFAULT_VISUALIZE_OPTS), r.visualizePathStyle), o = Mi(s, c, null == r ? void 0 : r.reverse);
+const t = Object.assign(Object.assign({}, Ta.DEFAULT_VISUALIZE_OPTS), r.visualizePathStyle), o = Ui(s, c, null == r ? void 0 : r.reverse);
 null === (i = e.room) || void 0 === i || i.visual.poly(o.filter(t => {
 var r;
 return t.roomName === (null === (r = e.room) || void 0 === r ? void 0 : r.name);
@@ -23401,12 +23401,12 @@ deserialize(e) {
 if (void 0 !== e) return JSON.parse(e);
 }
 }, xs = "_cp", ws = "_ct", bs = "_co", Os = [ "avoidCreeps", "avoidObstacleStructures", "flee", "plainCost", "swampCost", "roadCost" ];
-function Us(e, t = gi.HeapCache) {
+function Ms(e, t = gi.HeapCache) {
 vs(qi(e, xs), {
 cache: t
 }), t.delete(qi(e, ws)), t.delete(qi(e, bs));
 }
-const Ms = (e, t, r, o = {
+const Us = (e, t, r, o = {
 avoidCreeps: !0
 }) => {
 var n, a, i, s;
@@ -23417,17 +23417,17 @@ let u = Ri(t, c.keepTargetInRoom, c.flee), m = !1, d = l.with(ui).get(qi(e, ws))
 for (const {pos: t, range: o} of u) {
 if (!m && t.inRangeTo(e.pos, o) && e.pos.roomName === t.roomName) {
 if (!(null == r ? void 0 : r.flee)) {
-Us(e, l);
+Ms(e, l);
 const t = zi(c)(e.pos.roomName);
 return ds(e, [ e.pos, ...wi(e.pos, !0).filter(e => u.some(t => t.pos.inRangeTo(e, t.range)) && (!t || 255 !== t.get(e.x, e.y))) ], c.priority), 
 OK;
 }
 m = !0;
 }
-d && !d.some(e => e && t.isEqualTo(e.pos) && o === e.range) && (Us(e, l), d = void 0);
+d && !d.some(e => e && t.isEqualTo(e.pos) && o === e.range) && (Ms(e, l), d = void 0);
 }
 const p = l.with(Ss).get(qi(e, bs));
-p && !Os.some(e => c[e] !== p[e]) || Us(e, l);
+p && !Os.some(e => c[e] !== p[e]) || Ms(e, l);
 const f = [ null == r ? void 0 : r.roadCost, null == r ? void 0 : r.plainCost, null == r ? void 0 : r.swampCost ].some(e => void 0 !== e);
 "body" in e && !f && (c = Object.assign({
 creepMovementInfo: {
@@ -23440,7 +23440,7 @@ l.with(ui).set(qi(e, ws), u, y), l.with(Ss).set(qi(e, bs), Os.reduce((e, t) => (
 e), {}), y);
 const g = gs(qi(e, xs), {
 cache: l
-}), v = xa.get(qi(e, "_cpi")), h = g && Mi(g, null != v ? v : 0), R = null !== (i = null === (a = c.avoidTargets) || void 0 === a ? void 0 : a.call(c, e.pos.roomName)) && void 0 !== i ? i : [];
+}), v = xa.get(qi(e, "_cpi")), h = g && Ui(g, null != v ? v : 0), R = null !== (i = null === (a = c.avoidTargets) || void 0 === a ? void 0 : a.call(c, e.pos.roomName)) && void 0 !== i ? i : [];
 if (c.repathIfStuck && g && Cs(e, c.repathIfStuck)) vs(qi(e, xs), {
 cache: l
 }), c = Object.assign(Object.assign({}, c), o); else if ((null == h ? void 0 : h.length) && Rs(h, R)) {
@@ -23478,13 +23478,13 @@ let T = hs(e, qi(e, xs), Object.assign(Object.assign({}, c), {
 reverse: !1,
 cache: l
 }));
-return T === ERR_NOT_FOUND && (Us(e, l), ys(qi(e, xs), e.pos, u, Object.assign(Object.assign({}, c), {
+return T === ERR_NOT_FOUND && (Ms(e, l), ys(qi(e, xs), e.pos, u, Object.assign(Object.assign({}, c), {
 cache: l
 })), T = hs(e, qi(e, xs), Object.assign(Object.assign({}, c), {
 reverse: !1,
 cache: l
 }))), T;
-}, _s = "_rsi";
+}, ks = "_rsi";
 return uc.CachingStrategies = gi, uc.CoordListSerializer = fi, uc.CoordSerializer = pi, 
 uc.Keys = ji, uc.MoveTargetListSerializer = ui, uc.MoveTargetSerializer = li, uc.NumberSerializer = Oa, 
 uc.PositionListSerializer = di, uc.PositionSerializer = mi, uc.adjacentWalkablePositions = wi, 
@@ -23492,7 +23492,7 @@ uc.blockSquare = function(e) {
 ns(e.roomName).blockedSquares.add(Ya(e));
 }, uc.cachePath = ys, uc.cachedPathKey = ps, uc.calculateAdjacencyMatrix = Ti, uc.calculateAdjacentPositions = Ci, 
 uc.calculateNearbyPositions = Si, uc.calculatePositionsAtRange = xi, uc.cleanAllCaches = yi, 
-uc.clearCachedPath = Us, uc.compressPath = e => {
+uc.clearCachedPath = Ms, uc.compressPath = e => {
 const t = [], r = e[0];
 if (!r) return "";
 let o = r;
@@ -23516,7 +23516,7 @@ uc.getMoveIntents = ns, uc.getRangeTo = ri, uc.globalPosition = ei, uc.isExit = 
 uc.isPositionWalkable = bi, uc.move = ds, uc.moveByPath = function(e, t, r) {
 var o, n, a, i;
 const s = null !== (o = null == r ? void 0 : r.repathIfStuck) && void 0 !== o ? o : Ta.DEFAULT_MOVE_OPTS.repathIfStuck, c = null !== (i = null === (a = null !== (n = null == r ? void 0 : r.avoidTargets) && void 0 !== n ? n : Ta.DEFAULT_MOVE_OPTS.avoidTargets) || void 0 === a ? void 0 : a(e.pos.roomName)) && void 0 !== i ? i : [];
-let l = xa.get(qi(e, _s));
+let l = xa.get(qi(e, ks));
 const u = gs(t, r);
 if ((s || c.length) && void 0 !== l) {
 let t = u ? function(e, t, r = !1) {
@@ -23531,22 +23531,22 @@ t > 1 && (n += r ? 1 - t : t - 1);
 }
 return -1;
 }(e.pos, u, (null == r ? void 0 : r.reverse) || !1) : void 0;
--1 === t && (t = void 0), void 0 !== t && ((null == r ? void 0 : r.reverse) ? t <= l : t >= l) && (xa.delete(qi(e, _s)), 
+-1 === t && (t = void 0), void 0 !== t && ((null == r ? void 0 : r.reverse) ? t <= l : t >= l) && (xa.delete(qi(e, ks)), 
 l = void 0);
 }
 let m = ERR_NOT_FOUND;
 if (void 0 === l && (m = hs(e, t, r)), m !== ERR_NOT_FOUND) {
 const t = xa.get(qi(e, "_cpi"));
-if (!(s && Cs(e, s) || u && Rs(Mi(u, null != t ? t : 0, null == r ? void 0 : r.reverse), c))) return m;
-void 0 !== t && (l = (null == r ? void 0 : r.reverse) ? t - 1 : t + 2, xa.set(qi(e, _s), l));
+if (!(s && Cs(e, s) || u && Rs(Ui(u, null != t ? t : 0, null == r ? void 0 : r.reverse), c))) return m;
+void 0 !== t && (l = (null == r ? void 0 : r.reverse) ? t - 1 : t + 2, xa.set(qi(e, ks), l));
 }
 let d = gs(t, r);
-return d ? (void 0 !== l && (d = Mi(d, l, null == r ? void 0 : r.reverse)), 0 === d.length ? ERR_NO_PATH : Ms(e, d, r)) : ERR_NO_PATH;
-}, uc.moveTo = Ms, uc.normalizeTargets = Ri, uc.offsetRoomPosition = Da, uc.packCoord = qa, 
+return d ? (void 0 !== l && (d = Ui(d, l, null == r ? void 0 : r.reverse)), 0 === d.length ? ERR_NO_PATH : Us(e, d, r)) : ERR_NO_PATH;
+}, uc.moveTo = Us, uc.normalizeTargets = Ri, uc.offsetRoomPosition = Da, uc.packCoord = qa, 
 uc.packCoordList = za, uc.packPos = Ya, uc.packPosList = Xa, uc.packRoomName = ii, 
 uc.packRoomNames = ni, uc.posAtDirection = oi, uc.preTick = function() {
 yi(), function() {
-for (const e in Game.rooms) ki(e), Bi(e);
+for (const e in Game.rooms) _i(e), Bi(e);
 !function() {
 var e, t;
 const r = new Set;
@@ -23694,7 +23694,7 @@ updatedTick: Game.time
 return e.tasks[n.id] = n, e.stats.generated++, n;
 }
 
-function Uc(e) {
+function Mc(e) {
 if (e) return {
 x: e.x,
 y: e.y,
@@ -23702,14 +23702,14 @@ roomName: e.roomName
 };
 }
 
-function Mc(e, t, r, o, n) {
+function Uc(e, t, r, o, n) {
 return {
 id: Sc(e, t, r.id),
 roomName: e,
 type: t,
 priority: n,
 targetId: r.id,
-targetPos: Uc(r.pos),
+targetPos: Mc(r.pos),
 resourceType: RESOURCE_ENERGY,
 amount: o,
 maxAssignments: Math.max(1, Math.ceil(o / 50)),
@@ -23718,7 +23718,7 @@ expiresTick: Game.time + gc
 };
 }
 
-function _c(e, t) {
+function kc(e, t) {
 var r, o, n, i, s, c, l, u, m, d, p, f = Game.cpu.bucket < 4e3 ? 5 : 3;
 if (!(Game.time - t.lastGeneratedTick < f)) {
 t.lastGeneratedTick = Game.time;
@@ -23728,7 +23728,7 @@ return e.find(FIND_MY_STRUCTURES);
 try {
 for (var g = a(y), v = g.next(); !v.done; v = g.next()) {
 var h;
-(O = v.value).structureType !== STRUCTURE_SPAWN ? O.structureType !== STRUCTURE_EXTENSION ? O.structureType === STRUCTURE_TOWER && (h = O.store.getFreeCapacity(RESOURCE_ENERGY)) >= 100 && Oc(t, Mc(e.name, "refillTower", O, h, pc.HIGH)) : (h = O.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && Oc(t, Mc(e.name, "refillExtension", O, h, pc.HIGH)) : (h = O.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && Oc(t, Mc(e.name, "refillSpawn", O, h, pc.CRITICAL));
+(O = v.value).structureType !== STRUCTURE_SPAWN ? O.structureType !== STRUCTURE_EXTENSION ? O.structureType === STRUCTURE_TOWER && (h = O.store.getFreeCapacity(RESOURCE_ENERGY)) >= 100 && Oc(t, Uc(e.name, "refillTower", O, h, pc.HIGH)) : (h = O.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && Oc(t, Uc(e.name, "refillExtension", O, h, pc.HIGH)) : (h = O.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && Oc(t, Uc(e.name, "refillSpawn", O, h, pc.CRITICAL));
 }
 } catch (e) {
 r = {
@@ -23742,7 +23742,7 @@ if (r) throw r.error;
 }
 }
 var R = yc(e);
-R && Oc(t, Mc(e.name, "fillTerminalEnergy", R.terminal, R.amount, pc.NORMAL)), e.storage && e.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && Oc(t, Mc(e.name, "storeEnergy", e.storage, e.storage.store.getFreeCapacity(RESOURCE_ENERGY), pc.LOW));
+R && Oc(t, Uc(e.name, "fillTerminalEnergy", R.terminal, R.amount, pc.NORMAL)), e.storage && e.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && Oc(t, Uc(e.name, "storeEnergy", e.storage, e.storage.store.getFreeCapacity(RESOURCE_ENERGY), pc.LOW));
 var E = Ec("taskBoard.findConstructionSites", function() {
 return e.find(FIND_MY_CONSTRUCTION_SITES);
 });
@@ -23755,7 +23755,7 @@ roomName: e.name,
 type: "build",
 priority: S.structureType === STRUCTURE_SPAWN ? pc.CRITICAL : pc.NORMAL,
 targetId: S.id,
-targetPos: Uc(S.pos),
+targetPos: Mc(S.pos),
 resourceType: RESOURCE_ENERGY,
 amount: Math.max(1, S.progressTotal - S.progress),
 maxAssignments: 2,
@@ -23790,7 +23790,7 @@ roomName: e.name,
 type: "repair",
 priority: pc.NORMAL,
 targetId: O.id,
-targetPos: Uc(O.pos),
+targetPos: Mc(O.pos),
 resourceType: RESOURCE_ENERGY,
 amount: Math.max(1, O.hitsMax - O.hits),
 maxAssignments: 1,
@@ -23815,27 +23815,27 @@ roomName: e.name,
 type: "upgrade",
 priority: pc.LOW,
 targetId: e.controller.id,
-targetPos: Uc(e.controller.pos),
+targetPos: Mc(e.controller.pos),
 resourceType: RESOURCE_ENERGY,
 amount: 1e3,
 maxAssignments: 3,
 allowedRoles: hc,
 expiresTick: Game.time + gc
 });
-var U = Ec("taskBoard.findHostiles", function() {
+var M = Ec("taskBoard.findHostiles", function() {
 return Y(e);
 });
 try {
-for (var M = a(U.slice(0, 5)), _ = M.next(); !_.done; _ = M.next()) {
-var k = _.value;
+for (var U = a(M.slice(0, 5)), k = U.next(); !k.done; k = U.next()) {
+var _ = k.value;
 Oc(t, {
-id: Sc(e.name, "defend", k.id),
+id: Sc(e.name, "defend", _.id),
 roomName: e.name,
 type: "defend",
 priority: pc.CRITICAL,
-targetId: k.id,
-targetPos: Uc(k.pos),
-amount: k.hits,
+targetId: _.id,
+targetPos: Mc(_.pos),
+amount: _.hits,
 maxAssignments: 3,
 allowedRoles: Rc,
 expiresTick: Game.time + gc
@@ -23847,7 +23847,7 @@ error: e
 };
 } finally {
 try {
-_ && !_.done && (u = M.return) && u.call(M);
+k && !k.done && (u = U.return) && u.call(U);
 } finally {
 if (l) throw l.error;
 }
@@ -23868,7 +23868,7 @@ roomName: e.name,
 type: "heal",
 priority: pc.HIGH,
 targetId: I.id,
-targetPos: Uc(I.pos),
+targetPos: Mc(I.pos),
 amount: I.hitsMax - I.hits,
 maxAssignments: 1,
 allowedRoles: [ "healer" ],
@@ -23889,7 +23889,7 @@ if (m) throw m.error;
 }
 }
 
-function kc(e) {
+function _c(e) {
 e.assignedCreeps = Object.keys(e.reservations), e.reservedAmount = Object.values(e.reservations).reduce(function(e, t) {
 return e + t.amount;
 }, 0), e.status = e.assignedCreeps.length > 0 ? "assigned" : "open";
@@ -23946,7 +23946,7 @@ p && !p.done && (s = d.return) && s.call(d);
 if (n) throw n.error;
 }
 }
-kc(m), Game.time > m.expiresTick || !Ac(m) ? (m.status = "invalid", e.stats.invalidated++, 
+_c(m), Game.time > m.expiresTick || !Ac(m) ? (m.status = "invalid", e.stats.invalidated++, 
 delete e.tasks[m.id]) : (xc(m) <= 0 || m.assignedCreeps.length >= m.maxAssignments) && (m.status = "assigned");
 }
 } catch (e) {
@@ -23968,7 +23968,7 @@ function Pc(e, t, r) {
 if (t.reservations[r]) {
 delete t.reservations[r];
 var o = Game.creeps[r];
-o && delete o.memory.assignedTaskId, kc(t);
+o && delete o.memory.assignedTaskId, _c(t);
 }
 }
 
@@ -24009,7 +24009,7 @@ creepName: t.creep.name,
 amount: p,
 assignedTick: Game.time,
 expiresTick: Game.time + 15
-}, d.updatedTick = Game.time, kc(d), e.stats.assigned++, d;
+}, d.updatedTick = Game.time, _c(d), e.stats.assigned++, d;
 }
 
 function Lc(e, t, r) {
@@ -24109,7 +24109,7 @@ var r = Cc(e.room.name);
 Ec("taskBoard.cleanup", function() {
 return Nc(r);
 }), Ec("taskBoard.generate", function() {
-return _c(e.room, r);
+return kc(e.room, r);
 });
 var o = Gc(r, e, {
 allowedTypes: t
@@ -24121,7 +24121,7 @@ var t = Cc(e.room.name);
 Ec("taskBoard.cleanup", function() {
 return Nc(t);
 }), Ec("taskBoard.generate", function() {
-return _c(e.room, t);
+return kc(e.room, t);
 });
 var r = Gc(t, e, {
 allowedTypes: [ "refillSpawn", "refillExtension", "refillTower", "fillTerminalEnergy", "storeEnergy" ],
@@ -24159,7 +24159,7 @@ var t = Cc(e.name);
 Ec("taskBoard.cleanup", function() {
 return Nc(t);
 }), Ec("taskBoard.generate", function() {
-return _c(e, t);
+return kc(e, t);
 });
 }
 }, e.prototype.releaseCreep = function(e, t) {
@@ -24202,7 +24202,7 @@ var r = Cc(e);
 Ec("taskBoard.cleanup", function() {
 return Nc(r, !0);
 }), Ec("taskBoard.generate", function() {
-return _c(t, r);
+return kc(t, r);
 });
 var o = Object.values(r.tasks);
 return {
@@ -24230,7 +24230,7 @@ preemptions: r.stats.preemptions
 var t, r, o = Game.rooms[e];
 if (!o) return "Room ".concat(e, " is not visible");
 var n = Cc(e);
-Nc(n, !0), _c(o, n);
+Nc(n, !0), kc(o, n);
 var i = [ "Tasks for ".concat(e, " (enabled=").concat(this.isEnabled(), ")") ];
 try {
 for (var s = a(Object.values(n.tasks).sort(function(e, t) {
@@ -24307,7 +24307,7 @@ trackMetrics: e.actionResult === OK
 var t;
 }
 
-var Yc, Vc = M("ActionExecutor");
+var Yc, Vc = U("ActionExecutor");
 
 function qc(e, t, r) {
 var o, n;
@@ -24619,7 +24619,7 @@ target: r.pos.toString()
 }), !0);
 }
 
-var Qc, Xc = M("StateMachine");
+var Qc, Xc = U("StateMachine");
 
 function Zc(e, t) {
 var r, n = e.memory.state, a = function(e) {
@@ -25263,27 +25263,27 @@ return i;
 }(xl)), xl;
 }
 
-var bl, Ol, Ul, Ml, _l = {
+var bl, Ol, Ml, Ul, kl = {
 exports: {}
 };
 
-function kl() {
-if (bl) return _l.exports;
+function _l() {
+if (bl) return kl.exports;
 bl = 1;
 let e = null;
-return _l.exports = function() {
+return kl.exports = function() {
 if ("string" == typeof e) return fetch(e).then(e => e.arrayBuffer());
 if (e instanceof ArrayBuffer) return Promise.resolve(e);
 throw new Error("You must provide the string URL or ArrayBuffer contents of lib/mappings.wasm by calling SourceMapConsumer.initialize({ 'lib/mappings.wasm': ... }) before using SourceMapConsumer");
-}, _l.exports.initialize = t => {
+}, kl.exports.initialize = t => {
 e = t;
-}, _l.exports;
+}, kl.exports;
 }
 
 function Al() {
-if (Ul) return Ol;
-Ul = 1;
-const e = kl();
+if (Ml) return Ol;
+Ml = 1;
+const e = _l();
 function t() {
 this.generatedLine = 0, this.generatedColumn = 0, this.lastGeneratedColumn = null, 
 this.source = null, this.originalLine = null, this.originalColumn = null, this.name = null;
@@ -25362,11 +25362,11 @@ throw r = null, e;
 var Nl, Pl, Il, Gl, Ll = {};
 
 Pl || (Pl = 1, rl.SourceMapGenerator = Tl().SourceMapGenerator, rl.SourceMapConsumer = function() {
-if (Ml) return Sl;
-Ml = 1;
+if (Ul) return Sl;
+Ul = 1;
 const e = fl(), t = wl(), r = vl().ArraySet;
 sl();
-const o = kl(), n = Al(), a = Symbol("smcInternal");
+const o = _l(), n = Al(), a = Symbol("smcInternal");
 class i {
 constructor(t, r) {
 return t == a ? Promise.resolve(this) : function(t, r) {
@@ -26080,11 +26080,11 @@ return '\n  <div class="api-container">\n    <label for="'.concat(a, '">').conca
 return "\n  <style>\n  .module-help {\n    display: flex;\n    flex-flow: column nowrap;\n  }\n  .module-container {\n    padding: 0px 10px 10px 10px;\n    display: flex;\n    flex-flow: column nowrap;\n  }\n  .module-info {\n    margin: 5px;\n    display: flex;\n    flex-flow: row nowrap;\n    align-items: baseline;\n  }\n  .module-title {\n    font-size: 19px;\n    font-weight: bolder;\n    margin-left: -15px;\n  }\n  .module-api-list {\n    display: flex;\n    flex-flow: row wrap;\n  }\n  </style>".replace(/\n/g, "");
 }, eu = function() {
 return "\n  <style>\n  .api-content-line {\n    width: max-content;\n    padding-right: 15px;\n  }\n  .api-container {\n    margin: 5px;\n    width: 250px;\n    background-color: #2b2b2b;\n    overflow: hidden;\n    display: flex;\n    flex-flow: column;\n  }\n\n  .api-container label {\n    transition: all 0.1s;\n    min-width: 300px;\n  }\n\n  /* Hide checkbox */\n  .api-container input {\n    display: none;\n  }\n\n  .api-container label {\n    cursor: pointer;\n    display: block;\n    padding: 10px;\n    background-color: #3b3b3b;\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n\n  .api-container label:hover, label:focus {\n    background-color: #525252;\n  }\n\n  /* Collapsed state */\n  .api-container input + .api-content {\n    overflow: hidden;\n    transition: all 0.1s;\n    width: auto;\n    max-height: 0px;\n    padding: 0px 10px;\n  }\n\n  /* Expanded state when checkbox is checked */\n  .api-container input:checked + .api-content {\n    max-height: 200px;\n    padding: 10px;\n    background-color: #1c1c1c;\n    overflow-x: auto;\n  }\n  </style>".replace(/\n/g, "");
-}, tu = M("EnergyCollection");
+}, tu = U("EnergyCollection");
 
 function ru(e) {
 if (e.droppedResources.length > 0) {
-var t = ke(e.creep, e.droppedResources, "energy_drop", 5);
+var t = _e(e.creep, e.droppedResources, "energy_drop", 5);
 if (t) return tu.debug("".concat(e.creep.name, " (").concat(e.memory.role, ") selecting dropped resource at ").concat(t.pos)), 
 {
 type: "pickup",
@@ -26143,7 +26143,7 @@ function ou(e, t) {
 var r = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN && e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (r.length > 0 && (n = ke(e.creep, r, "".concat(t, "_spawn"), 5))) return {
+if (r.length > 0 && (n = _e(e.creep, r, "".concat(t, "_spawn"), 5))) return {
 type: "transfer",
 target: n,
 resourceType: RESOURCE_ENERGY
@@ -26151,7 +26151,7 @@ resourceType: RESOURCE_ENERGY
 var o = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_EXTENSION && e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (o.length > 0 && (n = ke(e.creep, o, "".concat(t, "_ext"), 5))) return {
+if (o.length > 0 && (n = _e(e.creep, o, "".concat(t, "_ext"), 5))) return {
 type: "transfer",
 target: n,
 resourceType: RESOURCE_ENERGY
@@ -26159,7 +26159,7 @@ resourceType: RESOURCE_ENERGY
 var n, a = e.towers.filter(function(e) {
 return e.store.getFreeCapacity(RESOURCE_ENERGY) >= 100;
 });
-return a.length > 0 && (n = ke(e.creep, a, "".concat(t, "_tower"), 10)) ? {
+return a.length > 0 && (n = _e(e.creep, a, "".concat(t, "_tower"), 10)) ? {
 type: "transfer",
 target: n,
 resourceType: RESOURCE_ENERGY
@@ -26180,7 +26180,7 @@ var o = e.depositContainers.filter(function(e) {
 return e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
 if (o.length > 0) {
-var n = ke(e.creep, o, "deliver_cont", 10);
+var n = _e(e.creep, o, "deliver_cont", 10);
 if (n) return {
 type: "transfer",
 target: n,
@@ -26285,7 +26285,7 @@ expansionPaused: !1
 lastUpdate: Game.time
 }), e.empire;
 }, e;
-}(), iu = new au, su = M("LarvaWorkerBehavior");
+}(), iu = new au, su = U("LarvaWorkerBehavior");
 
 function cu(e) {
 if (Jc(e)) {
@@ -26342,7 +26342,7 @@ return a.memory || (a.memory = i), null == i.role && (i.role = "unknown"), null 
 null == i.working && (i.working = !1), null == i.room && (i.room = n), i;
 }
 
-var mu = M("HarvesterBehavior"), du = M("HaulerBehavior");
+var mu = U("HarvesterBehavior"), du = U("HaulerBehavior");
 
 function pu(e, t, r) {
 var o, n, a = null !== (o = e.memory) && void 0 !== o ? o : e.memory = {}, i = null !== (n = a.haulerTargetCache) && void 0 !== n ? n : a.haulerTargetCache = {}, s = i[r];
@@ -26624,7 +26624,7 @@ if (i) return i;
 var s = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN && e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (s.length > 0 && (m = ke(e.creep, s, "hauler_spawn", 10))) return du.debug("".concat(e.creep.name, " hauler delivering to spawn ").concat(m.id)), 
+if (s.length > 0 && (m = _e(e.creep, s, "hauler_spawn", 10))) return du.debug("".concat(e.creep.name, " hauler delivering to spawn ").concat(m.id)), 
 {
 type: "transfer",
 target: m,
@@ -26633,7 +26633,7 @@ resourceType: RESOURCE_ENERGY
 var c = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_EXTENSION && e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (c.length > 0 && (m = ke(e.creep, c, "hauler_ext", 10))) return {
+if (c.length > 0 && (m = _e(e.creep, c, "hauler_ext", 10))) return {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -26641,7 +26641,7 @@ resourceType: RESOURCE_ENERGY
 var l = e.towers.filter(function(e) {
 return e.store.getFreeCapacity(RESOURCE_ENERGY) >= 100;
 });
-if (l.length > 0 && (m = ke(e.creep, l, "hauler_tower", 15))) return {
+if (l.length > 0 && (m = _e(e.creep, l, "hauler_tower", 15))) return {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -26671,7 +26671,7 @@ resourceType: RESOURCE_ENERGY
 var m, d = e.depositContainers.filter(function(e) {
 return e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (d.length > 0 && (m = ke(e.creep, d, "hauler_cont", 15))) return {
+if (d.length > 0 && (m = _e(e.creep, d, "hauler_cont", 15))) return {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -26683,7 +26683,7 @@ type: "idle"
 du.debug("".concat(e.creep.name, " hauler has energy but no targets, switching to collection mode")), 
 $c(e);
 }
-if (e.droppedResources.length > 0 && (m = ke(e.creep, e.droppedResources, "hauler_drop", 5))) return {
+if (e.droppedResources.length > 0 && (m = _e(e.creep, e.droppedResources, "hauler_drop", 5))) return {
 type: "pickup",
 target: m
 };
@@ -26691,7 +26691,7 @@ var p = e.tombstones.filter(function(e) {
 return e.store.getUsedCapacity() > 0;
 });
 if (p.length > 0) {
-var f = ke(e.creep, p, "hauler_tomb", 10);
+var f = _e(e.creep, p, "hauler_tomb", 10);
 if (f) {
 if (f.store.getUsedCapacity(RESOURCE_ENERGY) > 0) return {
 type: "withdraw",
@@ -26865,7 +26865,7 @@ ids: i.map(function(e) {
 return e.id;
 }),
 tick: Game.time
-}), i.length > 0 && (s = ke(e.creep, i, "upgrader_nearby", 30))) return {
+}), i.length > 0 && (s = _e(e.creep, i, "upgrader_nearby", 30))) return {
 type: "withdraw",
 target: s,
 resourceType: RESOURCE_ENERGY
@@ -26878,7 +26878,7 @@ resourceType: RESOURCE_ENERGY
 var s, c = e.containers.filter(function(e) {
 return e.store.getUsedCapacity(RESOURCE_ENERGY) > 100;
 });
-if (c.length > 0 && (s = ke(e.creep, c, "upgrader_cont", 30))) return {
+if (c.length > 0 && (s = _e(e.creep, c, "upgrader_cont", 30))) return {
 type: "withdraw",
 target: s,
 resourceType: RESOURCE_ENERGY
@@ -26887,7 +26887,7 @@ var l = be(e.room).filter(function(e) {
 return e.energy > 0;
 });
 if (l.length > 0) {
-var u = ke(e.creep, l, "upgrader_source", 30);
+var u = _e(e.creep, l, "upgrader_source", 30);
 if (u) return {
 type: "harvest",
 target: u
@@ -27258,7 +27258,7 @@ routeType: "hauler"
 var a = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN && e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (a.length > 0 && (m = ke(e.creep, a, "remoteHauler_spawn", 5))) return {
+if (a.length > 0 && (m = _e(e.creep, a, "remoteHauler_spawn", 5))) return {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -27266,7 +27266,7 @@ resourceType: RESOURCE_ENERGY
 var i = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_EXTENSION && e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-if (i.length > 0 && (m = ke(e.creep, i, "remoteHauler_ext", 5))) return {
+if (i.length > 0 && (m = _e(e.creep, i, "remoteHauler_ext", 5))) return {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -27274,7 +27274,7 @@ resourceType: RESOURCE_ENERGY
 var s = e.towers.filter(function(e) {
 return e.store.getFreeCapacity(RESOURCE_ENERGY) >= 100;
 });
-if (s.length > 0 && (m = ke(e.creep, s, "remoteHauler_tower", 10))) return {
+if (s.length > 0 && (m = _e(e.creep, s, "remoteHauler_tower", 10))) return {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -27287,7 +27287,7 @@ resourceType: RESOURCE_ENERGY
 var c = e.depositContainers.filter(function(e) {
 return e.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
 });
-return c.length > 0 && (m = ke(e.creep, c, "remoteHauler_cont", 10)) ? {
+return c.length > 0 && (m = _e(e.creep, c, "remoteHauler_cont", 10)) ? {
 type: "transfer",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -27307,7 +27307,7 @@ routeType: "hauler"
 var l = .3 * e.creep.store.getCapacity(RESOURCE_ENERGY), u = e.containers.filter(function(e) {
 return e.store.getUsedCapacity(RESOURCE_ENERGY) >= l;
 });
-if (u.length > 0 && (m = ke(e.creep, u, "remoteHauler_remoteCont", 10))) return {
+if (u.length > 0 && (m = _e(e.creep, u, "remoteHauler_remoteCont", 10))) return {
 type: "withdraw",
 target: m,
 resourceType: RESOURCE_ENERGY
@@ -27315,10 +27315,10 @@ resourceType: RESOURCE_ENERGY
 var m, d = e.droppedResources.filter(function(e) {
 return e.resourceType === RESOURCE_ENERGY && e.amount > 50;
 });
-return d.length > 0 && (m = ke(e.creep, d, "remoteHauler_remoteDrop", 3)) ? {
+return d.length > 0 && (m = _e(e.creep, d, "remoteHauler_remoteDrop", 3)) ? {
 type: "pickup",
 target: m
-} : 0 === u.length && e.containers.length > 0 && (m = ke(e.creep, e.containers, "remoteHauler_waitCont", 20)) && e.creep.pos.getRangeTo(m) > 2 ? {
+} : 0 === u.length && e.containers.length > 0 && (m = _e(e.creep, e.containers, "remoteHauler_waitCont", 20)) && e.creep.pos.getRangeTo(m) > 2 ? {
 type: "remoteMoveTo",
 target: m,
 routeType: "hauler"
@@ -27352,7 +27352,7 @@ filter: function(e) {
 return e.structureType === STRUCTURE_CONTAINER && e.store.getFreeCapacity(a) > 0;
 },
 filterKey: "container_".concat(a)
-})).length > 0 && (c = ke(e.creep, s, "interRoomCarrier_targetCont", 10))) return {
+})).length > 0 && (c = _e(e.creep, s, "interRoomCarrier_targetCont", 10))) return {
 type: "transfer",
 target: c,
 resourceType: a
@@ -27380,7 +27380,7 @@ filter: function(e) {
 return e.structureType === STRUCTURE_CONTAINER && e.store.getUsedCapacity(a) > 0;
 },
 filterKey: "container_".concat(a)
-})).length > 0 && (c = ke(e.creep, s, "interRoomCarrier_sourceCont", 10)) ? {
+})).length > 0 && (c = _e(e.creep, s, "interRoomCarrier_sourceCont", 10)) ? {
 type: "withdraw",
 target: c,
 resourceType: a
@@ -27398,7 +27398,7 @@ var t;
 return (null !== (t = hu[e.memory.role]) && void 0 !== t ? t : cu)(e);
 }
 
-var Eu = M("MilitaryBehaviors");
+var Eu = U("MilitaryBehaviors");
 
 function Tu(e, t) {
 if (!function(e) {
@@ -27540,7 +27540,7 @@ target: r
 }) : null;
 }
 
-function Uu(e) {
+function Mu(e) {
 var t, r, o, n, i = Memory;
 try {
 for (var s = a(Object.values(null !== (o = i.clusters) && void 0 !== o ? o : {})), c = s.next(); !c.done; c = s.next()) {
@@ -27564,7 +27564,7 @@ if (t) throw t.error;
 }
 }
 
-function Mu(e) {
+function Uu(e) {
 return e.members.map(function(e) {
 return Game.creeps[e];
 }).filter(function(e) {
@@ -27572,18 +27572,18 @@ return Boolean(e);
 });
 }
 
-function _u(e) {
+function ku(e) {
 var t, r, o = e.rallyFlag ? null === (t = Game.flags) || void 0 === t ? void 0 : t[e.rallyFlag] : void 0;
 return null !== (r = null == o ? void 0 : o.pos) && void 0 !== r ? r : new RoomPosition(25, 25, e.rallyRoom);
 }
 
-function ku(e) {
+function _u(e) {
 var t = e.creep.memory;
 if (Rn(e.creep)) return {
 type: "idle"
 };
 if (e.memory.squadId) {
-var r = Uu(e.memory.squadId);
+var r = Mu(e.memory.squadId);
 if (r) return Au(e, r);
 }
 if (t.assistTarget) {
@@ -27668,7 +27668,7 @@ if (e.room.name !== t.rallyRoom) return {
 type: "moveToRoom",
 roomName: t.rallyRoom
 };
-var n = _u(t);
+var n = ku(t);
 return e.creep.pos.getRangeTo(n) > 3 ? {
 type: "moveTo",
 target: n
@@ -27676,7 +27676,7 @@ target: n
 return !!function(e) {
 var t, r, o, n, s = null !== (o = e.targetComposition) && void 0 !== o ? o : {}, c = {};
 try {
-for (var l = a(Mu(e)), u = l.next(); !u.done; u = l.next()) {
+for (var l = a(Uu(e)), u = l.next(); !u.done; u = l.next()) {
 var m = u.value;
 if (m.room.name === e.rallyRoom && !m.spawning) {
 var d = m.memory.role;
@@ -27699,7 +27699,7 @@ var t, r = i(e, 2), o = r[0], n = r[1];
 return (null !== (t = c[o]) && void 0 !== t ? t : 0) >= (null != n ? n : 0);
 });
 }(e) || Boolean(e.stagingTimeoutAt && Game.time >= e.stagingTimeoutAt && function(e) {
-var t, r, o = Mu(e).filter(function(t) {
+var t, r, o = Uu(e).filter(function(t) {
 return t.room.name === e.rallyRoom && !t.spawning;
 }), n = function(e) {
 var t, r = null !== (t = e.targetComposition) && void 0 !== t ? t : {}, o = Object.values(r).reduce(function(e, t) {
@@ -27728,7 +27728,7 @@ if (!s) return {
 type: "idle"
 };
 if (e.room.name !== s) return function(e, t) {
-var r = Mu(t).filter(function(t) {
+var r = Uu(t).filter(function(t) {
 return t.room.name === e.room.name && !t.spawning;
 });
 return !(r.length <= 1) && r.reduce(function(t, r) {
@@ -27744,7 +27744,7 @@ roomName: s
 var c = function(e, t) {
 var r, o, n;
 if ("siege" !== t.type) return null;
-var a = Mu(t).sort(function(e, t) {
+var a = Uu(t).sort(function(e, t) {
 return e.name.localeCompare(t.name);
 }), i = a.findIndex(function(t) {
 return t.name === e.creep.name;
@@ -27781,7 +27781,7 @@ roomName: t.rallyRoom
 };
 var l = e.memory.role;
 if ("healer" === l) {
-var u = Mu(t).filter(function(e) {
+var u = Uu(t).filter(function(e) {
 return e.hits < e.hitsMax;
 }).sort(function(e, t) {
 return e.hits / e.hitsMax - t.hits / t.hitsMax;
@@ -27798,7 +27798,7 @@ target: u
 };
 var m = function(e) {
 var t;
-return null !== (t = Mu(e).find(function(e) {
+return null !== (t = Uu(e).find(function(e) {
 return "healer" !== e.memory.role;
 })) && void 0 !== t ? t : null;
 }(t);
@@ -27859,7 +27859,7 @@ type: "moveToRoom",
 roomName: t.rallyRoom
 } : {
 type: "moveTo",
-target: _u(t)
+target: ku(t)
 };
 
 case "dissolving":
@@ -27878,7 +27878,7 @@ type: "idle"
 }
 
 var Nu = {
-guard: ku,
+guard: _u,
 remoteGuard: function(e) {
 var t = e.creep.memory;
 if (!t.targetRoom) {
@@ -27979,7 +27979,7 @@ type: "heal",
 target: e.creep
 };
 if (e.memory.squadId) {
-var r = Uu(e.memory.squadId);
+var r = Mu(e.memory.squadId);
 if (r) return Au(e, r);
 }
 if (t.targetRoom) {
@@ -28060,7 +28060,7 @@ return "military" === t.family && "healer" !== t.role;
 }
 });
 if (u.length > 0) {
-var m = ke(e.creep, u, "healer_follow", 5);
+var m = _e(e.creep, u, "healer_follow", 5);
 if (m) return {
 type: "moveTo",
 target: m
@@ -28077,7 +28077,7 @@ type: "idle"
 soldier: function(e) {
 var t;
 if (e.memory.squadId) {
-var r = Uu(e.memory.squadId);
+var r = Mu(e.memory.squadId);
 if (r) return Au(e, r);
 }
 if (e.creep.hits / e.creep.hitsMax < .3) {
@@ -28130,7 +28130,7 @@ var d = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN;
 });
 if (d.length > 0) {
-var p = ke(e.creep, d, "soldier_spawn", 20);
+var p = _e(e.creep, d, "soldier_spawn", 20);
 if (p && e.creep.pos.getRangeTo(p) > 5) return {
 type: "moveTo",
 target: p
@@ -28143,7 +28143,7 @@ type: "idle"
 siegeUnit: function(e) {
 var t;
 if (e.memory.squadId) {
-var r = Uu(e.memory.squadId);
+var r = Mu(e.memory.squadId);
 if (r) return Au(e, r);
 }
 if (e.creep.hits / e.creep.hitsMax < .3) {
@@ -28192,7 +28192,7 @@ return Boolean(a && F(a) || i && F(i));
 return e.structureType === STRUCTURE_RAMPART && e.hits < 1e5;
 })), !1);
 if (u.length > 0) {
-var m = ke(e.creep, u, "siege_wall", 10);
+var m = _e(e.creep, u, "siege_wall", 10);
 if (m) return {
 type: "dismantle",
 target: m
@@ -28218,7 +28218,7 @@ type: "idle"
 harasser: function(e) {
 var t = e.memory.targetRoom;
 if (e.memory.squadId) {
-var r = Uu(e.memory.squadId);
+var r = Mu(e.memory.squadId);
 if (r) return Au(e, r);
 }
 if (e.creep.hits / e.creep.hitsMax < .4) {
@@ -28293,7 +28293,7 @@ var t, r, o = e.creep.memory;
 if (Rn(e.creep)) return {
 type: "idle"
 };
-if (e.memory.squadId && (r = Uu(e.memory.squadId))) return Au(e, r);
+if (e.memory.squadId && (r = Mu(e.memory.squadId))) return Au(e, r);
 if (e.creep.hits / e.creep.hitsMax < .3) {
 if (o.assistTarget && delete o.assistTarget, e.room.name !== e.homeRoom) return {
 type: "moveToRoom",
@@ -28347,7 +28347,7 @@ type: "moveTo",
 target: u
 };
 }
-if (e.memory.squadId && (r = Uu(e.memory.squadId))) return Au(e, r);
+if (e.memory.squadId && (r = Mu(e.memory.squadId))) return Au(e, r);
 var m, d = wu(e);
 if (d) return (m = e.creep.pos.getRangeTo(d)) < 3 ? {
 type: "flee",
@@ -28368,7 +28368,7 @@ var y = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN;
 });
 if (y.length > 0) {
-var g = ke(e.creep, y, "harasser_home_spawn", 20);
+var g = _e(e.creep, y, "harasser_home_spawn", 20);
 if (g && e.creep.pos.getRangeTo(g) > 10) return {
 type: "moveTo",
 target: g
@@ -28382,7 +28382,7 @@ type: "idle"
 
 function Pu(e) {
 var t;
-return Hc.getAssignedAction(e) || (null !== (t = Nu[e.memory.role]) && void 0 !== t ? t : ku)(e);
+return Hc.getAssignedAction(e) || (null !== (t = Nu[e.memory.role]) && void 0 !== t ? t : _u)(e);
 }
 
 function Iu(e, t) {
@@ -28530,7 +28530,7 @@ var x = R > 2 * E ? "swamp" : E > 2 * R ? "plains" : "mixed", w = e.name.match(/
 filter: function(e) {
 return e.structureType === STRUCTURE_KEEPER_LAIR;
 }
-}).length > 0, U = {
+}).length > 0, M = {
 name: e.name,
 lastSeen: Game.time,
 sources: f.length,
@@ -28541,9 +28541,9 @@ terrain: x,
 isHighway: b,
 isSK: O
 };
-(null === (s = null == g ? void 0 : g.owner) || void 0 === s ? void 0 : s.username) && (U.owner = g.owner.username), 
-(null === (c = null == g ? void 0 : g.reservation) || void 0 === c ? void 0 : c.username) && (U.reserver = g.reservation.username), 
-(null == y ? void 0 : y.mineralType) && (U.mineralType = y.mineralType), l[e.name] = U;
+(null === (s = null == g ? void 0 : g.owner) || void 0 === s ? void 0 : s.username) && (M.owner = g.owner.username), 
+(null === (c = null == g ? void 0 : g.reservation) || void 0 === c ? void 0 : c.username) && (M.reserver = g.reservation.username), 
+(null == y ? void 0 : y.mineralType) && (M.mineralType = y.mineralType), l[e.name] = M;
 }
 
 function Bu(e) {
@@ -28644,7 +28644,7 @@ var r = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN;
 });
 if (r.length > 0) {
-var o = ke(e.creep, r, "claimer_spawn", 20);
+var o = _e(e.creep, r, "claimer_spawn", 20);
 if (o) return {
 type: "moveTo",
 target: o
@@ -28683,7 +28683,7 @@ var o = e.repairTargets.filter(function(e) {
 return (e.structureType === STRUCTURE_SPAWN || e.structureType === STRUCTURE_TOWER || e.structureType === STRUCTURE_STORAGE) && e.hits < .5 * e.hitsMax;
 });
 if (o.length > 0) {
-var n = ke(e.creep, o, "engineer_critical", 5);
+var n = _e(e.creep, o, "engineer_critical", 5);
 if (n) return {
 type: "repair",
 target: n
@@ -28693,7 +28693,7 @@ var a = e.repairTargets.filter(function(e) {
 return (e.structureType === STRUCTURE_ROAD || e.structureType === STRUCTURE_CONTAINER) && e.hits < .75 * e.hitsMax;
 });
 if (a.length > 0) {
-var i = ke(e.creep, a, "engineer_infra", 5);
+var i = _e(e.creep, a, "engineer_infra", 5);
 if (i) return {
 type: "repair",
 target: i
@@ -28703,7 +28703,7 @@ var s = null !== (r = null === (t = e.swarmState) || void 0 === t ? void 0 : t.d
 return e.structureType === STRUCTURE_RAMPART && e.hits < c;
 });
 if (l.length > 0) {
-var u = ke(e.creep, l, "engineer_rampart", 5);
+var u = _e(e.creep, l, "engineer_rampart", 5);
 if (u) return {
 type: "repair",
 target: u
@@ -28713,7 +28713,7 @@ var m = e.repairTargets.filter(function(e) {
 return e.structureType === STRUCTURE_WALL && e.hits < c;
 });
 if (m.length > 0) {
-var d = ke(e.creep, m, "engineer_wall", 5);
+var d = _e(e.creep, m, "engineer_wall", 5);
 if (d) return {
 type: "repair",
 target: d
@@ -28735,7 +28735,7 @@ var p = e.containers.filter(function(e) {
 return e.store.getUsedCapacity(RESOURCE_ENERGY) > 100;
 });
 if (p.length > 0) {
-var f = ke(e.creep, p, "engineer_cont", 15);
+var f = _e(e.creep, p, "engineer_cont", 15);
 if (f) return {
 type: "withdraw",
 target: f,
@@ -28762,7 +28762,7 @@ var o = e.spawnStructures.filter(function(e) {
 return e.structureType === STRUCTURE_SPAWN;
 });
 if (o.length > 0) {
-var n = ke(e.creep, o, "remoteWorker_spawn", 5);
+var n = _e(e.creep, o, "remoteWorker_spawn", 5);
 if (n) return {
 type: "transfer",
 target: n,
@@ -29349,7 +29349,7 @@ var t;
 return null !== (t = e.memory.family) && void 0 !== t ? t : "economy";
 }(e), i = t.role;
 try {
-_a.measureSubsystem("role:".concat(i), function() {
+ka.measureSubsystem("role:".concat(i), function() {
 switch (a) {
 case "economy":
 default:
@@ -29627,8 +29627,8 @@ for (var S = a(T), x = S.next(); !x.done; x = S.next()) {
 var w = x.value;
 try {
 for (var b = (s = void 0, a(w.body)), O = b.next(); !O.done; O = b.next()) {
-var U = O.value;
-U.hits > 0 && (U.type === ATTACK ? C += 30 : U.type === RANGED_ATTACK && (C += 10));
+var M = O.value;
+M.hits > 0 && (M.type === ATTACK ? C += 30 : M.type === RANGED_ATTACK && (C += 10));
 }
 } catch (e) {
 s = {
@@ -29709,7 +29709,7 @@ p > 0 && 0 === e.danger && (n.expand = this.clamp(n.expand + Math.min(p / 100, 1
 return Math.max(this.config.minValue, Math.min(this.config.maxValue, e));
 }, e.prototype.onHostileDetected = function(e, t, r) {
 e.danger = r, e.pheromones.defense = this.clamp(e.pheromones.defense + 5 * t), r >= 2 && (e.pheromones.war = this.clamp(e.pheromones.war + 10 * r)), 
-r >= 3 && (e.pheromones.siege = this.clamp(e.pheromones.siege + 20)), k.info("Hostile detected: ".concat(t, " hostiles, danger=").concat(r), {
+r >= 3 && (e.pheromones.siege = this.clamp(e.pheromones.siege + 20)), _.info("Hostile detected: ".concat(t, " hostiles, danger=").concat(r), {
 room: e.role,
 subsystem: "Pheromone"
 });
@@ -29810,10 +29810,10 @@ if (t) throw t.error;
 }
 try {
 for (var b = a(m), O = b.next(); !O.done; O = b.next()) {
-var U = O.value, M = e.get(U.target);
-if (M) {
-var _ = M.pheromones[U.type] + U.amount;
-M.pheromones[U.type] = this.clamp(Math.min(_, U.sourceIntensity));
+var M = O.value, U = e.get(M.target);
+if (U) {
+var k = U.pheromones[M.type] + M.amount;
+U.pheromones[M.type] = this.clamp(Math.min(k, M.sourceIntensity));
 }
 }
 } catch (e) {
@@ -30035,7 +30035,7 @@ ttl: this.structureCacheTtl
 }), i;
 }, e.prototype.updateEvolutionStage = function(e, t, r) {
 var o = this.determineEvolutionStage(e, t, r);
-return o !== e.colonyLevel && (k.info("Room evolution: ".concat(e.colonyLevel, " -> ").concat(o), {
+return o !== e.colonyLevel && (_.info("Room evolution: ".concat(e.colonyLevel, " -> ").concat(o), {
 room: t.name,
 subsystem: "Evolution"
 }), e.colonyLevel = o, !0);
@@ -30063,7 +30063,7 @@ return o >= 3 ? "siege" : o >= 2 ? "war" : r.siege > 30 && a ? "siege" : r.war >
 var o = this.determinePosture(e, t);
 if (o !== e.posture) {
 var n = e.posture, a = null != r ? r : e.role;
-return k.info("Posture change: ".concat(n, " -> ").concat(o), {
+return _.info("Posture change: ".concat(n, " -> ").concat(o), {
 room: a,
 subsystem: "Posture"
 }), e.posture = o, Gn.emit("posture.change", {
@@ -30124,7 +30124,7 @@ severity: r
 }), c += 1), s.incidents.length > 10 && (s.incidents = s.incidents.slice(-10)), 
 s.lastIncidentTick = Game.time, s.attackCount = Math.min(c, 10), s.attackCount >= n.threshold && "war" !== s.state && (s.state = "war", 
 s.warDeclaredAt = Game.time, o.warTargets.includes(e) || o.warTargets.push(e), o.objectives.warMode = !0, 
-k.warn("Declared war on ".concat(e, " after ").concat(s.attackCount, " attacks"), {
+_.warn("Declared war on ".concat(e, " after ").concat(s.attackCount, " attacks"), {
 subsystem: "Posture",
 room: t
 })), n.players[e] = s, s;
@@ -30416,7 +30416,7 @@ try {
 for (var w = a(e.towers), b = w.next(); !b.done; b = w.next()) {
 var O = b.value;
 if (!(O.store.getUsedCapacity(RESOURCE_ENERGY) < 10)) {
-var U = er({
+var M = er({
 tower: O,
 hostiles: f,
 posture: y,
@@ -30428,10 +30428,10 @@ bucket: C,
 preferWoundedTargets: E,
 allowSiegeHealing: T
 });
-(S || "heal" !== U.type && "repair" !== U.type) && "idle" !== U.type && x.push({
+(S || "heal" !== M.type && "repair" !== M.type) && "idle" !== M.type && x.push({
 tower: O,
-type: U.type,
-target: U.target
+type: M.type,
+target: M.target
 });
 }
 }
@@ -30583,8 +30583,8 @@ if (t) throw t.error;
 }
 try {
 for (var b = a(g), O = b.next(); !O.done; O = b.next()) {
-var U = O.value;
-gr(U, R) && C.add(pr(U.pos.x, U.pos.y));
+var M = O.value;
+gr(M, R) && C.add(pr(M.pos.x, M.pos.y));
 }
 } catch (e) {
 o = {
@@ -30597,7 +30597,7 @@ O && !O.done && (n = b.return) && n.call(b);
 if (o) throw o.error;
 }
 }
-var M = function(e) {
+var U = function(e) {
 var t, r, o = e.find(FIND_MY_SPAWNS)[0], n = null !== (r = null !== (t = e.terminal) && void 0 !== t ? t : e.storage) && void 0 !== r ? r : o;
 return n ? {
 x: n.pos.x,
@@ -30606,7 +30606,7 @@ y: n.pos.y
 x: 25,
 y: 25
 };
-}(e), _ = new Map, k = s(s(s([], i(y.map(function(e) {
+}(e), k = new Map, _ = s(s(s([], i(y.map(function(e) {
 return {
 x: e.pos.x,
 y: e.pos.y
@@ -30625,11 +30625,11 @@ y: e.storage.pos.y
 } : void 0, e.find(FIND_MY_SPAWNS)[0] ? {
 x: e.find(FIND_MY_SPAWNS)[0].pos.x,
 y: e.find(FIND_MY_SPAWNS)[0].pos.y
-} : void 0, M ], !1).filter(function(e) {
+} : void 0, U ], !1).filter(function(e) {
 return void 0 !== e;
 });
 try {
-for (var A = a(k), N = A.next(); !N.done; N = A.next()) for (var P = N.value, I = -6; I <= 6; I++) for (var G = -6; G <= 6; G++) vr(_, e, P.x + I, P.y + G, M, h, R, C);
+for (var A = a(_), N = A.next(); !N.done; N = A.next()) for (var P = N.value, I = -6; I <= 6; I++) for (var G = -6; G <= 6; G++) vr(k, e, P.x + I, P.y + G, U, h, R, C);
 } catch (e) {
 c = {
 error: e
@@ -30644,7 +30644,7 @@ if (c) throw c.error;
 try {
 for (var L = a(E), D = L.next(); !D.done; D = L.next()) {
 var F = D.value;
-if (!_.has(F)) return null;
+if (!k.has(F)) return null;
 }
 } catch (e) {
 u = {
@@ -30669,7 +30669,7 @@ var o = hr(e, r) - hr(t, r);
 return 0 !== o ? o : e.existingLab !== t.existingLab ? e.existingLab ? -1 : 1 : e.existingSite !== t.existingSite ? e.existingSite ? -1 : 1 : e.distanceToHub - t.distanceToHub;
 });
 return s(s([], i(r), !1), i(o), !1).slice(0, 80);
-}(_, E);
+}(k, E);
 if (B.length < f) return null;
 var H = B.slice(0, 40), W = null, K = function(e) {
 var t, r, o = function(t) {
@@ -30688,7 +30688,7 @@ var u = new Map;
 u.set(e.key, e), u.set(t.key, t);
 try {
 for (var m = (r = void 0, a(E)), d = m.next(); !d.done; d = m.next()) {
-var p = d.value, y = _.get(p);
+var p = d.value, y = k.get(p);
 y && u.set(y.key, y);
 }
 } catch (e) {
@@ -30874,7 +30874,7 @@ ramparts: [],
 unplaced: [],
 errors: [],
 stamps: [],
-version: ko
+version: _o
 };
 return {
 facts: o(o({}, e), {
@@ -30990,7 +30990,7 @@ structureType: y,
 priority: 100,
 fallback: qo(y),
 reason: "target count not met by preferred stamps",
-localAnchor: y === Ur ? e.facts.mineral : e.plan.anchor,
+localAnchor: y === Mr ? e.facts.mineral : e.plan.anchor,
 minRcl: e.plan.rcl
 })) {
 e.plan.unplaced.push(v), e.plan.errors.push({
@@ -31051,11 +31051,11 @@ if (r) throw r.error;
 }
 try {
 for (var S = a(Object.keys(g)), x = S.next(); !x.done; x = S.next()) {
-var w = null !== (u = g[M = x.value]) && void 0 !== u ? u : 0, b = null !== (m = f[M]) && void 0 !== m ? m : 0;
+var w = null !== (u = g[U = x.value]) && void 0 !== u ? u : 0, b = null !== (m = f[U]) && void 0 !== m ? m : 0;
 w > b && v.push({
 type: "RCL_LIMIT_EXCEEDED",
-structureType: M,
-reason: "".concat(M, " count ").concat(w, " exceeds RCL").concat(t.rcl, " limit ").concat(b),
+structureType: U,
+reason: "".concat(U, " count ").concat(w, " exceeds RCL").concat(t.rcl, " limit ").concat(b),
 rcl: t.rcl
 });
 }
@@ -31071,12 +31071,12 @@ if (n) throw n.error;
 }
 }
 try {
-for (var O = a(Object.keys(y)), U = O.next(); !U.done; U = O.next()) {
-var M, _ = null !== (d = y[M = U.value]) && void 0 !== d ? d : 0;
-(w = null !== (p = g[M]) && void 0 !== p ? p : 0) < _ && v.push({
+for (var O = a(Object.keys(y)), M = O.next(); !M.done; M = O.next()) {
+var U, k = null !== (d = y[U = M.value]) && void 0 !== d ? d : 0;
+(w = null !== (p = g[U]) && void 0 !== p ? p : 0) < k && v.push({
 type: "UNPLACEABLE_STRUCTURE",
-structureType: M,
-reason: "".concat(M, " count ").concat(w, " below RCL").concat(t.rcl, " target ").concat(_),
+structureType: U,
+reason: "".concat(U, " count ").concat(w, " below RCL").concat(t.rcl, " target ").concat(k),
 rcl: t.rcl
 });
 }
@@ -31086,7 +31086,7 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (c = O.return) && c.call(O);
+M && !M.done && (c = O.return) && c.call(O);
 } finally {
 if (s) throw s.error;
 }
@@ -31181,7 +31181,7 @@ y: R.y
 } : {});
 g = new RoomPosition(E.anchor.x, E.anchor.y, e.name);
 var T, C = (T = E, {
-name: "".concat(ko, "-rcl-").concat(T.rcl),
+name: "".concat(_o, "-rcl-").concat(T.rcl),
 rcl: T.rcl,
 anchor: {
 x: T.anchor.x,
@@ -31248,9 +31248,9 @@ if (n) throw n.error;
 }
 }
 try {
-for (var U = a(e.find(FIND_MY_CONSTRUCTION_SITES)), M = U.next(); !M.done; M = U.next()) {
-var _ = M.value;
-x.add("".concat(_.structureType, ":").concat(_.pos.x, ",").concat(_.pos.y));
+for (var M = a(e.find(FIND_MY_CONSTRUCTION_SITES)), U = M.next(); !U.done; U = M.next()) {
+var k = U.value;
+x.add("".concat(k.structureType, ":").concat(k.pos.x, ",").concat(k.pos.y));
 }
 } catch (e) {
 s = {
@@ -31258,12 +31258,12 @@ error: e
 };
 } finally {
 try {
-M && !M.done && (c = U.return) && c.call(U);
+U && !U.done && (c = M.return) && c.call(M);
 } finally {
 if (s) throw s.error;
 }
 }
-var k = Zo(t, {
+var _ = Zo(t, {
 existingStructureKeys: S,
 existingSiteKeys: x,
 currentRcl: E
@@ -31272,21 +31272,21 @@ return e.structureType === STRUCTURE_TOWER || e.structureType === STRUCTURE_RAMP
 }).sort(function(e, t) {
 return e.structureType === STRUCTURE_TOWER && t.structureType !== STRUCTURE_TOWER ? -1 : t.structureType === STRUCTURE_TOWER && e.structureType !== STRUCTURE_TOWER ? 1 : t.score - e.score;
 });
-if (C < T && !k.some(function(e) {
+if (C < T && !_.some(function(e) {
 return e.structureType === STRUCTURE_TOWER;
 })) {
 var A = e.find(FIND_MY_SPAWNS)[0], N = null !== (g = null == A ? void 0 : A.pos) && void 0 !== g ? g : null === (v = e.controller) || void 0 === v ? void 0 : v.pos;
-if (N) for (var P = e.getTerrain(), I = 1; I <= 4 && !k.some(function(e) {
+if (N) for (var P = e.getTerrain(), I = 1; I <= 4 && !_.some(function(e) {
 return e.structureType === STRUCTURE_TOWER;
-}); I++) for (var G = -I; G <= I && !k.some(function(e) {
+}); I++) for (var G = -I; G <= I && !_.some(function(e) {
 return e.structureType === STRUCTURE_TOWER;
-}); G++) for (var L = -I; L <= I && !k.some(function(e) {
+}); G++) for (var L = -I; L <= I && !_.some(function(e) {
 return e.structureType === STRUCTURE_TOWER;
 }); L++) {
 var D = N.x + G, F = N.y + L;
 if (!(D <= 1 || D >= 48 || F <= 1 || F >= 48) && P.get(D, F) !== TERRAIN_MASK_WALL) {
 var B = "".concat(STRUCTURE_TOWER, ":").concat(D, ",").concat(F);
-S.has(B) || x.has(B) || k.unshift({
+S.has(B) || x.has(B) || _.unshift({
 x: D,
 y: F,
 structureType: STRUCTURE_TOWER,
@@ -31300,7 +31300,7 @@ source: "critical-defense-fallback"
 }
 var H = 0;
 try {
-for (var W = a(k), K = W.next(); !K.done; K = W.next()) {
+for (var W = a(_), K = W.next(); !K.done; K = W.next()) {
 var Y = K.value;
 if (H >= r || R + H >= h) break;
 e.createConstructionSite(Y.x, Y.y, Y.structureType) === OK && H++;
@@ -31352,11 +31352,11 @@ var b = uo(e, t, r.roads, o);
 if (R.set(STRUCTURE_ROAD, b), y >= 6) {
 var O = e.find(FIND_MINERALS);
 if (O.length > 0) {
-var U = O[0], M = new Set;
-M.add("".concat(U.pos.x, ",").concat(U.pos.y)), R.set(STRUCTURE_EXTRACTOR, M);
+var M = O[0], U = new Set;
+U.add("".concat(M.pos.x, ",").concat(M.pos.y)), R.set(STRUCTURE_EXTRACTOR, U);
 }
 }
-var _ = function(e) {
+var k = function(e) {
 var t, r, o = function(e) {
 return new Set(lr(e).placements.map(function(e) {
 return dr(e.x, e.y);
@@ -31384,10 +31384,10 @@ if (t) throw t.error;
 }
 return o;
 }(e);
-if (_.size > 0) {
-var k = null !== (f = R.get(STRUCTURE_LINK)) && void 0 !== f ? f : new Set;
+if (k.size > 0) {
+var _ = null !== (f = R.get(STRUCTURE_LINK)) && void 0 !== f ? f : new Set;
 try {
-for (var A = a(_), N = A.next(); !N.done; N = A.next()) w = N.value, k.add(w);
+for (var A = a(k), N = A.next(); !N.done; N = A.next()) w = N.value, _.add(w);
 } catch (e) {
 s = {
 error: e
@@ -31399,7 +31399,7 @@ N && !N.done && (c = A.return) && c.call(A);
 if (s) throw s.error;
 }
 }
-R.set(STRUCTURE_LINK, k);
+R.set(STRUCTURE_LINK, _);
 }
 var P = e.find(FIND_STRUCTURES, {
 filter: function(e) {
@@ -31431,7 +31431,7 @@ try {
 for (var u = a(c), m = u.next(); !m.done; m = u.next()) {
 var d = m.value, p = d.structure, f = d.reason;
 if (l >= o) break;
-p.destroy() === OK && (l++, k.info("Destroyed misplaced structure: ".concat(f), {
+p.destroy() === OK && (l++, _.info("Destroyed misplaced structure: ".concat(f), {
 subsystem: "Blueprint",
 room: p.room.name,
 meta: {
@@ -31491,7 +31491,7 @@ rcl: f,
 danger: t.danger,
 existingSites: p
 })) {
-var U = wm(f) ? 2 : 3;
+var M = wm(f) ? 2 : 3;
 (O = function(e, t, r, o, n, c) {
 var l, u, m, d, p, f;
 if (void 0 === n && (n = 3), void 0 === c && (c = []), o < 2) return {
@@ -31593,15 +31593,15 @@ try {
 for (var C = a(h), S = C.next(); !S.done; S = C.next()) {
 for (var x = i(S.value, 2), w = x[0], b = s([], i(x[1]), !1).sort(function(e, t) {
 return e.x === t.x ? e.y - t.y : e.x - t.x;
-}), O = [], U = [], M = 0; M < b.length; M++) {
-T = b[M];
-var _ = b[M - 1];
-!(_ && Math.abs(T.x - _.x) <= 1 && Math.abs(T.y - _.y) <= 1) && U.length > 0 && (O.push(U), 
-U = []), U.push(T);
+}), O = [], M = [], U = 0; U < b.length; U++) {
+T = b[U];
+var k = b[U - 1];
+!(k && Math.abs(T.x - k.x) <= 1 && Math.abs(T.y - k.y) <= 1) && M.length > 0 && (O.push(M), 
+M = []), M.push(T);
 }
-U.length > 0 && O.push(U);
+M.length > 0 && O.push(M);
 try {
-for (var k = (c = void 0, a(O)), A = k.next(); !A.done; A = k.next()) {
+for (var _ = (c = void 0, a(O)), A = _.next(); !A.done; A = _.next()) {
 var N, P = (N = A.value)[0], I = N[N.length - 1];
 if (P && I) switch (w) {
 case "top":
@@ -31624,8 +31624,8 @@ for (L = 1; L <= 1; L++) y(47, P.y - L, w), y(47, I.y + L, w), y(48, P.y - L, w)
 y(48, I.y + L, w);
 }
 var D = Math.floor(N.length / 2);
-for (M = 0; M < N.length; M++) {
-var F = (T = N[M]).x, B = T.y;
+for (U = 0; U < N.length; U++) {
+var F = (T = N[U]).x, B = T.y;
 switch (w) {
 case "top":
 B = 2;
@@ -31642,7 +31642,7 @@ break;
 case "right":
 F = 47;
 }
-N.length >= 4 && M === D ? g(F, B, w) : y(F, B, w);
+N.length >= 4 && U === D ? g(F, B, w) : y(F, B, w);
 }
 }
 } catch (e) {
@@ -31651,7 +31651,7 @@ error: e
 };
 } finally {
 try {
-A && !A.done && (l = k.return) && l.call(k);
+A && !A.done && (l = _.return) && l.call(_);
 } finally {
 if (c) throw c.error;
 }
@@ -31739,9 +31739,9 @@ if (t && !v.some(function(t) {
 return t.structureType === STRUCTURE_RAMPART && t.pos.x === e.x && t.pos.y === e.y;
 })) {
 var r = t.destroy();
-r === OK ? (R++, k.info("Removed wall at (".concat(e.x, ",").concat(e.y, ") to allow road passage"), {
+r === OK ? (R++, _.info("Removed wall at (".concat(e.x, ",").concat(e.y, ") to allow road passage"), {
 subsystem: "Defense"
-})) : k.warn("Failed to remove wall at (".concat(e.x, ",").concat(e.y, "): ").concat(r), {
+})) : _.warn("Failed to remove wall at (".concat(e.x, ",").concat(e.y, "): ").concat(r), {
 subsystem: "Defense"
 });
 }
@@ -31761,7 +31761,7 @@ if (l) throw l.error;
 }
 }
 if (o >= 2 && h < E && T < S) {
-var U = function(t) {
+var M = function(t) {
 if (h >= E) return "break";
 if (T + h >= S) return "break";
 var r = v.some(function(e) {
@@ -31769,19 +31769,19 @@ return e.pos.x === t.x && e.pos.y === t.y && (e.structureType === STRUCTURE_WALL
 }), o = g.some(function(e) {
 return e.pos.x === t.x && e.pos.y === t.y && (e.structureType === STRUCTURE_WALL || e.structureType === STRUCTURE_RAMPART);
 });
-r || o || e.createConstructionSite(t.x, t.y, STRUCTURE_WALL) === OK && (h++, k.debug("Placed perimeter wall at (".concat(t.x, ",").concat(t.y, ")"), {
+r || o || e.createConstructionSite(t.x, t.y, STRUCTURE_WALL) === OK && (h++, _.debug("Placed perimeter wall at (".concat(t.x, ",").concat(t.y, ")"), {
 subsystem: "Defense"
 }));
 };
 try {
-for (var M = a(y.walls), _ = M.next(); !_.done && "break" !== U(_.value); _ = M.next()) ;
+for (var U = a(y.walls), k = U.next(); !k.done && "break" !== M(k.value); k = U.next()) ;
 } catch (e) {
 m = {
 error: e
 };
 } finally {
 try {
-_ && !_.done && (d = M.return) && d.call(M);
+k && !k.done && (d = U.return) && d.call(U);
 } finally {
 if (m) throw m.error;
 }
@@ -31801,9 +31801,9 @@ return e.pos.x === t.x && e.pos.y === t.y && e.structureType === STRUCTURE_WALL;
 r || o || n || e.createConstructionSite(t.x, t.y, STRUCTURE_RAMPART) === OK && (h++, 
 y.roadCrossings.some(function(e) {
 return e.x === t.x && e.y === t.y;
-}) ? k.debug("Placed rampart at road crossing (".concat(t.x, ",").concat(t.y, ")"), {
+}) ? _.debug("Placed rampart at road crossing (".concat(t.x, ",").concat(t.y, ")"), {
 subsystem: "Defense"
-}) : k.debug("Placed rampart gap at (".concat(t.x, ",").concat(t.y, ")"), {
+}) : _.debug("Placed rampart gap at (".concat(t.x, ",").concat(t.y, ")"), {
 subsystem: "Defense"
 }));
 };
@@ -31825,9 +31825,9 @@ return {
 sitesPlaced: h,
 wallsRemoved: R
 };
-}(e, g, C.roads, f, U, t.remoteAssignments)).wallsRemoved > 0 && Nt.addRoomEvent(e.name, "wallRemoved", "".concat(O.wallsRemoved, " wall(s) removed to allow road passage"));
+}(e, g, C.roads, f, M, t.remoteAssignments)).wallsRemoved > 0 && Nt.addRoomEvent(e.name, "wallRemoved", "".concat(O.wallsRemoved, " wall(s) removed to allow road passage"));
 }
-var M = function(e, t) {
+var U = function(e, t) {
 var r, o, n, i, s, c, l = "undefined" == typeof MAX_CONSTRUCTION_SITES ? 100 : MAX_CONSTRUCTION_SITES, u = "undefined" == typeof Game ? 0 : Object.keys(Game.constructionSites).length;
 if (u >= l) return 0;
 var m = function(e) {
@@ -31895,7 +31895,7 @@ if (r) throw r.error;
 }
 }
 return p;
-}(e, E), _ = function(e, t) {
+}(e, E), k = function(e, t) {
 var r, o, n = e.find(FIND_MY_CONSTRUCTION_SITES);
 if (n.length >= 10) return 0;
 var s = ro(e, t), c = e.getTerrain(), l = e.find(FIND_STRUCTURES, {
@@ -32005,7 +32005,7 @@ for (var R = a(y), E = R.next(); !E.done; E = R.next()) {
 var T = E.value.structure;
 if (l.placed >= d) break;
 var C = T.pos, S = C.x, x = C.y, w = e.createConstructionSite(S, x, STRUCTURE_RAMPART);
-if (w === OK) l.placed++, k.debug("Placed rampart on ".concat(T.structureType, " at (").concat(S, ",").concat(x, ")"), {
+if (w === OK) l.placed++, _.debug("Placed rampart on ".concat(T.structureType, " at (").concat(S, ",").concat(x, ")"), {
 subsystem: "Defense"
 }); else if (w === ERR_FULL) break;
 }
@@ -32020,12 +32020,12 @@ E && !E.done && (c = R.return) && c.call(R);
 if (s) throw s.error;
 }
 }
-return (l.placed > 0 || y.length > 0) && k.info("Rampart automation for ".concat(e.name, ": ") + "".concat(l.protected, "/").concat(l.totalCritical, " protected, ") + "".concat(l.placed, " placed, ") + "".concat(y.length - l.placed, " pending"), {
+return (l.placed > 0 || y.length > 0) && _.info("Rampart automation for ".concat(e.name, ": ") + "".concat(l.protected, "/").concat(l.totalCritical, " protected, ") + "".concat(l.placed, " placed, ") + "".concat(y.length - l.placed, " pending"), {
 subsystem: "Defense"
 }), l;
 }(e, f, t.danger, N)).placed > 0 && Nt.addRoomEvent(e.name, "rampartPlaced", "".concat(A.placed, " rampart(s) placed on critical structures"));
 }
-t.metrics.constructionSites = p.length + S + M + v + h + _ + O.sitesPlaced + A.placed;
+t.metrics.constructionSites = p.length + S + U + v + h + k + O.sitesPlaced + A.placed;
 }
 } else {
 var P = p.some(function(e) {
@@ -32170,7 +32170,7 @@ I && (xm(t, I.anchor, I.blueprint.name, f), e.createConstructionSite(I.anchor.x,
 }, e;
 }(), Om = new bm;
 
-function Um(e) {
+function Mm(e) {
 var t;
 switch (e.posture) {
 case "defensive":
@@ -32192,23 +32192,23 @@ siege: e.pheromones.siege
 };
 }
 
-var Mm = {
+var Um = {
 info: function(e, t) {
-return k.info(e, t);
+return _.info(e, t);
 },
 warn: function(e, t) {
-return k.warn(e, t);
+return _.warn(e, t);
 },
 error: function(e, t) {
-return k.error(e, t);
+return _.error(e, t);
 },
 debug: function(e, t) {
-return k.debug(e, t);
+return _.debug(e, t);
 }
-}, _m = new (function() {
+}, km = new (function() {
 function e() {
 this.manager = new Ls({
-logger: Mm
+logger: Um
 });
 }
 return e.prototype.getReaction = function(e) {
@@ -32218,23 +32218,23 @@ return this.manager.calculateReactionChain(e, t);
 }, e.prototype.hasResourcesForReaction = function(e, t, r) {
 return void 0 === r && (r = 100), this.manager.hasResourcesForReaction(e, t, r);
 }, e.prototype.planReactions = function(e, t) {
-var r = Um(t);
+var r = Mm(t);
 return this.manager.planReactions(e, r);
 }, e.prototype.scheduleCompoundProduction = function(e, t) {
-var r = Um(t);
+var r = Mm(t);
 return this.manager.scheduleCompoundProduction(e, r);
 }, e.prototype.executeReaction = function(e, t) {
 this.manager.executeReaction(e, t);
 }, e;
-}()), km = {
+}()), _m = {
 labManager: zs,
 boostManager: Ks,
-chemistryPlanner: _m,
+chemistryPlanner: km,
 labConfigManager: qs,
 logger: ia
 }, Am = function() {
 function e(e) {
-void 0 === e && (e = km), this.deps = e;
+void 0 === e && (e = _m), this.deps = e;
 }
 return e.prototype.run = function(e, t) {
 var r = {
@@ -32332,7 +32332,7 @@ function e(e, t) {
 void 0 === t && (t = {}), this.roomName = e, this.config = o(o({}, Gm), t);
 }
 return e.prototype.run = function(e) {
-var t, r, o, n = _a.startRoom(this.roomName), i = Game.rooms[this.roomName];
+var t, r, o, n = ka.startRoom(this.roomName), i = Game.rooms[this.roomName];
 if (i && (null === (t = i.controller) || void 0 === t ? void 0 : t.my)) {
 var s = Game.cpu.bucket < 6e3;
 s || function(e) {
@@ -32399,7 +32399,7 @@ if (this.config.enablePheromones && !s && Game.time % 5 == 0 && cm.updateMetrics
 Tm.updateThreatAssessment(i, c, {
 spawns: l.spawns,
 towers: l.towers
-}), xn.assess(i, c), Mn.checkSafeMode(i, c), this.config.enableEvolution && (fm.updateEvolutionStage(c, i, e), 
+}), xn.assess(i, c), Un.checkSafeMode(i, c), this.config.enableEvolution && (fm.updateEvolutionStage(c, i, e), 
 s || fm.updateMissingStructures(c, i)), ym.updatePosture(c), this.config.enablePheromones && !s && cm.updatePheromones(c, i), 
 this.config.enableTowers && Tm.runTowerControl(i, c, l.towers), this.config.enableConstruction && !s) {
 var u = null !== (o = null === (r = i.controller) || void 0 === r ? void 0 : r.level) && void 0 !== o ? o : 1, m = Om.getConstructionInterval(u), d = ym.allowsBuilding(c.posture), p = !d && c.danger >= 2;
@@ -32414,8 +32414,8 @@ links: l.links,
 sources: l.sources
 });
 var f = Game.cpu.getUsed() - n;
-_a.recordRoom(i, f), _a.endRoom(this.roomName, n);
-} else _a.endRoom(this.roomName, n);
+ka.recordRoom(i, f), ka.endRoom(this.roomName, n);
+} else ka.endRoom(this.roomName, n);
 }, e;
 }(), Fm = function() {
 function e() {
@@ -33144,18 +33144,18 @@ return ve.clear(Se), "Room.find() cache cleared and statistics reset";
 var e = !le().profiling;
 return ue({
 profiling: e
-}), _a.setEnabled(e), Yn({
+}), ka.setEnabled(e), Yn({
 cpuLogging: e
 }), "Profiling: ".concat(e ? "ENABLED" : "DISABLED");
 }, e.prototype.enableCpuDetails = function(e, t, r) {
 var o, n, a;
 void 0 === e && (e = 500), void 0 === t && (t = 1);
-var i = _a.enableCpuDetails(e, t, r);
+var i = ka.enableCpuDetails(e, t, r);
 return "CPU details enabled until tick ".concat(null !== (o = i.expiresTick) && void 0 !== o ? o : "unknown", " (sampleRate=").concat(null !== (n = i.sampleRate) && void 0 !== n ? n : 1, ", labels=").concat((null !== (a = i.labels) && void 0 !== a ? a : []).join(",") || "all", ")");
 }, e.prototype.disableCpuDetails = function() {
-return _a.disableCpuDetails(), "CPU details disabled";
+return ka.disableCpuDetails(), "CPU details disabled";
 }, e.prototype.cpuDetails = function() {
-var e, t, r, o, n, s, c = this, l = null === (r = Memory.stats) || void 0 === r ? void 0 : r.cpu_details, u = _a.getCpuDetailsStatus();
+var e, t, r, o, n, s, c = this, l = null === (r = Memory.stats) || void 0 === r ? void 0 : r.cpu_details, u = ka.getCpuDetailsStatus();
 if (!l) return "CPU details ".concat(u.enabled ? "enabled" : "disabled", "; no samples published yet");
 var m = Object.entries(null !== (o = l.entries) && void 0 !== o ? o : {}), d = Array.isArray(l.labels) ? l.labels.join(",") : "", p = [ "=== CPU Details ===", "Enabled: ".concat(String(l.enabled), " | Expires: ").concat(null !== (n = l.expires_tick) && void 0 !== n ? n : "n/a", " | Sample rate: ").concat(null !== (s = l.sample_rate) && void 0 !== s ? s : 1, " | Labels: ").concat(d || "all") ];
 try {
@@ -33178,7 +33178,7 @@ if (e) throw e.error;
 }
 return 0 === m.length && p.push("  No detail samples this tick"), p.join("\n");
 }, e.prototype.cpuBreakdown = function(e) {
-var t, r, o, n, i, s, c, l, u, m, d, p, f, y, g, v, h, R, E, T, C, S, x, w, b, O, U, M, _, k, A = this, N = Memory.stats;
+var t, r, o, n, i, s, c, l, u, m, d, p, f, y, g, v, h, R, E, T, C, S, x, w, b, O, M, U, k, _, A = this, N = Memory.stats;
 if (!N) return "No stats available. Stats collection may be disabled.";
 var P = !e, I = [ "=== CPU Breakdown ===" ], G = this.asRecord(N.cpu), L = this.toNumberOrZero(null !== (m = null !== (u = this.getStatsValue(G, "used")) && void 0 !== u ? u : this.getStatsValue(G, "getUsed")) && void 0 !== m ? m : this.sumNumericValues(this.asRecord(null == G ? void 0 : G.usage))), D = this.toNumberOrZero(null !== (d = this.getStatsValue(G, "limit")) && void 0 !== d ? d : this.toNumberOrZero(null == G ? void 0 : G.tickLimit)), F = this.toNumberOrZero(null !== (p = this.getStatsValue(N.cpu, "percent")) && void 0 !== p ? p : D > 0 ? L / D * 100 : 0), B = this.toNumberOrZero(this.getStatsValue(N.cpu, "bucket"));
 if (I.push("Tick: ".concat(this.toNumberOrZero(N.tick))), I.push("Total CPU: ".concat(L.toFixed(2), "/").concat(D.toFixed(0), " (").concat(F.toFixed(1), "%)")), 
@@ -33272,8 +33272,8 @@ try {
 for (var ue = a(W.slice(0, 10)), me = ue.next(); !me.done; me = ue.next()) {
 var de = me.value, pe = this.toNumberOrZero(this.getStatsValue(de, "cpu"));
 if (pe > 0) {
-var fe = null !== (U = de.role) && void 0 !== U ? U : "unknown", ye = null !== (M = de.name) && void 0 !== M ? M : "".concat(String(fe), "_unknown");
-J = null !== (k = null !== (_ = de.current_room) && void 0 !== _ ? _ : de.currentRoom) && void 0 !== k ? k : "unknown", 
+var fe = null !== (M = de.role) && void 0 !== M ? M : "unknown", ye = null !== (U = de.name) && void 0 !== U ? U : "".concat(String(fe), "_unknown");
+J = null !== (_ = null !== (k = de.current_room) && void 0 !== k ? k : de.currentRoom) && void 0 !== _ ? _ : "unknown", 
 I.push("  ".concat(String(ye), " (").concat(String(fe), "): ").concat(pe.toFixed(3), " CPU in ").concat(String(J)));
 }
 }
@@ -33293,7 +33293,7 @@ I.push("");
 }
 return I.join("\n");
 }, e.prototype.cpuBudget = function() {
-var e, t, r, o, n = _a.validateBudgets(), i = "=== CPU Budget Report (Tick ".concat(n.tick, ") ===\n");
+var e, t, r, o, n = ka.validateBudgets(), i = "=== CPU Budget Report (Tick ".concat(n.tick, ") ===\n");
 if (i += "Rooms Evaluated: ".concat(n.roomsEvaluated, "\n"), i += "Within Budget: ".concat(n.roomsWithinBudget, "\n"), 
 i += "Over Budget: ".concat(n.roomsOverBudget, "\n\n"), 0 === n.alerts.length) i += "OK All rooms within budget!\n"; else {
 i += "Alerts: ".concat(n.alerts.length, "\n");
@@ -33340,7 +33340,7 @@ if (r) throw r.error;
 }
 return i;
 }, e.prototype.cpuAnomalies = function() {
-var e, t, r, o, n = _a.detectAnomalies();
+var e, t, r, o, n = ka.detectAnomalies();
 if (0 === n.length) return "OK No CPU anomalies detected";
 var i = "=== CPU Anomalies Detected: ".concat(n.length, " ===\n\n"), s = n.filter(function(e) {
 return "spike" === e.type;
@@ -33389,7 +33389,7 @@ return i;
 }, e.prototype.cpuProfile = function(e) {
 var t, r, o, n;
 void 0 === e && (e = !1);
-var i = _a.getCurrentSnapshot(), s = "=== CPU Profile (Tick ".concat(i.tick, ") ===\n");
+var i = ka.getCurrentSnapshot(), s = "=== CPU Profile (Tick ".concat(i.tick, ") ===\n");
 s += "Total: ".concat(i.cpu.used.toFixed(2), " / ").concat(i.cpu.limit, " (").concat(i.cpu.percent.toFixed(1), "%)\n"), 
 s += "Bucket: ".concat(i.cpu.bucket, "\n"), s += "Heap: ".concat(i.cpu.heapUsed.toFixed(2), " MB\n\n");
 var c = Object.values(i.rooms).sort(function(e, t) {
@@ -33398,7 +33398,7 @@ return t.profiler.avgCpu - e.profiler.avgCpu;
 s += "Top ".concat(l.length, " Rooms by CPU:\n");
 try {
 for (var u = a(l), m = u.next(); !m.done; m = u.next()) {
-var d = m.value, p = this.getRoomBrainMetrics(d).postureCode, f = _a.postureCodeToName(p);
+var d = m.value, p = this.getRoomBrainMetrics(d).postureCode, f = ka.postureCodeToName(p);
 s += "  ".concat(d.name, " (RCL").concat(d.rcl, ", ").concat(f, "): avg ").concat(d.profiler.avgCpu.toFixed(3), " | peak ").concat(d.profiler.peakCpu.toFixed(3), " | samples ").concat(d.profiler.samples, "\n");
 }
 } catch (e) {
@@ -33439,7 +33439,7 @@ return s;
 var t, r, o, n;
 if (!e) return "Error: Room name required. Usage: diagnoseRoom('W16S52')";
 if (!Game.rooms[e]) return "Error: Room ".concat(e, " not visible. Make sure you have vision in this room.");
-var s = _a.getCurrentSnapshot(), c = s.rooms[e];
+var s = ka.getCurrentSnapshot(), c = s.rooms[e];
 if (!c) return "Error: No stats available for ".concat(e, ". The room may not have been processed yet.");
 var l = "room:".concat(e), u = s.processes[l], m = Nt.getSwarmState(e), d = m && ("war" === m.posture || "siege" === m.posture || m.danger >= 2), p = d ? .25 : .1, f = null !== (o = null == u ? void 0 : u.tickModulo) && void 0 !== o ? o : 1, y = p * f, g = "----------------------------------------------\n";
 g += "  Room Diagnostic: ".concat(e, "\n"), g += "----------------------------------------------\n\n";
@@ -33449,7 +33449,7 @@ energyCapacityTotal: this.getRoomMetricValue(c, "energyCapacityTotal", "capacity
 constructionSites: this.getRoomMetricValue(c, "constructionSites", "construction_sites")
 };
 g += "SUMMARY Basic Info:\n", g += "  RCL: ".concat(c.rcl, "\n"), g += "  Controller Progress: ".concat(c.controller.progressPercent.toFixed(1), "%\n"), 
-g += "  Posture: ".concat(_a.postureCodeToName(v.postureCode), "\n"), g += "  Danger Level: ".concat(v.dangerLevel, "\n"), 
+g += "  Posture: ".concat(ka.postureCodeToName(v.postureCode), "\n"), g += "  Danger Level: ".concat(v.dangerLevel, "\n"), 
 g += "  Hostiles: ".concat(v.hostileCount, "\n\n"), g += "CPU CPU Analysis:\n", 
 g += "  Average CPU: ".concat(c.profiler.avgCpu.toFixed(3), "\n"), g += "  Peak CPU: ".concat(c.profiler.peakCpu.toFixed(3), "\n"), 
 g += "  Samples: ".concat(c.profiler.samples, "\n"), g += "  Budget: ".concat(y.toFixed(3), " (base ").concat(p, ", modulo ").concat(f, ")\n");
@@ -34073,7 +34073,7 @@ var t = this.getQueue(e.roomName);
 e.id || (e.id = "".concat(e.role, "_").concat(Game.time, "_").concat(Math.random().toString(36).substring(2, 11))), 
 t.requests.push(e), t.requests.sort(function(e, t) {
 return t.priority - e.priority;
-}), k.debug("Added spawn request: ".concat(e.role, " (priority: ").concat(e.priority, ") for room ").concat(e.roomName), {
+}), _.debug("Added spawn request: ".concat(e.role, " (priority: ").concat(e.priority, ") for room ").concat(e.roomName), {
 subsystem: "SpawnQueue"
 });
 }, e.prototype.getNextRequest = function(e, t) {
@@ -34084,7 +34084,7 @@ return !r.isRequestInProgress(o, e.id) && e.body.cost <= t;
 });
 if (n < 0) return null;
 var a = n;
-return a > 0 && k.debug("Skipping ".concat(a, " unaffordable spawn request(s) in ").concat(e, " to run affordable request ").concat(o.requests[n].id), {
+return a > 0 && _.debug("Skipping ".concat(a, " unaffordable spawn request(s) in ").concat(e, " to run affordable request ").concat(o.requests[n].id), {
 subsystem: "SpawnQueue"
 }), o.requests[n];
 }, e.prototype.removeRequest = function(e, t) {
@@ -34135,7 +34135,7 @@ return s([], i(this.getQueue(e).requests), !1);
 }, e.prototype.getQueueSize = function(e) {
 return this.getQueue(e).requests.length;
 }, e.prototype.clearQueue = function(e) {
-this.getQueue(e).requests = [], k.debug("Cleared spawn queue for room ".concat(e), {
+this.getQueue(e).requests = [], _.debug("Cleared spawn queue for room ".concat(e), {
 subsystem: "SpawnQueue"
 });
 }, e.prototype.getAvailableSpawns = function(e) {
@@ -34155,7 +34155,7 @@ var m = u.value, d = this.getNextRequest(e, c);
 if (!d) break;
 var p = pd(m, d);
 p === OK ? (s++, c -= d.body.cost, this.markInProgress(e, d.id, m.id), this.removeRequest(e, d.id)) : p !== ERR_NOT_ENOUGH_ENERGY && (this.removeRequest(e, d.id), 
-k.warn("Spawn request failed: ".concat(d.role, " in ").concat(e, " (error: ").concat(p, ")"), {
+_.warn("Spawn request failed: ".concat(d.role, " in ").concat(e, " (error: ").concat(p, ")"), {
 subsystem: "SpawnQueue"
 }));
 }
@@ -34253,7 +34253,29 @@ score: o + n + i + s + 2 * p
 };
 }
 
-function Ed(e) {
+function Ed(e, t) {
+return {
+partCount: e.partCount + t.partCount,
+attack: e.attack + t.attack,
+ranged: e.ranged + t.ranged,
+heal: e.heal + t.heal,
+dismantle: e.dismantle + t.dismantle,
+score: e.score + t.score
+};
+}
+
+function Td(e, t) {
+return {
+partCount: e.partCount * t,
+attack: e.attack * t,
+ranged: e.ranged * t,
+heal: e.heal * t,
+dismantle: e.dismantle * t,
+score: e.score * t
+};
+}
+
+function Cd(e) {
 var t, r;
 if (0 === e.length) return null;
 var o = null, n = {
@@ -34288,16 +34310,16 @@ total: n
 };
 }
 
-function Td(e) {
+function Sd(e) {
 var t = Game.rooms[e];
-return t ? Ed(Y(t)) : null;
+return t ? Cd(Y(t)) : null;
 }
 
-function Cd(e) {
+function xd(e) {
 return "guard" === e || "ranger" === e || "healer" === e;
 }
 
-function Sd(e, t, r) {
+function wd(e, t, r) {
 var o = function(e) {
 if (0 === e.length || e.length > 50 || !e.includes(MOVE)) return null;
 var t = td(e);
@@ -34315,7 +34337,7 @@ return e.parts.join(",") === n;
 }
 }
 
-function xd(e) {
+function bd(e) {
 var t, r, o, n = [];
 try {
 for (var i = a([ TOUGH, WORK, ATTACK, RANGED_ATTACK, HEAL, MOVE ]), s = i.next(); !s.done; s = i.next()) for (var c = s.value, l = null !== (o = e[c]) && void 0 !== o ? o : 0, u = 0; u < l; u++) n.push(c);
@@ -34333,25 +34355,25 @@ if (t) throw t.error;
 return n;
 }
 
-function wd(e, t) {
+function Od(e, t) {
 var r = Rd(t.parts).score - Rd(e.parts).score;
 return 0 !== r ? r : t.cost - e.cost;
 }
 
-function bd(e, t, r) {
+function Md(e, t, r) {
 var o, n = function(e, t) {
 return "guard" === e ? function(e) {
-for (var t, r, o = [], n = 1; n <= 25; n++) Sd(o, xd(((t = {})[ATTACK] = n, t[MOVE] = n, 
-t)), e), Sd(o, xd(((r = {})[TOUGH] = n, r[ATTACK] = n, r[MOVE] = n, r)), e);
+for (var t, r, o = [], n = 1; n <= 25; n++) wd(o, bd(((t = {})[ATTACK] = n, t[MOVE] = n, 
+t)), e), wd(o, bd(((r = {})[TOUGH] = n, r[ATTACK] = n, r[MOVE] = n, r)), e);
 return o;
 }(t) : "ranger" === e ? function(e) {
-for (var t, r, o = [], n = 1; n <= 25; n++) Sd(o, xd(((t = {})[RANGED_ATTACK] = n, 
-t[MOVE] = n, t)), e), Sd(o, xd(((r = {})[TOUGH] = Math.ceil(n / 2), r[RANGED_ATTACK] = n, 
+for (var t, r, o = [], n = 1; n <= 25; n++) wd(o, bd(((t = {})[RANGED_ATTACK] = n, 
+t[MOVE] = n, t)), e), wd(o, bd(((r = {})[TOUGH] = Math.ceil(n / 2), r[RANGED_ATTACK] = n, 
 r[MOVE] = n, r)), e);
 return o;
 }(t) : function(e) {
-for (var t, r, o = [], n = 1; n <= 25; n++) Sd(o, xd(((t = {})[HEAL] = n, t[MOVE] = n, 
-t)), e), Sd(o, xd(((r = {})[TOUGH] = Math.ceil(n / 2), r[HEAL] = n, r[MOVE] = n, 
+for (var t, r, o = [], n = 1; n <= 25; n++) wd(o, bd(((t = {})[HEAL] = n, t[MOVE] = n, 
+t)), e), wd(o, bd(((r = {})[TOUGH] = Math.ceil(n / 2), r[HEAL] = n, r[MOVE] = n, 
 r)), e);
 return o;
 }(t);
@@ -34366,29 +34388,141 @@ var r = Rd(e);
 return r.partCount >= t.partCount && r.score >= t.score;
 }(e.parts, a);
 }).sort(function(e, t) {
-return e.cost - t.cost || wd(e, t);
+return e.cost - t.cost || Od(e, t);
 });
 if (c.length > 0) return c[0];
 }
-return null !== (o = s([], i(n), !1).sort(wd)[0]) && void 0 !== o ? o : null;
+return null !== (o = s([], i(n), !1).sort(Od)[0]) && void 0 !== o ? o : null;
 }
 
-function Od(e, t, r) {
-var o = bd(e, t, null), n = null == r ? void 0 : r.strongest;
-if (!o) return 0;
-if (!n) return 1;
-var a = Rd(o.parts), i = Math.ceil(n.score / Math.max(1, a.score)), s = Math.ceil(n.partCount / Math.max(1, a.partCount)), c = null == r ? void 0 : r.total, l = c ? Math.ceil(c.score / Math.max(1, a.score)) : 1, u = c ? Math.ceil(c.partCount / Math.max(1, a.partCount)) : 1;
-return Math.min(8, Math.max(1, i, s, l, u));
+function Ud(e, t, r) {
+var o, n, i = function(e) {
+var t, r, o = {
+partCount: 0,
+attack: 0,
+ranged: 0,
+heal: 0,
+dismantle: 0,
+score: 0
+};
+if (!e) return o;
+try {
+for (var n = a([ "guard", "ranger", "healer" ]), i = n.next(); !i.done; i = n.next()) {
+var s = e[i.value];
+s && (o = Ed(o, s));
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+i && !i.done && (r = n.return) && r.call(n);
+} finally {
+if (t) throw t.error;
+}
+}
+return o;
+}(r);
+try {
+for (var s = a([ "guard", "ranger", "healer" ]), c = s.next(); !c.done; c = s.next()) {
+var l = c.value, u = t[l];
+u && e[l] > 0 && (i = Ed(i, Td(u, e[l])));
+}
+} catch (e) {
+o = {
+error: e
+};
+} finally {
+try {
+c && !c.done && (n = s.return) && n.call(s);
+} finally {
+if (o) throw o.error;
+}
+}
+return i;
 }
 
-var Ud = {
+function kd(e, t, r, o) {
+if (!t || t.heal <= 0) return 0;
+var n = e.total.attack + e.total.ranged;
+if (!(o > 0 || e.total.heal > 0 || r >= 3) || n <= 0) return o;
+var a = Math.ceil(.5 * n);
+return Math.max(1, o, Math.ceil(a / t.heal));
+}
+
+function _d(e, t, r, o, n) {
+var i, s, c;
+void 0 === r && (r = {}), void 0 === n && (n = 12);
+var l = {
+guard: 0,
+ranger: 0,
+healer: 0
+}, u = {}, m = {};
+try {
+for (var d = a([ "guard", "ranger", "healer" ]), p = d.next(); !p.done; p = d.next()) {
+var f = Md(C = p.value, e, t);
+f && (u[C] = f, m[C] = Rd(f.parts), l[C] = Math.max(0, Math.floor(null !== (c = r[C]) && void 0 !== c ? c : 0)));
+}
+} catch (e) {
+i = {
+error: e
+};
+} finally {
+try {
+p && !p.done && (s = d.return) && s.call(d);
+} finally {
+if (i) throw i.error;
+}
+}
+if (!t) return {
+counts: l,
+bodies: u,
+totalPower: Ud(l, m, o),
+healerFloor: 0,
+targetScore: 0,
+capped: !1
+};
+var y = t.total.score, g = function(e) {
+var t, r = [ "guard", "ranger" ].filter(function(t) {
+var r, o;
+return (null !== (o = null === (r = e[t]) || void 0 === r ? void 0 : r.score) && void 0 !== o ? o : 0) > 0;
+});
+return 0 === r.length ? e.healer ? "healer" : null : null !== (t = r.sort(function(t, r) {
+var o, n, a, i;
+return (null !== (n = null === (o = e[r]) || void 0 === o ? void 0 : o.score) && void 0 !== n ? n : 0) - (null !== (i = null === (a = e[t]) || void 0 === a ? void 0 : a.score) && void 0 !== i ? i : 0);
+})[0]) && void 0 !== t ? t : null;
+}(m), v = !1, h = function() {
+return l.guard + l.ranger + l.healer;
+}, R = function(e) {
+return !!m[e] && (h() >= n ? (v = !0, !1) : (l[e]++, !0));
+};
+g && 0 === h() && R(g);
+for (var E = kd(t, m.healer, l.guard + l.ranger, l.healer); l.healer < E && R("healer"); ) E = kd(t, m.healer, l.guard + l.ranger, l.healer);
+for (var T = Ud(l, m, o); T.score <= y; ) {
+var C;
+if (!R(C = null != g ? g : "healer")) break;
+for (E = kd(t, m.healer, l.guard + l.ranger, l.healer); l.healer < E && R("healer"); ) E = kd(t, m.healer, l.guard + l.ranger, l.healer);
+T = Ud(l, m, o);
+}
+return {
+counts: l,
+bodies: u,
+totalPower: T,
+healerFloor: E,
+targetScore: y,
+capped: v
+};
+}
+
+var Ad = {
 getPendingTransfers: function() {
 return [];
 },
 needsCarrier: function() {
 return !1;
 }
-}, Md = {
+}, Nd = {
 predictConsumption: function() {
 return 0;
 },
@@ -34407,7 +34541,7 @@ ticks: t
 getMaxAffordableInTicks: function(e) {
 return e.energyCapacityAvailable;
 }
-}, _d = {
+}, Pd = {
 getActivePowerBanks: function() {
 return [];
 },
@@ -34424,19 +34558,19 @@ healers: 0,
 powerCarriers: 0
 };
 }
-}, kd = {
+}, Id = {
 getEmergencyState: function() {
 return null;
 }
 };
 
-function Ad(e, t, r, o, n) {
-return _i(e, t, r, o, n);
+function Gd(e, t, r, o, n) {
+return ki(e, t, r, o, n);
 }
 
-var Nd = "defenseAssist", Pd = [ "guard", "ranger", "healer" ];
+var Ld = "defenseAssist", Dd = [ "guard", "ranger", "healer" ];
 
-function Id(e, t) {
+function Fd(e, t) {
 var r, o;
 try {
 var n = null === (o = null === (r = Game.map) || void 0 === r ? void 0 : r.getRoomLinearDistance) || void 0 === o ? void 0 : o.call(r, e, t);
@@ -34446,13 +34580,13 @@ return null;
 }
 }
 
-function Gd(e) {
+function Bd(e) {
 var t, r, o;
 return (null !== (o = null === (r = null === (t = e.controller) || void 0 === t ? void 0 : t.reservation) || void 0 === r ? void 0 : r.ticksToEnd) && void 0 !== o ? o : 0) >= 3e3;
 }
 
-function Ld(e) {
-var t = lp(), r = function(e) {
+function Hd(e) {
+var t = vp(), r = function(e) {
 var t;
 return null === (t = e.owner) || void 0 === t ? void 0 : t.username;
 }(e);
@@ -34464,30 +34598,30 @@ return null === (t = e.reservation) || void 0 === t ? void 0 : t.username;
 return Boolean(o && o !== t);
 }
 
-function Dd(e) {
+function Wd(e) {
 var t = Nt.getEmpire().knownRooms[e];
 if (!t) return !1;
-var r = lp();
+var r = vp();
 return !(!t.owner || t.owner === r) || !(!t.reserver || t.reserver === r) || t.threatLevel > 0 || !!t.isSK;
 }
 
-function Fd(e) {
+function Kd(e) {
 var t = Game.rooms[e];
-return t ? !!t.controller && !Ld(t.controller) && !Xd(t) : !Dd(e);
+return t ? !!t.controller && !Hd(t.controller) && !ep(t) : !Wd(e);
 }
 
-function Bd(e) {
+function Yd(e) {
 var t = Game.rooms[e];
-return (null == t ? void 0 : t.controller) ? !Ld(t.controller) : !Dd(e);
+return (null == t ? void 0 : t.controller) ? !Hd(t.controller) : !Wd(e);
 }
 
-var Hd = new Map, Wd = -1, Kd = null;
+var Vd = new Map, qd = -1, jd = null;
 
-function Yd(e, t) {
+function zd(e, t) {
 var r, o;
-void 0 === t && (t = !1), Wd === Game.time && Kd === Game.creeps || (Hd.clear(), 
-Wd = Game.time, Kd = Game.creeps);
-var n = t ? "".concat(e, "_active") : e, a = Hd.get(n);
+void 0 === t && (t = !1), qd === Game.time && jd === Game.creeps || (Vd.clear(), 
+qd = Game.time, jd = Game.creeps);
+var n = t ? "".concat(e, "_active") : e, a = Vd.get(n);
 if (a && a instanceof Map) return a;
 var i = new Map;
 for (var s in Game.creeps) {
@@ -34498,10 +34632,10 @@ var u = null !== (r = l.role) && void 0 !== r ? r : "unknown";
 i.set(u, (null !== (o = i.get(u)) && void 0 !== o ? o : 0) + 1);
 }
 }
-return Hd.set(n, i), i;
+return Vd.set(n, i), i;
 }
 
-function Vd(e, t, r) {
+function Qd(e, t, r) {
 var o = ad[t];
 if (!o) return 0;
 var n = o.maxPerRoom, a = Game.rooms[e];
@@ -34514,7 +34648,7 @@ return "queenCarrier" === t && (n = (null == a ? void 0 : a.storage) && a.contro
 n;
 }
 
-function qd(e, t, r) {
+function Xd(e, t, r) {
 var o, n, i = 0;
 try {
 for (var s = a(Object.values(Game.creeps)), c = s.next(); !c.done; c = s.next()) {
@@ -34535,20 +34669,20 @@ if (o) throw o.error;
 return i;
 }
 
-function jd(e, t, r) {
+function Zd(e, t, r) {
 var o, n, i, s, c, l = null !== (i = r.remoteAssignments) && void 0 !== i ? i : [];
 if (0 === l.length) return null;
 try {
 for (var u = a(l), m = u.next(); !m.done; m = u.next()) {
 var d = m.value;
-if (Fd(d)) {
-var p = qd(e, t, d), f = Game.rooms[d], y = void 0;
+if (Kd(d)) {
+var p = Xd(e, t, d), f = Game.rooms[d], y = void 0;
 if ("remoteHarvester" === t) y = f ? be(f).length : 2; else if ("remoteHauler" === t) {
 var g = null !== (c = null === (s = Game.rooms[e]) || void 0 === s ? void 0 : s.energyCapacityAvailable) && void 0 !== c ? c : 800;
-if (f) y = (v = Ad(e, d, be(f).length, g, {
-reserved: Gd(f)
+if (f) y = (v = Gd(e, d, be(f).length, g, {
+reserved: Bd(f)
 })).recommendedHaulers; else {
-var v = Ad(e, d, 2, g, {
+var v = Gd(e, d, 2, g, {
 reserved: !1
 });
 y = Math.min(2, v.recommendedHaulers);
@@ -34571,7 +34705,7 @@ if (o) throw o.error;
 return null;
 }
 
-function zd(e, t) {
+function Jd(e, t) {
 var r, o, n, i, s, c, l;
 if (Object.values(Game.creeps).some(function(r) {
 var o = r.memory;
@@ -34606,11 +34740,11 @@ if (r) throw r.error;
 return !1;
 }
 
-function Qd(e) {
+function $d(e) {
 return e.find(FIND_MY_SPAWNS).length > 0;
 }
 
-function Xd(e) {
+function ep(e) {
 return Y(e).some(function(e) {
 return e.body.some(function(e) {
 return e.hits > 0 && (e.type === ATTACK || e.type === RANGED_ATTACK || e.type === WORK || e.type === HEAL);
@@ -34618,23 +34752,36 @@ return e.hits > 0 && (e.type === ATTACK || e.type === RANGED_ATTACK || e.type ==
 });
 }
 
-function Zd(e, t, r, o) {
-void 0 === o && (o = Td(e.roomName));
-var n = function(e, t) {
+function tp(e, t) {
 var r, o, n;
 return "guard" === t ? Math.max(0, null !== (r = e.guardsNeeded) && void 0 !== r ? r : 0) : "ranger" === t ? Math.max(0, null !== (o = e.rangersNeeded) && void 0 !== o ? o : 0) : "healer" === t ? Math.max(0, null !== (n = e.healersNeeded) && void 0 !== n ? n : 0) : 0;
-}(e, t);
-if (n <= 0 || !Cd(t)) return n;
-var i = function(e, t, r) {
-return Od(e, t, r);
-}(t, r, o), s = function(e, t, r) {
+}
+
+function rp(e, t, r, o) {
+void 0 === o && (o = Sd(e.roomName));
+var n = tp(e, t);
+if (!xd(t)) return n;
+if (!o) return n;
+var i = ip(e.roomName, t) + _d(r, o, {
+guard: tp(e, "guard"),
+ranger: tp(e, "ranger"),
+healer: tp(e, "healer")
+}, cp(e.roomName)).counts[t], s = n > 0 ? function(e, t, r) {
+return function(e, t, r) {
+var o = Md(e, t, null), n = null == r ? void 0 : r.strongest;
+if (!o) return 0;
+if (!n) return 1;
+var a = Rd(o.parts), i = Math.floor(n.score / Math.max(1, a.score)) + 1, s = Math.ceil(n.partCount / Math.max(1, a.partCount)), c = null == r ? void 0 : r.total, l = c ? Math.floor(c.score / Math.max(1, a.score)) + 1 : 1, u = c ? Math.ceil(c.partCount / Math.max(1, a.partCount)) : 1;
+return Math.min(8, Math.max(1, i, s, l, u));
+}(e, t, r);
+}(t, r, o) : 0, c = n > 0 ? function(e, t, r) {
 var o, n;
-if (void 0 === r && (r = Td(e.roomName)), !Cd(t)) return 0;
+if (void 0 === r && (r = Sd(e.roomName)), !xd(t)) return 0;
 var i = 0;
 try {
 for (var s = a(Object.values(Game.rooms)), c = s.next(); !c.done; c = s.next()) {
 var l = c.value;
-l.name !== e.roomName && tp(l) && bd(t, l.energyCapacityAvailable, r) && i++;
+l.name !== e.roomName && lp(l) && Md(t, l.energyCapacityAvailable, r) && i++;
 }
 } catch (e) {
 o = {
@@ -34648,26 +34795,35 @@ if (o) throw o.error;
 }
 }
 return i;
-}(e, t, o);
-return Math.max(n, i, s);
+}(e, t, o) : 0;
+return Math.max(n, i, s, c);
 }
 
-function Jd(e) {
+function op(e) {
 var t, r = Game.rooms[e.roomName];
 return r ? Y(r).length > 0 : Game.time - (null !== (t = e.createdAt) && void 0 !== t ? t : 0) <= 500;
 }
 
-function $d(e) {
+function np(e) {
 var t;
-return null !== (t = e.assistTarget) && void 0 !== t ? t : e.task === Nd ? e.targetRoom : void 0;
+return null !== (t = e.assistTarget) && void 0 !== t ? t : e.task === Ld ? e.targetRoom : void 0;
 }
 
-function ep(e, t) {
-var r, o, n = Td(e.roomName), i = 0;
+function ap(e, t) {
+var r, o, n = Sd(e.roomName);
+if (n) {
+var i = _d(t.energyCapacityAvailable, n, {
+guard: tp(e, "guard"),
+ranger: tp(e, "ranger"),
+healer: tp(e, "healer")
+}, cp(e.roomName)), s = i.counts.guard + i.counts.ranger + i.counts.healer;
+if (s > 0) return s;
+}
+var c = 0;
 try {
-for (var s = a(Pd), c = s.next(); !c.done; c = s.next()) {
-var l = c.value;
-Zd(e, l, t.energyCapacityAvailable, n) <= 0 || bd(l, t.energyCapacityAvailable, n) && i++;
+for (var l = a(Dd), u = l.next(); !u.done; u = l.next()) {
+var m = u.value;
+rp(e, m, t.energyCapacityAvailable, n) <= 0 || Md(m, t.energyCapacityAvailable, n) && c++;
 }
 } catch (e) {
 r = {
@@ -34675,56 +34831,20 @@ error: e
 };
 } finally {
 try {
-c && !c.done && (o = s.return) && o.call(s);
+u && !u.done && (o = l.return) && o.call(l);
 } finally {
 if (r) throw r.error;
 }
 }
-return Math.max(1, i);
+return Math.max(1, c);
 }
 
-function tp(e) {
-var t;
-return !!(null === (t = e.controller) || void 0 === t ? void 0 : t.my) && 0 !== e.find(FIND_MY_SPAWNS).length && 0 === Y(e).length;
-}
-
-function rp(e) {
-var t;
-return null !== (t = e.createdAt) && void 0 !== t ? t : Game.time;
-}
-
-function op(e, t) {
-return "defenseAssist:".concat(e, ":").concat(t.roomName, ":").concat(rp(t));
-}
-
-function np(e, t) {
-var r;
-if (!function(e) {
-return Cd(e);
-}(t)) return null;
-var o = Game.rooms[e];
-if (!o || !tp(o)) return null;
-var n = o.energyCapacityAvailable, i = function(e) {
-var t, r = null !== (t = e.defenseRequests) && void 0 !== t ? t : [], o = r.filter(Jd);
-return o.length !== r.length && (e.defenseRequests = o), o;
-}(Memory).filter(function(t) {
-return t.roomName !== e;
-}).map(function(e) {
-return {
-request: e,
-helperNeed: Zd(e, t, n)
-};
-}).filter(function(e) {
-return e.helperNeed > 0;
-}).filter(function(e) {
-return Jd(e.request);
-}).filter(function(e) {
-return function(e, t) {
+function ip(e, t) {
 var r, o, n = 0;
 try {
 for (var i = a(Object.values(Game.creeps)), s = i.next(); !s.done; s = i.next()) {
 var c = s.value.memory;
-c.role === t && $d(c) === e && n++;
+c.role === t && np(c) === e && n++;
 }
 } catch (e) {
 r = {
@@ -34739,47 +34859,139 @@ if (r) throw r.error;
 }
 for (var l in Game.rooms) n += yd.getPendingRequests(l).filter(function(r) {
 var o, n;
-return r.role === t && ((null === (o = r.additionalMemory) || void 0 === o ? void 0 : o.assistTarget) === e || (null === (n = r.additionalMemory) || void 0 === n ? void 0 : n.task) === Nd && r.targetRoom === e);
+return r.role === t && ((null === (o = r.additionalMemory) || void 0 === o ? void 0 : o.assistTarget) === e || (null === (n = r.additionalMemory) || void 0 === n ? void 0 : n.task) === Ld && r.targetRoom === e);
 }).length;
 return n;
-}(e.request.roomName, t) < e.helperNeed;
+}
+
+function sp(e, t, r) {
+var o = Rd(r), n = e[t];
+e[t] = n ? {
+partCount: n.partCount + o.partCount,
+attack: n.attack + o.attack,
+ranged: n.ranged + o.ranged,
+heal: n.heal + o.heal,
+dismantle: n.dismantle + o.dismantle,
+score: n.score + o.score
+} : o;
+}
+
+function cp(e) {
+var t, r, o, n, i, s, c, l, u = {};
+try {
+for (var m = a(Object.values(Game.creeps)), d = m.next(); !d.done; d = m.next()) {
+var p = d.value, f = p.memory, y = null !== (i = f.role) && void 0 !== i ? i : "";
+if (xd(y) && np(f) === e) {
+var g = (null !== (s = p.body) && void 0 !== s ? s : []).filter(function(e) {
+return e.hits > 0;
+});
+g.length > 0 && sp(u, y, g);
+}
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+d && !d.done && (r = m.return) && r.call(m);
+} finally {
+if (t) throw t.error;
+}
+}
+for (var v in Game.rooms) try {
+for (var h = (o = void 0, a(yd.getPendingRequests(v))), R = h.next(); !R.done; R = h.next()) {
+var E = R.value;
+xd(E.role) && ((null === (c = E.additionalMemory) || void 0 === c ? void 0 : c.assistTarget) === e || (null === (l = E.additionalMemory) || void 0 === l ? void 0 : l.task) === Ld && E.targetRoom === e) && sp(u, E.role, E.body.parts);
+}
+} catch (e) {
+o = {
+error: e
+};
+} finally {
+try {
+R && !R.done && (n = h.return) && n.call(h);
+} finally {
+if (o) throw o.error;
+}
+}
+return u;
+}
+
+function lp(e) {
+var t;
+return !!(null === (t = e.controller) || void 0 === t ? void 0 : t.my) && 0 !== e.find(FIND_MY_SPAWNS).length && 0 === Y(e).length;
+}
+
+function up(e) {
+var t;
+return null !== (t = e.createdAt) && void 0 !== t ? t : Game.time;
+}
+
+function mp(e, t) {
+return "defenseAssist:".concat(e, ":").concat(t.roomName, ":").concat(up(t));
+}
+
+function dp(e, t) {
+var r;
+if (!function(e) {
+return xd(e);
+}(t)) return null;
+var o = Game.rooms[e];
+if (!o || !lp(o)) return null;
+var n = o.energyCapacityAvailable, a = function(e) {
+var t, r = null !== (t = e.defenseRequests) && void 0 !== t ? t : [], o = r.filter(op);
+return o.length !== r.length && (e.defenseRequests = o), o;
+}(Memory).filter(function(t) {
+return t.roomName !== e;
+}).map(function(e) {
+return {
+request: e,
+helperNeed: rp(e, t, n)
+};
+}).filter(function(e) {
+return e.helperNeed > 0;
+}).filter(function(e) {
+return op(e.request);
+}).filter(function(e) {
+return ip(e.request.roomName, t) < e.helperNeed;
 }).sort(function(t, r) {
 var o, n, a, i, s, c, l, u, m, d, p = (null !== (o = r.request.urgency) && void 0 !== o ? o : 1) - (null !== (n = t.request.urgency) && void 0 !== n ? n : 1);
 if (0 !== p) return p;
 var f = null !== (s = null === (i = null === (a = Game.map) || void 0 === a ? void 0 : a.getRoomLinearDistance) || void 0 === i ? void 0 : i.call(a, e, t.request.roomName)) && void 0 !== s ? s : 999, y = null !== (u = null === (l = null === (c = Game.map) || void 0 === c ? void 0 : c.getRoomLinearDistance) || void 0 === l ? void 0 : l.call(c, e, r.request.roomName)) && void 0 !== u ? u : 999;
 return f !== y ? f - y : (null !== (m = t.request.createdAt) && void 0 !== m ? m : 0) - (null !== (d = r.request.createdAt) && void 0 !== d ? d : 0);
-}), s = null === (r = i[0]) || void 0 === r ? void 0 : r.request;
-return s ? function(e, t, r) {
+}), i = null === (r = a[0]) || void 0 === r ? void 0 : r.request;
+return i ? function(e, t, r) {
 var o;
 return {
 targetRoom: r.roomName,
-task: Nd,
+task: Ld,
 priority: (null !== (o = r.urgency) && void 0 !== o ? o : 1) >= 2 ? nd.EMERGENCY : nd.HIGH,
-defenseSquadId: op(e, r),
-defenseSquadSize: ep(r, t),
-defenseSquadCreatedAt: rp(r)
+defenseSquadId: mp(e, r),
+defenseSquadSize: ap(r, t),
+defenseSquadCreatedAt: up(r)
 };
-}(e, o, s) : null;
+}(e, o, i) : null;
 }
 
-function ap(e, t, r) {
+function pp(e, t, r) {
 var o, n;
 if (!(null === (o = e.controller) || void 0 === o ? void 0 : o.my)) return !1;
-if (!Qd(e)) return !1;
+if (!$d(e)) return !1;
 var a = e.name === t ? r : Nt.getSwarmState(e.name);
 return !((null !== (n = null == a ? void 0 : a.danger) && void 0 !== n ? n : 0) >= 2) && "war" !== (null == a ? void 0 : a.posture) && "siege" !== (null == a ? void 0 : a.posture) && "evacuate" !== (null == a ? void 0 : a.posture);
 }
 
-function ip(e, t, r) {
+function fp(e, t, r) {
 var o, n, a = Object.values(Game.rooms).filter(function(t) {
 return t.name !== e.name;
 }).filter(function(e) {
-return ap(e, t, r);
+return pp(e, t, r);
 }).map(function(t) {
 var r;
 return {
 room: t,
-distance: null !== (r = Id(t.name, e.name)) && void 0 !== r ? r : 999
+distance: null !== (r = Fd(t.name, e.name)) && void 0 !== r ? r : 999
 };
 }).sort(function(e, t) {
 return e.distance - t.distance || e.room.name.localeCompare(t.room.name);
@@ -34787,18 +34999,18 @@ return e.distance - t.distance || e.room.name.localeCompare(t.room.name);
 return null !== (n = null === (o = a[0]) || void 0 === o ? void 0 : o.room.name) && void 0 !== n ? n : null;
 }
 
-function sp(e, t) {
+function yp(e, t) {
 var r, o, n = Game.rooms[e];
-if (!n || !ap(n, e, t)) return null;
+if (!n || !pp(n, e, t)) return null;
 var i = Object.values(Game.rooms).filter(function(t) {
 return t.name !== e;
 }).filter(function(e) {
 var t;
 return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
 }).filter(function(e) {
-return !Qd(e);
+return !$d(e);
 }).filter(function(e) {
-return !Xd(e);
+return !ep(e);
 }).filter(function(e) {
 return function(e) {
 var t, r, o, n, i, s, c, l, u, m = 0;
@@ -34848,7 +35060,7 @@ return e.structureType === STRUCTURE_SPAWN;
 var r;
 return {
 room: t,
-distance: null !== (r = Id(e, t.name)) && void 0 !== r ? r : 999
+distance: null !== (r = Fd(e, t.name)) && void 0 !== r ? r : 999
 };
 }).sort(function(e, t) {
 return e.distance - t.distance || e.room.name.localeCompare(t.room.name);
@@ -34856,7 +35068,7 @@ return e.distance - t.distance || e.room.name.localeCompare(t.room.name);
 try {
 for (var s = a(i), c = s.next(); !c.done; c = s.next()) {
 var l = c.value;
-if (ip(l.room, e, t) === e) return {
+if (fp(l.room, e, t) === e) return {
 targetRoom: l.room.name,
 task: "bootstrapSpawn"
 };
@@ -34875,7 +35087,7 @@ if (r) throw r.error;
 return null;
 }
 
-function cp(e, t) {
+function gp(e, t) {
 var r, o, n, c = Nt.getEmpire(), l = Object.values(Game.rooms).filter(function(e) {
 var t;
 return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
@@ -34885,15 +35097,15 @@ return !1 !== (null === (e = Memory.spawnSettings) || void 0 === e ? void 0 : e.
 }() ? function(e) {
 var t, r, o, n = null !== (t = e.recoveryRooms) && void 0 !== t ? t : {};
 return null !== (o = null === (r = Object.values(n).filter(function(e) {
-return !zd(e.roomName, "claim");
+return !Jd(e.roomName, "claim");
 }).filter(function(e) {
 return function(e) {
 var t = Game.rooms[e];
 if (t) {
 var r = t.controller;
-return !(!r || r.my || r.owner || r.reservation || Xd(t));
+return !(!r || r.my || r.owner || r.reservation || ep(t));
 }
-return !Dd(e);
+return !Wd(e);
 }(e.roomName);
 }).sort(function(e, t) {
 return e.lostAt - t.lostAt || e.roomName.localeCompare(t.roomName);
@@ -34912,7 +35124,7 @@ return e.roomName;
 })), !1)) : new Set;
 if (u) {
 var p = c.claimQueue.find(function(e) {
-return !e.claimed && !zd(e.roomName, "claim");
+return !e.claimed && !Jd(e.roomName, "claim");
 });
 if (p) return {
 targetRoom: p.roomName,
@@ -34924,20 +35136,20 @@ var r, o, n, i, s, c;
 void 0 === t && (t = new Set);
 var l = null !== (n = e.remoteAssignments) && void 0 !== n ? n : [];
 if (0 === l.length) return null;
-var u = lp();
+var u = vp();
 try {
 for (var m = a(l), d = m.next(); !d.done; d = m.next()) {
 var p = d.value;
-if (!t.has(p) && !zd(p, "claim")) {
+if (!t.has(p) && !Jd(p, "claim")) {
 var f = Game.rooms[p];
 if (f) {
 var y = f.controller;
 if (!y) continue;
-if (y.owner || Ld(y)) continue;
-if (Xd(f)) continue;
+if (y.owner || Hd(y)) continue;
+if (ep(f)) continue;
 var g = (null === (i = y.reservation) || void 0 === i ? void 0 : i.username) === u, v = null !== (c = null === (s = y.reservation) || void 0 === s ? void 0 : s.ticksToEnd) && void 0 !== c ? c : 0;
-if ((!g || v < 3e3) && !zd(p, "reserve")) return p;
-} else if (!Dd(p) && !zd(p, "reserve")) return p;
+if ((!g || v < 3e3) && !Jd(p, "reserve")) return p;
+} else if (!Wd(p) && !Jd(p, "reserve")) return p;
 }
 }
 } catch (e) {
@@ -34959,12 +35171,12 @@ task: "reserve"
 } : null;
 }
 
-function lp() {
+function vp() {
 var e, t = Object.values(null !== (e = Game.spawns) && void 0 !== e ? e : {});
 return t.length > 0 ? t[0].owner.username : "";
 }
 
-function up(e, t, r, o) {
+function hp(e, t, r, o) {
 var n, s, c, l, u, m, d, p;
 void 0 === o && (o = !1);
 var f = ad[t];
@@ -34981,21 +35193,21 @@ return "military" === (null === (t = ad[o]) || void 0 === t ? void 0 : t.family)
 return e + i(t, 2)[1];
 }, 0);
 }(t) >= 1) && "guard" === e;
-}(t, Yd(e))) return !1;
+}(t, zd(e))) return !1;
 if ("larvaWorker" === t && !o) return !1;
-if ("remoteHarvester" === t || "remoteHauler" === t) return null !== jd(e, t, r);
+if ("remoteHarvester" === t || "remoteHauler" === t) return null !== Zd(e, t, r);
 if ("remoteWorker" === t) {
 if (0 === (v = null !== (c = r.remoteAssignments) && void 0 !== c ? c : []).length) return !1;
 var g = function(e, t) {
-Wd === Game.time && Kd === Game.creeps || (Hd.clear(), Wd = Game.time, Kd = Game.creeps);
-var r = "".concat(e, ":").concat(t), o = Hd.get(r);
+qd === Game.time && jd === Game.creeps || (Vd.clear(), qd = Game.time, jd = Game.creeps);
+var r = "".concat(e, ":").concat(t), o = Vd.get(r);
 if ("number" == typeof o) return o;
 var n = 0;
 for (var a in Game.creeps) {
 var i = Game.creeps[a].memory;
 i.homeRoom === e && i.role === t && n++;
 }
-return Hd.set(r, n), n;
+return Vd.set(r, n), n;
 }(e, "remoteWorker");
 return g < f.maxPerRoom;
 }
@@ -35005,7 +35217,7 @@ if (0 === (v = null !== (l = r.remoteAssignments) && void 0 !== l ? l : []).leng
 try {
 for (var h = a(v), R = h.next(); !R.done; R = h.next()) {
 var E = R.value;
-if (Bd(E)) {
+if (Yd(E)) {
 var T = Game.rooms[E];
 if (T) {
 var C = Y(T).filter(function(e) {
@@ -35013,7 +35225,7 @@ return e.body.some(function(e) {
 return e.type === ATTACK || e.type === RANGED_ATTACK || e.type === WORK;
 });
 });
-if (C.length > 0 && qd(e, t, E) < Math.min(f.maxPerRoom, Math.ceil(C.length / 2))) return !0;
+if (C.length > 0 && Xd(e, t, E) < Math.min(f.maxPerRoom, Math.ceil(C.length / 2))) return !0;
 }
 }
 }
@@ -35030,8 +35242,8 @@ if (n) throw n.error;
 }
 return !1;
 }
-var S = null !== (u = Yd(e).get(t)) && void 0 !== u ? u : 0;
-if (S >= Vd(e, t, r)) return !1;
+var S = null !== (u = zd(e).get(t)) && void 0 !== u ? u : 0;
+if (S >= Qd(e, t, r)) return !1;
 if (!y) return !1;
 if ("scout" === t) {
 if (r.danger >= 1) return !1;
@@ -35043,15 +35255,15 @@ var r = Nt.getEmpire();
 for (var o in r.knownRooms) {
 var n = r.knownRooms[o];
 if (n && !n.scouted) {
-var a = Id(e, o);
+var a = Fd(e, o);
 if (null !== a && a >= 1 && a <= t && !n.owner && !n.reserver && !n.isHighway && !n.isSK) return !0;
 }
 }
 return !1;
 }(e));
 }
-if ("claimer" === t) return null !== cp(0, r);
-if ("pioneer" === t) return null !== sp(e, r);
+if ("claimer" === t) return null !== gp(0, r);
+if ("pioneer" === t) return null !== yp(e, r);
 if ("mineralHarvester" === t) {
 var w = y.find(FIND_MINERALS)[0];
 if (!w) return !1;
@@ -35086,9 +35298,9 @@ return e.amount - e.delivered > 500 && t < 2;
 if (!O) return !1;
 }
 if ("crossShardCarrier" === t) {
-var U = null !== (p = null === (d = Ud.getActiveRequests) || void 0 === d ? void 0 : d.call(Ud)) && void 0 !== p ? p : [];
-if (0 === U.length) return !1;
-if (O = U.some(function(e) {
+var M = null !== (p = null === (d = Ad.getActiveRequests) || void 0 === d ? void 0 : d.call(Ad)) && void 0 !== p ? p : [];
+if (0 === M.length) return !1;
+if (O = M.some(function(e) {
 var t, r, o;
 if (e.sourceRoom !== y.name) return !1;
 var n = e.assignedCreeps || [], i = e.amount - (null !== (o = e.transferred) && void 0 !== o ? o : 0), s = 0, c = 0;
@@ -35114,16 +35326,16 @@ return s < i && c < 3;
 return !0;
 }
 
-function mp(e) {
+function Rp(e) {
 var t, r;
 return (null !== (t = e.get("harvester")) && void 0 !== t ? t : 0) + (null !== (r = e.get("larvaWorker")) && void 0 !== r ? r : 0);
 }
 
-function dp(e) {
-return 0 === mp(Yd(e, !0));
+function Ep(e) {
+return 0 === Rp(zd(e, !0));
 }
 
-function pp(e) {
+function Tp(e) {
 var t = be(e);
 return [ {
 role: "harvester",
@@ -35146,14 +35358,14 @@ minCount: 1
 } ];
 }
 
-function fp(e, t) {
-var r, o, n, i, s = Yd(e, !0);
-if (0 === mp(s)) return !0;
+function Cp(e, t) {
+var r, o, n, i, s = zd(e, !0);
+if (0 === Rp(s)) return !0;
 if (0 === function(e) {
 var t, r;
 return (null !== (t = e.get("hauler")) && void 0 !== t ? t : 0) + (null !== (r = e.get("larvaWorker")) && void 0 !== r ? r : 0);
 }(s) && (null !== (n = s.get("harvester")) && void 0 !== n ? n : 0) > 0) return !0;
-var c = Yd(e, !1), l = pp(t);
+var c = zd(e, !1), l = Tp(t);
 try {
 for (var u = a(l), m = u.next(); !m.done; m = u.next()) {
 var d = m.value;
@@ -35173,7 +35385,7 @@ if (r) throw r.error;
 return !1;
 }
 
-function yp(e) {
+function Sp(e) {
 var t, r, o, n, i = {
 guards: 0,
 rangers: 0,
@@ -35232,41 +35444,41 @@ filter: function(e) {
 return (e.structureType === STRUCTURE_SPAWN || e.structureType === STRUCTURE_STORAGE || e.structureType === STRUCTURE_TERMINAL) && e.hits < .8 * e.hitsMax;
 }
 }).length > 0 && (i.urgency = 3, i.reasons.push("Critical structures under attack!")), 
-k.info("Defender analysis for ".concat(e.name, ": ").concat(i.guards, " guards, ").concat(i.rangers, " rangers, ").concat(i.healers, " healers (urgency: ").concat(i.urgency, "x) - ").concat(i.reasons.join(", ")), {
+_.info("Defender analysis for ".concat(e.name, ": ").concat(i.guards, " guards, ").concat(i.rangers, " rangers, ").concat(i.healers, " healers (urgency: ").concat(i.urgency, "x) - ").concat(i.reasons.join(", ")), {
 subsystem: "Defense"
 }), i;
 }
 
-function gp(e, t) {
+function xp(e, t) {
 var r;
 return (null !== (r = e.body) && void 0 !== r ? r : []).some(function(e) {
 return e.hits > 0 && t.includes(e.type);
 });
 }
 
-function vp(e) {
+function wp(e) {
 var t = e.find(FIND_MY_CREEPS);
 return {
 guards: t.filter(function(e) {
-return !e.spawning && "guard" === e.memory.role && gp(e, [ ATTACK, RANGED_ATTACK ]);
+return !e.spawning && "guard" === e.memory.role && xp(e, [ ATTACK, RANGED_ATTACK ]);
 }).length,
 rangers: t.filter(function(e) {
-return !e.spawning && "ranger" === e.memory.role && gp(e, [ RANGED_ATTACK ]);
+return !e.spawning && "ranger" === e.memory.role && xp(e, [ RANGED_ATTACK ]);
 }).length,
 healers: t.filter(function(e) {
-return !e.spawning && "healer" === e.memory.role && gp(e, [ HEAL ]);
+return !e.spawning && "healer" === e.memory.role && xp(e, [ HEAL ]);
 }).length
 };
 }
 
-function hp(e) {
+function bp(e) {
 var t, r = null === (t = e.store) || void 0 === t ? void 0 : t.getUsedCapacity(RESOURCE_ENERGY);
 if ("number" == typeof r) return r;
 var o = e.energy;
 return "number" == typeof o ? o : 0;
 }
 
-function Rp(e) {
+function Op(e) {
 var t, r = null !== (t = e.energyAvailable) && void 0 !== t ? t : 0;
 return function() {
 var e;
@@ -35280,7 +35492,7 @@ return e.find(FIND_MY_SPAWNS);
 } catch (e) {
 return [];
 }
-}(e)), c = s.next(); !c.done; c = s.next()) i += hp(c.value);
+}(e)), c = s.next(); !c.done; c = s.next()) i += bp(c.value);
 } catch (e) {
 t = {
 error: e
@@ -35301,7 +35513,7 @@ return e.structureType === STRUCTURE_EXTENSION;
 } catch (e) {
 return [];
 }
-}(e)), u = l.next(); !u.done; u = l.next()) i += hp(u.value);
+}(e)), u = l.next(); !u.done; u = l.next()) i += bp(u.value);
 } catch (e) {
 o = {
 error: e
@@ -35317,19 +35529,19 @@ return i;
 }(e)) : r;
 }
 
-function Ep(e) {
+function Mp(e) {
 Game.rooms[e.name] || (Game.rooms[e.name] = e);
 }
 
-function Tp(e, t, r) {
-var n = Vd(e.name, r.roleName, t);
+function Up(e, t, r) {
+var n = Qd(e.name, r.roleName, t);
 return o(o({}, r), {
 target: n,
 missing: Math.max(0, n - r.current)
 });
 }
 
-function Cp(e, t, r, o, n) {
+function kp(e, t, r, o, n) {
 if (n && ("larvaWorker" === r || "harvester" === r)) return nd.EMERGENCY;
 if ("upgrader" === r && function() {
 var e;
@@ -35338,9 +35550,9 @@ return !1 !== (null === (e = Memory.spawnSettings) || void 0 === e ? void 0 : e.
 var t = e.controller;
 return !!(null == t ? void 0 : t.my) && t.ticksToDowngrade <= 5e3;
 }(e)) return nd.HIGH;
-if (kd.getEmergencyState(e.name) && ("guard" === r || "ranger" === r || "healer" === r)) {
+if (Id.getEmergencyState(e.name) && ("guard" === r || "ranger" === r || "healer" === r)) {
 var a = function(e, t, r) {
-var o = yp(e), n = vp(e);
+var o = Sp(e), n = wp(e);
 return 0 === o.guards && 0 === o.rangers && 0 === o.healers ? 0 : "guard" === r && n.guards < o.guards || "ranger" === r && n.rangers < o.rangers || "healer" === r && n.healers < o.healers ? 100 * o.urgency : 0;
 }(e, 0, r);
 if (a >= 100) return nd.EMERGENCY;
@@ -35351,24 +35563,24 @@ return e >= 90 ? nd.HIGH : e >= 60 ? nd.NORMAL : nd.LOW;
 }(o);
 }
 
-function Sp(e, t) {
+function _p(e, t) {
 var r, o, n = function(e) {
 return s([], i(e), !1).sort(function(e, t) {
 return t.priority - e.priority;
 });
 }(function(e, t) {
 var r, o, n, s, c, l, u, m;
-Ep(e);
-var d = Yd(e.name), p = dp(e.name), f = [];
-if (fp(e.name, e)) {
+Mp(e);
+var d = zd(e.name), p = Ep(e.name), f = [];
+if (Cp(e.name, e)) {
 var y = function(e, t, r) {
 var o, n, i;
-if (0 === mp(Yd(e, !0))) return k.info("Bootstrap: Spawning larvaWorker (emergency - no active energy producers)", {
+if (0 === Rp(zd(e, !0))) return _.info("Bootstrap: Spawning larvaWorker (emergency - no active energy producers)", {
 subsystem: "spawn",
 room: e
 }), "larvaWorker";
-var s = Yd(e, !1), c = pp(t);
-k.info("Bootstrap: Checking ".concat(c.length, " roles in order"), {
+var s = zd(e, !1), c = Tp(t);
+_.info("Bootstrap: Checking ".concat(c.length, " roles in order"), {
 subsystem: "spawn",
 room: e,
 meta: {
@@ -35382,17 +35594,17 @@ var m = u.value;
 if (!m.condition || m.condition(t)) {
 var d = null !== (i = s.get(m.role)) && void 0 !== i ? i : 0;
 if (d < m.minCount) {
-var p = up(e, m.role, r, !0);
-if (k.info("Bootstrap: Role ".concat(m.role, " needs spawning (current: ").concat(d, ", min: ").concat(m.minCount, ", needsRole: ").concat(p, ")"), {
+var p = hp(e, m.role, r, !0);
+if (_.info("Bootstrap: Role ".concat(m.role, " needs spawning (current: ").concat(d, ", min: ").concat(m.minCount, ", needsRole: ").concat(p, ")"), {
 subsystem: "spawn",
 room: e
 }), p) return m.role;
-k.warn("Bootstrap: Role ".concat(m.role, " blocked by needsRole check (current: ").concat(d, "/").concat(m.minCount, ")"), {
+_.warn("Bootstrap: Role ".concat(m.role, " blocked by needsRole check (current: ").concat(d, "/").concat(m.minCount, ")"), {
 subsystem: "spawn",
 room: e
 });
 }
-} else k.info("Bootstrap: Skipping ".concat(m.role, " (condition not met)"), {
+} else _.info("Bootstrap: Skipping ".concat(m.role, " (condition not met)"), {
 subsystem: "spawn",
 room: e
 });
@@ -35408,22 +35620,22 @@ u && !u.done && (n = l.return) && n.call(l);
 if (o) throw o.error;
 }
 }
-return k.info("Bootstrap: No role needs spawning", {
+return _.info("Bootstrap: No role needs spawning", {
 subsystem: "spawn",
 room: e
 }), null;
 }(e.name, e, t);
-return y && (R = ad[y]) && up(e.name, y, t, !0) ? (f.push(Tp(e, t, {
+return y && (R = ad[y]) && hp(e.name, y, t, !0) ? (f.push(Up(e, t, {
 roleName: y,
 def: R,
 current: null !== (n = d.get(y)) && void 0 !== n ? n : 0,
-priority: Cp(e, 0, y, R.priority, p),
+priority: kp(e, 0, y, R.priority, p),
 bootstrap: !0
 })), f) : f;
 }
 try {
 for (var g = a(Object.entries(ad)), v = g.next(); !v.done; v = g.next()) {
-var h = i(v.value, 2), R = (y = h[0], h[1]), E = null !== (s = d.get(y)) && void 0 !== s ? s : 0, T = np(e.name, y);
+var h = i(v.value, 2), R = (y = h[0], h[1]), E = null !== (s = d.get(y)) && void 0 !== s ? s : 0, T = dp(e.name, y);
 if (T) f.push({
 roleName: y,
 def: R,
@@ -35437,13 +35649,13 @@ assistTarget: T.targetRoom,
 defenseSquadId: T.defenseSquadId,
 defenseSquadSize: T.defenseSquadSize,
 defenseSquadCreatedAt: T.defenseSquadCreatedAt
-}); else if (up(e.name, y, t, p)) {
-var C = "remoteHarvester" === y || "remoteHauler" === y ? jd(e.name, y, t) : null, S = "claimer" === y ? cp(e.name, t) : null, x = "pioneer" === y ? sp(e.name, t) : null;
-("remoteHarvester" !== y && "remoteHauler" !== y || C) && ("claimer" !== y || S) && ("pioneer" !== y || x) && f.push(Tp(e, t, {
+}); else if (hp(e.name, y, t, p)) {
+var C = "remoteHarvester" === y || "remoteHauler" === y ? Zd(e.name, y, t) : null, S = "claimer" === y ? gp(e.name, t) : null, x = "pioneer" === y ? yp(e.name, t) : null;
+("remoteHarvester" !== y && "remoteHauler" !== y || C) && ("claimer" !== y || S) && ("pioneer" !== y || x) && f.push(Up(e, t, {
 roleName: y,
 def: R,
 current: E,
-priority: Cp(e, 0, y, R.priority, p),
+priority: kp(e, 0, y, R.priority, p),
 targetRoom: null !== (u = null !== (l = null !== (c = null == S ? void 0 : S.targetRoom) && void 0 !== c ? c : null == x ? void 0 : x.targetRoom) && void 0 !== l ? l : C) && void 0 !== u ? u : void 0,
 task: null !== (m = null == S ? void 0 : S.task) && void 0 !== m ? m : null == x ? void 0 : x.task
 }));
@@ -35464,7 +35676,7 @@ return f;
 }(e, t)), c = [];
 try {
 for (var l = a(n), u = l.next(); !u.done; u = l.next()) {
-var m = xp(e, u.value);
+var m = Ap(e, u.value);
 m && c.push(m);
 }
 } catch (e) {
@@ -35485,10 +35697,10 @@ requests: c
 };
 }
 
-function xp(e, t) {
+function Ap(e, t) {
 var r, n, i, s = e.energyCapacityAvailable;
 try {
-var c = 3 * Math.max(3, Math.min(50, Math.floor(s / 100))), l = Md.getMaxAffordableInTicks(e, c), u = Rp(e), m = t.priority >= nd.EMERGENCY || t.bootstrap ? u : Math.max(s, l), d = t.assistTarget && Cd(t.roleName) ? bd(t.roleName, s, Td(t.assistTarget)) : null, p = null !== (i = null !== (n = null !== (r = t.bodyOverride) && void 0 !== r ? r : d) && void 0 !== n ? n : function(e, t) {
+var c = 3 * Math.max(3, Math.min(50, Math.floor(s / 100))), l = Nd.getMaxAffordableInTicks(e, c), u = Op(e), m = t.priority >= nd.EMERGENCY || t.bootstrap ? u : Math.max(s, l), d = t.assistTarget && xd(t.roleName) ? Md(t.roleName, s, Sd(t.assistTarget)) : null, p = null !== (i = null !== (n = null !== (r = t.bodyOverride) && void 0 !== r ? r : d) && void 0 !== n ? n : function(e, t) {
 var r, o, n = null;
 try {
 for (var i = a(e.bodies), s = i.next(); !s.done; s = i.next()) {
@@ -35535,7 +35747,7 @@ additionalMemory: Object.keys(y).length > 0 ? y : void 0,
 createdAt: Game.time
 };
 } catch (e) {
-return k.error("Failed to optimize body for ".concat(t.roleName, ": ").concat(e), {
+return _.error("Failed to optimize body for ".concat(t.roleName, ": ").concat(e), {
 subsystem: "SpawnCoordinator"
 }), null;
 }
@@ -35543,35 +35755,36 @@ subsystem: "SpawnCoordinator"
 
 new Set([ ATTACK, RANGED_ATTACK, WORK, HEAL, CLAIM ]);
 
-var wp = new Set([ "pioneer", "remoteHarvester", "remoteHauler", "scout" ]);
+var Np = new Set([ "pioneer", "remoteHarvester", "remoteHauler", "scout" ]);
 
-function bp() {
+function Pp() {
 var e;
 return !1 !== (null === (e = Memory.spawnSettings) || void 0 === e ? void 0 : e.claimerPreemption);
 }
 
-function Op(e) {
+function Ip(e) {
 var t, r, o, n = null !== (r = null === (t = e.additionalMemory) || void 0 === t ? void 0 : t.task) && void 0 !== r ? r : "";
 return "".concat(e.role, ":").concat(null !== (o = e.targetRoom) && void 0 !== o ? o : "", ":").concat(n);
 }
 
-function Up(e) {
+function Gp(e) {
 var t;
 return e.priority >= nd.HIGH && "defenseAssist" === (null === (t = e.additionalMemory) || void 0 === t ? void 0 : t.task);
 }
 
-function Mp(e, t, r, o) {
-for (var n = e.energyCapacityAvailable, i = Rp(e), s = r.urgency >= 2 || t.danger >= 3 ? nd.EMERGENCY : nd.HIGH, c = Ed(Y(e)), l = s === nd.EMERGENCY ? i : n, u = function(e, t) {
+function Lp(e, t, r, n) {
+for (var i, s, c, l = e.energyCapacityAvailable, u = Op(e), m = r.urgency >= 2 || t.danger >= 3 ? nd.EMERGENCY : nd.HIGH, d = Cd(Y(e)), p = m === nd.EMERGENCY ? u : l, f = function(e, t) {
 var r, o, n = {
 guards: 0,
 rangers: 0,
 healers: 0
-};
+}, i = {};
 try {
-for (var i = a(yd.getPendingRequests(e)), s = i.next(); !s.done; s = i.next()) {
-var c = s.value;
-Game.time - c.createdAt > 1500 || c.body.cost > t || ("guard" === c.role && n.guards++, 
-"ranger" === c.role && n.rangers++, "healer" === c.role && n.healers++);
+for (var s = a(yd.getPendingRequests(e)), c = s.next(); !c.done; c = s.next()) {
+var l = c.value;
+Game.time - l.createdAt > 1500 || l.body.cost > t || ("guard" === l.role && (n.guards++, 
+Fp(i, "guard", l.body.parts)), "ranger" === l.role && (n.rangers++, Fp(i, "ranger", l.body.parts)), 
+"healer" === l.role && (n.healers++, Fp(i, "healer", l.body.parts)));
 }
 } catch (e) {
 r = {
@@ -35579,38 +35792,92 @@ error: e
 };
 } finally {
 try {
-s && !s.done && (o = i.return) && o.call(i);
+c && !c.done && (o = s.return) && o.call(s);
 } finally {
 if (r) throw r.error;
 }
 }
+return {
+counts: n,
+power: i
+};
+}(e.name, l), y = function(e) {
+var t, r, o, n = {};
+try {
+for (var i = a(e.find(FIND_MY_CREEPS)), s = i.next(); !s.done; s = i.next()) {
+var c = s.value;
+if (!c.spawning) {
+var l = c.memory.role;
+if ("guard" === l || "ranger" === l || "healer" === l) {
+var u = (null !== (o = c.body) && void 0 !== o ? o : []).filter(function(e) {
+return e.hits > 0;
+});
+0 !== u.length && Fp(n, l, u);
+}
+}
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+s && !s.done && (r = i.return) && r.call(i);
+} finally {
+if (t) throw t.error;
+}
+}
 return n;
-}(e.name, n), m = _p("guard", r.guards, l, c), d = Math.max(0, m - o.guards - u.guards), p = kp("guard", l, c), f = 0; f < d; f++) Ap(e, "guard", "military", s, l, "guard_defense_".concat(Game.time, "_").concat(f), p);
-var y = _p("ranger", r.rangers, l, c), g = Math.max(0, y - o.rangers - u.rangers), v = kp("ranger", l, c);
-for (f = 0; f < g; f++) Ap(e, "ranger", "military", s, l, "ranger_defense_".concat(Game.time, "_").concat(f), v);
-var h = _p("healer", r.healers, n, c), R = Math.max(0, h - o.healers - u.healers), E = kp("healer", n, c);
-if (R > 0 && r.urgency >= 1.5) for (f = 0; f < R; f++) Ap(e, "healer", "military", nd.HIGH, n, "healer_defense_".concat(Game.time, "_").concat(f), E);
-(d > 0 || g > 0 || R > 0) && k.info("Added defender spawn requests: ".concat(d, " guards, ").concat(g, " rangers, ").concat(R, " healers (priority: ").concat(s, ")"), {
+}(e), g = function(e, t) {
+var r, n, i = o({}, e);
+try {
+for (var s = a([ "guard", "ranger", "healer" ]), c = s.next(); !c.done; c = s.next()) {
+var l = c.value, u = t[l];
+u && (i[l] = i[l] ? Ed(i[l], u) : u);
+}
+} catch (e) {
+r = {
+error: e
+};
+} finally {
+try {
+c && !c.done && (n = s.return) && n.call(s);
+} finally {
+if (r) throw r.error;
+}
+}
+return i;
+}(y, f.power), v = _d(p, d, {
+guard: Math.max(0, r.guards - n.guards - f.counts.guards),
+ranger: Math.max(0, r.rangers - n.rangers - f.counts.rangers),
+healer: Math.max(0, r.healers - n.healers - f.counts.healers)
+}, g), h = v.counts.guard, R = null !== (i = v.bodies.guard) && void 0 !== i ? i : Dp("guard", p, d), E = 0; E < h; E++) Bp(e, "guard", "military", m, p, "guard_defense_".concat(Game.time, "_").concat(E), R);
+var T = v.counts.ranger, C = null !== (s = v.bodies.ranger) && void 0 !== s ? s : Dp("ranger", p, d);
+for (E = 0; E < T; E++) Bp(e, "ranger", "military", m, p, "ranger_defense_".concat(Game.time, "_").concat(E), C);
+var S = v.counts.healer, x = null !== (c = v.bodies.healer) && void 0 !== c ? c : Dp("healer", p, d);
+if (S > 0 && (r.urgency >= 1.5 || v.healerFloor > 0)) for (E = 0; E < S; E++) Bp(e, "healer", "military", nd.HIGH, p, "healer_defense_".concat(Game.time, "_").concat(E), x);
+(h > 0 || T > 0 || S > 0) && _.info("Added defender spawn requests: ".concat(h, " guards, ").concat(T, " rangers, ").concat(S, " healers (priority: ").concat(m, ")"), {
 subsystem: "SpawnPipeline"
 });
 }
 
-function _p(e, t, r, o) {
-return t <= 0 || !o ? t : Math.max(t, Od(e, r, o));
+function Dp(e, t, r) {
+return r ? Md(e, t, r) : null;
 }
 
-function kp(e, t, r) {
-return r ? bd(e, t, r) : null;
+function Fp(e, t, r) {
+var o = Rd(r);
+e[t] = e[t] ? Ed(e[t], o) : o;
 }
 
-function Ap(e, t, r, o, n, a, i) {
+function Bp(e, t, r, o, n, a, i) {
 void 0 === i && (i = null);
 try {
 var s = null != i ? i : md({
 maxEnergy: n,
 role: t
 });
-if (s.cost > n) return void k.warn("Skipping unspawnable ".concat(t, " request in ").concat(e.name, ": body cost ").concat(s.cost, " exceeds ").concat(n), {
+if (s.cost > n) return void _.warn("Skipping unspawnable ".concat(t, " request in ").concat(e.name, ": body cost ").concat(s.cost, " exceeds ").concat(n), {
 subsystem: "SpawnPipeline"
 });
 yd.addRequest({
@@ -35623,34 +35890,34 @@ priority: o,
 createdAt: Game.time
 });
 } catch (e) {
-k.error("Failed to create ".concat(t, " spawn request: ").concat(e), {
+_.error("Failed to create ".concat(t, " spawn request: ").concat(e), {
 subsystem: "SpawnPipeline"
 });
 }
 }
 
-function Np(e, t, r) {
+function Hp(e, t, r) {
 if (void 0 === r && (r = e.energyAvailable), t.priority >= nd.HIGH) return !1;
 var o = r;
 if (o < t.body.cost) return !1;
 if ("scout" === t.role) return !1;
 if (t.priority < nd.NORMAL) {
-if (Md.predictEnergyInTicks(e, 50).netFlow < 0) return !0;
+if (Nd.predictEnergyInTicks(e, 50).netFlow < 0) return !0;
 if (o / e.energyCapacityAvailable < .5) return !0;
 }
-return t.priority === nd.NORMAL && o / e.energyCapacityAvailable < .3 && Md.predictEnergyInTicks(e, 25).netFlow > 0;
+return t.priority === nd.NORMAL && o / e.energyCapacityAvailable < .3 && Nd.predictEnergyInTicks(e, 25).netFlow > 0;
 }
 
-function Pp(e, t) {
+function Wp(e, t) {
 return function(e, t) {
 !function(e, t) {
 var r, o, n, i;
-Ep(e);
-var s = yd.getQueueSize(e.name), c = fp(e.name, e), l = dp(e.name) && !yd.hasEmergencySpawns(e.name), u = yp(e), m = vp(e);
+Mp(e);
+var s = yd.getQueueSize(e.name), c = Cp(e.name, e), l = Ep(e.name) && !yd.hasEmergencySpawns(e.name), u = Sp(e), m = wp(e);
 if (c) {
-s > 0 && yd.clearQueue(e.name), (u.guards > 0 || u.rangers > 0 || u.healers > 0) && Mp(e, t, u, m);
+s > 0 && yd.clearQueue(e.name), (u.guards > 0 || u.rangers > 0 || u.healers > 0) && Lp(e, t, u, m);
 try {
-for (var d = a(Sp(e, t).requests), p = d.next(); !p.done; p = d.next()) {
+for (var d = a(_p(e, t).requests), p = d.next(); !p.done; p = d.next()) {
 var f = p.value;
 yd.addRequest(f);
 }
@@ -35665,7 +35932,7 @@ p && !p.done && (o = d.return) && o.call(d);
 if (r) throw r.error;
 }
 }
-} else if ((u.guards > 0 || u.rangers > 0 || u.healers > 0) && Mp(e, t, u, m), s > 0 && !l) !function(e, t) {
+} else if ((u.guards > 0 || u.rangers > 0 || u.healers > 0) && Lp(e, t, u, m), s > 0 && !l) !function(e, t) {
 var r, o, n, i = function() {
 var e, t, r, o = Memory;
 return null !== (e = o.spawnPipeline) && void 0 !== e || (o.spawnPipeline = {}), 
@@ -35674,12 +35941,12 @@ o.spawnPipeline.lastPreemptiveReplanTickByRoom;
 }(), s = null !== (n = i[e.name]) && void 0 !== n ? n : -1 / 0;
 if (!(Game.time - s < 5)) {
 i[e.name] = Game.time;
-var c = new Set(yd.getPendingRequests(e.name).map(Op));
+var c = new Set(yd.getPendingRequests(e.name).map(Ip));
 try {
-for (var l = a(Sp(e, t).requests), u = l.next(); !u.done; u = l.next()) {
-var m = u.value, d = "upgrader" === m.role && m.priority >= nd.HIGH, p = "claimer" === m.role && bp(), f = Up(m);
-if (wp.has(m.role) || d || p || f) {
-var y = Op(m);
+for (var l = a(_p(e, t).requests), u = l.next(); !u.done; u = l.next()) {
+var m = u.value, d = "upgrader" === m.role && m.priority >= nd.HIGH, p = "claimer" === m.role && Pp(), f = Gp(m);
+if (Np.has(m.role) || d || p || f) {
+var y = Ip(m);
 c.has(y) || (yd.addRequest(m), c.add(y));
 }
 }
@@ -35697,18 +35964,18 @@ if (r) throw r.error;
 }
 }(e, t); else {
 !function(e) {
-var t = _d.requestSpawns(e.name);
+var t = Pd.requestSpawns(e.name);
 if (0 !== t.powerHarvesters || 0 !== t.healers || 0 !== t.powerCarriers) {
-for (var r = e.energyCapacityAvailable, o = nd.NORMAL, n = 0; n < t.powerHarvesters; n++) Ap(e, "powerHarvester", "power", o, r, "powerHarvester_".concat(Game.time, "_").concat(n));
-for (n = 0; n < t.healers; n++) Ap(e, "healer", "military", o, r, "healer_powerBank_".concat(Game.time, "_").concat(n));
-for (n = 0; n < t.powerCarriers; n++) Ap(e, "powerCarrier", "power", o, r, "powerCarrier_".concat(Game.time, "_").concat(n));
-k.info("Added power bank spawn requests: ".concat(t.powerHarvesters, " harvesters, ").concat(t.healers, " healers, ").concat(t.powerCarriers, " carriers"), {
+for (var r = e.energyCapacityAvailable, o = nd.NORMAL, n = 0; n < t.powerHarvesters; n++) Bp(e, "powerHarvester", "power", o, r, "powerHarvester_".concat(Game.time, "_").concat(n));
+for (n = 0; n < t.healers; n++) Bp(e, "healer", "military", o, r, "healer_powerBank_".concat(Game.time, "_").concat(n));
+for (n = 0; n < t.powerCarriers; n++) Bp(e, "powerCarrier", "power", o, r, "powerCarrier_".concat(Game.time, "_").concat(n));
+_.info("Added power bank spawn requests: ".concat(t.powerHarvesters, " harvesters, ").concat(t.healers, " healers, ").concat(t.powerCarriers, " carriers"), {
 subsystem: "SpawnPipeline"
 });
 }
 }(e);
 try {
-for (var y = a(Sp(e, t).requests), g = y.next(); !g.done; g = y.next()) f = g.value, 
+for (var y = a(_p(e, t).requests), g = y.next(); !g.done; g = y.next()) f = g.value, 
 yd.addRequest(f);
 } catch (e) {
 n = {
@@ -35722,7 +35989,7 @@ if (n) throw n.error;
 }
 }
 var v = yd.getQueueStats(e.name);
-k.debug("Populated spawn queue for ".concat(e.name, ": ").concat(v.total, " requests (E:").concat(v.emergency, ", H:").concat(v.high, ", N:").concat(v.normal, ", L:").concat(v.low, ")"), {
+_.debug("Populated spawn queue for ".concat(e.name, ": ").concat(v.total, " requests (E:").concat(v.emergency, ", H:").concat(v.high, ", N:").concat(v.normal, ", L:").concat(v.low, ")"), {
 subsystem: "SpawnPipeline"
 });
 }
@@ -35730,22 +35997,22 @@ subsystem: "SpawnPipeline"
 var r = function(e) {
 var t, r, o = yd.getAvailableSpawns(e.name);
 if (0 === o.length) return 0;
-var n = 0, i = Rp(e);
+var n = 0, i = Op(e);
 try {
 for (var s = a(o), c = s.next(); !c.done; c = s.next()) {
 var l = c.value, u = yd.getNextRequest(e.name, i);
 if (!u) break;
-if (Np(e, u, i)) {
-k.debug("Delaying spawn of ".concat(u.role, " (priority: ").concat(u.priority, ") - waiting for better energy availability"), {
+if (Hp(e, u, i)) {
+_.debug("Delaying spawn of ".concat(u.role, " (priority: ").concat(u.priority, ") - waiting for better energy availability"), {
 subsystem: "SpawnPipeline"
 });
 break;
 }
 var m = pd(l, u);
 m === OK ? (n++, i -= u.body.cost, yd.markInProgress(e.name, u.id, l.id), yd.removeRequest(e.name, u.id), 
-k.info("Spawned ".concat(u.role, " in ").concat(e.name, " (priority: ").concat(u.priority, ", cost: ").concat(u.body.cost, ")"), {
+_.info("Spawned ".concat(u.role, " in ").concat(e.name, " (priority: ").concat(u.priority, ", cost: ").concat(u.body.cost, ")"), {
 subsystem: "SpawnPipeline"
-})) : m !== ERR_NOT_ENOUGH_ENERGY && (yd.removeRequest(e.name, u.id), k.warn("Spawn failed for ".concat(u.role, " in ").concat(e.name, ": ").concat(m), {
+})) : m !== ERR_NOT_ENOUGH_ENERGY && (yd.removeRequest(e.name, u.id), _.warn("Spawn failed for ".concat(u.role, " in ").concat(e.name, ": ").concat(m), {
 subsystem: "SpawnPipeline"
 }));
 }
@@ -35762,9 +36029,9 @@ if (t) throw t.error;
 }
 return n;
 }(e), o = yd.getQueueStats(e.name);
-return r > 0 && k.debug("Spawned ".concat(r, " creeps in ").concat(e.name), {
+return r > 0 && _.debug("Spawned ".concat(r, " creeps in ").concat(e.name), {
 subsystem: "SpawnPipeline"
-}), Game.time % 100 == 0 && k.debug("Spawn queue stats for ".concat(e.name, ": ").concat(o.total, " pending (").concat(o.inProgress, " in progress)"), {
+}), Game.time % 100 == 0 && _.debug("Spawn queue stats for ".concat(e.name, ": ").concat(o.total, " pending (").concat(o.inProgress, " in progress)"), {
 subsystem: "SpawnPipeline"
 }), {
 roomName: e.name,
@@ -35775,7 +36042,7 @@ stats: o
 }(e, t);
 }
 
-var Ip = M("SS2TerminalComms"), Gp = function() {
+var Kp = U("SS2TerminalComms"), Yp = function() {
 function e() {}
 return e.loadStateFromMemory = function() {
 if (!this._stateInitialized) {
@@ -35869,7 +36136,7 @@ if (l.packets.set(s.packetId, s.messageChunk), this.saveStateToMemory(), l.packe
 for (var u = [], m = 0; m <= l.finalPacket; m++) {
 var d = l.packets.get(m);
 if (!d) {
-Ip.warn("Missing packet in multi-packet message", {
+Kp.warn("Missing packet in multi-packet message", {
 meta: {
 packetId: m,
 messageId: s.msgId,
@@ -35885,7 +36152,7 @@ var p = u.join("");
 r.push({
 sender: i.sender.username,
 message: p
-}), this.messageBuffers.delete(c), this.saveStateToMemory(), Ip.info("Received complete multi-packet message from ".concat(i.sender.username), {
+}), this.messageBuffers.delete(c), this.saveStateToMemory(), Kp.info("Received complete multi-packet message from ".concat(i.sender.username), {
 meta: {
 messageId: s.msgId,
 packets: u.length,
@@ -35909,7 +36176,7 @@ n && !n.done && (t = o.return) && t.call(o);
 if (e) throw e.error;
 }
 }
-return r.length > 0 && Ip.debug("Processed ".concat(Game.market.incomingTransactions.length, " terminal transactions, completed ").concat(r.length, " messages")), 
+return r.length > 0 && Kp.debug("Processed ".concat(Game.market.incomingTransactions.length, " terminal transactions, completed ").concat(r.length, " messages")), 
 r;
 }, e.splitMessage = function(e) {
 if (e.length <= this.MAX_DESCRIPTION_LENGTH) return [ e ];
@@ -35923,14 +36190,14 @@ return r;
 var a = this.splitMessage(n);
 if (1 === a.length) return e.send(r, o, t, a[0]);
 var i = this.extractMessageId(a[0]);
-return i ? (this.queuePackets(e.id, t, r, o, a, i), Ip.info("Queued ".concat(a.length, " packets for multi-packet message"), {
+return i ? (this.queuePackets(e.id, t, r, o, a, i), Kp.info("Queued ".concat(a.length, " packets for multi-packet message"), {
 meta: {
 terminalId: e.id,
 messageId: i,
 packets: a.length,
 targetRoom: t
 }
-}), OK) : (Ip.error("Failed to extract message ID from first packet"), ERR_INVALID_ARGS);
+}), OK) : (Kp.error("Failed to extract message ID from first packet"), ERR_INVALID_ARGS);
 }, e.extractMessageId = function(e) {
 var t = e.match(/^([\da-zA-Z]{1,3})\|/);
 return t ? t[1] : null;
@@ -35955,7 +36222,7 @@ try {
 for (var l = a(Object.entries(Memory.ss2PacketQueue)), u = l.next(); !u.done; u = l.next()) {
 var m = i(u.value, 2), d = m[0], p = m[1];
 if (Game.cpu.getUsed() - c > 5) {
-Ip.debug("Queue processing stopped due to CPU budget limit (".concat(5, " CPU)"));
+Kp.debug("Queue processing stopped due to CPU budget limit (".concat(5, " CPU)"));
 break;
 }
 var f = Game.getObjectById(p.terminalId);
@@ -35967,7 +36234,7 @@ var g = f.send(p.resourceType, p.amount, p.targetRoom, y);
 if (g === OK) {
 if (Memory.ss2PacketQueue[d].nextPacketIndex = p.nextPacketIndex + 1, n++, Memory.ss2PacketQueue[d].nextPacketIndex >= p.packets.length) {
 var v = this.extractMessageId(y);
-Ip.info("Completed sending multi-packet message", {
+Kp.info("Completed sending multi-packet message", {
 meta: {
 messageId: v,
 packets: p.packets.length,
@@ -35975,25 +36242,25 @@ targetRoom: p.targetRoom
 }
 }), s.push(d);
 }
-} else g === ERR_NOT_ENOUGH_RESOURCES ? Ip.warn("Not enough resources to send packet, will retry next tick", {
+} else g === ERR_NOT_ENOUGH_RESOURCES ? Kp.warn("Not enough resources to send packet, will retry next tick", {
 meta: {
 queueKey: d,
 resource: p.resourceType,
 amount: p.amount
 }
-}) : (Ip.error("Failed to send packet: ".concat(g, ", removing queue item"), {
+}) : (Kp.error("Failed to send packet: ".concat(g, ", removing queue item"), {
 meta: {
 queueKey: d,
 result: g
 }
 }), s.push(d));
-} else Ip.warn("No packet at index ".concat(p.nextPacketIndex, ", removing queue item"), {
+} else Kp.warn("No packet at index ".concat(p.nextPacketIndex, ", removing queue item"), {
 meta: {
 queueKey: d
 }
 }), s.push(d);
 }
-} else Ip.warn("Terminal not found for queue item, removing from queue", {
+} else Kp.warn("Terminal not found for queue item, removing from queue", {
 meta: {
 queueKey: d,
 terminalId: p.terminalId
@@ -36027,7 +36294,7 @@ R && !R.done && (o = h.return) && o.call(h);
 if (r) throw r.error;
 }
 }
-return n > 0 && Ip.debug("Sent ".concat(n, " queued packets this tick")), n;
+return n > 0 && Kp.debug("Sent ".concat(n, " queued packets this tick")), n;
 }, e.cleanupExpiredQueue = function() {
 var e, t, r, o;
 if (Memory.ss2PacketQueue) {
@@ -36037,7 +36304,7 @@ for (var c = a(Object.entries(Memory.ss2PacketQueue)), l = c.next(); !l.done; l 
 var u = i(l.value, 2), m = u[0], d = u[1];
 if (n - d.queuedAt > this.QUEUE_TIMEOUT) {
 var p = this.extractMessageId(d.packets[0]);
-Ip.warn("Queue item timed out after ".concat(n - d.queuedAt, " ticks"), {
+Kp.warn("Queue item timed out after ".concat(n - d.queuedAt, " ticks"), {
 meta: {
 messageId: p,
 queueKey: m,
@@ -36088,7 +36355,7 @@ var e, t, r = Game.time;
 try {
 for (var o = a(this.messageBuffers.entries()), n = o.next(); !n.done; n = o.next()) {
 var s = i(n.value, 2), c = s[0], l = s[1];
-r - l.receivedAt > this.MESSAGE_TIMEOUT && (Ip.warn("Message timed out", {
+r - l.receivedAt > this.MESSAGE_TIMEOUT && (Kp.warn("Message timed out", {
 meta: {
 messageId: l.msgId,
 sender: l.sender
@@ -36110,7 +36377,7 @@ if (e) throw e.error;
 try {
 return e.startsWith("{") || e.startsWith("[") ? JSON.parse(e) : null;
 } catch (e) {
-return Ip.error("Error parsing JSON", {
+return Kp.error("Error parsing JSON", {
 meta: {
 error: String(e)
 }
@@ -36121,7 +36388,7 @@ return JSON.stringify(e);
 }, e.MAX_DESCRIPTION_LENGTH = 100, e.MESSAGE_CHUNK_SIZE = 91, e.MESSAGE_TIMEOUT = 1e3, 
 e.QUEUE_TIMEOUT = 1e3, e.MESSAGE_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", 
 e._messageBuffers = null, e._nextMessageId = null, e._stateInitialized = !1, e;
-}(), Lp = [ {
+}(), Vp = [ {
 name: "metrics"
 }, {
 name: "defense"
@@ -36141,7 +36408,7 @@ name: "militaryResources"
 name: "role"
 }, {
 name: "focusRoom"
-} ], Dp = function() {
+} ], qp = function() {
 function e() {}
 return e.prototype.getEmpire = function() {
 var e = Memory;
@@ -36188,9 +36455,9 @@ return r[e];
 var t, r = null === (t = Memory.rooms) || void 0 === t ? void 0 : t[e];
 return null == r ? void 0 : r.swarm;
 }, e;
-}(), Fp = new Dp;
+}(), jp = new qp;
 
-function Bp(e) {
+function zp(e) {
 return "from" === e.direction ? e.requests.filter(function(t) {
 return t.fromRoom === e.roomName;
 }).length : e.requests.filter(function(t) {
@@ -36198,19 +36465,19 @@ return t.toRoom === e.roomName;
 }).length;
 }
 
-function Hp(e, t) {
+function Qp(e, t) {
 var r = t.energyNeed - e.energyNeed;
 if (0 !== r) return r;
 var o = t.needsAmount - e.needsAmount;
 return 0 !== o ? o : e.roomName.localeCompare(t.roomName);
 }
 
-function Wp(e, t) {
+function Xp(e, t) {
 var r = t.canProvide - e.canProvide;
 return 0 !== r ? r : e.roomName.localeCompare(t.roomName);
 }
 
-var Kp = {
+var Zp = {
 minBucket: 0,
 criticalEnergyThreshold: 300,
 mediumEnergyThreshold: 1e3,
@@ -36221,9 +36488,9 @@ maxRequestsPerRoom: 3,
 requestTimeout: 500,
 focusRoomMediumThreshold: 5e3,
 focusRoomLowThreshold: 15e3
-}, Yp = function() {
+}, Jp = function() {
 function e(e) {
-void 0 === e && (e = {}), this.config = o(o({}, Kp), e);
+void 0 === e && (e = {}), this.config = o(o({}, Zp), e);
 }
 return e.prototype.processCluster = function(e) {
 if (!(Game.cpu.bucket < this.config.minBucket)) {
@@ -36236,16 +36503,16 @@ t.length < 2 || this.createTransferRequests(e, t);
 }, e.prototype.cleanupRequests = function(e) {
 var t = this;
 e.resourceRequests = e.resourceRequests.filter(function(r) {
-if (Game.time - r.createdAt > t.config.requestTimeout) return k.debug("Resource request from ".concat(r.fromRoom, " to ").concat(r.toRoom, " expired"), {
+if (Game.time - r.createdAt > t.config.requestTimeout) return _.debug("Resource request from ".concat(r.fromRoom, " to ").concat(r.toRoom, " expired"), {
 subsystem: "ResourceSharing"
 }), !1;
-if (r.delivered >= r.amount) return k.info("Resource transfer completed: ".concat(r.delivered, " ").concat(r.resourceType, " from ").concat(r.fromRoom, " to ").concat(r.toRoom), {
+if (r.delivered >= r.amount) return _.info("Resource transfer completed: ".concat(r.delivered, " ").concat(r.resourceType, " from ").concat(r.fromRoom, " to ").concat(r.toRoom), {
 subsystem: "ResourceSharing"
 }), !1;
 if (!e.memberRooms.includes(r.toRoom) || !e.memberRooms.includes(r.fromRoom)) return !1;
 if (Game.rooms[r.toRoom]) {
-var o = Fp.getSwarmState(r.toRoom);
-if (o && 0 === o.metrics.energyNeed) return k.debug("Resource request from ".concat(r.fromRoom, " to ").concat(r.toRoom, " no longer needed"), {
+var o = jp.getSwarmState(r.toRoom);
+if (o && 0 === o.metrics.energyNeed) return _.debug("Resource request from ".concat(r.fromRoom, " to ").concat(r.toRoom, " no longer needed"), {
 subsystem: "ResourceSharing"
 }), !1;
 }
@@ -36257,7 +36524,7 @@ try {
 for (var i = a(e.memberRooms), s = i.next(); !s.done; s = i.next()) {
 var c = s.value, l = Game.rooms[c];
 if (l && (null === (o = l.controller) || void 0 === o ? void 0 : o.my)) {
-var u = Fp.getSwarmState(c);
+var u = jp.getSwarmState(c);
 if (u) {
 var m = e.focusRoom === c, d = this.calculateRoomEnergy(l), p = d.energyAvailable, f = d.energyCapacity, y = this.calculateEnergyNeed(l, p, u, m), g = 0;
 m ? g = 0 : p > this.config.surplusEnergyThreshold && (g = p - this.config.mediumEnergyThreshold);
@@ -36327,9 +36594,9 @@ return !e.hasTerminal;
 return o({}, e);
 }), c = n.filter(function(e) {
 return e.energyNeed > 0;
-}).sort(Hp), l = n.filter(function(e) {
+}).sort(Qp), l = n.filter(function(e) {
 return e.canProvide > 0;
-}).sort(Wp), u = [], m = [], d = function(t) {
+}).sort(Xp), u = [], m = [], d = function(t) {
 if (e.existingRequests.filter(function(e) {
 return e.toRoom === t.roomName;
 }).length + u.filter(function(e) {
@@ -36351,11 +36618,11 @@ return r.fromRoom === e && r.toRoom === t;
 });
 }(t.roomName, e.roomName, r.existingRequests, o);
 }).filter(function(e) {
-return Bp({
+return zp({
 roomName: e.roomName,
 direction: "from",
 requests: r.existingRequests
-}) + Bp({
+}) + zp({
 roomName: e.roomName,
 direction: "from",
 requests: o
@@ -36427,7 +36694,7 @@ for (var l = a(c.plannedRequests), u = l.next(); !u.done; u = l.next()) {
 var m = u.value;
 e.resourceRequests.push(m);
 var d = Game.map.getRoomLinearDistance(m.fromRoom, m.toRoom);
-k.info("Created resource transfer: ".concat(m.amount, " energy from ").concat(m.fromRoom, " to ").concat(m.toRoom, " (priority ").concat(m.priority, ", distance ").concat(d, ")"), {
+_.info("Created resource transfer: ".concat(m.amount, " energy from ").concat(m.fromRoom, " to ").concat(m.toRoom, " (priority ").concat(m.priority, ", distance ").concat(d, ")"), {
 subsystem: "ResourceSharing"
 });
 }
@@ -36449,12 +36716,12 @@ return e.toRoom === t || e.fromRoom === t;
 }, e.prototype.updateRequestProgress = function(e, t, r) {
 if (t >= 0 && t < e.resourceRequests.length) {
 var o = e.resourceRequests[t];
-o.delivered += r, k.debug("Updated transfer progress: ".concat(o.delivered, "/").concat(o.amount, " from ").concat(o.fromRoom, " to ").concat(o.toRoom), {
+o.delivered += r, _.debug("Updated transfer progress: ".concat(o.delivered, "/").concat(o.amount, " from ").concat(o.fromRoom, " to ").concat(o.toRoom), {
 subsystem: "ResourceSharing"
 });
 }
 }, e;
-}(), Vp = new Yp, qp = {
+}(), $p = new Jp, ef = {
 1: {
 guards: 1,
 rangers: 1,
@@ -36475,14 +36742,14 @@ siegeUnits: 1
 }
 };
 
-function jp(e) {
+function tf(e) {
 var t = {};
 return e.guards > 0 && (t.guard = e.guards), e.rangers > 0 && (t.ranger = e.rangers), 
 e.healers > 0 && (t.healer = e.healers), e.siegeUnits > 0 && (t.siegeUnit = e.siegeUnits), 
 t;
 }
 
-function zp(e) {
+function rf(e) {
 var t, r, o = new Set(e.members.filter(function(e) {
 return Boolean(Game.creeps[e]);
 }));
@@ -36505,9 +36772,9 @@ if (t) throw t.error;
 e.members = s([], i(o), !1);
 }
 
-function Qp(e) {
+function of(e) {
 var t, r, o;
-zp(e);
+rf(e);
 var n = {};
 try {
 for (var i = a(e.members), s = i.next(); !s.done; s = i.next()) {
@@ -36531,20 +36798,20 @@ if (t) throw t.error;
 return n;
 }
 
-function Xp(e) {
+function nf(e) {
 var t;
-zp(e);
-var r = null !== (t = e.targetComposition) && void 0 !== t ? t : {}, o = Qp(e);
+rf(e);
+var r = null !== (t = e.targetComposition) && void 0 !== t ? t : {}, o = of(e);
 return Object.entries(r).every(function(e) {
 var t, r = i(e, 2), n = r[0], a = r[1];
 return (null !== (t = o[n]) && void 0 !== t ? t : 0) >= (null != a ? a : 0);
 });
 }
 
-function Zp(e) {
-return !!Xp(e) || Boolean(e.stagingTimeoutAt && Game.time >= e.stagingTimeoutAt && function(e) {
+function af(e) {
+return !!nf(e) || Boolean(e.stagingTimeoutAt && Game.time >= e.stagingTimeoutAt && function(e) {
 var t, r, o, n, a, i, s, c, l;
-zp(e);
+rf(e);
 var u = function(e) {
 var t, r = null !== (t = e.targetComposition) && void 0 !== t ? t : {}, o = Object.values(r).reduce(function(e, t) {
 return e + (null != t ? t : 0);
@@ -36555,12 +36822,12 @@ var t = Game.creeps[e];
 return t && !t.spawning;
 });
 if (u <= 0 || m.length < Math.max(2, Math.ceil(.6 * u))) return !1;
-var d = Qp(e);
+var d = of(e);
 return !(0 === (null !== (t = d.guard) && void 0 !== t ? t : 0) + (null !== (r = d.soldier) && void 0 !== r ? r : 0) + (null !== (o = d.ranger) && void 0 !== o ? o : 0) + (null !== (n = d.harasser) && void 0 !== n ? n : 0) + (null !== (a = d.siegeUnit) && void 0 !== a ? a : 0) || (null !== (s = null === (i = e.targetComposition) || void 0 === i ? void 0 : i.healer) && void 0 !== s ? s : 0) > 0 && 0 === (null !== (c = d.healer) && void 0 !== c ? c : 0) || "siege" === e.type && 0 === (null !== (l = d.siegeUnit) && void 0 !== l ? l : 0));
 }(e));
 }
 
-function Jp(e, t) {
+function sf(e, t) {
 var r, o, n = e.coreRoom, i = 1 / 0;
 try {
 for (var s = a(e.memberRooms), c = s.next(); !c.done; c = s.next()) {
@@ -36581,44 +36848,44 @@ if (r) throw r.error;
 return n;
 }
 
-function $p(e, t) {
+function cf(e, t) {
 var r = function(e) {
-var t, r = Math.min(3, Math.max(1, e.urgency)), o = null !== (t = qp[r]) && void 0 !== t ? t : qp[2];
+var t, r = Math.min(3, Math.max(1, e.urgency)), o = null !== (t = ef[r]) && void 0 !== t ? t : ef[2];
 return {
 guards: Math.max(o.guards, e.guardsNeeded),
 rangers: Math.max(o.rangers, e.rangersNeeded),
 healers: Math.max(o.healers, e.healersNeeded),
 siegeUnits: o.siegeUnits
 };
-}(t), o = "defense_".concat(t.roomName, "_").concat(Game.time), n = Jp(e, t.roomName), a = {
+}(t), o = "defense_".concat(t.roomName, "_").concat(Game.time), n = sf(e, t.roomName), a = {
 id: o,
 type: "defense",
 members: [],
-targetComposition: jp(r),
+targetComposition: tf(r),
 rallyRoom: n,
 targetRooms: [ t.roomName ],
 state: "gathering",
 createdAt: Game.time,
 stagingTimeoutAt: Game.time + 300
 };
-return k.info("Created defense squad ".concat(o, " for ").concat(t.roomName, ": ") + "".concat(r.guards, "G/").concat(r.rangers, "R/").concat(r.healers, "H rally at ").concat(n), {
+return _.info("Created defense squad ".concat(o, " for ").concat(t.roomName, ": ") + "".concat(r.guards, "G/").concat(r.rangers, "R/").concat(r.healers, "H rally at ").concat(n), {
 subsystem: "Squad"
 }), a;
 }
 
-function ef(e) {
+function lf(e) {
 var t = Game.time - e.createdAt;
-if ("gathering" === e.state && t > 300) return k.warn("Squad ".concat(e.id, " timed out during formation (").concat(t, " ticks)"), {
+if ("gathering" === e.state && t > 300) return _.warn("Squad ".concat(e.id, " timed out during formation (").concat(t, " ticks)"), {
 subsystem: "Squad"
 }), !0;
-if (0 === e.members.length && t > 50) return k.info("Squad ".concat(e.id, " has no members, dissolving"), {
+if (0 === e.members.length && t > 50) return _.info("Squad ".concat(e.id, " has no members, dissolving"), {
 subsystem: "Squad"
 }), !0;
 if ("attacking" === e.state) {
 var r = e.targetRooms[0];
 if (r) {
 var o = Game.rooms[r];
-if (o && 0 === Y(o).length && t > 100) return k.info("Squad ".concat(e.id, " mission complete, no more hostiles"), {
+if (o && 0 === Y(o).length && t > 100) return _.info("Squad ".concat(e.id, " mission complete, no more hostiles"), {
 subsystem: "Squad"
 }), !0;
 }
@@ -36626,9 +36893,9 @@ subsystem: "Squad"
 return !1;
 }
 
-function tf(e) {
+function uf(e) {
 var t = e.members.length;
-zp(e), e.members.length < t && k.debug("Squad ".concat(e.id, " lost ").concat(t - e.members.length, " members"), {
+rf(e), e.members.length < t && _.debug("Squad ".concat(e.id, " lost ").concat(t - e.members.length, " members"), {
 subsystem: "Squad"
 });
 var r = e.members.map(function(e) {
@@ -36642,7 +36909,7 @@ if (o) switch (e.state) {
 case "gathering":
 r.every(function(t) {
 return t.room.name === e.rallyRoom;
-}) && Zp(e) && (e.state = "moving", k.info("Squad ".concat(e.id, " gathered, moving to ").concat(o), {
+}) && af(e) && (e.state = "moving", _.info("Squad ".concat(e.id, " gathered, moving to ").concat(o), {
 subsystem: "Squad"
 }));
 break;
@@ -36650,13 +36917,13 @@ break;
 case "moving":
 r.filter(function(e) {
 return e.room.name === o;
-}).length >= Math.max(1, Math.ceil(.5 * r.length)) && (e.state = "attacking", k.info("Squad ".concat(e.id, " reached ").concat(o, ", engaging"), {
+}).length >= Math.max(1, Math.ceil(.5 * r.length)) && (e.state = "attacking", _.info("Squad ".concat(e.id, " reached ").concat(o, ", engaging"), {
 subsystem: "Squad"
 }));
 break;
 
 case "attacking":
-Game.time - e.createdAt > 50 && r.length < 3 && (e.state = "retreating", k.warn("Squad ".concat(e.id, " retreating - heavy casualties"), {
+Game.time - e.createdAt > 50 && r.length < 3 && (e.state = "retreating", _.warn("Squad ".concat(e.id, " retreating - heavy casualties"), {
 subsystem: "Squad"
 }));
 break;
@@ -36664,14 +36931,14 @@ break;
 case "retreating":
 r.every(function(t) {
 return t.room.name === e.rallyRoom;
-}) && (e.state = "dissolving", k.info("Squad ".concat(e.id, " retreated to ").concat(e.rallyRoom, ", dissolving"), {
+}) && (e.state = "dissolving", _.info("Squad ".concat(e.id, " retreated to ").concat(e.rallyRoom, ", dissolving"), {
 subsystem: "Squad"
 }));
 }
 }
 }
 
-var rf = {
+var mf = {
 harassment: {
 composition: {
 harassers: 3,
@@ -36758,23 +37025,23 @@ prioritizeDefenses: !0
 }
 };
 
-function of(e, t) {
+function df(e, t) {
 var r, o, n, a;
-if (!t) return k.debug("No intel for ".concat(e, ", defaulting to harassment"), {
+if (!t) return _.debug("No intel for ".concat(e, ", defaulting to harassment"), {
 subsystem: "Doctrine"
 }), "harassment";
 var i = null !== (r = t.towerCount) && void 0 !== r ? r : 0, s = null !== (o = t.spawnCount) && void 0 !== o ? o : 0, c = null !== (n = t.rcl) && void 0 !== n ? n : 0, l = 3 * i + 2 * s + 1.5 * (null !== (a = t.militaryPresence) && void 0 !== a ? a : 0) + .5 * c;
-return l >= 20 || c >= 7 ? (k.info("Selected SIEGE doctrine for ".concat(e, " (threat: ").concat(l, ")"), {
+return l >= 20 || c >= 7 ? (_.info("Selected SIEGE doctrine for ".concat(e, " (threat: ").concat(l, ")"), {
 subsystem: "Doctrine"
-}), "siege") : l >= 10 || c >= 5 ? (k.info("Selected RAID doctrine for ".concat(e, " (threat: ").concat(l, ")"), {
+}), "siege") : l >= 10 || c >= 5 ? (_.info("Selected RAID doctrine for ".concat(e, " (threat: ").concat(l, ")"), {
 subsystem: "Doctrine"
-}), "raid") : (k.info("Selected HARASSMENT doctrine for ".concat(e, " (threat: ").concat(l, ")"), {
+}), "raid") : (_.info("Selected HARASSMENT doctrine for ".concat(e, " (threat: ").concat(l, ")"), {
 subsystem: "Doctrine"
 }), "harassment");
 }
 
-function nf(e, t) {
-var r, o, n, i = rf[t], s = 0;
+function pf(e, t) {
+var r, o, n, i = mf[t], s = 0;
 try {
 for (var c = a(e.memberRooms), l = c.next(); !l.done; l = c.next()) {
 var u = l.value, m = Game.rooms[u];
@@ -36795,12 +37062,12 @@ if (r) throw r.error;
 }
 }
 var f = s >= i.minEnergy;
-return f || k.debug("Cannot launch ".concat(t, ": insufficient energy (").concat(s, "/").concat(i.minEnergy, ")"), {
+return f || _.debug("Cannot launch ".concat(t, ": insufficient energy (").concat(s, "/").concat(i.minEnergy, ")"), {
 subsystem: "Doctrine"
 }), f;
 }
 
-var af, sf, cf, lf = {
+var ff, yf, gf, vf = {
 move: 50,
 work: 100,
 carry: 50,
@@ -36809,11 +37076,11 @@ ranged_attack: 150,
 heal: 250,
 claim: 600,
 tough: 10
-}, uf = new Map;
+}, hf = new Map;
 
-function mf(e, t) {
+function Rf(e, t) {
 var r, o, n, a, i, s, c, l, u, m = t.id;
-if (uf.has(m)) k.debug("Squad ".concat(m, " already forming"), {
+if (hf.has(m)) _.debug("Squad ".concat(m, " already forming"), {
 subsystem: "SquadFormation"
 }); else {
 var d;
@@ -36825,7 +37092,7 @@ healers: null !== (a = null === (n = t.targetComposition) || void 0 === n ? void
 siegeUnits: null !== (s = null === (i = t.targetComposition) || void 0 === i ? void 0 : i.siegeUnit) && void 0 !== s ? s : 0
 }, (null !== (l = null === (c = t.targetComposition) || void 0 === c ? void 0 : c.guard) && void 0 !== l ? l : 0) > 0 && (d.soldiers = 0); else {
 var p = "harass" === t.type ? "harassment" : t.type;
-d = rf[p].composition;
+d = mf[p].composition;
 }
 var f = Object.fromEntries(Object.entries(null !== (u = t.targetComposition) && void 0 !== u ? u : {}).filter(function(e) {
 return "number" == typeof e[1];
@@ -36840,19 +37107,19 @@ currentComposition: {},
 spawnRequests: new Set,
 formationStarted: Game.time
 }, g = Game.rooms[t.rallyRoom];
-g ? (uf.set(m, y), function(e, t, r, o) {
+g ? (hf.set(m, y), function(e, t, r, o) {
 var n, a, i = !1;
 if ("defense" !== t.type) {
 var s = "harass" === t.type ? "harassment" : t.type;
-i = rf[s].useBoosts;
+i = mf[s].useBoosts;
 }
 var c = nd.NORMAL;
 "siege" === t.type ? c = nd.HIGH : "defense" === t.type && (c = nd.EMERGENCY);
 var l = function(r, n) {
 for (var a, s = 0; s < n; s++) {
-var l = df(r, 0, e.energyCapacityAvailable), u = l.reduce(function(e, t) {
-return e + lf[t];
-}, 0), m = i ? ff(r) : [], d = {
+var l = Ef(r, 0, e.energyCapacityAvailable), u = l.reduce(function(e, t) {
+return e + vf[t];
+}, 0), m = i ? Cf(r) : [], d = {
 id: "".concat(t.id, "_").concat(r, "_").concat(s, "_").concat(Game.time),
 roomName: e.name,
 role: r,
@@ -36887,50 +37154,50 @@ yd.addRequest(d), o.spawnRequests.add(d.id);
 (null !== (a = u.guard) && void 0 !== a ? a : 0) > 0 && l("guard", u.guard), r.harassers > 0 && l("harasser", r.harassers), 
 r.soldiers > 0 && l("soldier", r.soldiers), r.rangers > 0 && l("ranger", r.rangers), 
 r.healers > 0 && l("healer", r.healers), r.siegeUnits > 0 && l("siegeUnit", r.siegeUnits);
-}(g, t, d, y), k.info("Started forming squad ".concat(m, ": ").concat(JSON.stringify(f)), {
+}(g, t, d, y), _.info("Started forming squad ".concat(m, ": ").concat(JSON.stringify(f)), {
 subsystem: "SquadFormation"
-})) : k.warn("Rally room ".concat(t.rallyRoom, " not visible for squad ").concat(m), {
+})) : _.warn("Rally room ".concat(t.rallyRoom, " not visible for squad ").concat(m), {
 subsystem: "SquadFormation"
 });
 }
 }
 
-function df(e, t, r) {
+function Ef(e, t, r) {
 var o = Math.min(r, 3e3);
 switch (e) {
 case "harasser":
-return pf([ MOVE, ATTACK ], o, [ MOVE, ATTACK ]);
+return Tf([ MOVE, ATTACK ], o, [ MOVE, ATTACK ]);
 
 case "guard":
-return pf([ TOUGH, MOVE, ATTACK ], o, [ TOUGH, MOVE, ATTACK ]);
+return Tf([ TOUGH, MOVE, ATTACK ], o, [ TOUGH, MOVE, ATTACK ]);
 
 case "soldier":
-return pf([ TOUGH, MOVE, ATTACK, MOVE, ATTACK ], o, [ TOUGH, MOVE, ATTACK ]);
+return Tf([ TOUGH, MOVE, ATTACK, MOVE, ATTACK ], o, [ TOUGH, MOVE, ATTACK ]);
 
 case "ranger":
-return pf([ TOUGH, MOVE, RANGED_ATTACK ], o, [ MOVE, RANGED_ATTACK ]);
+return Tf([ TOUGH, MOVE, RANGED_ATTACK ], o, [ MOVE, RANGED_ATTACK ]);
 
 case "healer":
-return pf([ TOUGH, MOVE, HEAL ], o, [ MOVE, HEAL ]);
+return Tf([ TOUGH, MOVE, HEAL ], o, [ MOVE, HEAL ]);
 
 case "siegeUnit":
-return pf([ TOUGH, MOVE, WORK ], o, [ TOUGH, MOVE, WORK ]);
+return Tf([ TOUGH, MOVE, WORK ], o, [ TOUGH, MOVE, WORK ]);
 
 default:
 return [ MOVE, ATTACK ];
 }
 }
 
-function pf(e, t, r) {
+function Tf(e, t, r) {
 for (var o = s([], i(e), !1), n = e.reduce(function(e, t) {
-return e + lf[t];
+return e + vf[t];
 }, 0), a = r.reduce(function(e, t) {
-return e + lf[t];
+return e + vf[t];
 }, 0); n + a <= t && o.length < 50; ) o.push.apply(o, s([], i(r), !1)), n += a;
 return o.slice(0, 50);
 }
 
-function ff(e) {
+function Cf(e) {
 switch (e) {
 case "soldier":
 return [ {
@@ -36961,45 +37228,45 @@ return [];
 }
 }
 
-function yf(e) {
-return uf.has(e);
+function Sf(e) {
+return hf.has(e);
 }
 
-function gf(e) {
-return Xp(e) || Zp(e);
+function xf(e) {
+return nf(e) || af(e);
 }
 
-(af = {})[RESOURCE_CATALYZED_GHODIUM_ALKALIDE] = 300, af[RESOURCE_CATALYZED_UTRIUM_ACID] = 300, 
-af[RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE] = 300, (sf = {})[RESOURCE_CATALYZED_GHODIUM_ALKALIDE] = 600, 
-sf[RESOURCE_CATALYZED_UTRIUM_ACID] = 600, sf[RESOURCE_CATALYZED_KEANIUM_ALKALIDE] = 300, 
-sf[RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE] = 600, (cf = {})[RESOURCE_CATALYZED_GHODIUM_ALKALIDE] = 900, 
-cf[RESOURCE_CATALYZED_UTRIUM_ACID] = 600, cf[RESOURCE_CATALYZED_ZYNTHIUM_ACID] = 900, 
-cf[RESOURCE_CATALYZED_KEANIUM_ALKALIDE] = 600, cf[RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE] = 900;
+(ff = {})[RESOURCE_CATALYZED_GHODIUM_ALKALIDE] = 300, ff[RESOURCE_CATALYZED_UTRIUM_ACID] = 300, 
+ff[RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE] = 300, (yf = {})[RESOURCE_CATALYZED_GHODIUM_ALKALIDE] = 600, 
+yf[RESOURCE_CATALYZED_UTRIUM_ACID] = 600, yf[RESOURCE_CATALYZED_KEANIUM_ALKALIDE] = 300, 
+yf[RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE] = 600, (gf = {})[RESOURCE_CATALYZED_GHODIUM_ALKALIDE] = 900, 
+gf[RESOURCE_CATALYZED_UTRIUM_ACID] = 600, gf[RESOURCE_CATALYZED_ZYNTHIUM_ACID] = 900, 
+gf[RESOURCE_CATALYZED_KEANIUM_ALKALIDE] = 600, gf[RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE] = 900;
 
-var vf = {
+var wf = {
 0: 0,
 1: 5e3,
 2: 15e3,
 3: 5e4
 };
 
-function hf(e, t) {
-var r = vf[t], o = Fp.getClusters();
+function bf(e, t) {
+var r = wf[t], o = jp.getClusters();
 for (var n in o) o[n].defenseRequests.some(function(t) {
 return t.roomName === e && t.urgency >= 2;
 }) && (r += 1e4);
 return r;
 }
 
-function Rf(e, t, r) {
+function Of(e, t, r) {
 var n, a = e.memberRooms.flatMap(function(e) {
-var t, r, o, n, a = Game.rooms[e], i = Fp.getSwarmState(e);
+var t, r, o, n, a = Game.rooms[e], i = jp.getSwarmState(e);
 if (!a || !i) return [];
 var s = null !== (r = null === (t = a.storage) || void 0 === t ? void 0 : t.store.getUsedCapacity(RESOURCE_ENERGY)) && void 0 !== r ? r : 0, c = null !== (n = null === (o = a.terminal) || void 0 === o ? void 0 : o.store.getUsedCapacity(RESOURCE_ENERGY)) && void 0 !== n ? n : 0;
 return [ {
 roomName: e,
 availableEnergy: s + c,
-reservedEnergy: hf(e, i.danger),
+reservedEnergy: bf(e, i.danger),
 hasTerminal: Boolean(a.terminal),
 terminalEnergy: c
 } ];
@@ -37045,7 +37312,7 @@ var r = Game.map;
 return "function" == typeof (null == r ? void 0 : r.getRoomLinearDistance) ? r.getRoomLinearDistance(e, t) : 0;
 }
 });
-if (!i.success) return k.warn("No available energy source for emergency routing to ".concat(t, " (need ").concat(r, ")"), {
+if (!i.success) return _.warn("No available energy source for emergency routing to ".concat(t, " (need ").concat(r, ")"), {
 subsystem: "MilitaryPool"
 }), {
 success: !1
@@ -37055,13 +37322,13 @@ return e.toRoom === t && e.fromRoom === s && e.resourceType === RESOURCE_ENERGY 
 }).reduce(function(e, t) {
 return e + (t.amount - t.delivered);
 }, 0);
-if (u <= 0) return k.debug("Emergency transfer already queued for ".concat(r, " energy from ").concat(s, " to ").concat(t), {
+if (u <= 0) return _.debug("Emergency transfer already queued for ".concat(r, " energy from ").concat(s, " to ").concat(t), {
 subsystem: "MilitaryPool"
 }), {
 success: !0,
 sourceRoom: s
 };
-if ("terminal" !== i.delivery || !(null == c ? void 0 : c.terminal) || !(null == l ? void 0 : l.terminal)) return k.info("Creating hauler transfer request: ".concat(u, " energy from ").concat(s, " to ").concat(t), {
+if ("terminal" !== i.delivery || !(null == c ? void 0 : c.terminal) || !(null == l ? void 0 : l.terminal)) return _.info("Creating hauler transfer request: ".concat(u, " energy from ").concat(s, " to ").concat(t), {
 subsystem: "MilitaryPool"
 }), e.resourceRequests.push({
 toRoom: t,
@@ -37077,19 +37344,19 @@ success: !0,
 sourceRoom: s
 };
 var m = c.terminal.send(RESOURCE_ENERGY, u, t);
-return m === OK ? (k.info("Emergency energy routed: ".concat(u, " from ").concat(s, " to ").concat(t), {
+return m === OK ? (_.info("Emergency energy routed: ".concat(u, " from ").concat(s, " to ").concat(t), {
 subsystem: "MilitaryPool"
 }), {
 success: !0,
 sourceRoom: s
-}) : (k.warn("Failed emergency terminal transfer ".concat(u, " energy from ").concat(s, " to ").concat(t, ": ").concat(m), {
+}) : (_.warn("Failed emergency terminal transfer ".concat(u, " energy from ").concat(s, " to ").concat(t, ": ").concat(m), {
 subsystem: "MilitaryPool"
 }), {
 success: !1
 });
 }
 
-var Ef = {
+var Mf = {
 rclWeight: 10,
 resourceWeight: 5,
 strategicWeight: 3,
@@ -37099,7 +37366,7 @@ strongDefensePenalty: 15,
 warTargetBonus: 50
 };
 
-function Tf(e, t, r, o) {
+function Uf(e, t, r, o) {
 var n, a, i = 0;
 i += e.controllerLevel * o.rclWeight, e.controllerLevel >= 6 ? i += 5 * o.resourceWeight : e.controllerLevel >= 4 && (i += 2 * o.resourceWeight), 
 i += e.sources * o.strategicWeight, i -= t * o.distancePenalty;
@@ -37109,7 +37376,7 @@ r && (i += o.warTargetBonus), e.threatLevel >= 2 && !r && (i -= 10 * e.threatLev
 Math.max(0, i);
 }
 
-function Cf(e, t) {
+function kf(e, t) {
 var r, o, n = 1 / 0;
 try {
 for (var i = a(e.memberRooms), s = i.next(); !s.done; s = i.next()) {
@@ -37130,19 +37397,19 @@ if (r) throw r.error;
 return n;
 }
 
-function Sf() {
-var e = Fp.getEmpire();
+function _f() {
+var e = jp.getEmpire();
 return e.offensiveOperations || (e.offensiveOperations = {}), e.offensiveOperations;
 }
 
-function xf(e) {
-Sf()[e.id] = e;
+function Af(e) {
+_f()[e.id] = e;
 }
 
-function wf(e) {
+function Nf(e) {
 e.lastUpdate = Game.time;
-var t = Fp.getCluster(e.clusterId);
-if (!t) return e.state = "failed", xf(e), void k.error("Cluster ".concat(e.clusterId, " not found for operation ").concat(e.id), {
+var t = jp.getCluster(e.clusterId);
+if (!t) return e.state = "failed", Af(e), void _.error("Cluster ".concat(e.clusterId, " not found for operation ").concat(e.id), {
 subsystem: "Offensive"
 });
 switch (e.state) {
@@ -37152,12 +37419,12 @@ e.squadIds.every(function(e) {
 var r = t.squads.find(function(t) {
 return t.id === e;
 });
-return !!r && (gf(r) || yf(e) || mf(0, r), gf(r));
-}) && (e.state = "executing", k.info("Operation ".concat(e.id, " entering execution phase"), {
+return !!r && (xf(r) || Sf(e) || Rf(0, r), xf(r));
+}) && (e.state = "executing", _.info("Operation ".concat(e.id, " entering execution phase"), {
 subsystem: "Offensive"
-})), Game.time - e.createdAt > 1e3 && (e.state = "failed", k.warn("Operation ".concat(e.id, " formation timed out"), {
+})), Game.time - e.createdAt > 1e3 && (e.state = "failed", _.warn("Operation ".concat(e.id, " formation timed out"), {
 subsystem: "Offensive"
-})), xf(e);
+})), Af(e);
 }(e, t);
 break;
 
@@ -37168,8 +37435,8 @@ var o = t.squads.find(function(e) {
 return e.id === r;
 });
 if (!o) return "continue";
-if (tf(o), ef(o)) {
-k.info("Squad ".concat(r, " dissolving, operation ").concat(e.id, " may complete"), {
+if (uf(o), lf(o)) {
+_.info("Squad ".concat(r, " dissolving, operation ").concat(e.id, " may complete"), {
 subsystem: "Offensive"
 });
 var n = t.squads.findIndex(function(e) {
@@ -37197,14 +37464,14 @@ return t.id === e;
 });
 });
 (function(e) {
-var t, r = Fp.getEmpire(), o = null === (t = r.knownRooms) || void 0 === t ? void 0 : t[e.targetRoom];
+var t, r = jp.getEmpire(), o = null === (t = r.knownRooms) || void 0 === t ? void 0 : t[e.targetRoom];
 if (o) {
 var n = Game.rooms[e.targetRoom];
 if (n && n.controller) {
 var a, i = (a = Object.values(Game.spawns)).length > 0 ? a[0].owner.username : "";
 if (!(n.controller.owner || n.controller.reservation && n.controller.reservation.username !== i || e.readyForClaim)) {
 e.readyForClaim = !0, o.owner = void 0, o.reserver = void 0, o.threatLevel = 0, 
-k.info("Room ".concat(e.targetRoom, " cleared by operation ").concat(e.id, " — flagged for claiming"), {
+_.info("Room ".concat(e.targetRoom, " cleared by operation ").concat(e.id, " — flagged for claiming"), {
 subsystem: "Offensive"
 });
 var s = r.claimQueue;
@@ -37222,14 +37489,14 @@ return t.score - e.score;
 }
 }
 }
-})(e), 0 === c.length && (e.state = "complete", k.info("Operation ".concat(e.id, " complete"), {
+})(e), 0 === c.length && (e.state = "complete", _.info("Operation ".concat(e.id, " complete"), {
 subsystem: "Offensive"
-})), xf(e);
+})), Af(e);
 }(e, t);
 }
 }
 
-function bf(e) {
+function Pf(e) {
 var t, r, o, n = [];
 try {
 for (var i = a([ TOUGH, WORK, ATTACK, RANGED_ATTACK, HEAL, MOVE ]), s = i.next(); !s.done; s = i.next()) for (var c = s.value, l = 0; l < (null !== (o = e[c]) && void 0 !== o ? o : 0); l++) n.push(c);
@@ -37247,7 +37514,7 @@ if (t) throw t.error;
 return n;
 }
 
-function Of(e, t, r) {
+function If(e, t, r) {
 var o = function(e) {
 if (0 === e.length || e.length > 50 || !e.includes(MOVE)) return null;
 var t = function(e) {
@@ -37271,7 +37538,7 @@ return e.parts.join(",") === n;
 }
 }
 
-function Uf(e) {
+function Gf(e) {
 var t, r, o = 0, n = 0, i = 0, s = 0;
 try {
 for (var c = a(e), l = c.next(); !l.done; l = c.next()) {
@@ -37300,7 +37567,7 @@ score: o + n + i + s + 2 * e.length
 };
 }
 
-function Mf(e) {
+function Lf(e) {
 var t, r, o = Game.rooms[e];
 if (!o) return null;
 var n = Y(o);
@@ -37315,7 +37582,7 @@ score: 0
 };
 try {
 for (var c = a(n), l = c.next(); !l.done; l = c.next()) {
-var u = Uf(l.value.body);
+var u = Gf(l.value.body);
 s.partCount += u.partCount, s.attack += u.attack, s.ranged += u.ranged, s.heal += u.heal, 
 s.dismantle += u.dismantle, s.score += u.score, (!i || u.score > i.score) && (i = u);
 }
@@ -37337,24 +37604,24 @@ total: s
 };
 }
 
-function _f(e, t) {
+function Df(e, t) {
 if (!t || t.score <= 0) return !0;
-var r = Uf(e);
+var r = Gf(e);
 return r.partCount > t.partCount && r.score > t.score;
 }
 
-function kf(e, t) {
-var r = Uf(t.parts).score - Uf(e.parts).score;
+function Ff(e, t) {
+var r = Gf(t.parts).score - Gf(e.parts).score;
 return 0 !== r ? r : t.cost - e.cost;
 }
 
-function Af(e, t, r) {
+function Bf(e, t, r) {
 var o, n = function(e, t) {
-for (var r, o, n, a, i, s, c = [], l = 1; l <= 25; l++) "guard" === e ? (Of(c, bf(((r = {})[ATTACK] = l, 
-r[MOVE] = l, r)), t), Of(c, bf(((o = {})[TOUGH] = l, o[ATTACK] = l, o[MOVE] = l, 
-o)), t)) : "ranger" === e ? (Of(c, bf(((n = {})[RANGED_ATTACK] = l, n[MOVE] = l, 
-n)), t), Of(c, bf(((a = {})[TOUGH] = Math.ceil(l / 2), a[RANGED_ATTACK] = l, a[MOVE] = l, 
-a)), t)) : (Of(c, bf(((i = {})[HEAL] = l, i[MOVE] = l, i)), t), Of(c, bf(((s = {})[TOUGH] = Math.ceil(l / 2), 
+for (var r, o, n, a, i, s, c = [], l = 1; l <= 25; l++) "guard" === e ? (If(c, Pf(((r = {})[ATTACK] = l, 
+r[MOVE] = l, r)), t), If(c, Pf(((o = {})[TOUGH] = l, o[ATTACK] = l, o[MOVE] = l, 
+o)), t)) : "ranger" === e ? (If(c, Pf(((n = {})[RANGED_ATTACK] = l, n[MOVE] = l, 
+n)), t), If(c, Pf(((a = {})[TOUGH] = Math.ceil(l / 2), a[RANGED_ATTACK] = l, a[MOVE] = l, 
+a)), t)) : (If(c, Pf(((i = {})[HEAL] = l, i[MOVE] = l, i)), t), If(c, Pf(((s = {})[TOUGH] = Math.ceil(l / 2), 
 s[HEAL] = l, s[MOVE] = l, s)), t));
 return c;
 }(e, t);
@@ -37362,16 +37629,16 @@ if (0 === n.length) return null;
 var a = null == r ? void 0 : r.strongest;
 if (null == a ? void 0 : a.score) {
 var c = n.filter(function(e) {
-return _f(e.parts, a);
+return Df(e.parts, a);
 }).sort(function(e, t) {
-return e.cost - t.cost || kf(e, t);
+return e.cost - t.cost || Ff(e, t);
 });
 if (c.length > 0) return c[0];
 }
-return null !== (o = s([], i(n), !1).sort(kf)[0]) && void 0 !== o ? o : null;
+return null !== (o = s([], i(n), !1).sort(Ff)[0]) && void 0 !== o ? o : null;
 }
 
-function Nf(e, t, r) {
+function Hf(e, t, r) {
 var o, n, i = 0;
 try {
 for (var s = a(Object.values(e)), c = s.next(); !c.done; c = s.next()) {
@@ -37394,11 +37661,11 @@ if (o) throw o.error;
 return i;
 }
 
-function Pf(e) {
+function Wf(e) {
 return e >= 2 ? 1e3 : 500;
 }
 
-function If(e, t, r) {
+function Kf(e, t, r) {
 return e.memberRooms.filter(function(e) {
 return e !== r;
 }).map(function(e) {
@@ -37411,21 +37678,21 @@ return a !== i ? a - i : e.energyCapacityAvailable !== t.energyCapacityAvailable
 });
 }
 
-function Gf(e, t, r) {
-var o = Af(t, e.energyCapacityAvailable, r);
-return Boolean(o && _f(o.parts, null == r ? void 0 : r.strongest));
+function Yf(e, t, r) {
+var o = Bf(t, e.energyCapacityAvailable, r);
+return Boolean(o && Df(o.parts, null == r ? void 0 : r.strongest));
 }
 
-function Lf(e, t, r, o) {
+function Vf(e, t, r, o) {
 return s([], i(e), !1).sort(function(e, n) {
-var a, i, s = Gf(e, t, o);
-if (s !== Gf(n, t, o)) return s ? -1 : 1;
+var a, i, s = Yf(e, t, o);
+if (s !== Yf(n, t, o)) return s ? -1 : 1;
 var c = null !== (a = e.distances[r]) && void 0 !== a ? a : 50, l = null !== (i = n.distances[r]) && void 0 !== i ? i : 50;
 return c !== l ? c - l : e.energyCapacityAvailable !== n.energyCapacityAvailable ? n.energyCapacityAvailable - e.energyCapacityAvailable : e.roomName.localeCompare(n.roomName);
 });
 }
 
-function Df(e, t, r, o) {
+function qf(e, t, r, o) {
 var n = function(e, t) {
 switch (t) {
 case "guard":
@@ -37443,15 +37710,15 @@ var a = Math.max.apply(Math, s([], i(r.map(function(e) {
 return e.energyCapacityAvailable;
 })), !1));
 return Math.max(n, function(e, t, r) {
-var o = Af(e, t, null), n = null == r ? void 0 : r.strongest;
+var o = Bf(e, t, null), n = null == r ? void 0 : r.strongest;
 if (!o) return 0;
-if (!n || _f(o.parts, n)) return 1;
-var a = Uf(o.parts), i = Math.ceil((n.score + 1) / Math.max(1, a.score)), s = Math.ceil((n.partCount + 1) / Math.max(1, a.partCount));
+if (!n || Df(o.parts, n)) return 1;
+var a = Gf(o.parts), i = Math.ceil((n.score + 1) / Math.max(1, a.score)), s = Math.ceil((n.partCount + 1) / Math.max(1, a.partCount));
 return Math.min(8, Math.max(2, i, s));
 }(t, a, o));
 }
 
-function Ff(e, t) {
+function jf(e, t) {
 return t.getPendingRequests(e).filter(function(e) {
 return "guard" === (t = e.role) || "ranger" === t || "healer" === t;
 var t;
@@ -37466,7 +37733,7 @@ return e.targetRoom.length > 0;
 });
 }
 
-function Bf(e, t, r) {
+function zf(e, t, r) {
 var o, n, i, s = Game.rooms[e];
 if (s) {
 var c = {};
@@ -37496,16 +37763,16 @@ return !e.spawning;
 }).length,
 energyCapacityAvailable: s.energyCapacityAvailable,
 distances: c,
-pendingAssist: Ff(e, r)
+pendingAssist: jf(e, r)
 };
 }
 }
 
-function Hf(e, t) {
+function Qf(e, t) {
 var r = Game.rooms[e.roomName];
 if (!r) return !1;
 try {
-var o = Af(e.role, r.energyCapacityAvailable, e.threatProfile);
+var o = Bf(e.role, r.energyCapacityAvailable, e.threatProfile);
 if (!o) return !1;
 var n = {
 id: e.id,
@@ -37520,13 +37787,13 @@ additionalMemory: e.additionalMemory
 };
 return t.addRequest(n), !0;
 } catch (t) {
-return k.error("Failed to queue ".concat(e.role, " reinforcement from ").concat(e.roomName, " to ").concat(e.targetRoom, ": ").concat(t), {
+return _.error("Failed to queue ".concat(e.role, " reinforcement from ").concat(e.roomName, " to ").concat(e.targetRoom, ": ").concat(t), {
 subsystem: "Cluster"
 }), !1;
 }
 }
 
-function Wf(e, t, r) {
+function Xf(e, t, r) {
 var o, n, a, c = 0, l = 0, u = e.getTerrain().get(t.x, t.y);
 if (u === TERRAIN_MASK_WALL) return {
 position: t,
@@ -37568,28 +37835,28 @@ exitAccess: a
 };
 }
 
-function Kf(e) {
+function Zf(e) {
 return Math.max(2, Math.floor(e / 2));
 }
 
-var Yf = {
+var Jf = {
 updateInterval: 10,
 minBucket: 0,
 resourceBalanceThreshold: 1e4,
 minTerminalEnergy: 5e4
-}, Vf = function() {
+}, $f = function() {
 function e(e) {
-void 0 === e && (e = {}), this.lastRun = new Map, this.config = o(o({}, Yf), e);
+void 0 === e && (e = {}), this.lastRun = new Map, this.config = o(o({}, Jf), e);
 }
 return e.prototype.run = function() {
-var e = Fp.getClusters();
+var e = jp.getClusters();
 for (var t in e) {
 var r = e[t];
 if (this.shouldRunCluster(t)) try {
 this.runCluster(r), this.lastRun.set(t, Game.time);
 } catch (e) {
 var o = e instanceof Error ? e.message : String(e);
-k.error("Cluster ".concat(t, " error: ").concat(o), {
+_.error("Cluster ".concat(t, " error: ").concat(o), {
 subsystem: "Cluster"
 });
 }
@@ -37601,7 +37868,7 @@ return Game.time - r >= this.config.updateInterval;
 return function(e) {
 return {
 clusterId: e.id,
-steps: Lp.map(function(t) {
+steps: Vp.map(function(t) {
 return {
 name: t.name,
 statsKey: "cluster:".concat(e.id, ":").concat(t.name)
@@ -37620,7 +37887,7 @@ focusRoom: e.focusRoom
 }(e);
 }, e.prototype.runCluster = function(e) {
 var t, r, o = this, n = Game.cpu.getUsed(), i = this.getClusterOperationIntent(e), s = function(t) {
-_a.measureSubsystem(t.statsKey, function() {
+ka.measureSubsystem(t.statsKey, function() {
 o.executeClusterOperation(t.name, e);
 });
 };
@@ -37639,7 +37906,7 @@ if (t) throw t.error;
 }
 e.lastUpdate = Game.time;
 var u = Game.cpu.getUsed() - n;
-u > 1 && Game.time % 50 == 0 && k.debug("Cluster ".concat(e.id, " tick: ").concat(u.toFixed(2), " CPU"), {
+u > 1 && Game.time % 50 == 0 && _.debug("Cluster ".concat(e.id, " tick: ").concat(u.toFixed(2), " CPU"), {
 subsystem: "Cluster"
 });
 }, e.prototype.executeClusterOperation = function(e, t) {
@@ -37662,7 +37929,7 @@ this.balanceTerminalResources(t);
 break;
 
 case "resourceSharing":
-Vp.processCluster(t);
+$p.processCluster(t);
 break;
 
 case "squads":
@@ -37694,7 +37961,7 @@ if (0 === t.length) return null;
 for (var o = r ? r.pos : t[0].pos, n = [], a = -5; a <= 5; a++) for (var i = -5; i <= 5; i++) {
 var s = o.x + a, c = o.y + i;
 if (!(s < 2 || s > 47 || c < 2 || c > 47)) {
-var l = Wf(e, new RoomPosition(s, c, e.name), "defense");
+var l = Xf(e, new RoomPosition(s, c, e.name), "defense");
 l.score > 0 && n.push(l);
 }
 }
@@ -37717,7 +37984,7 @@ createdAt: Game.time
 };
 }(e) : null;
 }(r);
-o && (e.rallyPoints.push(o), k.debug("Created defense rally point for ".concat(t, " at ").concat(o.x, ",").concat(o.y), {
+o && (e.rallyPoints.push(o), _.debug("Created defense rally point for ".concat(t, " at ").concat(o.x, ",").concat(o.y), {
 subsystem: "RallyPoint"
 }));
 }
@@ -37743,10 +38010,10 @@ case "militaryResources":
 var t, r;
 try {
 for (var o = a(e.memberRooms), n = o.next(); !n.done; n = o.next()) {
-var i = n.value, s = Fp.getSwarmState(i);
+var i = n.value, s = jp.getSwarmState(i);
 if (s) {
-var c = hf(i, s.danger);
-c > 0 && Game.time % 100 == 0 && k.debug("Military energy reservation for ".concat(i, ": ").concat(c, " (danger ").concat(s.danger, ")"), {
+var c = bf(i, s.danger);
+c > 0 && Game.time % 100 == 0 && _.debug("Military energy reservation for ".concat(i, ": ").concat(c, " (danger ").concat(s.danger, ")"), {
 subsystem: "MilitaryPool"
 });
 }
@@ -37776,7 +38043,7 @@ this.updateFocusRoom(t);
 var t, r, o = 0, n = 0, i = 0, s = 0, c = 0;
 try {
 for (var l = a(e.memberRooms), u = l.next(); !u.done; u = l.next()) {
-var m = u.value, d = Fp.getSwarmState(m);
+var m = u.value, d = jp.getSwarmState(m);
 if (d && d.metrics) {
 o += d.metrics.energyHarvested || 0, n += (d.metrics.energySpawning || 0) + (d.metrics.energyConstruction || 0) + (d.metrics.energyRepair || 0), 
 i += 25 * d.danger;
@@ -37808,7 +38075,7 @@ u && (null === (o = u.controller) || void 0 === o ? void 0 : o.my) && (n += u.fi
 filter: function(e) {
 return "military" === e.memory.family;
 }
-}).length, i += Kf(u.controller.level));
+}).length, i += Zf(u.controller.level));
 }
 } catch (e) {
 t = {
@@ -37891,7 +38158,7 @@ if (!(h.terminal.cooldown > 0 || t === RESOURCE_ENERGY && h.terminal.store.getUs
 for (var R = (s = void 0, a(y)), E = R.next(); !E.done; E = R.next()) {
 var T = E.value, C = Math.min(h.terminal.store.getUsedCapacity(t) - p, p - T.terminal.store.getUsedCapacity(t), 1e4);
 if (C > 1e3 && h.terminal.send(t, C, T.room.name) === OK) {
-k.debug("Transferred ".concat(C, " ").concat(t, " from ").concat(h.room.name, " to ").concat(T.room.name), {
+_.debug("Transferred ".concat(C, " ").concat(t, " from ").concat(h.room.name, " to ").concat(T.room.name), {
 subsystem: "Cluster"
 });
 break;
@@ -37925,7 +38192,7 @@ var t, r;
 try {
 for (var o = a(e.squads), n = o.next(); !n.done; n = o.next()) {
 var i = n.value;
-tf(i), "gathering" !== i.state || gf(i) || yf(i.id) || mf(0, i), ef(i) && (i.state = "dissolving");
+uf(i), "gathering" !== i.state || xf(i) || Sf(i.id) || Rf(0, i), lf(i) && (i.state = "dissolving");
 }
 } catch (e) {
 t = {
@@ -37950,7 +38217,7 @@ return !r && t.urgency >= 2;
 });
 try {
 for (var n = a(o), i = n.next(); !i.done; i = n.next()) {
-var s = i.value, c = $p(e, s);
+var s = i.value, c = cf(e, s);
 e.squads.push(c);
 }
 } catch (e) {
@@ -37967,18 +38234,18 @@ if (t) throw t.error;
 }, e.prototype.updateOffensiveOperations = function(e) {
 Game.time % 100 == 0 && function(e) {
 if ("war" === e.role || "mixed" === e.role) {
-var t = (a = e.id, Object.values(Sf()).filter(function(e) {
+var t = (a = e.id, Object.values(_f()).filter(function(e) {
 return "complete" !== e.state && "failed" !== e.state;
 }).filter(function(e) {
 return e.clusterId === a;
 }));
-if (t.length >= 2) k.debug("Cluster ".concat(e.id, " at max operations (").concat(t.length, ")"), {
+if (t.length >= 2) _.debug("Cluster ".concat(e.id, " at max operations (").concat(t.length, ")"), {
 subsystem: "Offensive"
 }); else {
 var r = function(e, t, r, n) {
 var a, i, s, c, l, u;
 void 0 === n && (n = {});
-var m = o(o({}, Ef), n), d = [], p = Fp.getEmpire(), f = p.knownRooms || {}, y = new Set((p.warTargets || []).filter(function(e) {
+var m = o(o({}, Mf), n), d = [], p = jp.getEmpire(), f = p.knownRooms || {}, y = new Set((p.warTargets || []).filter(function(e) {
 return !F(e);
 })), g = new Set(Object.values(null !== (i = null === (a = p.playerPostures) || void 0 === a ? void 0 : a.players) && void 0 !== i ? i : {}).filter(function(e) {
 return "war" === e.state && !F(e.username);
@@ -37993,13 +38260,13 @@ if (h.owner !== R && !(h.owner && F(h.owner) || h.reserver && F(h.reserver))) {
 var E = y.has(v) || Boolean(h.owner && y.has(h.owner));
 if (E || Boolean(h.owner && g.has(h.owner))) {
 if (!h.isHighway && !h.isSK) {
-var T = Cf(e, v);
+var T = kf(e, v);
 if (!(T > 10)) {
 var C = null !== (u = null === (l = Memory.lastAttacked) || void 0 === l ? void 0 : l[v]) && void 0 !== u ? u : 0;
 if (!(Game.time - C < 5e3)) {
-var S = Tf(h, T, E, m), x = "neutral";
+var S = Uf(h, T, E, m), x = "neutral";
 h.owner && (x = E ? "enemy" : "hostile");
-var w = of(v, {
+var w = df(v, {
 towerCount: h.towerCount,
 spawnCount: h.spawnCount,
 rcl: h.controllerLevel,
@@ -38016,7 +38283,7 @@ intel: h
 }
 }
 }
-} else k.debug("Skipping ".concat(v, ": not a confirmed enemy target"), {
+} else _.debug("Skipping ".concat(v, ": not a confirmed enemy target"), {
 subsystem: "AttackTarget"
 });
 }
@@ -38026,7 +38293,7 @@ d.sort(function(e, t) {
 return t.score - e.score;
 });
 var b = d.slice(0, 3);
-return b.length > 0 && k.info("Found ".concat(b.length, " attack targets for cluster ").concat(e.id, ": ") + b.map(function(e) {
+return b.length > 0 && _.info("Found ".concat(b.length, " attack targets for cluster ").concat(e.id, ": ") + b.map(function(e) {
 return "".concat(e.roomName, "(").concat(e.score.toFixed(0), ")");
 }).join(", "), {
 subsystem: "AttackTarget"
@@ -38034,24 +38301,24 @@ subsystem: "AttackTarget"
 }(e);
 if (0 !== r.length) {
 var n = r[0];
-nf(e, n.doctrine) ? function(e, t, r) {
+pf(e, n.doctrine) ? function(e, t, r) {
 if (!function(e) {
-var t = (Fp.getEmpire().knownRooms || {})[e];
-return t ? !(Game.time - t.lastSeen > 5e3 && (k.warn("Intel for ".concat(e, " is stale (").concat(Game.time - t.lastSeen, " ticks old)"), {
+var t = (jp.getEmpire().knownRooms || {})[e];
+return t ? !(Game.time - t.lastSeen > 5e3 && (_.warn("Intel for ".concat(e, " is stale (").concat(Game.time - t.lastSeen, " ticks old)"), {
 subsystem: "AttackTarget"
-}), 1)) : (k.warn("No intel for target ".concat(e), {
+}), 1)) : (_.warn("No intel for target ".concat(e), {
 subsystem: "AttackTarget"
 }), !1);
-}(t)) return k.warn("Invalid target ".concat(t), {
+}(t)) return _.warn("Invalid target ".concat(t), {
 subsystem: "Offensive"
 }), null;
-var o = (Fp.getEmpire().knownRooms || {})[t], n = null != r ? r : of(t, {
+var o = (jp.getEmpire().knownRooms || {})[t], n = null != r ? r : df(t, {
 towerCount: null == o ? void 0 : o.towerCount,
 spawnCount: null == o ? void 0 : o.spawnCount,
 rcl: null == o ? void 0 : o.controllerLevel,
 owner: null == o ? void 0 : o.owner
 });
-if (!nf(e, n)) return k.warn("Cannot launch ".concat(n, " operation on ").concat(t, " - insufficient resources"), {
+if (!pf(e, n)) return _.warn("Cannot launch ".concat(n, " operation on ").concat(t, " - insufficient resources"), {
 subsystem: "Offensive"
 }), null;
 var a = "op_".concat(e.id, "_").concat(t, "_").concat(Game.time), i = {
@@ -38064,7 +38331,7 @@ state: "planning",
 createdAt: Game.time,
 lastUpdate: Game.time
 };
-xf(i);
+Af(i);
 var s, c = function(e, t, r, o) {
 var n = function(e, t) {
 var r, o, n = {
@@ -38078,13 +38345,13 @@ var a = null !== (r = t.towerCount) && void 0 !== r ? r : 0, i = null !== (o = t
 a >= 3 && (n.healers += 1), a >= 2 && i >= 2 && (n.siegeUnits += 1), i >= 2 && (n.guards += 1);
 }
 return n;
-}(0, o), a = "".concat(r, "_").concat(t, "_").concat(Game.time), i = Jp(e, t), s = .3;
+}(0, o), a = "".concat(r, "_").concat(t, "_").concat(Game.time), i = sf(e, t), s = .3;
 "harass" === r ? s = .5 : "raid" === r ? s = .4 : "siege" === r && (s = .3);
 var c = {
 id: a,
 type: r,
 members: [],
-targetComposition: jp(n),
+targetComposition: tf(n),
 rallyRoom: i,
 targetRooms: [ t ],
 state: "gathering",
@@ -38092,24 +38359,24 @@ createdAt: Game.time,
 stagingTimeoutAt: Game.time + 300,
 retreatThreshold: s
 };
-return k.info("Created ".concat(r, " squad ").concat(a, " for ").concat(t, ": ") + "".concat(n.guards, "G/").concat(n.rangers, "R/").concat(n.healers, "H/").concat(n.siegeUnits, "S rally at ").concat(i), {
+return _.info("Created ".concat(r, " squad ").concat(a, " for ").concat(t, ": ") + "".concat(n.guards, "G/").concat(n.rangers, "R/").concat(n.healers, "H/").concat(n.siegeUnits, "S rally at ").concat(i), {
 subsystem: "Squad"
 }), c;
 }(e, t, "harassment" === n ? "harass" : n, {
 towerCount: null == o ? void 0 : o.towerCount,
 spawnCount: null == o ? void 0 : o.spawnCount
 });
-e.squads.push(c), i.squadIds.push(c.id), xf(i), mf(0, c), i.state = "forming", i.lastUpdate = Game.time, 
-xf(i), s = t, Memory.lastAttacked || (Memory.lastAttacked = {}), Memory.lastAttacked[s] = Game.time, 
-k.info("Marked ".concat(s, " as attacked at tick ").concat(Game.time), {
+e.squads.push(c), i.squadIds.push(c.id), Af(i), Rf(0, c), i.state = "forming", i.lastUpdate = Game.time, 
+Af(i), s = t, Memory.lastAttacked || (Memory.lastAttacked = {}), Memory.lastAttacked[s] = Game.time, 
+_.info("Marked ".concat(s, " as attacked at tick ").concat(Game.time), {
 subsystem: "AttackTarget"
-}), k.info("Launched ".concat(n, " operation ").concat(a, " on ").concat(t, " with squad ").concat(c.id), {
+}), _.info("Launched ".concat(n, " operation ").concat(a, " on ").concat(t, " with squad ").concat(c.id), {
 subsystem: "Offensive"
 });
-}(e, n.roomName, n.doctrine) : k.info("Cluster ".concat(e.id, " cannot launch ").concat(n.doctrine, " doctrine (insufficient resources)"), {
+}(e, n.roomName, n.doctrine) : _.info("Cluster ".concat(e.id, " cannot launch ").concat(n.doctrine, " doctrine (insufficient resources)"), {
 subsystem: "Offensive"
 });
-} else k.debug("No attack targets found for cluster ".concat(e.id), {
+} else _.debug("No attack targets found for cluster ".concat(e.id), {
 subsystem: "Offensive"
 });
 }
@@ -38119,11 +38386,11 @@ var a;
 !function() {
 var e, t, r = Game.time;
 try {
-for (var o = a(uf.entries()), n = o.next(); !n.done; n = o.next()) {
+for (var o = a(hf.entries()), n = o.next(); !n.done; n = o.next()) {
 var s = i(n.value, 2), c = s[0], l = r - s[1].formationStarted;
-l > 500 && (k.warn("Squad ".concat(c, " formation timed out after ").concat(l, " ticks"), {
+l > 500 && (_.warn("Squad ".concat(c, " formation timed out after ").concat(l, " ticks"), {
 subsystem: "SquadFormation"
-}), uf.delete(c));
+}), hf.delete(c));
 }
 } catch (t) {
 e = {
@@ -38137,14 +38404,14 @@ if (e) throw e.error;
 }
 }
 }();
-var e = Sf();
-for (var t in e) wf(e[t]);
+var e = _f();
+for (var t in e) Nf(e[t]);
 !function() {
-var e = Sf();
+var e = _f();
 for (var t in e) {
 var r = e[t];
 ("complete" === r.state || "failed" === r.state) && Game.time - r.createdAt > 5e3 && (delete e[t], 
-k.debug("Cleaned up operation ".concat(t), {
+_.debug("Cleaned up operation ".concat(t), {
 subsystem: "Offensive"
 }));
 }
@@ -38177,9 +38444,9 @@ if (t) throw t.error;
 if (0 !== l.length) {
 if (e.focusRoom) {
 var f = Game.rooms[e.focusRoom];
-8 === (null === (n = null == f ? void 0 : f.controller) || void 0 === n ? void 0 : n.level) && (k.info("Focus room ".concat(e.focusRoom, " reached RCL 8, selecting next room"), {
+8 === (null === (n = null == f ? void 0 : f.controller) || void 0 === n ? void 0 : n.level) && (_.info("Focus room ".concat(e.focusRoom, " reached RCL 8, selecting next room"), {
 subsystem: "Cluster"
-}), e.focusRoom = void 0), f || (k.warn("Focus room ".concat(e.focusRoom, " no longer valid, selecting new focus"), {
+}), e.focusRoom = void 0), f || (_.warn("Focus room ".concat(e.focusRoom, " no longer valid, selecting new focus"), {
 subsystem: "Cluster"
 }), e.focusRoom = void 0);
 }
@@ -38212,32 +38479,32 @@ if (g.focusRoom !== e.focusRoom && (e.focusRoom = g.focusRoom), "selected" === g
 var v = l.find(function(t) {
 return t.roomName === e.focusRoom;
 });
-k.info("Selected ".concat(e.focusRoom, " (RCL ").concat(null !== (c = null == v ? void 0 : v.rcl) && void 0 !== c ? c : "unknown", ") as focus room for upgrading"), {
+_.info("Selected ".concat(e.focusRoom, " (RCL ").concat(null !== (c = null == v ? void 0 : v.rcl) && void 0 !== c ? c : "unknown", ") as focus room for upgrading"), {
 subsystem: "Cluster"
 });
 }
 }
 }, e.prototype.createCluster = function(e) {
-var t = "cluster_".concat(e), r = Fp.getCluster(t, e);
+var t = "cluster_".concat(e), r = jp.getCluster(t, e);
 if (!r) throw new Error("Failed to create cluster for ".concat(e));
-return k.info("Created cluster ".concat(t, " with core room ").concat(e), {
+return _.info("Created cluster ".concat(t, " with core room ").concat(e), {
 subsystem: "Cluster"
 }), r;
 }, e.prototype.addRoomToCluster = function(e, t, r) {
 void 0 === r && (r = !1);
-var o = Fp.getCluster(e);
-o ? r ? o.remoteRooms.includes(t) || (o.remoteRooms.push(t), k.info("Added remote room ".concat(t, " to cluster ").concat(e), {
+var o = jp.getCluster(e);
+o ? r ? o.remoteRooms.includes(t) || (o.remoteRooms.push(t), _.info("Added remote room ".concat(t, " to cluster ").concat(e), {
 subsystem: "Cluster"
-})) : o.memberRooms.includes(t) || (o.memberRooms.push(t), k.info("Added member room ".concat(t, " to cluster ").concat(e), {
+})) : o.memberRooms.includes(t) || (o.memberRooms.push(t), _.info("Added member room ".concat(t, " to cluster ").concat(e), {
 subsystem: "Cluster"
-})) : k.error("Cluster ".concat(e, " not found"), {
+})) : _.error("Cluster ".concat(e, " not found"), {
 subsystem: "Cluster"
 });
 }, e.prototype.processDefenseRequests = function(e) {
 var t, r, n, c, l;
 e.defenseRequests = e.defenseRequests.filter(function(e) {
 var t = Game.time - e.createdAt;
-if (t > 500) return k.debug("Defense request for ".concat(e.roomName, " expired (").concat(t, " ticks old)"), {
+if (t > 500) return _.debug("Defense request for ".concat(e.roomName, " expired (").concat(t, " ticks old)"), {
 subsystem: "Cluster"
 }), !1;
 var r = Game.rooms[e.roomName];
@@ -38245,7 +38512,7 @@ if (!r) return !1;
 var o = Y(r), n = V(r).filter(function(e) {
 return e.structureType !== STRUCTURE_CONTROLLER;
 });
-return 0 !== o.length || 0 !== n.length || (k.info("Defense request for ".concat(e.roomName, " resolved - no more hostiles"), {
+return 0 !== o.length || 0 !== n.length || (_.info("Defense request for ".concat(e.roomName, " resolved - no more hostiles"), {
 subsystem: "Cluster"
 }), !1);
 });
@@ -38254,7 +38521,7 @@ for (var u = a(e.defenseRequests), m = u.next(); !m.done; m = u.next()) {
 var d = m.value;
 if (d.urgency >= 3) {
 var p = Game.rooms[d.roomName];
-p && p.storage && p.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 1e4 && Rf(e, d.roomName, 2e4);
+p && p.storage && p.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 1e4 && Of(e, d.roomName, 2e4);
 }
 }
 } catch (e) {
@@ -38271,7 +38538,7 @@ if (t) throw t.error;
 var f = function(t) {
 var r = Game.rooms[t];
 if (!r || !(null === (l = r.controller) || void 0 === l ? void 0 : l.my)) return "continue";
-var n = Fp.getSwarmState(t);
+var n = jp.getSwarmState(t);
 if (!n) return "continue";
 if (Lt(r, n)) {
 var a = e.defenseRequests.find(function(e) {
@@ -38311,7 +38578,7 @@ return e.roomName;
 try {
 for (var f = a(m), y = f.next(); !y.done; y = f.next()) {
 var g = y.value;
-p[g] = Mf(g);
+p[g] = Lf(g);
 }
 } catch (e) {
 r = {
@@ -38327,7 +38594,7 @@ if (r) throw r.error;
 try {
 for (var v = a(e.memberRooms), h = v.next(); !h.done; h = v.next()) {
 var R = h.value;
-d[R] = Bf(R, m, t);
+d[R] = zf(R, m, t);
 }
 } catch (e) {
 n = {
@@ -38346,11 +38613,11 @@ return e.urgency !== t.urgency ? t.urgency - e.urgency : e.createdAt - t.created
 });
 try {
 for (var y = a(f), g = y.next(); !g.done; g = y.next()) {
-var v = g.value, h = If(e.cluster, e.rooms, v.roomName);
+var v = g.value, h = Kf(e.cluster, e.rooms, v.roomName);
 if (0 !== h.length) {
 var R = null === (l = e.targetThreats) || void 0 === l ? void 0 : l[v.roomName];
 try {
-for (var E = (o = void 0, a([ "guard", "ranger", "healer" ])), T = E.next(); !T.done; T = E.next()) for (var C = T.value, S = Nf(e.rooms, v.roomName, C), x = Math.max(0, Df(v, C, h, R) - S), w = Lf(h, C, v.roomName, R), b = 0; b < x; b++) {
+for (var E = (o = void 0, a([ "guard", "ranger", "healer" ])), T = E.next(); !T.done; T = E.next()) for (var C = T.value, S = Hf(e.rooms, v.roomName, C), x = Math.max(0, qf(v, C, h, R) - S), w = Vf(h, C, v.roomName, R), b = 0; b < x; b++) {
 var O = w.find(function(e) {
 var t;
 return (null !== (t = p.get(e.roomName)) && void 0 !== t ? t : 0) < m;
@@ -38362,7 +38629,7 @@ id: "assist_".concat(C, "_").concat(v.roomName, "_").concat(O.roomName, "_").con
 roomName: O.roomName,
 role: C,
 family: "military",
-priority: Pf(v.urgency),
+priority: Wf(v.urgency),
 targetRoom: v.roomName,
 additionalMemory: {
 assistTarget: v.roomName,
@@ -38403,7 +38670,7 @@ now: Game.time,
 targetThreats: p
 }), T = 0;
 try {
-for (var C = a(E), S = C.next(); !S.done; S = C.next()) Hf(S.value, t) && T++;
+for (var C = a(E), S = C.next(); !S.done; S = C.next()) Qf(S.value, t) && T++;
 } catch (e) {
 l = {
 error: e
@@ -38415,7 +38682,7 @@ S && !S.done && (u = C.return) && u.call(C);
 if (l) throw l.error;
 }
 }
-T > 0 && k.warn("Queued ".concat(T, " defense reinforcement spawn(s) for cluster ").concat(e.id), {
+T > 0 && _.warn("Queued ".concat(T, " defense reinforcement spawn(s) for cluster ").concat(e.id), {
 subsystem: "Cluster"
 });
 }(e, yd);
@@ -38440,13 +38707,13 @@ try {
 for (var E = (c = void 0, a(R)), T = E.next(); !T.done; T = E.next()) {
 var C = T.value, S = C.memory;
 if ("military" === S.family && !S.assistTarget && !f.assignedCreeps.includes(C.name)) {
-var x = f.guardsNeeded > 0, w = f.rangersNeeded > 0, b = f.healersNeeded > 0, O = "guard" === S.role, U = "ranger" === S.role, M = "healer" === S.role;
-if (x && O || w && U || b && M) {
-var _ = Game.map.getRoomLinearDistance(v, f.roomName);
+var x = f.guardsNeeded > 0, w = f.rangersNeeded > 0, b = f.healersNeeded > 0, O = "guard" === S.role, M = "ranger" === S.role, U = "healer" === S.role;
+if (x && O || w && M || b && U) {
+var k = Game.map.getRoomLinearDistance(v, f.roomName);
 m.push({
 creep: C,
 room: h,
-distance: _,
+distance: k,
 targetRoom: f.roomName
 });
 }
@@ -38484,7 +38751,7 @@ for (var A = f.guardsNeeded + f.rangersNeeded + f.healersNeeded, N = Math.min(A,
 var I = m[P];
 if (I) {
 var G = I.creep.memory;
-G.assistTarget = f.roomName, f.assignedCreeps.push(I.creep.name), k.info("Assigned ".concat(I.creep.name, " (").concat(G.role, ") from ").concat(I.room.name, " to assist ").concat(f.roomName, " (distance: ").concat(I.distance, ")"), {
+G.assistTarget = f.roomName, f.assignedCreeps.push(I.creep.name), _.info("Assigned ".concat(I.creep.name, " (").concat(G.role, ") from ").concat(I.room.name, " to assist ").concat(f.roomName, " (distance: ").concat(I.distance, ")"), {
 subsystem: "Cluster"
 }), "guard" === G.role && f.guardsNeeded--, "ranger" === G.role && f.rangersNeeded--, 
 "healer" === G.role && f.healersNeeded--;
@@ -38511,9 +38778,9 @@ interval: 10,
 minBucket: 0,
 cpuBudget: .03
 }) ], e.prototype, "run", null), n([ gn() ], e);
-}(), qf = new Vf;
+}(), ey = new $f;
 
-function jf(e) {
+function ty(e) {
 return {
 name: e,
 role: "core",
@@ -38536,12 +38803,12 @@ cpuLimit: 0
 };
 }
 
-function zf(e) {
+function ry(e) {
 for (var t = 0, r = 0; r < e.length; r++) t = (t << 5) - t + e.charCodeAt(r), t &= t;
 return Math.abs(t);
 }
 
-function Qf(e) {
+function oy(e) {
 var t, r = {
 v: e.version,
 s: Object.entries(e.shards).map(function(e) {
@@ -38615,17 +38882,17 @@ pr: e.progress
 };
 }),
 ls: e.lastSync
-}, o = zf(JSON.stringify(r));
+}, o = ry(JSON.stringify(r));
 return JSON.stringify({
 d: r,
 c: o
 });
 }
 
-function Xf(e) {
+function ny(e) {
 var t, r, o, n, s, c, l;
 try {
-var u = JSON.parse(e), m = zf(JSON.stringify(u.d));
+var u = JSON.parse(e), m = ry(JSON.stringify(u.d));
 if (u.c !== m) return $o.warn("InterShardMemory checksum mismatch", {
 subsystem: "InterShard",
 meta: {
@@ -38751,34 +39018,34 @@ subsystem: "InterShard"
 }
 }
 
-var Zf, Jf, $f = 102400;
+var ay, iy, sy = 102400;
 
 !function(e) {
 e[e.LOW = 0] = "LOW", e[e.MEDIUM = 1] = "MEDIUM", e[e.HIGH = 2] = "HIGH", e[e.CRITICAL = 3] = "CRITICAL";
-}(Zf || (Zf = {})), function(e) {
+}(ay || (ay = {})), function(e) {
 e[e.LOW = 0] = "LOW", e[e.NORMAL = 1] = "NORMAL", e[e.MEDIUM = 2] = "MEDIUM", e[e.HIGH = 3] = "HIGH", 
 e[e.CRITICAL = 4] = "CRITICAL", e[e.EMERGENCY = 5] = "EMERGENCY";
-}(Jf || (Jf = {}));
+}(iy || (iy = {}));
 
-var ey = null != $o ? $o : {
+var cy = null != $o ? $o : {
 debug: function() {},
 info: function() {},
 warn: function() {},
 error: function() {}
-}, ty = {
+}, ly = {
 updateInterval: 100,
 minBucket: 0,
 maxCpuBudget: .02,
 defaultCpuLimit: 20
-}, ry = {
+}, uy = {
 core: 1.5,
 frontier: .8,
 resource: 1,
 backup: .5,
 war: 1.2
-}, oy = function() {
+}, my = function() {
 function e(e) {
-void 0 === e && (e = {}), this.lastRun = 0, this.config = o(o({}, ty), e), this.interShardMemory = {
+void 0 === e && (e = {}), this.lastRun = 0, this.config = o(o({}, ly), e), this.interShardMemory = {
 version: 1,
 shards: {},
 globalTargets: {
@@ -38794,19 +39061,19 @@ var e, t;
 try {
 var r = InterShardMemory.getLocal();
 if (r) {
-var o = Xf(r);
-o && (this.interShardMemory = o, ey.debug("Loaded InterShardMemory", {
+var o = ny(r);
+o && (this.interShardMemory = o, cy.debug("Loaded InterShardMemory", {
 subsystem: "Shard"
 }));
 }
 } catch (e) {
 var n = e instanceof Error ? e.message : String(e);
-ey.error("Failed to load InterShardMemory: ".concat(n), {
+cy.error("Failed to load InterShardMemory: ".concat(n), {
 subsystem: "Shard"
 });
 }
 var a = null !== (t = null === (e = Game.shard) || void 0 === e ? void 0 : e.name) && void 0 !== t ? t : "shard0";
-this.interShardMemory.shards[a] || (this.interShardMemory.shards[a] = jf(a));
+this.interShardMemory.shards[a] || (this.interShardMemory.shards[a] = ty(a));
 }, e.prototype.run = function() {
 this.lastRun = Game.time, this.updateCurrentShardHealth(), this.processInterShardTasks(), 
 this.scanForPortals(), this.autoAssignShardRole(), Object.keys(this.interShardMemory.shards).length > 1 && this.distributeCpuLimits(), 
@@ -38967,25 +39234,25 @@ return "pending" === e.status || "active" === e.status || Game.time - e.createdA
 var t;
 e.status = "active";
 var r = null !== (t = e.targetRoom) && void 0 !== t ? t : "unknown";
-ey.info("Processing colonize task: ".concat(r, " from ").concat(e.sourceShard), {
+cy.info("Processing colonize task: ".concat(r, " from ").concat(e.sourceShard), {
 subsystem: "Shard"
 });
 }, e.prototype.handleReinforceTask = function(e) {
 var t;
 e.status = "active";
 var r = null !== (t = e.targetRoom) && void 0 !== t ? t : "unknown";
-ey.info("Processing reinforce task: ".concat(r, " from ").concat(e.sourceShard), {
+cy.info("Processing reinforce task: ".concat(r, " from ").concat(e.sourceShard), {
 subsystem: "Shard"
 });
 }, e.prototype.handleTransferTask = function(e) {
-e.status = "active", ey.info("Processing transfer task from ".concat(e.sourceShard), {
+e.status = "active", cy.info("Processing transfer task from ".concat(e.sourceShard), {
 subsystem: "Shard"
 });
 }, e.prototype.handleEvacuateTask = function(e) {
 var t;
 e.status = "active";
 var r = null !== (t = e.targetRoom) && void 0 !== t ? t : "unknown";
-ey.info("Processing evacuate task: ".concat(r, " to ").concat(e.targetShard), {
+cy.info("Processing evacuate task: ".concat(r, " to ").concat(e.targetShard), {
 subsystem: "Shard"
 });
 }, e.prototype.scanForPortals = function() {
@@ -39018,7 +39285,7 @@ isStable: void 0 === t.ticksToDecay,
 traversalCount: 0
 };
 void 0 !== t.ticksToDecay && (s.decayTick = Game.time + t.ticksToDecay), o.portals.push(s), 
-ey.info("Discovered portal in ".concat(e, " to ").concat(n, "/").concat(a), {
+cy.info("Discovered portal in ".concat(e, " to ").concat(n, "/").concat(a), {
 subsystem: "Shard"
 });
 }
@@ -39048,12 +39315,12 @@ var e, t, r = null !== (t = null === (e = Game.shard) || void 0 === e ? void 0 :
 if (o) {
 var n = o.health, a = Object.values(this.interShardMemory.shards), i = o.role;
 n.warIndex > 50 ? i = "war" : n.roomCount < 3 && n.avgRCL < 4 ? i = "frontier" : n.economyIndex > 70 && n.roomCount >= 3 && n.avgRCL >= 6 ? i = "resource" : a.length > 1 && n.roomCount < 2 && n.avgRCL < 3 ? i = "backup" : n.roomCount >= 2 && n.avgRCL >= 4 && (i = "core"), 
-"frontier" === o.role && n.roomCount >= 3 && n.avgRCL >= 5 && (i = "core", ey.info("Transitioning from frontier to core shard", {
+"frontier" === o.role && n.roomCount >= 3 && n.avgRCL >= 5 && (i = "core", cy.info("Transitioning from frontier to core shard", {
 subsystem: "Shard"
 })), "war" === o.role && n.warIndex < 20 && (i = n.economyIndex > 70 && n.roomCount >= 3 ? "resource" : n.roomCount >= 2 ? "core" : "frontier", 
-ey.info("War ended, transitioning to ".concat(i), {
+cy.info("War ended, transitioning to ".concat(i), {
 subsystem: "Shard"
-})), i !== o.role && (o.role = i, ey.info("Auto-assigned shard role: ".concat(i), {
+})), i !== o.role && (o.role = i, cy.info("Auto-assigned shard role: ".concat(i), {
 subsystem: "Shard"
 }));
 }
@@ -39079,7 +39346,7 @@ if (t) throw t.error;
 }
 return o / e.cpuHistory.length;
 }, e.prototype.calculateShardWeight = function(e, t, r) {
-var o = ry[e.role], n = t === r ? Game.cpu.bucket : e.health.bucketLevel;
+var o = uy[e.role], n = t === r ? Game.cpu.bucket : e.health.bucketLevel;
 n < 2e3 ? o *= .8 : n < 5e3 ? o *= .9 : n > 9e3 && (o *= 1.1);
 var a = this.calculateCpuEfficiency(e);
 return a > .95 ? o *= 1.15 : a < .6 && (o *= .85), "war" === e.role && e.health.warIndex > 50 && (o *= 1.2), 
@@ -39131,13 +39398,13 @@ var T = Game.cpu.shardLimits, C = c.some(function(e) {
 var t, r;
 return Math.abs((null !== (t = T[e]) && void 0 !== t ? t : 0) - (null !== (r = v[e]) && void 0 !== r ? r : 0)) > 1;
 });
-C && Game.cpu.setShardLimits(v) === OK && ey.info("Updated shard CPU limits: ".concat(JSON.stringify(v)), {
+C && Game.cpu.setShardLimits(v) === OK && cy.info("Updated shard CPU limits: ".concat(JSON.stringify(v)), {
 subsystem: "Shard"
 });
 }
 } catch (e) {
 var S = e instanceof Error ? e.message : String(e);
-ey.debug("Could not set shard limits: ".concat(S), {
+cy.debug("Could not set shard limits: ".concat(S), {
 subsystem: "Shard"
 });
 }
@@ -39145,23 +39412,23 @@ subsystem: "Shard"
 try {
 this.interShardMemory.lastSync = Game.time;
 var e = this.validateInterShardMemory();
-e.valid || (ey.warn("InterShardMemory validation failed: ".concat(e.errors.join(", ")), {
+e.valid || (cy.warn("InterShardMemory validation failed: ".concat(e.errors.join(", ")), {
 subsystem: "Shard"
 }), this.repairInterShardMemory());
-var t = Qf(this.interShardMemory);
-if (t.length > $f) {
-ey.warn("InterShardMemory size exceeds limit: ".concat(t.length, "/").concat($f), {
+var t = oy(this.interShardMemory);
+if (t.length > sy) {
+cy.warn("InterShardMemory size exceeds limit: ".concat(t.length, "/").concat(sy), {
 subsystem: "Shard"
 }), this.trimInterShardMemory();
-var r = Qf(this.interShardMemory);
-return r.length > $f ? (ey.error("InterShardMemory still too large after trim: ".concat(r.length, "/").concat($f), {
+var r = oy(this.interShardMemory);
+return r.length > sy ? (cy.error("InterShardMemory still too large after trim: ".concat(r.length, "/").concat(sy), {
 subsystem: "Shard"
 }), void this.emergencyTrim()) : void InterShardMemory.setLocal(r);
 }
 InterShardMemory.setLocal(t), Game.time % 50 == 0 && this.verifySyncIntegrity();
 } catch (e) {
 var o = e instanceof Error ? e.message : String(e);
-ey.error("Failed to sync InterShardMemory: ".concat(o), {
+cy.error("Failed to sync InterShardMemory: ".concat(o), {
 subsystem: "Shard"
 }), this.attemptSyncRecovery();
 }
@@ -39199,7 +39466,7 @@ var e, t;
 try {
 for (var r = a(Object.entries(this.interShardMemory.shards)), o = r.next(); !o.done; o = r.next()) {
 var n = i(o.value, 2), s = n[0], c = n[1];
-c.health && "number" == typeof c.health.lastUpdate || (this.interShardMemory.shards[s] = jf(s)), 
+c.health && "number" == typeof c.health.lastUpdate || (this.interShardMemory.shards[s] = ty(s)), 
 Array.isArray(c.portals) || (c.portals = []), Array.isArray(c.activeTasks) || (c.activeTasks = []);
 }
 } catch (t) {
@@ -39217,40 +39484,40 @@ Array.isArray(this.interShardMemory.tasks) || (this.interShardMemory.tasks = [])
 this.interShardMemory.globalTargets || (this.interShardMemory.globalTargets = {
 targetPowerLevel: 0
 }), "number" != typeof this.interShardMemory.lastSync && (this.interShardMemory.lastSync = Game.time), 
-ey.info("Repaired InterShardMemory structure", {
+cy.info("Repaired InterShardMemory structure", {
 subsystem: "Shard"
 });
 }, e.prototype.verifySyncIntegrity = function() {
 var e, t;
 try {
 var r = InterShardMemory.getLocal();
-if (!r) return void ey.warn("InterShardMemory verification failed: no data present", {
+if (!r) return void cy.warn("InterShardMemory verification failed: no data present", {
 subsystem: "Shard"
 });
-var o = Xf(r);
-if (!o) return void ey.warn("InterShardMemory verification failed: deserialization failed", {
+var o = ny(r);
+if (!o) return void cy.warn("InterShardMemory verification failed: deserialization failed", {
 subsystem: "Shard"
 });
 var n = null !== (t = null === (e = Game.shard) || void 0 === e ? void 0 : e.name) && void 0 !== t ? t : "shard0";
-o.shards[n] || ey.warn("InterShardMemory verification failed: current shard ".concat(n, " not found"), {
+o.shards[n] || cy.warn("InterShardMemory verification failed: current shard ".concat(n, " not found"), {
 subsystem: "Shard"
 });
 } catch (e) {
 var a = e instanceof Error ? e.message : String(e);
-ey.warn("InterShardMemory verification failed: ".concat(a), {
+cy.warn("InterShardMemory verification failed: ".concat(a), {
 subsystem: "Shard"
 });
 }
 }, e.prototype.attemptSyncRecovery = function() {
 var e, t;
 try {
-ey.info("Attempting InterShardMemory recovery", {
+cy.info("Attempting InterShardMemory recovery", {
 subsystem: "Shard"
 });
 var r = InterShardMemory.getLocal();
 if (r) {
-var o = Xf(r);
-if (o) return this.interShardMemory = o, void ey.info("Recovered InterShardMemory from storage", {
+var o = ny(r);
+if (o) return this.interShardMemory = o, void cy.info("Recovered InterShardMemory from storage", {
 subsystem: "Shard"
 });
 }
@@ -39264,12 +39531,12 @@ targetPowerLevel: 0
 tasks: [],
 lastSync: 0,
 checksum: 0
-}, this.interShardMemory.shards[n] = jf(n), ey.info("Recreated InterShardMemory with current shard only", {
+}, this.interShardMemory.shards[n] = ty(n), cy.info("Recreated InterShardMemory with current shard only", {
 subsystem: "Shard"
 });
 } catch (e) {
 var a = e instanceof Error ? e.message : String(e);
-ey.error("InterShardMemory recovery failed: ".concat(a), {
+cy.error("InterShardMemory recovery failed: ".concat(a), {
 subsystem: "Shard"
 });
 }
@@ -39279,7 +39546,7 @@ n && (this.interShardMemory.shards = ((e = {})[o] = n, e), this.interShardMemory
 return e.sourceShard === o || e.targetShard === o;
 }), n.portals = n.portals.sort(function(e, t) {
 return t.lastScouted - e.lastScouted;
-}).slice(0, 10), ey.warn("Emergency trim applied to InterShardMemory", {
+}).slice(0, 10), cy.warn("Emergency trim applied to InterShardMemory", {
 subsystem: "Shard"
 }));
 }, e.prototype.trimInterShardMemory = function() {
@@ -39295,7 +39562,7 @@ return Game.time - e.lastScouted < 1e4;
 var e, t, r = null !== (t = null === (e = Game.shard) || void 0 === e ? void 0 : e.name) && void 0 !== t ? t : "shard0", o = this.interShardMemory.shards[r];
 if (o) {
 var n = o.health;
-ey.info("Shard ".concat(r, " (").concat(o.role, "): ") + "".concat(n.roomCount, " rooms, RCL ").concat(n.avgRCL, ", ") + "CPU: ".concat(n.cpuCategory, ", Eco: ").concat(n.economyIndex, "%, War: ").concat(n.warIndex, "%"), {
+cy.info("Shard ".concat(r, " (").concat(o.role, "): ") + "".concat(n.roomCount, " rooms, RCL ").concat(n.avgRCL, ", ") + "CPU: ".concat(n.cpuCategory, ", Eco: ").concat(n.economyIndex, "%, War: ").concat(n.warIndex, "%"), {
 subsystem: "Shard"
 });
 }
@@ -39311,7 +39578,7 @@ priority: o,
 status: "pending",
 createdAt: Game.time
 };
-r && (s.targetRoom = r), this.interShardMemory.tasks.push(s), ey.info("Created inter-shard task: ".concat(e, " to ").concat(t), {
+r && (s.targetRoom = r), this.interShardMemory.tasks.push(s), cy.info("Created inter-shard task: ".concat(e, " to ").concat(t), {
 subsystem: "Shard"
 });
 }, e.prototype.getCurrentShardState = function() {
@@ -39326,7 +39593,7 @@ return t.targetShard === e;
 }) : [];
 }, e.prototype.setShardRole = function(e) {
 var t, r, o = null !== (r = null === (t = Game.shard) || void 0 === t ? void 0 : t.name) && void 0 !== r ? r : "shard0", n = this.interShardMemory.shards[o];
-n && (n.role = e, ey.info("Set shard role to: ".concat(e), {
+n && (n.role = e, cy.info("Set shard role to: ".concat(e), {
 subsystem: "Shard"
 }));
 }, e.prototype.createResourceTransferTask = function(e, t, r, o, n) {
@@ -39345,7 +39612,7 @@ status: "pending",
 createdAt: Game.time,
 progress: 0
 };
-this.interShardMemory.tasks.push(c), ey.info("Created resource transfer task: ".concat(o, " ").concat(r, " to ").concat(e, "/").concat(t), {
+this.interShardMemory.tasks.push(c), cy.info("Created resource transfer task: ".concat(o, " ").concat(r, " to ").concat(e, "/").concat(t), {
 subsystem: "Shard"
 });
 }, e.prototype.getOptimalPortalRoute = function(e, t) {
@@ -39391,11 +39658,11 @@ return !("transfer" !== e.type || e.sourceShard !== r && e.targetShard !== r || 
 var t = this.interShardMemory.tasks.find(function(t) {
 return t.id === e;
 });
-t && (t.status = "failed", t.updatedAt = Game.time, ey.info("Cancelled task ".concat(e), {
+t && (t.status = "failed", t.updatedAt = Game.time, cy.info("Cancelled task ".concat(e), {
 subsystem: "Shard"
 }));
 }, e.prototype.getSyncStatus = function() {
-var e, t, r = Qf(this.interShardMemory).length, o = r / $f * 100, n = Game.time - this.interShardMemory.lastSync, i = r < 92160 && n < 500, s = 0;
+var e, t, r = oy(this.interShardMemory).length, o = r / sy * 100, n = Game.time - this.interShardMemory.lastSync, i = r < 92160 && n < 500, s = 0;
 try {
 for (var c = a(Object.values(this.interShardMemory.shards)), l = c.next(); !l.done; l = c.next()) s += l.value.portals.length;
 } catch (t) {
@@ -39422,11 +39689,11 @@ totalPortals: s,
 isHealthy: i
 };
 }, e.prototype.forceSync = function() {
-ey.info("Forcing InterShardMemory sync with validation", {
+cy.info("Forcing InterShardMemory sync with validation", {
 subsystem: "Shard"
 }), this.syncInterShardMemory();
 }, e.prototype.getMemoryStats = function() {
-var e, t, r = Qf(this.interShardMemory).length, n = Qf(o(o({}, this.interShardMemory), {
+var e, t, r = oy(this.interShardMemory).length, n = oy(o(o({}, this.interShardMemory), {
 tasks: [],
 globalTargets: {
 targetPowerLevel: 0
@@ -39450,8 +39717,8 @@ if (e) throw e.error;
 }
 return {
 size: r,
-limit: $f,
-percent: Math.round(r / $f * 1e4) / 100,
+limit: sy,
+percent: Math.round(r / sy * 1e4) / 100,
 breakdown: {
 shards: n,
 tasks: i,
@@ -39459,10 +39726,10 @@ portals: s,
 other: r - n - i
 }
 };
-}, n([ (Zf.LOW, function(e, t, r) {}) ], e.prototype, "run", null), n([ function(e) {
+}, n([ (ay.LOW, function(e, t, r) {}) ], e.prototype, "run", null), n([ function(e) {
 return e;
 } ], e);
-}(), ny = new oy, ay = {
+}(), dy = new my, py = {
 optimizeBody: function(e, t) {
 return {
 parts: [ WORK, CARRY, MOVE ]
@@ -39473,11 +39740,11 @@ add: function(e, t) {},
 addRequest: function(e) {}
 },
 spawnPriorities: {
-LOW: Jf.LOW,
-NORMAL: Jf.NORMAL,
-HIGH: Jf.HIGH
+LOW: iy.LOW,
+NORMAL: iy.NORMAL,
+HIGH: iy.HIGH
 }
-}, iy = function() {
+}, fy = function() {
 function e() {
 Memory.crossShardTransfers || (Memory.crossShardTransfers = {
 requests: {},
@@ -39487,7 +39754,7 @@ lastUpdate: Game.time
 return e.prototype.run = function() {
 var e, t, r, o;
 this.cleanupOldRequests();
-var n = ny.getActiveTransferTasks();
+var n = dy.getActiveTransferTasks();
 try {
 for (var i = a(n), s = i.next(); !s.done; s = i.next()) {
 var c = s.value;
@@ -39514,7 +39781,7 @@ m && this.processTransferRequest(m);
 this.memory.lastUpdate = Game.time;
 }, e.prototype.createTransferRequest = function(e) {
 if (e.resourceType && e.resourceAmount && e.targetRoom) {
-var t = ny.getOptimalPortalRoute(e.targetShard);
+var t = dy.getOptimalPortalRoute(e.targetShard);
 if (t) {
 var r = this.findSourceRoom(e.resourceType, e.resourceAmount);
 if (r) {
@@ -39582,7 +39849,7 @@ case "transferring":
 this.handleTransferringRequest(e);
 }
 var t = Math.round(e.transferred / e.amount * 100);
-ny.updateTaskProgress(e.taskId, t);
+dy.updateTaskProgress(e.taskId, t);
 }, e.prototype.handleQueuedRequest = function(e) {
 var t, r = e.amount - e.transferred, o = e.assignedCreeps.map(function(e) {
 return Game.creeps[e];
@@ -39598,7 +39865,7 @@ var a = Game.rooms[e.sourceRoom];
 if (a && (null === (t = a.controller) || void 0 === t ? void 0 : t.my)) {
 var i, s = r - n, c = a.energyCapacityAvailable;
 try {
-i = ay.optimizeBody({
+i = py.optimizeBody({
 maxEnergy: c,
 role: "crossShardCarrier"
 });
@@ -39609,8 +39876,8 @@ subsystem: "CrossShardTransfer"
 }
 var l = 50 * i.parts.filter(function(e) {
 return e === CARRY;
-}).length, u = Math.ceil(s / l), m = Math.min(u, 3), d = ay.spawnPriorities.LOW;
-e.priority >= 80 ? d = ay.spawnPriorities.HIGH : e.priority >= 50 && (d = ay.spawnPriorities.NORMAL);
+}).length, u = Math.ceil(s / l), m = Math.min(u, 3), d = py.spawnPriorities.LOW;
+e.priority >= 80 ? d = py.spawnPriorities.HIGH : e.priority >= 50 && (d = py.spawnPriorities.NORMAL);
 for (var p = 0; p < m; p++) {
 var f = {
 transferRequestId: e.taskId,
@@ -39628,7 +39895,7 @@ createdAt: Game.time,
 targetRoom: e.targetRoom,
 additionalMemory: f
 };
-ay.spawnQueue.addRequest(y), $o.info("Requested spawn of crossShardCarrier for transfer ".concat(e.taskId, " (").concat(p + 1, "/").concat(m, ")"), {
+py.spawnQueue.addRequest(y), $o.info("Requested spawn of crossShardCarrier for transfer ".concat(e.taskId, " (").concat(p + 1, "/").concat(m, ")"), {
 subsystem: "CrossShardTransfer"
 });
 }
@@ -39655,7 +39922,7 @@ return Game.creeps[e];
 }).filter(function(e) {
 return void 0 !== e;
 });
-if (0 === t.length) return e.status = "failed", void ny.updateTaskProgress(e.taskId, e.transferred, "failed");
+if (0 === t.length) return e.status = "failed", void dy.updateTaskProgress(e.taskId, e.transferred, "failed");
 t.filter(function(t) {
 return t.room.name === e.portalRoom;
 }).length > 0 && (e.status = "transferring", $o.info("Transfer request ".concat(e.taskId, " reached portal, transferring"), {
@@ -39667,8 +39934,8 @@ return Game.creeps[e];
 }).filter(function(e) {
 return void 0 !== e;
 });
-0 === t.length && (e.status = "complete", e.transferred = e.amount, ny.updateTaskProgress(e.taskId, 100, "complete"), 
-ny.recordPortalTraversal(e.portalRoom, e.targetShard, !0), $o.info("Transfer request ".concat(e.taskId, " completed"), {
+0 === t.length && (e.status = "complete", e.transferred = e.amount, dy.updateTaskProgress(e.taskId, 100, "complete"), 
+dy.recordPortalTraversal(e.portalRoom, e.targetShard, !0), $o.info("Transfer request ".concat(e.taskId, " completed"), {
 subsystem: "CrossShardTransfer"
 }));
 }, e.prototype.cleanupOldRequests = function() {
@@ -39698,28 +39965,28 @@ return "queued" === e.status;
 return t.priority - e.priority;
 });
 }, e;
-}(), sy = new iy, cy = /^([WE])(\d+)([NS])(\d+)$/;
+}(), yy = new fy, gy = /^([WE])(\d+)([NS])(\d+)$/;
 
-function ly(e) {
-return cy.test(e);
+function vy(e) {
+return gy.test(e);
 }
 
-var uy = {
+var hy = {
 updateInterval: 300,
 minBucket: 6e3,
 maxCpuBudget: .01
-}, my = function() {
+}, Ry = function() {
 function e(e) {
-void 0 === e && (e = {}), this.lastRun = 0, this.config = o(o({}, uy), e);
+void 0 === e && (e = {}), this.lastRun = 0, this.config = o(o({}, hy), e);
 }
 return e.prototype.run = function() {
 this.lastRun = Game.time;
 var e = InterShardMemory.getLocal();
 if (e) {
-var t = Xf(e);
+var t = ny(e);
 if (t) {
 this.updateEnemyIntelligence(t);
-var r = Qf(t);
+var r = oy(t);
 InterShardMemory.setLocal(r);
 }
 }
@@ -39737,7 +40004,7 @@ lastSeen: null !== (r = null == a ? void 0 : a.lastSeen) && void 0 !== r ? r : 0
 }), u = function(e) {
 var t, r, n, c, l, u, m, d, p = new Map, f = new Set, y = new Set, g = new Map;
 try {
-for (var v = a(e.knownRooms), h = v.next(); !h.done; h = v.next()) (M = h.value).owner && g.set(M.roomName, M.owner);
+for (var v = a(e.knownRooms), h = v.next(); !h.done; h = v.next()) (U = h.value).owner && g.set(U.roomName, U.owner);
 } catch (e) {
 t = {
 error: e
@@ -39785,7 +40052,7 @@ if (n) throw n.error;
 try {
 for (var S = a(e.warTargets), x = S.next(); !x.done; x = S.next()) {
 var w = x.value;
-if (e.isAlly(w)) f.add(w); else if (ly(w)) {
+if (e.isAlly(w)) f.add(w); else if (vy(w)) {
 var b = g.get(w);
 if (!b) continue;
 if (b.includes("Source Keeper") || e.isAlly(b)) {
@@ -39807,10 +40074,10 @@ if (l) throw l.error;
 }
 }
 try {
-for (var O = a(e.knownRooms), U = O.next(); !U.done; U = O.next()) {
-var M;
-(M = U.value).owner && (M.owner.includes("Source Keeper") ? y.add(M.owner) : e.isAlly(M.owner) ? f.add(M.owner) : ((C = R(M.owner)).rooms.includes(M.roomName) || (C.rooms.push(M.roomName), 
-C.rooms.sort()), C.lastSeen = Math.max(C.lastSeen, M.lastSeen), C.threatLevel = Math.max(C.threatLevel, M.threatLevel)));
+for (var O = a(e.knownRooms), M = O.next(); !M.done; M = O.next()) {
+var U;
+(U = M.value).owner && (U.owner.includes("Source Keeper") ? y.add(U.owner) : e.isAlly(U.owner) ? f.add(U.owner) : ((C = R(U.owner)).rooms.includes(U.roomName) || (C.rooms.push(U.roomName), 
+C.rooms.sort()), C.lastSeen = Math.max(C.lastSeen, U.lastSeen), C.threatLevel = Math.max(C.threatLevel, U.threatLevel)));
 }
 } catch (e) {
 m = {
@@ -39818,7 +40085,7 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (d = O.return) && d.call(O);
+M && !M.done && (d = O.return) && d.call(O);
 } finally {
 if (m) throw m.error;
 }
@@ -39841,7 +40108,7 @@ if (e.globalTargets.enemies = u.enemies, Game.time % 500 == 0) {
 var m = e.globalTargets.enemies.length, d = e.globalTargets.enemies.filter(function(e) {
 return e.threatLevel >= 2;
 }).length;
-k.info("Cross-shard intel: ".concat(m, " enemies tracked, ").concat(d, " high threat"), {
+_.info("Cross-shard intel: ".concat(m, " enemies tracked, ").concat(d, " high threat"), {
 subsystem: "CrossShardIntel"
 });
 }
@@ -39849,7 +40116,7 @@ subsystem: "CrossShardIntel"
 }, e.prototype.getGlobalEnemies = function() {
 var e = InterShardMemory.getLocal();
 if (!e) return [];
-var t = Xf(e);
+var t = ny(e);
 return t && t.globalTargets.enemies || [];
 }, n([ ma("empire:crossShardIntel", "Cross-Shard Intel", {
 priority: en.LOW,
@@ -39857,7 +40124,7 @@ interval: 300,
 minBucket: 6e3,
 cpuBudget: .01
 }) ], e.prototype, "run", null), n([ pa() ], e);
-}(), dy = new my, py = function() {
+}(), Ey = new Ry, Ty = function() {
 function e() {}
 return e.prototype.monitorClusterHealth = function() {
 if (Game.time % 50 == 0) {
@@ -39908,7 +40175,7 @@ if (!c) return "continue";
 try {
 for (var l = (o = void 0, a(c.warnings)), u = l.next(); !u.done; u = l.next()) {
 var m = u.value;
-k.warn(m.message, {
+_.warn(m.message, {
 subsystem: "Cluster"
 });
 }
@@ -39934,9 +40201,9 @@ economyIndex: 0
 for (var o in e) r(o);
 }
 }, e;
-}(), fy = new py;
+}(), Cy = new Ty;
 
-function yy(e, t) {
+function Sy(e, t) {
 var r, o;
 if (0 === t.length) return 1 / 0;
 var n = 1 / 0;
@@ -39959,11 +40226,11 @@ if (r) throw r.error;
 return n;
 }
 
-function gy(e, t, r) {
+function xy(e, t, r) {
 if (!function(e) {
 return !(e.owner || e.reserver || !e.scouted || e.isHighway);
 }(e)) return 0;
-var o = yy(e.name, t);
+var o = Sy(e.name, t);
 if (o > r.maxExpansionDistance) return 0;
 var n = 0;
 return 2 === e.sources ? n += 40 : 1 === e.sources && (n += 20), n += Li(e.mineralType), 
@@ -39972,7 +40239,7 @@ n += Hi(e.name), e.controllerLevel > 0 && !e.owner && (n += 2 * e.controllerLeve
 n += Ki(e.name, t, o), e.isSK && (n -= 50), Math.max(0, n);
 }
 
-function vy(e) {
+function wy(e) {
 return function(e) {
 var t = Ai(e);
 if (!t) throw new Error("Invalid room name: ".concat(e));
@@ -39983,8 +40250,8 @@ isSK: Ni(t.x) && Ni(t.y)
 }(e);
 }
 
-function hy(e) {
-var t = vy(e.roomName), r = e.terrain.swamps > e.terrain.plains ? "swamp" : e.terrain.plains > e.terrain.swamps ? "plains" : "mixed";
+function by(e) {
+var t = wy(e.roomName), r = e.terrain.swamps > e.terrain.plains ? "swamp" : e.terrain.plains > e.terrain.swamps ? "plains" : "mixed";
 return o(o({
 name: e.roomName,
 lastSeen: e.tick,
@@ -40003,14 +40270,14 @@ hasPortal: e.portals > 0
 });
 }
 
-var Ry = {
+var Oy = {
 intelRefreshInterval: 100,
 roomDiscoveryInterval: 100,
 maxRoomDiscoveryDistance: 5,
 maxRoomsToDiscoverPerTick: 50
-}, Ey = function() {
+}, My = function() {
 function e(e) {
-void 0 === e && (e = {}), this.config = o(o({}, Ry), e);
+void 0 === e && (e = {}), this.config = o(o({}, Oy), e);
 }
 return e.prototype.refreshRoomIntel = function(e) {
 var t, r;
@@ -40033,7 +40300,7 @@ s && !s.done && (r = i.return) && r.call(i);
 if (t) throw t.error;
 }
 }
-n > 0 && Game.time % 500 == 0 && k.info("Refreshed intel for ".concat(n, " visible rooms"), {
+n > 0 && Game.time % 500 == 0 && _.info("Refreshed intel for ".concat(n, " visible rooms"), {
 subsystem: "Intel"
 });
 }
@@ -40094,14 +40361,14 @@ R && !R.done && (s = h.return) && s.call(h);
 if (i) throw i.error;
 }
 }
-v.length > 0 && Game.time % 500 == 0 && k.info("Discovered ".concat(v.length, " new rooms"), {
+v.length > 0 && Game.time % 500 == 0 && _.info("Discovered ".concat(v.length, " new rooms"), {
 subsystem: "Intel"
 });
 }
 }
 }, e.prototype.createStubIntel = function(e) {
 return function(e) {
-var t = vy(e);
+var t = wy(e);
 return o({
 name: e,
 lastSeen: 0,
@@ -40113,14 +40380,14 @@ terrain: "mixed"
 }, t);
 }(e);
 }, e.prototype.createRoomIntel = function(e) {
-return hy(Ty(e));
+return by(Uy(e));
 }, e.prototype.updateRoomIntel = function(e, t) {
 var r, n;
-Object.assign(e, (r = e, n = hy(Ty(t)), o(o({}, r), n)));
+Object.assign(e, (r = e, n = by(Uy(t)), o(o({}, r), n)));
 }, e;
 }();
 
-function Ty(e) {
+function Uy(e) {
 for (var t, r, o, n = e.find(FIND_SOURCES), a = e.find(FIND_MINERALS)[0], i = e.controller, s = Y(e), c = V(e), l = e.find(FIND_STRUCTURES, {
 filter: function(e) {
 return e.structureType === STRUCTURE_PORTAL;
@@ -40152,7 +40419,7 @@ swamps: d
 };
 }
 
-var Cy = new Ey, Sy = /^([WE])(\d+)([NS])(\d+)$/, xy = function() {
+var ky = new My, _y = /^([WE])(\d+)([NS])(\d+)$/, Ay = function() {
 function e() {}
 return e.prototype.updateWarTargets = function(e) {
 var t = this, r = this.getMyUsername();
@@ -40172,7 +40439,7 @@ var o;
 if (e === r || F(e)) return !1;
 var n = null === (o = t.playerPostures) || void 0 === o ? void 0 : o.players[e];
 if ("war" === (null == n ? void 0 : n.state)) return !0;
-if (!Sy.test(e)) return !1;
+if (!_y.test(e)) return !1;
 var a = t.knownRooms[e];
 return !!(null == a ? void 0 : a.owner) && a.owner !== r && !F(a.owner);
 }, e.prototype.addPostureTargets = function(e, t) {
@@ -40183,7 +40450,7 @@ var u = i(l.value, 2), m = u[0];
 if ("war" === u[1].state && m !== t && !F(m)) for (var d in e.knownRooms) {
 var p = e.knownRooms[d];
 (null == p ? void 0 : p.owner) !== m || !1 === p.scouted || this.shouldIgnoreRoomForWar(t, p) || e.warTargets.includes(d) || (e.warTargets.push(d), 
-k.info("War posture target added: ".concat(d, " (player ").concat(m, ")"), {
+_.info("War posture target added: ".concat(d, " (player ").concat(m, ")"), {
 subsystem: "War"
 }));
 }
@@ -40221,7 +40488,7 @@ return t.score === e.score ? e.distance - t.distance : t.score - e.score;
 try {
 for (var d = a(s.slice(0, 5)), p = d.next(); !p.done; p = d.next()) {
 var f = p.value;
-e.warTargets.includes(f.roomName) || (e.warTargets.push(f.roomName), k.info("Proactive war target added: ".concat(f.roomName, " (score ").concat(f.score.toFixed(1), ", distance ").concat(f.distance, ")"), {
+e.warTargets.includes(f.roomName) || (e.warTargets.push(f.roomName), _.info("Proactive war target added: ".concat(f.roomName, " (score ").concat(f.score.toFixed(1), ", distance ").concat(f.distance, ")"), {
 subsystem: "War"
 }));
 }
@@ -40241,7 +40508,7 @@ var t = this.getMyUsername();
 for (var r in e.knownRooms) {
 var o = e.knownRooms[r];
 o && (!0 !== o.scouted || o.owner === t || !o.owner || F(o.owner) || o.reserver && F(o.reserver) || o.threatLevel >= 2 && !e.warTargets.includes(r) && (e.warTargets.push(r), 
-k.warn("Threat war target added: ".concat(r, " (threat level ").concat(o.threatLevel, ")"), {
+_.warn("Threat war target added: ".concat(r, " (threat level ").concat(o.threatLevel, ")"), {
 subsystem: "War"
 })));
 }
@@ -40275,7 +40542,7 @@ return !a.includes(e);
 });
 e.warTargets = s(s([], i(a), !1), i(c), !1);
 }, e.prototype.isRoomName = function(e) {
-return Sy.test(e);
+return _y.test(e);
 }, e.prototype.scoreWarCandidate = function(e, t) {
 var r, o, n;
 return Math.max(0, 80 - 6 * t) + 10 * (null !== (r = e.controllerLevel) && void 0 !== r ? r : 0) + 8 * e.threatLevel + 8 * (null !== (o = e.towerCount) && void 0 !== o ? o : 0) + 6 * (null !== (n = e.spawnCount) && void 0 !== n ? n : 0) + (e.reserver ? 6 : 0);
@@ -40302,7 +40569,7 @@ if (r) throw r.error;
 }
 return n;
 }, e;
-}(), wy = new xy, by = {
+}(), Ny = new Ay, Py = {
 updateInterval: 30,
 minBucket: 0,
 maxCpuBudget: .05,
@@ -40315,53 +40582,53 @@ gclNotifyThreshold: 90,
 roomDiscoveryInterval: 100,
 maxRoomDiscoveryDistance: 5,
 maxRoomsToDiscoverPerTick: 50
-}, Oy = function() {
+}, Iy = function() {
 function e(e) {
-void 0 === e && (e = {}), this.config = o(o({}, by), e);
+void 0 === e && (e = {}), this.config = o(o({}, Py), e);
 }
 return e.prototype.run = function() {
 var e, t = this, r = Game.cpu.getUsed(), o = Nt.getEmpire(), n = null !== (e = Game.cpu.bucket) && void 0 !== e ? e : 0;
-if (n < this.config.minBucket) Game.time % 100 == 0 && k.warn("Empire manager skipped - bucket ".concat(n.toFixed(0), " below minimum ").concat(this.config.minBucket), {
+if (n < this.config.minBucket) Game.time % 100 == 0 && _.warn("Empire manager skipped - bucket ".concat(n.toFixed(0), " below minimum ").concat(this.config.minBucket), {
 subsystem: "Empire"
 }); else {
 var a = this.getBucketMode(n), i = this.shouldRunDegradedModeWork(a), s = this.shouldRunNormalModeWork(a), c = this.shouldRunFullModeWork(a);
-o.lastUpdate = Game.time, s && (_a.measureSubsystem("empire:expansion", function() {
+o.lastUpdate = Game.time, s && (ka.measureSubsystem("empire:expansion", function() {
 t.updateExpansionQueue(o);
-}), _a.measureSubsystem("empire:powerBanks", function() {
+}), ka.measureSubsystem("empire:powerBanks", function() {
 t.updatePowerBanks(o);
-})), _a.measureSubsystem("empire:warTargets", function() {
-wy.updateWarTargets(o);
-}), _a.measureSubsystem("empire:objectives", function() {
+})), ka.measureSubsystem("empire:warTargets", function() {
+Ny.updateWarTargets(o);
+}), ka.measureSubsystem("empire:objectives", function() {
 t.updateObjectives(o);
-}), _a.measureSubsystem("empire:gclTracking", function() {
+}), ka.measureSubsystem("empire:gclTracking", function() {
 t.trackGCLProgress(o);
-}), s && _a.measureSubsystem("empire:expansionReadiness", function() {
+}), s && ka.measureSubsystem("empire:expansionReadiness", function() {
 t.checkExpansionReadiness(o);
-}), i && (_a.measureSubsystem("empire:intelRefresh", function() {
-Cy.refreshRoomIntel(o);
-}), _a.measureSubsystem("empire:roomDiscovery", function() {
-Cy.discoverNearbyRooms(o);
-})), s && _a.measureSubsystem("empire:nukeCandidates", function() {
+}), i && (ka.measureSubsystem("empire:intelRefresh", function() {
+ky.refreshRoomIntel(o);
+}), ka.measureSubsystem("empire:roomDiscovery", function() {
+ky.discoverNearbyRooms(o);
+})), s && ka.measureSubsystem("empire:nukeCandidates", function() {
 t.refreshNukeCandidates(o);
-}), c && (_a.measureSubsystem("empire:clusterHealth", function() {
-fy.monitorClusterHealth();
-}), _a.measureSubsystem("empire:powerBankProfitability", function() {
+}), c && (ka.measureSubsystem("empire:clusterHealth", function() {
+Cy.monitorClusterHealth();
+}), ka.measureSubsystem("empire:powerBankProfitability", function() {
 t.assessPowerBankProfitability(o);
 }));
 var l = Game.cpu.getUsed() - r, u = Game.cpu.limit * this.config.maxCpuBudget;
-l > u && k.warn("Empire tick used ".concat(l.toFixed(2), " CPU > budget ").concat(u.toFixed(2), " (").concat(a, "/").concat(n.toFixed(0), ")"), {
+l > u && _.warn("Empire tick used ".concat(l.toFixed(2), " CPU > budget ").concat(u.toFixed(2), " (").concat(a, "/").concat(n.toFixed(0), ")"), {
 subsystem: "Empire"
-}), Game.time % 100 == 0 && k.info("Empire tick completed in ".concat(l.toFixed(2), " CPU"), {
+}), Game.time % 100 == 0 && _.info("Empire tick completed in ".concat(l.toFixed(2), " CPU"), {
 subsystem: "Empire"
 });
 }
 }, e.prototype.cleanupClaimQueue = function(e, t) {
 var r = e.claimQueue.length;
 e.claimQueue = e.claimQueue.filter(function(e) {
-return !t.has(e.roomName) || (k.info("Removing ".concat(e.roomName, " from claim queue - now owned"), {
+return !t.has(e.roomName) || (_.info("Removing ".concat(e.roomName, " from claim queue - now owned"), {
 subsystem: "Empire"
 }), !1);
-}), e.claimQueue.length < r && k.info("Cleaned up claim queue: removed ".concat(r - e.claimQueue.length, " owned room(s)"), {
+}), e.claimQueue.length < r && _.info("Cleaned up claim queue: removed ".concat(r - e.claimQueue.length, " owned room(s)"), {
 subsystem: "Empire"
 });
 }, e.prototype.updateExpansionQueue = function(e) {
@@ -40376,7 +40643,7 @@ var u = l[0].owner.username;
 try {
 for (var m = a(o), d = m.next(); !d.done; d = m.next()) {
 var p = d.value, f = e.knownRooms[p.name];
-f && f.owner !== u && (f.owner = u, k.info("Updated room intel for ".concat(p.name, " - now owned by ").concat(u), {
+f && f.owner !== u && (f.owner = u, _.info("Updated room intel for ".concat(p.name, " - now owned by ").concat(u), {
 subsystem: "Empire"
 }));
 }
@@ -40403,11 +40670,11 @@ var o = [];
 for (var n in e.knownRooms) {
 var a = e.knownRooms[n];
 if (a) {
-var i = gy(a, t, r);
+var i = xy(a, t, r);
 i < r.minExpansionScore || o.push({
 roomName: a.name,
 score: i,
-distance: yy(a.name, t),
+distance: Sy(a.name, t),
 claimed: !1,
 lastEvaluated: Game.time
 });
@@ -40429,7 +40696,7 @@ maxExpansionDistance: this.config.maxExpansionDistance,
 minExpansionScore: this.config.minExpansionScore,
 maxCandidates: 10
 });
-e.claimQueue = y.claimQueue, y.claimQueue.length > 0 && Game.time % 100 == 0 && k.info("Expansion queue updated: ".concat(y.claimQueue.length, " candidates, top score: ").concat(y.claimQueue[0].score), {
+e.claimQueue = y.claimQueue, y.claimQueue.length > 0 && Game.time % 100 == 0 && _.info("Expansion queue updated: ".concat(y.claimQueue.length, " candidates, top score: ").concat(y.claimQueue[0].score), {
 subsystem: "Empire"
 });
 }
@@ -40463,7 +40730,7 @@ y: o.pos.y
 power: o.power,
 decayTick: Game.time + (null !== (t = o.ticksToDecay) && void 0 !== t ? t : 5e3),
 active: !1
-}), k.info("Power bank discovered in ".concat(r, ": ").concat(o.power, " power"), {
+}), _.info("Power bank discovered in ".concat(r, ": ").concat(o.power, " power"), {
 subsystem: "Empire"
 }));
 };
@@ -40537,29 +40804,29 @@ if (n) throw n.error;
 }
 }
 try {
-for (var U = a(C), M = U.next(); !M.done; M = U.next()) delete S[O = M.value];
+for (var M = a(C), U = M.next(); !U.done; U = M.next()) delete S[O = U.value];
 } catch (e) {
 c = {
 error: e
 };
 } finally {
 try {
-M && !M.done && (l = U.return) && l.call(U);
+U && !U.done && (l = M.return) && l.call(M);
 } finally {
 if (c) throw c.error;
 }
 }
 for (var O in S) Game.time - S[O].lostAt > 2e5 && delete S[O];
 for (var O in e.knownRooms) {
-var _ = e.knownRooms[O];
-_ && (_.owner && F(_.owner) && !C.has(O) && delete _.owner, _.reserver && F(_.reserver) && !C.has(O) && delete _.reserver);
+var k = e.knownRooms[O];
+k && (k.owner && F(k.owner) && !C.has(O) && delete k.owner, k.reserver && F(k.reserver) && !C.has(O) && delete k.reserver);
 }
 e.objectives.targetRoomCount = Game.gcl.level, e.objectives.targetPowerLevel = Math.min(25, 3 * y.length), 
 e.warTargets.length > 0 && !e.objectives.warMode && (e.objectives.warMode = !0, 
-k.warn("War mode enabled due to active war targets", {
+_.warn("War mode enabled due to active war targets", {
 subsystem: "Empire"
 })), 0 === e.warTargets.length && e.objectives.warMode && (e.objectives.warMode = !1, 
-k.info("War mode disabled - no active war targets", {
+_.info("War mode disabled - no active war targets", {
 subsystem: "Empire"
 }));
 }, e.prototype.getNextExpansionTarget = function() {
@@ -40571,12 +40838,12 @@ return e.length > 0 ? e[0] : null;
 var t = Nt.getEmpire().claimQueue.find(function(t) {
 return t.roomName === e;
 });
-t && (t.claimed = !0, k.info("Marked expansion target as claimed: ".concat(e), {
+t && (t.claimed = !0, _.info("Marked expansion target as claimed: ".concat(e), {
 subsystem: "Empire"
 }));
 }, e.prototype.trackGCLProgress = function(e) {
 var t = Game.gcl.progress / Game.gcl.progressTotal * 100;
-t >= this.config.gclNotifyThreshold && Game.time % 500 == 0 && k.info("GCL ".concat(Game.gcl.level, " progress: ").concat(t.toFixed(1), "% (").concat(Game.gcl.progress, "/").concat(Game.gcl.progressTotal, ")"), {
+t >= this.config.gclNotifyThreshold && Game.time % 500 == 0 && _.info("GCL ".concat(Game.gcl.level, " progress: ").concat(t.toFixed(1), "% (").concat(Game.gcl.progress, "/").concat(Game.gcl.progressTotal, ")"), {
 subsystem: "Empire"
 }), e.objectives.targetRoomCount = Game.gcl.level;
 }, e.prototype.checkExpansionReadiness = function(e) {
@@ -40596,12 +40863,12 @@ var n = o.reduce(function(e, t) {
 var r, o;
 return e + (null !== (o = null === (r = t.storage) || void 0 === r ? void 0 : r.store[RESOURCE_ENERGY]) && void 0 !== o ? o : 0);
 }, 0), a = n / o.length;
-a < 5e4 ? e.objectives.expansionPaused || (e.objectives.expansionPaused = !0, k.info("Expansion paused: insufficient energy reserves (".concat(a.toFixed(0), " < ").concat(5e4, ")"), {
+a < 5e4 ? e.objectives.expansionPaused || (e.objectives.expansionPaused = !0, _.info("Expansion paused: insufficient energy reserves (".concat(a.toFixed(0), " < ").concat(5e4, ")"), {
 subsystem: "Empire"
-})) : e.objectives.expansionPaused && (e.objectives.expansionPaused = !1, k.info("Expansion resumed: ".concat(o.length, " stable rooms with ").concat(a.toFixed(0), " avg energy"), {
+})) : e.objectives.expansionPaused && (e.objectives.expansionPaused = !1, _.info("Expansion resumed: ".concat(o.length, " stable rooms with ").concat(a.toFixed(0), " avg energy"), {
 subsystem: "Empire"
 }));
-} else e.objectives.expansionPaused || (e.objectives.expansionPaused = !0, k.info("Expansion paused: waiting for stable room (RCL >= 4 with storage)", {
+} else e.objectives.expansionPaused || (e.objectives.expansionPaused = !0, _.info("Expansion paused: waiting for stable room (RCL >= 4 with storage)", {
 subsystem: "Empire"
 }));
 }
@@ -40623,7 +40890,7 @@ roomName: t,
 score: a,
 launched: !1,
 launchTick: 0
-}), k.info("Added nuke candidate: ".concat(t, " (score: ").concat(a, ")"), {
+}), _.info("Added nuke candidate: ".concat(t, " (score: ").concat(a, ")"), {
 subsystem: "Empire"
 }));
 }, n = this;
@@ -40678,9 +40945,9 @@ if (o) throw o.error;
 }
 if (p) {
 var h = m.decayTick - Game.time, R = 50 * d * 2 + m.power / 2, E = h > 1.5 * R && d <= 5 && m.power >= 1e3 && (null !== (s = null === (i = p.controller) || void 0 === i ? void 0 : i.level) && void 0 !== s ? s : 0) >= 7;
-E || Game.time % 500 != 0 ? E && Game.time % 500 == 0 && k.info("Profitable power bank in ".concat(m.roomName, ": ") + "power=".concat(m.power, ", distance=").concat(d, ", timeRemaining=").concat(h), {
+E || Game.time % 500 != 0 ? E && Game.time % 500 == 0 && _.info("Profitable power bank in ".concat(m.roomName, ": ") + "power=".concat(m.power, ", distance=").concat(d, ", timeRemaining=").concat(h), {
 subsystem: "Empire"
-}) : k.debug("Power bank in ".concat(m.roomName, " not profitable: ") + "power=".concat(m.power, ", distance=").concat(d, ", timeRemaining=").concat(h, ", ") + "requiredTime=".concat(R.toFixed(0)), {
+}) : _.debug("Power bank in ".concat(m.roomName, " not profitable: ") + "power=".concat(m.power, ", distance=").concat(d, ", timeRemaining=").concat(h, ", ") + "requiredTime=".concat(R.toFixed(0)), {
 subsystem: "Empire"
 });
 }
@@ -40704,13 +40971,13 @@ interval: 30,
 minBucket: 0,
 cpuBudget: .05
 }) ], e.prototype, "run", null), n([ pa() ], e);
-}(), Uy = new Oy;
+}(), Gy = new Iy;
 
-function My(e) {
+function Ly(e) {
 return e >= 25 ? 3 : e >= 10 ? 2 : e > 0 ? 1 : 0;
 }
 
-var _y = {
+var Dy = {
 updateInterval: 10,
 minBucket: 2e3,
 maxCpuBudget: .02,
@@ -40718,25 +40985,25 @@ roomsPerTick: 3,
 rescanInterval: 1e3,
 allies: [],
 aggressionThreshold: 5
-}, ky = function() {
+}, Fy = function() {
 function e(e) {
 void 0 === e && (e = {}), this.lastRun = 0, this.scanQueue = [], this.enemyPlayers = new Map, 
-this.config = o(o({}, _y), e);
+this.config = o(o({}, Dy), e);
 }
 return e.prototype.run = function() {
 var e = this, t = Game.cpu.getUsed();
 this.lastRun = Game.time, 0 === this.scanQueue.length && this.buildScanQueue(), 
-_a.measureSubsystem("intel:scanning", function() {
+ka.measureSubsystem("intel:scanning", function() {
 e.scanRooms();
-}), _a.measureSubsystem("intel:enemyTracking", function() {
+}), ka.measureSubsystem("intel:enemyTracking", function() {
 e.updateEnemyTracking();
-}), _a.measureSubsystem("intel:threatDetection", function() {
+}), ka.measureSubsystem("intel:threatDetection", function() {
 e.detectThreats();
-}), _a.measureSubsystem("intel:threatUpdate", function() {
+}), ka.measureSubsystem("intel:threatUpdate", function() {
 e.updateRoomThreatLevels();
 });
 var r = Game.cpu.getUsed() - t;
-Game.time % 500 == 0 && k.info("Intel scanner completed in ".concat(r.toFixed(2), " CPU, ").concat(this.enemyPlayers.size, " enemies tracked"), {
+Game.time % 500 == 0 && _.info("Intel scanner completed in ".concat(r.toFixed(2), " CPU, ").concat(this.enemyPlayers.size, " enemies tracked"), {
 subsystem: "Intel"
 });
 }, e.prototype.buildScanQueue = function() {
@@ -40762,7 +41029,7 @@ return e.roomName;
 }),
 roomsToScanThisTick: t.slice(0, e.roomsPerTick)
 });
-this.scanQueue = o.scanQueue, k.debug("Built scan queue with ".concat(this.scanQueue.length, " rooms"), {
+this.scanQueue = o.scanQueue, _.debug("Built scan queue with ".concat(this.scanQueue.length, " rooms"), {
 subsystem: "Intel"
 });
 }, e.prototype.scanRooms = function() {
@@ -40869,7 +41136,7 @@ rooms: [],
 threatLevel: 0,
 isAlly: !1
 };
-d.rooms.includes(m.roomName) || d.rooms.push(m.roomName), d.threatLevel = Math.max(d.threatLevel, My(m.hostileBodyParts)), 
+d.rooms.includes(m.roomName) || d.rooms.push(m.roomName), d.threatLevel = Math.max(d.threatLevel, Ly(m.hostileBodyParts)), 
 c.set(m.username, d);
 }
 }
@@ -40892,17 +41159,17 @@ return e.username.localeCompare(t.username);
 }(Game.time, y);
 try {
 for (var b = a(w.enemies), O = b.next(); !O.done; O = b.next()) {
-var U = O.value;
-(I = null !== (f = this.enemyPlayers.get(U.username)) && void 0 !== f ? f : {
-username: U.username,
+var M = O.value;
+(I = null !== (f = this.enemyPlayers.get(M.username)) && void 0 !== f ? f : {
+username: M.username,
 lastSeen: Game.time,
 rooms: [],
 threatLevel: 0,
 aggressionCount: 0,
 isAlly: !1
-}).lastSeen = U.lastSeen;
+}).lastSeen = M.lastSeen;
 try {
-for (var M = (n = void 0, a(U.rooms)), _ = M.next(); !_.done; _ = M.next()) v = _.value, 
+for (var U = (n = void 0, a(M.rooms)), k = U.next(); !k.done; k = U.next()) v = k.value, 
 I.rooms.includes(v) || I.rooms.push(v);
 } catch (e) {
 n = {
@@ -40910,12 +41177,12 @@ error: e
 };
 } finally {
 try {
-_ && !_.done && (c = M.return) && c.call(M);
+k && !k.done && (c = U.return) && c.call(U);
 } finally {
 if (n) throw n.error;
 }
 }
-I.isAlly = U.isAlly, this.enemyPlayers.set(I.username, I);
+I.isAlly = M.isAlly, this.enemyPlayers.set(I.username, I);
 }
 } catch (e) {
 r = {
@@ -40929,14 +41196,14 @@ if (r) throw r.error;
 }
 }
 try {
-for (var k = a(g), A = k.next(); !A.done; A = k.next()) S = A.value, (I = this.enemyPlayers.get(S)) && I.aggressionCount++;
+for (var _ = a(g), A = _.next(); !A.done; A = _.next()) S = A.value, (I = this.enemyPlayers.get(S)) && I.aggressionCount++;
 } catch (e) {
 l = {
 error: e
 };
 } finally {
 try {
-A && !A.done && (u = k.return) && u.call(k);
+A && !A.done && (u = _.return) && u.call(_);
 } finally {
 if (l) throw l.error;
 }
@@ -40969,7 +41236,7 @@ if (n) {
 var a = Y(o), i = a.filter(function(t) {
 return e.isAggressiveCreep(t);
 }), s = o.find(FIND_NUKES), c = 0;
-s.length > 0 ? (c = 3, k.warn("Nuke detected in ".concat(r, ", ").concat(s.length, " incoming"), {
+s.length > 0 ? (c = 3, _.warn("Nuke detected in ".concat(r, ", ").concat(s.length, " incoming"), {
 subsystem: "Intel"
 })) : i.length > 10 ? c = 3 : i.length > 5 ? c = 2 : a.length > 0 && (c = 1), n.threatLevel = c;
 }
@@ -41009,9 +41276,9 @@ interval: 10,
 minBucket: 6e3,
 cpuBudget: .02
 }) ], e.prototype, "run", null), n([ pa() ], e);
-}(), Ay = new ky, Ny = function() {
+}(), By = new Fy, Hy = function() {
 function e(e) {
-void 0 === e && (e = {}), this.nextNukerScan = 0, this.hasNukerCache = !1, this.coordinator = new Ui(o(o({}, gi), e), {
+void 0 === e && (e = {}), this.nextNukerScan = 0, this.hasNukerCache = !1, this.coordinator = new Mi(o(o({}, gi), e), {
 getEmpire: function() {
 return Nt.getEmpire();
 },
@@ -41045,7 +41312,7 @@ interval: 1500,
 minBucket: 5e3,
 cpuBudget: .01
 }) ], e.prototype, "run", null), n([ pa() ], e);
-}(), Py = new Ny, Iy = function() {
+}(), Wy = new Hy, Ky = function() {
 function e() {}
 return e.prototype.ensurePixelBuyingMemory = function() {
 var e = Nt.getEmpire();
@@ -41063,9 +41330,9 @@ lastScan: 0
 var e = Nt.getEmpire();
 if (e.market) return e.market.pixelBuying;
 }, e;
-}(), Gy = new (function(e) {
+}(), Yy = new (function(e) {
 function t(t) {
-return void 0 === t && (t = {}), e.call(this, t, new Iy) || this;
+return void 0 === t && (t = {}), e.call(this, t, new Ky) || this;
 }
 return r(t, e), t.prototype.run = function() {
 e.prototype.run.call(this);
@@ -41077,14 +41344,14 @@ cpuBudget: .01
 }) ], t.prototype, "run", null), n([ pa() ], t);
 }(Ra));
 
-function Ly() {
+function Vy() {
 return global;
 }
 
-var Dy = function() {
+var qy = function() {
 function e() {}
 return e.prototype.ensurePixelGenerationMemory = function() {
-var e = Ly();
+var e = Vy();
 e._pixelGenerationMemory || (e._pixelGenerationMemory = {
 bucketFullSince: 0,
 consecutiveFullTicks: 0,
@@ -41092,11 +41359,11 @@ totalPixelsGenerated: 0,
 lastGenerationTick: 0
 });
 }, e.prototype.getPixelGenerationMemory = function() {
-return Ly()._pixelGenerationMemory;
+return Vy()._pixelGenerationMemory;
 }, e;
-}(), Fy = new (function(e) {
+}(), jy = new (function(e) {
 function t(t) {
-return void 0 === t && (t = {}), e.call(this, t, new Dy) || this;
+return void 0 === t && (t = {}), e.call(this, t, new qy) || this;
 }
 return r(t, e), t.prototype.run = function() {
 e.prototype.run.call(this);
@@ -41108,7 +41375,7 @@ cpuBudget: .01
 }) ], t.prototype, "run", null), n([ pa() ], t);
 }(Ta));
 
-function By(e, t) {
+function zy(e, t) {
 var r, o;
 if ((null === (r = e.controller) || void 0 === r ? void 0 : r.owner) && !e.controller.my && !F(e.controller.owner.username)) return {
 lost: !0,
@@ -41130,34 +41397,34 @@ lost: !1
 };
 }
 
-function Hy(e, t, r) {
+function Qy(e, t, r) {
 var o, n = Nt.getSwarmState(e);
 if (n) {
 var a = null !== (o = n.remoteAssignments) && void 0 !== o ? o : [], i = a.indexOf(t);
 if (-1 !== i) {
 a.splice(i, 1), n.remoteAssignments = a;
 var s = Nt.getEmpire().knownRooms[t];
-s && (s.threatLevel = 3, s.lastSeen = Game.time), k.warn("Removed remote room ".concat(t, " from ").concat(e, " due to: ").concat(r), {
+s && (s.threatLevel = 3, s.lastSeen = Game.time), _.warn("Removed remote room ".concat(t, " from ").concat(e, " due to: ").concat(r), {
 subsystem: "RemoteRoomManager"
 });
 }
 }
 }
 
-var Wy = le().cpu.bucketThresholds.highMode + 1800, Ky = {
+var Xy = le().cpu.bucketThresholds.highMode + 1800, Zy = {
 updateInterval: 250,
-minBucket: Wy,
+minBucket: Xy,
 maxSitesPerRemotePerTick: 2
 };
 
-function Yy(e, t) {
+function Jy(e, t) {
 var r = globalThis.cpuProfiler;
 return (null == r ? void 0 : r.measure) ? r.measure(e, t) : t();
 }
 
-var Vy = function() {
+var $y = function() {
 function e(e) {
-void 0 === e && (e = {}), this.remoteRoadCache = new Map, this.config = o(o({}, Ky), e);
+void 0 === e && (e = {}), this.remoteRoadCache = new Map, this.config = o(o({}, Zy), e);
 }
 return e.prototype.run = function() {
 var e, t, r, o = this, n = Object.values(Game.rooms).filter(function(e) {
@@ -41174,8 +41441,8 @@ if (0 !== i.length) try {
 for (var s = a(i), c = s.next(); !c.done; c = s.next()) {
 var l = c.value, u = Game.rooms[l];
 if (u) {
-var m = By(u);
-m.lost && m.reason && Hy(e, l, m.reason);
+var m = zy(u);
+m.lost && m.reason && Qy(e, l, m.reason);
 }
 }
 } catch (e) {
@@ -41193,10 +41460,10 @@ if (t) throw t.error;
 }(e.name);
 var n = null !== (r = t.remoteAssignments) && void 0 !== r ? r : [];
 if (0 === n.length) return "continue";
-var i = Yy("remoteInfrastructure.intent", function() {
+var i = Jy("remoteInfrastructure.intent", function() {
 return o.getRemoteInfrastructureIntent(e, n);
 });
-Yy("remoteInfrastructure.execute", function() {
+Jy("remoteInfrastructure.execute", function() {
 return o.executeRemoteInfrastructureIntent(i);
 });
 };
@@ -41316,15 +41583,15 @@ var E = R.value, T = e.visibleRooms[E];
 if (T) {
 var C = new Set(T.roadKeys), S = new Set(T.roadSiteKeys), x = new Set(T.wallKeys), w = null !== (d = f.get(E)) && void 0 !== d ? d : 0, b = 0;
 try {
-for (var O = (l = void 0, a(T.roadPositions)), U = O.next(); !U.done; U = O.next()) {
-var M = U.value;
+for (var O = (l = void 0, a(T.roadPositions)), M = O.next(); !M.done; M = O.next()) {
+var U = M.value;
 if (b >= e.maxRoadSitesPerRoomPerTick) break;
 if (T.constructionSiteCount + w >= e.maxConstructionSitesPerRoom) break;
-var _ = "".concat(M.x, ",").concat(M.y);
-C.has(_) || S.has(_) || x.has(_) || (p.push({
+var k = "".concat(U.x, ",").concat(U.y);
+C.has(k) || S.has(k) || x.has(k) || (p.push({
 roomName: E,
-x: M.x,
-y: M.y,
+x: U.x,
+y: U.y,
 structureType: STRUCTURE_ROAD
 }), b++, w++);
 }
@@ -41334,7 +41601,7 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (u = O.return) && u.call(O);
+M && !M.done && (u = O.return) && u.call(O);
 } finally {
 if (l) throw l.error;
 }
@@ -41362,13 +41629,13 @@ skipped: o
 };
 var r, o, n, c;
 }, e.prototype.getRemoteInfrastructureSnapshot = function(e, t) {
-var r, o, n = this, c = Yy("remoteInfrastructure.remoteRoadCache", function() {
+var r, o, n = this, c = Jy("remoteInfrastructure.remoteRoadCache", function() {
 return n.getCachedRemoteRoads(e, t);
 }), l = {}, u = this.getMyUsername(), m = function(t) {
 var r = Game.rooms[t];
 if (!r) return "continue";
 var o = t !== e.name;
-l[t] = Yy("remoteInfrastructure.roomSnapshot", function() {
+l[t] = Jy("remoteInfrastructure.roomSnapshot", function() {
 var e;
 return n.getRoomSnapshot(r, null !== (e = c.get(t)) && void 0 !== e ? e : new Set, {
 includeSources: o,
@@ -41401,7 +41668,7 @@ maxRoadSitesPerRoomPerTick: 3
 }, e.prototype.getCachedRemoteRoads = function(e, t) {
 var r = this.getRemoteRoadCacheKey(e, t), o = this.remoteRoadCache.get(r);
 if (o && o.expires > Game.time) return o.roads;
-var n = Yy("remoteInfrastructure.calculateRemoteRoads", function() {
+var n = Jy("remoteInfrastructure.calculateRemoteRoads", function() {
 return io(e, t);
 });
 return this.remoteRoadCache.set(r, {
@@ -41430,14 +41697,14 @@ if (e) throw e.error;
 }
 }
 }, e.prototype.getRoomSnapshot = function(e, t, r) {
-var o, n, a, c, l = this, u = Yy("remoteInfrastructure.findConstructionSites", function() {
+var o, n, a, c, l = this, u = Jy("remoteInfrastructure.findConstructionSites", function() {
 return e.find(FIND_CONSTRUCTION_SITES);
 }), m = {
 ownerUsername: null === (n = null === (o = e.controller) || void 0 === o ? void 0 : o.owner) || void 0 === n ? void 0 : n.username,
 reservationUsername: null === (c = null === (a = e.controller) || void 0 === a ? void 0 : a.reservation) || void 0 === c ? void 0 : c.username
 }, d = !(void 0 !== m.ownerUsername && m.ownerUsername !== r.myUsername || void 0 !== m.reservationUsername && m.reservationUsername !== r.myUsername), p = u.length < 5, f = t.size > 0 && p, y = f ? u.filter(function(e) {
 return e.structureType === STRUCTURE_ROAD;
-}) : [], g = f ? Yy("remoteInfrastructure.findRoads", function() {
+}) : [], g = f ? Jy("remoteInfrastructure.findRoads", function() {
 return e.find(FIND_STRUCTURES, {
 filter: function(e) {
 return e.structureType === STRUCTURE_ROAD;
@@ -41454,7 +41721,7 @@ return {
 name: e.name,
 constructionSiteCount: u.length,
 controller: m,
-sources: r.includeSources && d && p ? Yy("remoteInfrastructure.sourceSnapshots", function() {
+sources: r.includeSources && d && p ? Jy("remoteInfrastructure.sourceSnapshots", function() {
 return l.getSourceSnapshots(e);
 }) : void 0,
 roadPositions: h,
@@ -41472,7 +41739,7 @@ return "".concat(e.x, ",").concat(e.y);
 };
 }, e.prototype.getSourceSnapshots = function(e) {
 var t = this;
-return Yy("remoteInfrastructure.findSources", function() {
+return Jy("remoteInfrastructure.findSources", function() {
 return e.find(FIND_SOURCES);
 }).map(function(e) {
 return {
@@ -41511,9 +41778,9 @@ var t, r, o, n, s, c, l;
 try {
 for (var u = a(e.containerSites), m = u.next(); !m.done; m = u.next()) {
 var d = m.value;
-(g = Game.rooms[d.roomName]) && ((v = g.createConstructionSite(d.x, d.y, d.structureType)) === OK ? k.info("Placed container construction site at source ".concat(d.sourceId, " in ").concat(d.roomName), {
+(g = Game.rooms[d.roomName]) && ((v = g.createConstructionSite(d.x, d.y, d.structureType)) === OK ? _.info("Placed container construction site at source ".concat(d.sourceId, " in ").concat(d.roomName), {
 subsystem: "RemoteInfra"
-}) : k.debug("Failed to place container at source ".concat(d.sourceId, " in ").concat(d.roomName, ": ").concat(v), {
+}) : _.debug("Failed to place container at source ".concat(d.sourceId, " in ").concat(d.roomName, ": ").concat(v), {
 subsystem: "RemoteInfra"
 }));
 }
@@ -41548,7 +41815,7 @@ if (o) throw o.error;
 try {
 for (var h = a(p), R = h.next(); !R.done; R = h.next()) {
 var E = i(R.value, 2), T = E[0], C = E[1];
-k.debug("Placed ".concat(C, " remote road construction sites in ").concat(T), {
+_.debug("Placed ".concat(C, " remote road construction sites in ").concat(T), {
 subsystem: "RemoteInfra"
 });
 }
@@ -41569,10 +41836,10 @@ return e.length > 0 ? e[0].owner.username : "";
 }, n([ ua("remote:infrastructure", "Remote Infrastructure Manager", {
 priority: en.LOW,
 interval: 1e3,
-minBucket: Wy,
+minBucket: Xy,
 cpuBudget: .05
 }) ], e.prototype, "run", null), n([ pa() ], e);
-}(), qy = new Vy, jy = new (function(e) {
+}(), eg = new $y, tg = new (function(e) {
 function t(t) {
 return void 0 === t && (t = {}), e.call(this, t) || this;
 }
@@ -41584,7 +41851,7 @@ interval: 300,
 minBucket: 6e3,
 cpuBudget: .02
 }) ], t.prototype, "run", null), n([ pa() ], t);
-}(oy)), zy = function() {
+}(my)), rg = function() {
 function e() {}
 return e.prototype.cleanupMemory = function() {
 for (var e in Memory.creeps) Game.creeps[e] || delete Memory.creeps[e];
@@ -41674,7 +41941,7 @@ cpuBudget: .01
 interval: 1e3,
 cpuBudget: .01
 }) ], e.prototype, "precacheRoomPaths", null), n([ pa() ], e);
-}(), Qy = new zy, Xy = new (function() {
+}(), og = new rg, ng = new (function() {
 function e(e) {
 this.deps = e, this.processesRegistered = !1;
 }
@@ -41721,7 +41988,7 @@ if (e) throw e.error;
 ia.info("Registered decorated processes from ".concat(r.length, " instance(s)"), {
 subsystem: "ProcessDecorators"
 });
-}(Qy, li, fi, Wa, Uy, Xi, Ay, qy, ni, Gy, Fy, Py, bs, ks, jy, dy, Es, qf, An, hn), 
+}(og, li, fi, Wa, Gy, Xi, By, eg, ni, Yy, jy, Wy, bs, _s, tg, Ey, Es, ey, An, hn), 
 function() {
 var e, t, r = le().cpu.bucketThresholds.lowMode, o = [ {
 id: "terminal:manager",
@@ -41788,9 +42055,9 @@ if (e) throw e.error;
 subsystem: "ProcessRegistry"
 });
 }
-}), Zy = "_ownedRooms", Jy = "_ownedRoomsTick";
+}), ag = "_ownedRooms", ig = "_ownedRoomsTick";
 
-function $y(e) {
+function sg(e) {
 var t = function(e) {
 var t = Number.isFinite(e.bucket) ? e.bucket : 0;
 return t >= 8e3 ? "full" : t >= 6e3 ? "normal" : t >= 1500 ? "degraded" : t >= 500 ? "survival" : "panic";
@@ -41800,20 +42067,20 @@ bucket: e.bucket
 return e.hasCpuBudget && ("normal" === t || "full" === t);
 }
 
-var eg, tg = na("NativeCallsTracker");
+var cg, lg = na("NativeCallsTracker");
 
-function rg(e, t, r) {
+function ug(e, t, r) {
 var o = e[t];
 if (o && !o.__nativeCallsTrackerWrapped) {
 var n = Object.getOwnPropertyDescriptor(e, t);
-if (n && !1 === n.configurable) tg.warn("Cannot wrap method - property is not configurable", {
+if (n && !1 === n.configurable) lg.warn("Cannot wrap method - property is not configurable", {
 meta: {
 methodName: t
 }
 }); else try {
 var a = function() {
 for (var e = [], t = 0; t < arguments.length; t++) e[t] = arguments[t];
-return _a.recordNativeCall(r), o.apply(this, e);
+return ka.recordNativeCall(r), o.apply(this, e);
 };
 a.__nativeCallsTrackerWrapped = !0, Object.defineProperty(e, t, {
 value: a,
@@ -41822,7 +42089,7 @@ enumerable: !0,
 configurable: !0
 });
 } catch (e) {
-tg.warn("Failed to wrap method", {
+lg.warn("Failed to wrap method", {
 meta: {
 methodName: t,
 error: String(e)
@@ -41832,7 +42099,7 @@ error: String(e)
 }
 }
 
-(eg = {
+(cg = {
 optimizeBody: md,
 spawnQueue: {
 addRequest: function(e) {
@@ -41844,10 +42111,10 @@ LOW: nd.LOW,
 NORMAL: nd.NORMAL,
 HIGH: nd.HIGH
 }
-}).optimizeBody && (ay.optimizeBody = eg.optimizeBody), eg.spawnQueue && (ay.spawnQueue = eg.spawnQueue), 
-eg.spawnPriorities && (ay.spawnPriorities = o(o({}, ay.spawnPriorities), eg.spawnPriorities));
+}).optimizeBody && (py.optimizeBody = cg.optimizeBody), cg.spawnQueue && (py.spawnQueue = cg.spawnQueue), 
+cg.spawnPriorities && (py.spawnPriorities = o(o({}, py.spawnPriorities), cg.spawnPriorities));
 
-var og, ng = function() {
+var mg, dg = function() {
 function e(e, t, r, o) {
 this.initialized = !1, this.logger = e, this.eventBus = t, this.pathCache = r, this.remoteMining = o;
 }
@@ -41891,7 +42158,7 @@ subsystem: "PathCacheEvents"
 }, e;
 }();
 
-function ag(e) {
+function pg(e) {
 var t, r, o = new Set;
 try {
 for (var n = a(Object.values(Game.creeps)), i = n.next(); !i.done; i = n.next()) {
@@ -41912,7 +42179,7 @@ if (t) throw t.error;
 return Array.from(o);
 }
 
-function ig(e, t) {
+function fg(e, t) {
 var r, o, n, i, s = Game.rooms[e];
 if (!s) return !0;
 var c = e.match(/\d+/g);
@@ -41970,9 +42237,9 @@ return u;
 !function(e) {
 e[e.CRITICAL = 0] = "CRITICAL", e[e.HIGH = 1] = "HIGH", e[e.MEDIUM = 2] = "MEDIUM", 
 e[e.LOW = 3] = "LOW";
-}(og || (og = {}));
+}(mg || (mg = {}));
 
-var sg = function() {
+var yg = function() {
 function e(e, t) {
 this.pathCache = e, this.logger = t;
 }
@@ -42018,7 +42285,7 @@ plainCost: 2,
 swampCost: 10,
 maxRooms: 16,
 roomCallback: function(e) {
-return ig(e, l.logger);
+return fg(e, l.logger);
 }
 });
 if (!S.incomplete && S.path.length > 0) {
@@ -42047,8 +42314,8 @@ return e.pos;
 return e.pos;
 });
 try {
-for (var O = (s = void 0, a(b)), U = O.next(); !U.done; U = O.next()) {
-var M = U.value, _ = PathFinder.search(M, {
+for (var O = (s = void 0, a(b)), M = O.next(); !M.done; M = O.next()) {
+var U = M.value, k = PathFinder.search(U, {
 pos: u.pos,
 range: 1
 }, {
@@ -42056,11 +42323,11 @@ plainCost: 2,
 swampCost: 10,
 maxRooms: 16,
 roomCallback: function(e) {
-return ig(e, l.logger);
+return fg(e, l.logger);
 }
 });
-!_.incomplete && _.path.length > 0 && (x = this.pathCache.convertRoomPositionsToPathSteps(_.path), 
-this.cacheRemoteMiningPath(M, u.pos, x, "hauler"), d++);
+!k.incomplete && k.path.length > 0 && (x = this.pathCache.convertRoomPositionsToPathSteps(k.path), 
+this.cacheRemoteMiningPath(U, u.pos, x, "hauler"), d++);
 }
 } catch (e) {
 s = {
@@ -42068,7 +42335,7 @@ error: e
 };
 } finally {
 try {
-U && !U.done && (c = O.return) && c.call(O);
+M && !M.done && (c = O.return) && c.call(O);
 } finally {
 if (s) throw s.error;
 }
@@ -42106,7 +42373,7 @@ plainCost: 2,
 swampCost: 10,
 maxRooms: 16,
 roomCallback: function(e) {
-return ig(e, o.logger);
+return fg(e, o.logger);
 }
 });
 if (!a.incomplete && a.path.length > 0) {
@@ -42119,7 +42386,7 @@ incomplete: a.incomplete
 }
 }), null;
 }, e;
-}(), cg = function() {
+}(), gg = function() {
 function e(e, t, r) {
 this.logger = e, this.scheduler = t, this.pathCache = r;
 }
@@ -42129,7 +42396,7 @@ try {
 for (var n = a(Object.values(Game.rooms)), i = n.next(); !i.done; i = n.next()) {
 var s = i.value;
 if ((null === (r = s.controller) || void 0 === r ? void 0 : r.my) && (s.storage || 0 !== s.find(FIND_MY_SPAWNS).length)) {
-var c = ag(s);
+var c = pg(s);
 0 !== c.length && (this.pathCache.precacheRemoteRoutes(s, c), o += c.length);
 }
 }
@@ -42155,7 +42422,7 @@ void 0 === e && (e = 2), this.scheduler.scheduleTask("precache-remote-paths", 50
 return t.precacheAllRemoteRoutes();
 }, e, 5), this.logger.info("Remote path cache scheduler initialized");
 }, e;
-}(), lg = function() {
+}(), vg = function() {
 function e(e, t, r, o) {
 this.logger = e, this.pathCache = t, this.remotePaths = r, this.moveTo = o;
 }
@@ -42204,20 +42471,20 @@ stroke: "#ffffff"
 }
 });
 }, e;
-}(), ug = {
+}(), hg = {
 debug: function(e, t) {
-return M("RemoteMining").debug(e, t);
+return U("RemoteMining").debug(e, t);
 },
 info: function(e, t) {
-return M("RemoteMining").info(e, t);
+return U("RemoteMining").info(e, t);
 },
 warn: function(e, t) {
-return M("RemoteMining").warn(e, t);
+return U("RemoteMining").warn(e, t);
 },
 error: function(e, t) {
-return M("RemoteMining").error(e, t);
+return U("RemoteMining").error(e, t);
 }
-}, mg = {
+}, Rg = {
 getCachedPath: function(e, t) {
 var r = Te(e, t), o = ve.get(r, {
 namespace: Ee
@@ -42244,7 +42511,7 @@ direction: a
 }
 return t;
 }
-}, dg = {
+}, Eg = {
 scheduleTask: function(e, t, r, o, n) {
 !function(e, t, r, o, n) {
 void 0 === o && (o = Gl.MEDIUM), Hl.register({
@@ -42257,15 +42524,15 @@ skippable: o !== Gl.CRITICAL
 });
 }(e, t, r, o, n);
 }
-}, pg = new sg(mg, ug), fg = new cg(ug, dg, pg), yg = new lg(ug, mg, pg, mc.moveTo);
+}, Tg = new yg(Rg, hg), Cg = new gg(hg, Eg, Tg), Sg = new vg(hg, Rg, Tg, mc.moveTo);
 
-function gg(e, t, r, o) {
-return yg.moveToWithRemoteCache(e, t, r, o);
+function xg(e, t, r, o) {
+return Sg.moveToWithRemoteCache(e, t, r, o);
 }
 
-var vg, hg = function() {
+var wg, bg = function() {
 function e() {
-this.logger = M("Pathfinding");
+this.logger = U("Pathfinding");
 }
 return e.prototype.debug = function(e, t) {
 this.logger.debug(e, t);
@@ -42276,12 +42543,12 @@ this.logger.warn(e, t);
 }, e.prototype.error = function(e, t) {
 this.logger.error(e, t);
 }, e;
-}(), Rg = function() {
+}(), Og = function() {
 function e() {}
 return e.prototype.on = function(e, t) {
 I.on(e, t);
 }, e;
-}(), Eg = function() {
+}(), Mg = function() {
 function e() {}
 return e.prototype.invalidateRoom = function(e) {
 !function(e) {
@@ -42326,28 +42593,28 @@ m.length > 0 && Ce(n.pos, e.controller.pos, m);
 }
 }(e);
 }, e;
-}(), Tg = function() {
+}(), Ug = function() {
 function e() {}
 return e.prototype.getRemoteRoomsForRoom = function(e) {
 return function(e) {
-return ag(e);
+return pg(e);
 }(e);
 }, e.prototype.precacheRemoteRoutes = function(e, t) {
 !function(e, t) {
-pg.precacheRemoteRoutes(e, t);
+Tg.precacheRemoteRoutes(e, t);
 }(e, t);
 }, e;
-}(), Cg = new ng(new hg, new Rg, new Eg, new Tg), Sg = {
+}(), kg = new dg(new bg, new Og, new Mg, new Ug), _g = {
 lowBucketThreshold: 2e3,
 highBucketThreshold: 9e3,
 targetCpuUsage: .8,
 highFrequencyInterval: 1,
 mediumFrequencyInterval: 5,
 lowFrequencyInterval: 20
-}, xg = function() {
+}, Ag = function() {
 function e(e) {
 void 0 === e && (e = {}), this.tasks = new Map, this.currentMode = "normal", this.tickCpuUsed = 0, 
-this.config = o(o({}, Sg), e);
+this.config = o(o({}, _g), e);
 }
 return e.prototype.registerTask = function(e) {
 this.tasks.set(e.name, o(o({}, e), {
@@ -42441,123 +42708,123 @@ return Array.from(this.tasks.values());
 }, e;
 }();
 
-new xg, (vg = {})[FIND_STRUCTURES] = {
+new Ag, (wg = {})[FIND_STRUCTURES] = {
 lowBucket: 100,
 normal: 50,
 highBucket: 20
-}, vg[FIND_MY_STRUCTURES] = {
+}, wg[FIND_MY_STRUCTURES] = {
 lowBucket: 100,
 normal: 50,
 highBucket: 20
-}, vg[FIND_HOSTILE_STRUCTURES] = {
+}, wg[FIND_HOSTILE_STRUCTURES] = {
 lowBucket: 50,
 normal: 20,
 highBucket: 10
-}, vg[FIND_SOURCES_ACTIVE] = {
+}, wg[FIND_SOURCES_ACTIVE] = {
 lowBucket: 1e4,
 normal: 5e3,
 highBucket: 1e3
-}, vg[FIND_SOURCES] = {
+}, wg[FIND_SOURCES] = {
 lowBucket: 1e4,
 normal: 5e3,
 highBucket: 1e3
-}, vg[FIND_MINERALS] = {
+}, wg[FIND_MINERALS] = {
 lowBucket: 1e4,
 normal: 5e3,
 highBucket: 1e3
-}, vg[FIND_DEPOSITS] = {
+}, wg[FIND_DEPOSITS] = {
 lowBucket: 200,
 normal: 100,
 highBucket: 50
-}, vg[FIND_MY_CONSTRUCTION_SITES] = {
+}, wg[FIND_MY_CONSTRUCTION_SITES] = {
 lowBucket: 50,
 normal: 20,
 highBucket: 10
-}, vg[FIND_CONSTRUCTION_SITES] = {
+}, wg[FIND_CONSTRUCTION_SITES] = {
 lowBucket: 50,
 normal: 20,
 highBucket: 10
-}, vg[FIND_CREEPS] = {
+}, wg[FIND_CREEPS] = {
 lowBucket: 10,
 normal: 5,
 highBucket: 3
-}, vg[FIND_MY_CREEPS] = {
+}, wg[FIND_MY_CREEPS] = {
 lowBucket: 10,
 normal: 5,
 highBucket: 3
-}, vg[FIND_HOSTILE_CREEPS] = {
+}, wg[FIND_HOSTILE_CREEPS] = {
 lowBucket: 10,
 normal: 3,
 highBucket: 1
-}, vg[FIND_DROPPED_RESOURCES] = {
+}, wg[FIND_DROPPED_RESOURCES] = {
 lowBucket: 20,
 normal: 5,
 highBucket: 3
-}, vg[FIND_TOMBSTONES] = {
+}, wg[FIND_TOMBSTONES] = {
 lowBucket: 30,
 normal: 10,
 highBucket: 5
-}, vg[FIND_RUINS] = {
+}, wg[FIND_RUINS] = {
 lowBucket: 30,
 normal: 10,
 highBucket: 5
-}, vg[FIND_FLAGS] = {
+}, wg[FIND_FLAGS] = {
 lowBucket: 100,
 normal: 50,
 highBucket: 20
-}, vg[FIND_MY_SPAWNS] = {
+}, wg[FIND_MY_SPAWNS] = {
 lowBucket: 200,
 normal: 100,
 highBucket: 50
-}, vg[FIND_HOSTILE_SPAWNS] = {
+}, wg[FIND_HOSTILE_SPAWNS] = {
 lowBucket: 100,
 normal: 50,
 highBucket: 20
-}, vg[FIND_HOSTILE_CONSTRUCTION_SITES] = {
+}, wg[FIND_HOSTILE_CONSTRUCTION_SITES] = {
 lowBucket: 50,
 normal: 20,
 highBucket: 10
-}, vg[FIND_NUKES] = {
+}, wg[FIND_NUKES] = {
 lowBucket: 50,
 normal: 20,
 highBucket: 10
-}, vg[FIND_POWER_CREEPS] = {
+}, wg[FIND_POWER_CREEPS] = {
 lowBucket: 20,
 normal: 10,
 highBucket: 5
-}, vg[FIND_MY_POWER_CREEPS] = {
+}, wg[FIND_MY_POWER_CREEPS] = {
 lowBucket: 20,
 normal: 10,
 highBucket: 5
-}, vg[FIND_HOSTILE_POWER_CREEPS] = {
+}, wg[FIND_HOSTILE_POWER_CREEPS] = {
 lowBucket: 20,
 normal: 10,
 highBucket: 5
-}, vg[FIND_EXIT_TOP] = {
+}, wg[FIND_EXIT_TOP] = {
 lowBucket: 1e3,
 normal: 500,
 highBucket: 100
-}, vg[FIND_EXIT_RIGHT] = {
+}, wg[FIND_EXIT_RIGHT] = {
 lowBucket: 1e3,
 normal: 500,
 highBucket: 100
-}, vg[FIND_EXIT_BOTTOM] = {
+}, wg[FIND_EXIT_BOTTOM] = {
 lowBucket: 1e3,
 normal: 500,
 highBucket: 100
-}, vg[FIND_EXIT_LEFT] = {
+}, wg[FIND_EXIT_LEFT] = {
 lowBucket: 1e3,
 normal: 500,
 highBucket: 100
-}, vg[FIND_EXIT] = {
+}, wg[FIND_EXIT] = {
 lowBucket: 1e3,
 normal: 500,
 highBucket: 100
 };
 
-var wg = new z({}, Nt), bg = new J({}, Nt);
+var Ng = new z({}, Nt), Pg = new J({}, Nt);
 
-function Og(e) {
+function Ig(e) {
 for (var t in Game.spawns) {
 var r = Game.spawns[t];
 if (r.room.name === e.name && !r.spawning) return !0;
@@ -42565,9 +42832,9 @@ if (r.room.name === e.name && !r.spawning) return !0;
 return !1;
 }
 
-var Ug = !1;
+var Gg = !1;
 
-var Mg = function() {
+var Lg = function() {
 function e() {}
 return e.prototype.toggleVisualizations = function() {
 var e = !le().visualizations;
@@ -42575,25 +42842,25 @@ return ue({
 visualizations: e
 }), "Visualizations: ".concat(e ? "ENABLED" : "DISABLED");
 }, e.prototype.toggleVisualization = function(e) {
-var t = wg.getConfig(), r = Object.keys(t).filter(function(e) {
+var t = Ng.getConfig(), r = Object.keys(t).filter(function(e) {
 return e.startsWith("show") && "boolean" == typeof t[e];
 });
 if (!r.includes(e)) return "Invalid key: ".concat(e, ". Valid keys: ").concat(r.join(", "));
 var o = e;
-wg.toggle(o);
-var n = wg.getConfig()[o];
+Ng.toggle(o);
+var n = Ng.getConfig()[o];
 return "Room visualization '".concat(e, "': ").concat(n ? "ENABLED" : "DISABLED");
 }, e.prototype.toggleMapVisualization = function(e) {
-var t = bg.getConfig(), r = Object.keys(t).filter(function(e) {
+var t = Pg.getConfig(), r = Object.keys(t).filter(function(e) {
 return e.startsWith("show") && "boolean" == typeof t[e];
 });
 if (!r.includes(e)) return "Invalid key: ".concat(e, ". Valid keys: ").concat(r.join(", "));
 var o = e;
-bg.toggle(o);
-var n = bg.getConfig()[o];
+Pg.toggle(o);
+var n = Pg.getConfig()[o];
 return "Map visualization '".concat(e, "': ").concat(n ? "ENABLED" : "DISABLED");
 }, e.prototype.showMapConfig = function() {
-var e = bg.getConfig();
+var e = Pg.getConfig();
 return Object.entries(e).map(function(e) {
 var t = i(e, 2), r = t[0], o = t[1];
 return "".concat(r, ": ").concat(String(o));
@@ -42716,15 +42983,15 @@ usage: "clearVisCache(roomName?)",
 examples: [ "clearVisCache()", "clearVisCache('W1N1')" ],
 category: "Visualization"
 }) ], e.prototype, "clearVisCache", null), e;
-}(), _g = function() {
+}(), Dg = function() {
 function e() {}
 return e.prototype.status = function() {
-var e, t, r = null !== (t = null === (e = Game.shard) || void 0 === e ? void 0 : e.name) && void 0 !== t ? t : "shard0", o = jy.getCurrentShardState();
+var e, t, r = null !== (t = null === (e = Game.shard) || void 0 === e ? void 0 : e.name) && void 0 !== t ? t : "shard0", o = tg.getCurrentShardState();
 if (!o) return "No shard state found for ".concat(r);
 var n = o.health, a = [ "=== Shard Status: ".concat(r, " ==="), "Role: ".concat(o.role.toUpperCase()), "Rooms: ".concat(n.roomCount, " (Avg RCL: ").concat(n.avgRCL, ")"), "Creeps: ".concat(n.creepCount), "CPU: ".concat(n.cpuCategory.toUpperCase(), " (").concat(Math.round(100 * n.cpuUsage), "%)"), "Bucket: ".concat(n.bucketLevel), "Economy Index: ".concat(n.economyIndex, "%"), "War Index: ".concat(n.warIndex, "%"), "Portals: ".concat(o.portals.length), "Active Tasks: ".concat(o.activeTasks.length), "Last Update: ".concat(n.lastUpdate) ];
 return o.cpuLimit && a.push("CPU Limit: ".concat(o.cpuLimit)), a.join("\n");
 }, e.prototype.all = function() {
-var e, t, r = jy.getAllShards();
+var e, t, r = tg.getAllShards();
 if (0 === r.length) return "No shards tracked yet";
 var o = [ "=== All Shards ===" ];
 try {
@@ -42746,9 +43013,9 @@ if (e) throw e.error;
 return o.join("\n");
 }, e.prototype.setRole = function(e) {
 var t = [ "core", "frontier", "resource", "backup", "war" ];
-return t.includes(e) ? (jy.setShardRole(e), "Shard role set to: ".concat(e.toUpperCase())) : "Invalid role: ".concat(e, ". Valid roles: ").concat(t.join(", "));
+return t.includes(e) ? (tg.setShardRole(e), "Shard role set to: ".concat(e.toUpperCase())) : "Invalid role: ".concat(e, ". Valid roles: ").concat(t.join(", "));
 }, e.prototype.portals = function(e) {
-var t, r, o, n, i, s = null !== (n = null === (o = Game.shard) || void 0 === o ? void 0 : o.name) && void 0 !== n ? n : "shard0", c = jy.getCurrentShardState();
+var t, r, o, n, i, s = null !== (n = null === (o = Game.shard) || void 0 === o ? void 0 : o.name) && void 0 !== n ? n : "shard0", c = tg.getCurrentShardState();
 if (!c) return "No shard state found for ".concat(s);
 var l = c.portals;
 if (e && (l = l.filter(function(t) {
@@ -42773,19 +43040,19 @@ if (t) throw t.error;
 }
 return u.join("\n");
 }, e.prototype.bestPortal = function(e, t) {
-var r, o = jy.getOptimalPortalRoute(e, t);
+var r, o = tg.getOptimalPortalRoute(e, t);
 if (!o) return "No portal found to ".concat(e);
 var n = o.isStable ? "Stable" : "Unstable", a = o.threatRating > 0 ? " (Threat: ".concat(o.threatRating, ")") : "";
 return "Best portal to ".concat(e, ":\n") + "  Source: ".concat(o.sourceRoom, " (").concat(o.sourcePos.x, ",").concat(o.sourcePos.y, ")\n") + "  Target: ".concat(o.targetShard, "/").concat(o.targetRoom, "\n") + "  Status: ".concat(n).concat(a, "\n") + "  Traversals: ".concat(null !== (r = o.traversalCount) && void 0 !== r ? r : 0, "\n") + "  Last Scouted: ".concat(Game.time - o.lastScouted, " ticks ago");
 }, e.prototype.createTask = function(e, t, r, o) {
 void 0 === o && (o = 50);
 var n = [ "colonize", "reinforce", "transfer", "evacuate" ];
-return n.includes(e) ? (jy.createTask(e, t, r, o), "Created ".concat(e, " task to ").concat(t).concat(r ? "/".concat(r) : "", " (priority: ").concat(o, ")")) : "Invalid task type: ".concat(e, ". Valid types: ").concat(n.join(", "));
+return n.includes(e) ? (tg.createTask(e, t, r, o), "Created ".concat(e, " task to ").concat(t).concat(r ? "/".concat(r) : "", " (priority: ").concat(o, ")")) : "Invalid task type: ".concat(e, ". Valid types: ").concat(n.join(", "));
 }, e.prototype.transferResource = function(e, t, r, o, n) {
-return void 0 === n && (n = 50), !Number.isFinite(o) || o <= 0 ? "Invalid amount: ".concat(o, ". Amount must be a positive finite number.") : (jy.createResourceTransferTask(e, t, r, o, n), 
+return void 0 === n && (n = 50), !Number.isFinite(o) || o <= 0 ? "Invalid amount: ".concat(o, ". Amount must be a positive finite number.") : (tg.createResourceTransferTask(e, t, r, o, n), 
 "Created resource transfer task:\n" + "  ".concat(o, " ").concat(r, " → ").concat(e, "/").concat(t, "\n") + "  Priority: ".concat(n));
 }, e.prototype.transfers = function() {
-var e, t, r = sy.getActiveRequests();
+var e, t, r = yy.getActiveRequests();
 if (0 === r.length) return "No active resource transfers";
 var o = [ "=== Active Resource Transfers ===" ];
 try {
@@ -42806,7 +43073,7 @@ if (e) throw e.error;
 }
 return o.join("\n");
 }, e.prototype.cpuHistory = function() {
-var e, t, r = jy.getCurrentShardState();
+var e, t, r = tg.getCurrentShardState();
 if (!r || !r.cpuHistory || 0 === r.cpuHistory.length) return "No CPU history available";
 var o = [ "=== CPU Allocation History ===" ];
 try {
@@ -42827,7 +43094,7 @@ if (e) throw e.error;
 }
 return o.join("\n");
 }, e.prototype.tasks = function() {
-var e, t, r, o = jy.getActiveTransferTasks();
+var e, t, r, o = tg.getActiveTransferTasks();
 if (0 === o.length) return "No active inter-shard tasks";
 var n = [ "=== Inter-Shard Tasks ===" ];
 try {
@@ -42848,13 +43115,13 @@ if (e) throw e.error;
 }
 return n.join("\n");
 }, e.prototype.syncStatus = function() {
-var e = jy.getSyncStatus(), t = e.isHealthy ? "✓ HEALTHY" : "⚠ DEGRADED";
-return "=== InterShardMemory Sync Status ===\n" + "Status: ".concat(t, "\n") + "Last Sync: ".concat(e.lastSync, " (").concat(e.ticksSinceSync, " ticks ago)\n") + "Memory Usage: ".concat(e.memorySize, " / ").concat($f, " bytes (").concat(e.sizePercent, "%)\n") + "Shards Tracked: ".concat(e.shardsTracked, "\n") + "Active Tasks: ".concat(e.activeTasks, "\n") + "Total Portals: ".concat(e.totalPortals);
+var e = tg.getSyncStatus(), t = e.isHealthy ? "✓ HEALTHY" : "⚠ DEGRADED";
+return "=== InterShardMemory Sync Status ===\n" + "Status: ".concat(t, "\n") + "Last Sync: ".concat(e.lastSync, " (").concat(e.ticksSinceSync, " ticks ago)\n") + "Memory Usage: ".concat(e.memorySize, " / ").concat(sy, " bytes (").concat(e.sizePercent, "%)\n") + "Shards Tracked: ".concat(e.shardsTracked, "\n") + "Active Tasks: ".concat(e.activeTasks, "\n") + "Total Portals: ".concat(e.totalPortals);
 }, e.prototype.memoryStats = function() {
-var e = jy.getMemoryStats();
+var e = tg.getMemoryStats();
 return "=== InterShardMemory Usage ===\n" + "Total: ".concat(e.size, " / ").concat(e.limit, " bytes (").concat(e.percent, "%)\n") + "\nBreakdown:\n" + "  Shards: ".concat(e.breakdown.shards, " bytes\n") + "  Tasks: ".concat(e.breakdown.tasks, " bytes\n") + "  Portals: ".concat(e.breakdown.portals, " bytes\n") + "  Other: ".concat(e.breakdown.other, " bytes");
 }, e.prototype.forceSync = function() {
-return jy.forceSync(), "InterShardMemory sync forced. Check logs for results.";
+return tg.forceSync(), "InterShardMemory sync forced. Check logs for results.";
 }, n([ qe({
 name: "shard.status",
 description: "Display current shard status and metrics",
@@ -42934,9 +43201,9 @@ usage: "shard.forceSync()",
 examples: [ "shard.forceSync()" ],
 category: "Shard"
 }) ], e.prototype, "forceSync", null), e;
-}(), kg = new _g;
+}(), Fg = new Dg;
 
-function Ag(e) {
+function Bg(e) {
 var t = e.match(/\((.*?)\)/);
 if (t && t[1]) {
 var r = t[1].split(",").map(function(e) {
@@ -42966,7 +43233,7 @@ title: e.metadata.description,
 describe: null === (t = e.metadata.examples) || void 0 === t ? void 0 : t[0],
 functionName: e.metadata.name,
 commandType: !(null === (r = e.metadata.usage) || void 0 === r ? void 0 : r.includes("(")),
-params: e.metadata.usage ? Ag(e.metadata.usage) : void 0
+params: e.metadata.usage ? Bg(e.metadata.usage) : void 0
 };
 });
 return Xl({
@@ -43181,13 +43448,13 @@ category: "System"
 }) ], e.prototype, "colorDemo", null);
 }();
 
-var Ng = new Xm, Pg = new Mg, Ig = new Zm, Gg = new tc, Lg = new Qm, Dg = new Jm, Fg = new $m, Bg = na("Main");
+var Hg = new Xm, Wg = new Lg, Kg = new Zm, Yg = new tc, Vg = new Qm, qg = new Jm, jg = new $m, zg = na("Main");
 
 !function(e) {
 void 0 === e && (e = !1);
 var t = function() {
-Ve.initialize(), ze(Ng), ze(Pg), ze(Ig), ze(Gg), ze(Lg), ze(Dg), ze(Fg), ze(Js), 
-ze($s), ze(ec), ze(kg), ze(tt), ze(Ji), ze(Ss), global.tooangel = Ts;
+Ve.initialize(), ze(Hg), ze(Wg), ze(Kg), ze(Yg), ze(Vg), ze(qg), ze(jg), ze(Js), 
+ze($s), ze(ec), ze(Fg), ze(tt), ze(Ji), ze(Ss), global.tooangel = Ts;
 var e = global;
 e.botConfig = {
 getConfig: le,
@@ -43201,7 +43468,7 @@ e ? (Ve.initialize(), Ve.enableLazyLoading(t), Ve.exposeToGlobal()) : t();
 try {
 !function() {
 var e, t;
-Ug || (Yn({
+Gg || (Yn({
 level: (t = le()).debug ? Pn.DEBUG : Pn.INFO,
 cpuLogging: t.profiling,
 enableBatching: !0,
@@ -43216,11 +43483,11 @@ profiling: t.profiling
 var t;
 if (e.resourceTransferCoordinator) {
 var r = e.resourceTransferCoordinator;
-r.getPendingTransfers && (Ud.getPendingTransfers = function(e) {
+r.getPendingTransfers && (Ad.getPendingTransfers = function(e) {
 return r.getPendingTransfers(e);
-}), r.needsCarrier && (Ud.needsCarrier = function(e) {
+}), r.needsCarrier && (Ad.needsCarrier = function(e) {
 return r.needsCarrier(e);
-}), r.getActiveRequests && (Ud.getActiveRequests = function() {
+}), r.getActiveRequests && (Ad.getActiveRequests = function() {
 return r.getActiveRequests();
 });
 }
@@ -43234,38 +43501,38 @@ n.getSwarmState, n.setSwarmState, n.getCluster, n.getEmpire;
 }
 if (e.energyFlowPredictor) {
 var a = e.energyFlowPredictor;
-a.predictConsumption && (Md.predictConsumption = function(e) {
+a.predictConsumption && (Nd.predictConsumption = function(e) {
 return a.predictConsumption(e);
-}), a.getEnergyAvailableForSpawning && (Md.getEnergyAvailableForSpawning = function(e) {
+}), a.getEnergyAvailableForSpawning && (Nd.getEnergyAvailableForSpawning = function(e) {
 return a.getEnergyAvailableForSpawning(e);
-}), a.predictEnergyInTicks && (Md.predictEnergyInTicks = function(e, t) {
+}), a.predictEnergyInTicks && (Nd.predictEnergyInTicks = function(e, t) {
 return a.predictEnergyInTicks(e, t);
-}), a.getMaxAffordableInTicks && (Md.getMaxAffordableInTicks = function(e, t) {
+}), a.getMaxAffordableInTicks && (Nd.getMaxAffordableInTicks = function(e, t) {
 return a.getMaxAffordableInTicks(e, t);
 });
 }
 if (e.powerBankHarvestingManager) {
 var i = e.powerBankHarvestingManager;
-i.getActivePowerBanks && (_d.getActivePowerBanks = function() {
+i.getActivePowerBanks && (Pd.getActivePowerBanks = function() {
 return i.getActivePowerBanks();
-}), i.needsHarvesters && (_d.needsHarvesters = function(e) {
+}), i.needsHarvesters && (Pd.needsHarvesters = function(e) {
 return i.needsHarvesters(e);
-}), i.needsCarriers && (_d.needsCarriers = function(e) {
+}), i.needsCarriers && (Pd.needsCarriers = function(e) {
 return i.needsCarriers(e);
-}), i.requestSpawns && (_d.requestSpawns = function(e) {
+}), i.requestSpawns && (Pd.requestSpawns = function(e) {
 return i.requestSpawns(e);
 });
 }
 if (null === (t = e.emergencyResponseManager) || void 0 === t ? void 0 : t.getEmergencyState) {
 var s = e.emergencyResponseManager;
-kd.getEmergencyState = function(e) {
+Id.getEmergencyState = function(e) {
 return s.getEmergencyState(e);
 };
 }
 }({
 energyFlowPredictor: $e,
 powerBankHarvestingManager: bs,
-resourceTransferCoordinator: sy,
+resourceTransferCoordinator: yy,
 emergencyResponseManager: xn,
 kernel: Gn
 }), function(e) {
@@ -43285,15 +43552,15 @@ return zs.getLabResourceNeeds(e);
 getLabOverflow: function(e) {
 return zs.getLabOverflow(e);
 }
-}), _a.initialize(), t.profiling && (function() {
+}), ka.initialize(), t.profiling && (function() {
 if (PathFinder.search && !PathFinder.search.__nativeCallsTrackerWrapped) {
 var e = Object.getOwnPropertyDescriptor(PathFinder, "search");
-if (e && !1 === e.configurable) tg.warn("Cannot wrap PathFinder.search - property is not configurable"); else {
+if (e && !1 === e.configurable) lg.warn("Cannot wrap PathFinder.search - property is not configurable"); else {
 var t = PathFinder.search;
 try {
 var r = function() {
 for (var e = [], r = 0; r < arguments.length; r++) e[r] = arguments[r];
-return _a.recordNativeCall("pathfinderSearch"), t.apply(PathFinder, e);
+return ka.recordNativeCall("pathfinderSearch"), t.apply(PathFinder, e);
 };
 r.__nativeCallsTrackerWrapped = !0, Object.defineProperty(PathFinder, "search", {
 value: r,
@@ -43302,7 +43569,7 @@ enumerable: !0,
 configurable: !0
 });
 } catch (e) {
-tg.warn("Failed to wrap PathFinder.search", {
+lg.warn("Failed to wrap PathFinder.search", {
 meta: {
 error: String(e)
 }
@@ -43310,29 +43577,29 @@ error: String(e)
 }
 }
 }
-}(), rg(e = Creep.prototype, "moveTo", "moveTo"), rg(e, "move", "move"), rg(e, "harvest", "harvest"), 
-rg(e, "transfer", "transfer"), rg(e, "withdraw", "withdraw"), rg(e, "build", "build"), 
-rg(e, "repair", "repair"), rg(e, "upgradeController", "upgradeController"), rg(e, "attack", "attack"), 
-rg(e, "rangedAttack", "rangedAttack"), rg(e, "heal", "heal"), rg(e, "dismantle", "dismantle"), 
-rg(e, "say", "say")), function(e, t, r) {
+}(), ug(e = Creep.prototype, "moveTo", "moveTo"), ug(e, "move", "move"), ug(e, "harvest", "harvest"), 
+ug(e, "transfer", "transfer"), ug(e, "withdraw", "withdraw"), ug(e, "build", "build"), 
+ug(e, "repair", "repair"), ug(e, "upgradeController", "upgradeController"), ug(e, "attack", "attack"), 
+ug(e, "rangedAttack", "rangedAttack"), ug(e, "heal", "heal"), ug(e, "dismantle", "dismantle"), 
+ug(e, "say", "say")), function(e, t, r) {
 e.on("structure.destroyed", function(e) {
 var o = t.getSwarmState(e.roomName);
-o && (r.onStructureDestroyed(o, e.structureType), k.debug("Pheromone update: structure destroyed in ".concat(e.roomName), {
+o && (r.onStructureDestroyed(o, e.structureType), _.debug("Pheromone update: structure destroyed in ".concat(e.roomName), {
 subsystem: "Pheromone",
 room: e.roomName
 }));
 }), e.on("remote.lost", function(e) {
 var o = t.getSwarmState(e.homeRoom);
-o && (r.onRemoteSourceLost(o), k.info("Pheromone update: remote source lost for ".concat(e.homeRoom), {
+o && (r.onRemoteSourceLost(o), _.info("Pheromone update: remote source lost for ".concat(e.homeRoom), {
 subsystem: "Pheromone",
 room: e.homeRoom
 }));
-}), k.info("Pheromone event handlers initialized", {
+}), _.info("Pheromone event handlers initialized", {
 subsystem: "Pheromone"
 });
-}(Gn, Nt, cm), Cg.initializePathCacheEvents(), fg.initialize(Gl.MEDIUM), Yc = gg, 
-ct.initialize(), jy.initialize(), Ug = !0), Nt.initialize();
-var r = Xy.configureForCurrentTick();
+}(Gn, Nt, cm), kg.initializePathCacheEvents(), Cg.initialize(Gl.MEDIUM), Yc = xg, 
+ct.initialize(), tg.initialize(), Gg = !0), Nt.initialize();
+var r = ng.configureForCurrentTick();
 "critical" === r && Game.time % 10 == 0 && ia.warn("CRITICAL: CPU bucket at ".concat(Game.cpu.bucket, ", running core work and deferring optional work"), {
 subsystem: "SwarmBot"
 });
@@ -43346,17 +43613,17 @@ subsystem: "SwarmBot"
 Game.time % 10 == 0 && ia.info("SwarmBot loop executing at tick ".concat(Game.time), {
 subsystem: "SwarmBot",
 meta: {
-systemsInitialized: Ug
+systemsInitialized: Gg
 }
-}), Xy.ensureProcessesRegistered(), _a.startTick(), nc.clear(), Xy.startEventTick();
+}), ng.ensureProcessesRegistered(), ka.startTick(), nc.clear(), ng.startEventTick();
 var n = function(e) {
-var t = e.cache[Zy], r = e.cache[Jy];
+var t = e.cache[ag], r = e.cache[ig];
 if (t && r === e.tick) return t;
 var o = e.rooms().filter(function(e) {
 var t;
 return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
 });
-return e.cache[Zy] = o, e.cache[Jy] = e.tick, o;
+return e.cache[ag] = o, e.cache[ig] = e.tick, o;
 }({
 tick: Game.time,
 rooms: function() {
@@ -43364,7 +43631,7 @@ return Object.values(Game.rooms);
 },
 cache: global
 });
-_a.measureSubsystem("taskBoard", function() {
+ka.measureSubsystem("taskBoard", function() {
 var e, t, r = le(), o = Game.cpu.bucket >= r.cpu.bucketThresholds.highMode ? 2 : Game.cpu.bucket < r.cpu.bucketThresholds.lowMode ? 6 : 3;
 try {
 for (var i = a(function(e) {
@@ -43391,15 +43658,15 @@ s && !s.done && (t = i.return) && t.call(i);
 if (e) throw e.error;
 }
 }
-}), _a.measureSubsystem("spawns", function() {
+}), ka.measureSubsystem("spawns", function() {
 !function() {
 var e, t, r, o = Game.cpu.bucket < le().cpu.bucketThresholds.lowMode;
 try {
 for (var n = a(Object.values(Game.rooms)), i = n.next(); !i.done; i = n.next()) {
 var s = i.value;
-if ((null === (r = s.controller) || void 0 === r ? void 0 : r.my) && (!o || Og(s))) {
-var c = Pp(s, Nt.getOrInitSwarmState(s.name));
-_a.recordSpawnQueue(s.name, c.stats, c.spawned);
+if ((null === (r = s.controller) || void 0 === r ? void 0 : r.my) && (!o || Ig(s))) {
+var c = Wp(s, Nt.getOrInitSwarmState(s.name));
+ka.recordSpawnQueue(s.name, c.stats, c.spawned);
 }
 }
 } catch (t) {
@@ -43414,15 +43681,15 @@ if (e) throw e.error;
 }
 }
 }();
-}), mc.preTick(), _a.measureSubsystem("processSync", function() {
+}), mc.preTick(), ka.measureSubsystem("processSync", function() {
 em.syncCreepProcesses(), zm.syncRoomProcesses();
-}), _a.measureSubsystem("kernel", function() {
-Xy.runProcesses();
-}), _a.measureSubsystem("eventQueue", function() {
-Xy.processQueuedEvents();
-}), _a.measureSubsystem("ss2PacketQueue", function() {
-Gp.processQueue();
-}), Gn.hasCpuBudget() && _a.measureSubsystem("powerCreeps", function() {
+}), ka.measureSubsystem("kernel", function() {
+ng.runProcesses();
+}), ka.measureSubsystem("eventQueue", function() {
+ng.processQueuedEvents();
+}), ka.measureSubsystem("ss2PacketQueue", function() {
+Yp.processQueue();
+}), Gn.hasCpuBudget() && ka.measureSubsystem("powerCreeps", function() {
 !function() {
 var e, t;
 try {
@@ -43442,18 +43709,18 @@ if (e) throw e.error;
 }
 }
 }();
-}), $y({
+}), sg({
 hasCpuBudget: Gn.hasCpuBudget(),
 bucket: Game.cpu.bucket
-}) && _a.measureSubsystem("visualizations", function() {
+}) && ka.measureSubsystem("visualizations", function() {
 var e;
 !function(e, t) {
 var r, o;
 if (le().visualizations) {
 var n = t;
 if ("off" !== n.workload) {
-var i = wg.getConfig(), s = bg.getConfig();
-wg.setConfig(n.roomVisualizerConfig), n.renderMap && bg.setConfig(n.mapVisualizerConfig);
+var i = Ng.getConfig(), s = Pg.getConfig();
+Ng.setConfig(n.roomVisualizerConfig), n.renderMap && Pg.setConfig(n.mapVisualizerConfig);
 try {
 var c = function(e, t) {
 return t.roomRenderStride <= 1 ? e : e.filter(function(e, r) {
@@ -43464,7 +43731,7 @@ try {
 for (var l = a(c), u = l.next(); !u.done; u = l.next()) {
 var m = u.value;
 try {
-wg.draw(m);
+Ng.draw(m);
 } catch (e) {
 var d = e instanceof Error ? e.message : String(e);
 ia.error("Visualization error in ".concat(m.name, ": ").concat(d), {
@@ -43486,14 +43753,14 @@ if (r) throw r.error;
 }
 if (!n.renderMap) return;
 try {
-bg.draw();
+Pg.draw();
 } catch (e) {
 d = e instanceof Error ? e.message : String(e), ia.error("Map visualization error: ".concat(d), {
 subsystem: "visualizations"
 });
 }
 } finally {
-wg.setConfig(i), bg.setConfig(s);
+Ng.setConfig(i), Pg.setConfig(s);
 }
 }
 }
@@ -43578,19 +43845,19 @@ opacity: .5
 roomRenderStride: 1,
 renderMap: !0
 }));
-}), mc.reconcileTraffic(), $y({
+}), mc.reconcileTraffic(), sg({
 hasCpuBudget: Gn.hasCpuBudget(),
 bucket: Game.cpu.bucket
-}) && _a.measureSubsystem("scheduledTasks", function() {
+}) && ka.measureSubsystem("scheduledTasks", function() {
 var e;
 e = Math.max(0, Game.cpu.limit - Game.cpu.getUsed()), Hl.run(e);
-}), Nt.persistHeapCache(), _a.collectProcessStats(Gn.getProcesses().reduce(function(e, t) {
+}), Nt.persistHeapCache(), ka.collectProcessStats(Gn.getProcesses().reduce(function(e, t) {
 return e.set(t.id, t), e;
-}, new Map)), _a.collectKernelBudgetStats(Gn), _a.setSkippedProcesses(Gn.getSkippedProcessesThisTick()), 
-_a.finalizeTick(), ia.flush();
+}, new Map)), ka.collectKernelBudgetStats(Gn), ka.setSkippedProcesses(Gn.getSkippedProcessesThisTick()), 
+ka.finalizeTick(), ia.flush();
 }();
 } catch (e) {
-throw Bg.error("Critical error in main loop: ".concat(String(e)), {
+throw zg.error("Critical error in main loop: ".concat(String(e)), {
 meta: {
 stack: e instanceof Error ? e.stack : void 0,
 tick: Game.time

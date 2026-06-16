@@ -5,10 +5,14 @@ import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegratio
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import {
+  addCombatPower,
   analyzeDefenseAssistThreat,
   buildDefenseAssistBody,
-  calculateThreatParitySquadSize,
-  type DefenseAssistRole
+  calculateAggregateDefenseResponsePlan,
+  calculateCombatPower,
+  type CombatPower,
+  type DefenseAssistRole,
+  type ExistingDefensePower
 } from "./defenseAssistBody";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
@@ -229,10 +233,22 @@ function addDefenderRequests(
 
   const threatProfile = analyzeDefenseAssistThreat(getActualHostileCreeps(room));
   const defenderEnergy = priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy;
-  const pendingDefenders = getPendingDefenderCounts(room.name, maxEnergy);
-  const guardsTarget = getThreatParityDefenderTarget("guard", needs.guards, defenderEnergy, threatProfile);
-  const guardsNeeded = Math.max(0, guardsTarget - current.guards - pendingDefenders.guards);
-  const guardBody = getThreatParityDefenderBody("guard", defenderEnergy, threatProfile);
+  const pendingDefenders = getPendingDefenderPower(room.name, maxEnergy);
+  const activeDefenderPower = getActiveDefenderPower(room);
+  const existingPower = mergeDefensePower(activeDefenderPower, pendingDefenders.power);
+  const plan = calculateAggregateDefenseResponsePlan(
+    defenderEnergy,
+    threatProfile,
+    {
+      guard: Math.max(0, needs.guards - current.guards - pendingDefenders.counts.guards),
+      ranger: Math.max(0, needs.rangers - current.rangers - pendingDefenders.counts.rangers),
+      healer: Math.max(0, needs.healers - current.healers - pendingDefenders.counts.healers)
+    },
+    existingPower
+  );
+
+  const guardsNeeded = plan.counts.guard;
+  const guardBody = plan.bodies.guard ?? getThreatParityDefenderBody("guard", defenderEnergy, threatProfile);
   for (let i = 0; i < guardsNeeded; i++) {
     addOptimizedRequest(
       room,
@@ -245,9 +261,8 @@ function addDefenderRequests(
     );
   }
 
-  const rangersTarget = getThreatParityDefenderTarget("ranger", needs.rangers, defenderEnergy, threatProfile);
-  const rangersNeeded = Math.max(0, rangersTarget - current.rangers - pendingDefenders.rangers);
-  const rangerBody = getThreatParityDefenderBody("ranger", defenderEnergy, threatProfile);
+  const rangersNeeded = plan.counts.ranger;
+  const rangerBody = plan.bodies.ranger ?? getThreatParityDefenderBody("ranger", defenderEnergy, threatProfile);
   for (let i = 0; i < rangersNeeded; i++) {
     addOptimizedRequest(
       room,
@@ -260,17 +275,16 @@ function addDefenderRequests(
     );
   }
 
-  const healersTarget = getThreatParityDefenderTarget("healer", needs.healers, maxEnergy, threatProfile);
-  const healersNeeded = Math.max(0, healersTarget - current.healers - pendingDefenders.healers);
-  const healerBody = getThreatParityDefenderBody("healer", maxEnergy, threatProfile);
-  if (healersNeeded > 0 && needs.urgency >= 1.5) {
+  const healersNeeded = plan.counts.healer;
+  const healerBody = plan.bodies.healer ?? getThreatParityDefenderBody("healer", defenderEnergy, threatProfile);
+  if (healersNeeded > 0 && (needs.urgency >= 1.5 || plan.healerFloor > 0)) {
     for (let i = 0; i < healersNeeded; i++) {
       addOptimizedRequest(
         room,
         "healer",
         "military",
         SpawnPriority.HIGH,
-        maxEnergy,
+        defenderEnergy,
         `healer_defense_${Game.time}_${i}`,
         healerBody
       );
@@ -285,16 +299,6 @@ function addDefenderRequests(
   }
 }
 
-function getThreatParityDefenderTarget(
-  role: DefenseAssistRole,
-  baseNeed: number,
-  energyCapacity: number,
-  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
-): number {
-  if (baseNeed <= 0 || !threatProfile) return baseNeed;
-  return Math.max(baseNeed, calculateThreatParitySquadSize(role, energyCapacity, threatProfile));
-}
-
 function getThreatParityDefenderBody(
   role: DefenseAssistRole,
   energyCapacity: number,
@@ -304,16 +308,56 @@ function getThreatParityDefenderBody(
   return buildDefenseAssistBody(role, energyCapacity, threatProfile);
 }
 
-function getPendingDefenderCounts(roomName: string, energyCapacity: number): { guards: number; rangers: number; healers: number } {
+function addRolePower(power: ExistingDefensePower, role: DefenseAssistRole, parts: Array<BodyPartConstant | BodyPartDefinition>): void {
+  const bodyPower = calculateCombatPower(parts);
+  power[role] = power[role] ? addCombatPower(power[role]!, bodyPower) : bodyPower;
+}
+
+function mergeDefensePower(a: ExistingDefensePower, b: ExistingDefensePower): ExistingDefensePower {
+  const merged: ExistingDefensePower = { ...a };
+  for (const role of ["guard", "ranger", "healer"] as const) {
+    const power = b[role];
+    if (power) merged[role] = merged[role] ? addCombatPower(merged[role]!, power) : power;
+  }
+  return merged;
+}
+
+function getActiveDefenderPower(room: Room): ExistingDefensePower {
+  const power: ExistingDefensePower = {};
+  for (const creep of room.find(FIND_MY_CREEPS)) {
+    if ((creep as { spawning?: boolean }).spawning) continue;
+    const role = (creep.memory as { role?: string }).role;
+    if (role !== "guard" && role !== "ranger" && role !== "healer") continue;
+    const activeBody = (creep.body ?? []).filter(part => part.hits > 0);
+    if (activeBody.length === 0) continue;
+    addRolePower(power, role, activeBody);
+  }
+  return power;
+}
+
+function getPendingDefenderPower(
+  roomName: string,
+  energyCapacity: number
+): { counts: { guards: number; rangers: number; healers: number }; power: ExistingDefensePower } {
   const counts = { guards: 0, rangers: 0, healers: 0 };
+  const power: ExistingDefensePower = {};
   for (const request of spawnQueue.getPendingRequests(roomName)) {
     if (Game.time - request.createdAt > 1500) continue;
     if (request.body.cost > energyCapacity) continue;
-    if (request.role === "guard") counts.guards++;
-    if (request.role === "ranger") counts.rangers++;
-    if (request.role === "healer") counts.healers++;
+    if (request.role === "guard") {
+      counts.guards++;
+      addRolePower(power, "guard", request.body.parts);
+    }
+    if (request.role === "ranger") {
+      counts.rangers++;
+      addRolePower(power, "ranger", request.body.parts);
+    }
+    if (request.role === "healer") {
+      counts.healers++;
+      addRolePower(power, "healer", request.body.parts);
+    }
   }
-  return counts;
+  return { counts, power };
 }
 
 function addPowerBankRequests(room: Room): void {

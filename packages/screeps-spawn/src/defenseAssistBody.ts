@@ -19,12 +19,25 @@ export interface DefenseAssistThreatProfile {
   total: CombatPower;
 }
 
+export interface DefenseAggregateResponsePlan {
+  counts: Record<DefenseAssistRole, number>;
+  bodies: Partial<Record<DefenseAssistRole, BodyTemplate>>;
+  totalPower: CombatPower;
+  healerFloor: number;
+  targetScore: number;
+  capped: boolean;
+}
+
+export type ExistingDefensePower = Partial<Record<DefenseAssistRole, CombatPower>>;
+
 const ATTACK_DAMAGE = 30;
 const RANGED_DAMAGE = 10;
 const HEAL_AMOUNT = 12;
 const DISMANTLE_DAMAGE = 50;
 const PART_SIZE_SCORE = 2;
+const HEAL_COVERAGE_RATIO = 0.5;
 const MAX_DEFENSE_ASSIST_SQUAD_SIZE = 8;
+const MAX_AGGREGATE_DEFENSE_RESPONSE_SIZE = 12;
 
 function getPartType(part: BodyPartConstant | BodyPartDefinition): BodyPartConstant {
   return typeof part === "string" ? part : part.type;
@@ -76,8 +89,30 @@ export function calculateCombatPower(parts: Array<BodyPartConstant | BodyPartDef
   };
 }
 
-function emptyCombatPower(): CombatPower {
+export function emptyCombatPower(): CombatPower {
   return { partCount: 0, attack: 0, ranged: 0, heal: 0, dismantle: 0, score: 0 };
+}
+
+export function addCombatPower(a: CombatPower, b: CombatPower): CombatPower {
+  return {
+    partCount: a.partCount + b.partCount,
+    attack: a.attack + b.attack,
+    ranged: a.ranged + b.ranged,
+    heal: a.heal + b.heal,
+    dismantle: a.dismantle + b.dismantle,
+    score: a.score + b.score
+  };
+}
+
+export function multiplyCombatPower(power: CombatPower, count: number): CombatPower {
+  return {
+    partCount: power.partCount * count,
+    attack: power.attack * count,
+    ranged: power.ranged * count,
+    heal: power.heal * count,
+    dismantle: power.dismantle * count,
+    score: power.score * count
+  };
 }
 
 export function analyzeDefenseAssistThreat(hostiles: Creep[]): DefenseAssistThreatProfile | null {
@@ -217,6 +252,112 @@ export function buildDefenseAssistBody(
   return [...candidates].sort(compareByPowerThenCost)[0] ?? null;
 }
 
+function createEmptyCounts(): Record<DefenseAssistRole, number> {
+  return { guard: 0, ranger: 0, healer: 0 };
+}
+
+function getExistingTotalPower(existingPower?: ExistingDefensePower): CombatPower {
+  let total = emptyCombatPower();
+  if (!existingPower) return total;
+  for (const role of ["guard", "ranger", "healer"] as const) {
+    const power = existingPower[role];
+    if (power) total = addCombatPower(total, power);
+  }
+  return total;
+}
+
+function getPlanTotalPower(
+  counts: Record<DefenseAssistRole, number>,
+  bodyPowers: Partial<Record<DefenseAssistRole, CombatPower>>,
+  existingPower?: ExistingDefensePower
+): CombatPower {
+  let total = getExistingTotalPower(existingPower);
+  for (const role of ["guard", "ranger", "healer"] as const) {
+    const power = bodyPowers[role];
+    if (power && counts[role] > 0) total = addCombatPower(total, multiplyCombatPower(power, counts[role]));
+  }
+  return total;
+}
+
+function getHealerFloor(
+  threatProfile: DefenseAssistThreatProfile,
+  healerPower: CombatPower | undefined,
+  nonHealerCount: number,
+  baseHealerNeed: number
+): number {
+  if (!healerPower || healerPower.heal <= 0) return 0;
+  const incomingDamage = threatProfile.total.attack + threatProfile.total.ranged;
+  const needsHealerSupport = baseHealerNeed > 0 || threatProfile.total.heal > 0 || nonHealerCount >= 3;
+  if (!needsHealerSupport || incomingDamage <= 0) return baseHealerNeed;
+  const requiredHeal = Math.ceil(incomingDamage * HEAL_COVERAGE_RATIO);
+  return Math.max(1, baseHealerNeed, Math.ceil(requiredHeal / healerPower.heal));
+}
+
+function getBestPowerRole(bodyPowers: Partial<Record<DefenseAssistRole, CombatPower>>): DefenseAssistRole | null {
+  const candidates = (["guard", "ranger"] as const).filter(role => (bodyPowers[role]?.score ?? 0) > 0);
+  if (candidates.length === 0) return bodyPowers.healer ? "healer" : null;
+  return candidates.sort((a, b) => (bodyPowers[b]?.score ?? 0) - (bodyPowers[a]?.score ?? 0))[0] ?? null;
+}
+
+export function calculateAggregateDefenseResponsePlan(
+  energyCapacity: number,
+  threatProfile?: DefenseAssistThreatProfile | null,
+  baseNeeds: Partial<Record<DefenseAssistRole, number>> = {},
+  existingPower?: ExistingDefensePower,
+  maxSize = MAX_AGGREGATE_DEFENSE_RESPONSE_SIZE
+): DefenseAggregateResponsePlan {
+  const counts = createEmptyCounts();
+  const bodies: Partial<Record<DefenseAssistRole, BodyTemplate>> = {};
+  const bodyPowers: Partial<Record<DefenseAssistRole, CombatPower>> = {};
+
+  for (const role of ["guard", "ranger", "healer"] as const) {
+    const body = buildDefenseAssistBody(role, energyCapacity, threatProfile);
+    if (!body) continue;
+    bodies[role] = body;
+    bodyPowers[role] = calculateCombatPower(body.parts);
+    counts[role] = Math.max(0, Math.floor(baseNeeds[role] ?? 0));
+  }
+
+  if (!threatProfile) {
+    return { counts, bodies, totalPower: getPlanTotalPower(counts, bodyPowers, existingPower), healerFloor: 0, targetScore: 0, capped: false };
+  }
+
+  const targetScore = threatProfile.total.score;
+  const bestPowerRole = getBestPowerRole(bodyPowers);
+  let capped = false;
+
+  const getPlannedCount = () => counts.guard + counts.ranger + counts.healer;
+  const addRole = (role: DefenseAssistRole): boolean => {
+    if (!bodyPowers[role]) return false;
+    if (getPlannedCount() >= maxSize) {
+      capped = true;
+      return false;
+    }
+    counts[role]++;
+    return true;
+  };
+
+  if (bestPowerRole && getPlannedCount() === 0) addRole(bestPowerRole);
+
+  let healerFloor = getHealerFloor(threatProfile, bodyPowers.healer, counts.guard + counts.ranger, counts.healer);
+  while (counts.healer < healerFloor && addRole("healer")) {
+    healerFloor = getHealerFloor(threatProfile, bodyPowers.healer, counts.guard + counts.ranger, counts.healer);
+  }
+
+  let totalPower = getPlanTotalPower(counts, bodyPowers, existingPower);
+  while (totalPower.score <= targetScore) {
+    const role = bestPowerRole ?? "healer";
+    if (!addRole(role)) break;
+    healerFloor = getHealerFloor(threatProfile, bodyPowers.healer, counts.guard + counts.ranger, counts.healer);
+    while (counts.healer < healerFloor && addRole("healer")) {
+      healerFloor = getHealerFloor(threatProfile, bodyPowers.healer, counts.guard + counts.ranger, counts.healer);
+    }
+    totalPower = getPlanTotalPower(counts, bodyPowers, existingPower);
+  }
+
+  return { counts, bodies, totalPower, healerFloor, targetScore, capped };
+}
+
 export function calculateThreatParitySquadSize(
   role: DefenseAssistRole,
   energyCapacity: number,
@@ -228,10 +369,10 @@ export function calculateThreatParitySquadSize(
   if (!strongestThreat) return 1;
 
   const bodyPower = calculateCombatPower(body.parts);
-  const strongestPowerSquadSize = Math.ceil(strongestThreat.score / Math.max(1, bodyPower.score));
+  const strongestPowerSquadSize = Math.floor(strongestThreat.score / Math.max(1, bodyPower.score)) + 1;
   const strongestSizeSquadSize = Math.ceil(strongestThreat.partCount / Math.max(1, bodyPower.partCount));
   const totalThreat = threatProfile?.total;
-  const totalPowerSquadSize = totalThreat ? Math.ceil(totalThreat.score / Math.max(1, bodyPower.score)) : 1;
+  const totalPowerSquadSize = totalThreat ? Math.floor(totalThreat.score / Math.max(1, bodyPower.score)) + 1 : 1;
   const totalSizeSquadSize = totalThreat ? Math.ceil(totalThreat.partCount / Math.max(1, bodyPower.partCount)) : 1;
   return Math.min(
     MAX_DEFENSE_ASSIST_SQUAD_SIZE,

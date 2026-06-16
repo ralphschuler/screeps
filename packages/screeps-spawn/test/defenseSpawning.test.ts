@@ -1,6 +1,7 @@
 import { assert } from "chai";
 import {
   buildDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
   calculateThreatParitySquadSize
 } from "../src/defenseAssistBody.ts";
@@ -456,5 +457,87 @@ describe("defense spawn throttling", () => {
     assert.isOk(guardRequest);
     assert.isAtLeast(guardRequest!.body.parts.length, hostile.body.length);
     assert.isAtLeast(calculateCombatPower(guardRequest!.body.parts).score, calculateCombatPower(hostile.body).score);
+  });
+
+  it("plans aggregate friendly fight power strictly above visible hostile power", () => {
+    const threatProfile = {
+      hostileCount: 1,
+      strongest: calculateCombatPower(createRepeatedParts([ATTACK, 20], [MOVE, 20])),
+      total: calculateCombatPower(createRepeatedParts([ATTACK, 20], [MOVE, 20]))
+    };
+
+    const plan = calculateAggregateDefenseResponsePlan(800, threatProfile, { guard: 1 });
+
+    assert.isAbove(plan.counts.guard + plan.counts.ranger + plan.counts.healer, 1);
+    assert.isAbove(plan.totalPower.score, threatProfile.total.score);
+  });
+
+  it("adds healer coverage when aggregate defense needs multiple combat creeps", () => {
+    const threatProfile = {
+      hostileCount: 1,
+      strongest: calculateCombatPower(createRepeatedParts([ATTACK, 12], [MOVE, 12])),
+      total: calculateCombatPower(createRepeatedParts([ATTACK, 12], [MOVE, 12]))
+    };
+
+    const plan = calculateAggregateDefenseResponsePlan(800, threatProfile, { guard: 1 });
+
+    assert.isAtLeast(plan.healerFloor, 1);
+    assert.isAtLeast(plan.counts.healer, 1);
+    assert.isAtLeast(plan.totalPower.heal, Math.ceil((threatProfile.total.attack + threatProfile.total.ranged) * 0.5));
+  });
+
+  it("does not treat one underpowered active defender as satisfying aggregate parity", () => {
+    const hostile = createHostile(createRepeatedParts([ATTACK, 12], [MOVE, 12]));
+    const weakGuard = {
+      spawning: false,
+      memory: { role: "guard" },
+      body: [ATTACK, MOVE].map(type => ({ type, hits: 100 }))
+    };
+    const room = createRoom([hostile], "W1N1", 800, 800);
+    (room as unknown as { find: (type: number) => unknown[] }).find = (type: number) => {
+      if (type === FIND_HOSTILE_CREEPS) return [hostile];
+      if (type === FIND_MY_SPAWNS) return [{ id: "spawn", spawning: false }];
+      if (type === FIND_MY_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [weakGuard];
+      return [];
+    };
+    Game.rooms.W1N1 = room;
+
+    populateSpawnQueue(room, { danger: 3, posture: "defense" } as any);
+
+    const queuedPower = spawnQueue.getPendingRequests("W1N1")
+      .filter(request => request.role === "guard" || request.role === "ranger" || request.role === "healer")
+      .map(request => calculateCombatPower(request.body.parts))
+      .reduce((total, power) => total + power.score, calculateCombatPower(weakGuard.body as BodyPartDefinition[]).score);
+
+    assert.isAbove(queuedPower, calculateCombatPower(hostile.body).score);
+  });
+
+  it("requests assist healers for multi-creep aggregate defense waves", () => {
+    const helper = createRoom([], "W17S29", 800, 800);
+    const attacked = createRoom([createHostile(createRepeatedParts([ATTACK, 12], [MOVE, 12]))], "W19S28");
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 0,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "large melee attack"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const plan = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any);
+
+    assert.exists(plan.requests.find(request => request.role === "healer"));
   });
 });
