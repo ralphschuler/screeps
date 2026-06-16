@@ -157,6 +157,20 @@ describe("scout behavior", () => {
     assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
   });
 
+  it("uses deterministic adjacent rooms when describeExits returns only stale fully-scouted exits", () => {
+    (Game as unknown as { map: Partial<Game["map"]> }).map = {
+      describeExits: () => ({ 3: "W0N1" })
+    };
+    const knownRooms = (Memory as unknown as { empire: { knownRooms: Record<string, TestRoomIntel> } }).empire.knownRooms;
+    knownRooms.W0N1 = stubIntel("W0N1", { scouted: true, lastSeen: Game.time, sources: 2 });
+    delete knownRooms.W1N2;
+    const room = createVisibleRoom("W1N1");
+
+    const action = scout(createScoutContext(room));
+
+    assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
+  });
+
   it("records full intel when the scout reaches an unscouted room with fresh stub intel", () => {
     const room = createVisibleRoom("W1N2", 2);
 

@@ -134,8 +134,8 @@ function getFallbackAdjacentRooms(roomName: string): string[] {
 function getAdjacentRooms(roomName: string): string[] {
   const exits = Game.map.describeExits(roomName);
   const describedRooms = exits ? Object.values(exits) : [];
-  if (describedRooms.length > 0) return describedRooms;
-  return getFallbackAdjacentRooms(roomName);
+  const fallbackRooms = getFallbackAdjacentRooms(roomName);
+  return Array.from(new Set([...describedRooms, ...fallbackRooms]));
 }
 
 /**

@@ -28579,9 +28579,8 @@ if (mc.isExit(e.creep.pos)) return Hu(e.room.name);
 var r = e.memory.lastExploredRoom, o = e.memory.targetRoom;
 if (!o) {
 if (!(o = function(e, t, r) {
-var o, n, i, s, c = t.knownRooms, l = function(e) {
-var t = Game.map.describeExits(e), r = t ? Object.values(t) : [];
-return r.length > 0 ? r : function(e) {
+var o, n, c, l, u = t.knownRooms, m = function(e) {
+var t = Game.map.describeExits(e), r = t ? Object.values(t) : [], o = function(e) {
 var t = function(e) {
 var t = e.match(/^([WE])(\d+)([NS])(\d+)$/);
 if (!t) return null;
@@ -28593,17 +28592,18 @@ y: "S" === n ? a : -a - 1
 }(e);
 return t ? [ Bu(t.x, t.y - 1), Bu(t.x + 1, t.y), Bu(t.x, t.y + 1), Bu(t.x - 1, t.y) ] : [];
 }(e);
+return Array.from(new Set(s(s([], i(r), !1), i(o), !1)));
 }(e);
-if (0 !== l.length) {
-var u = [];
+if (0 !== m.length) {
+var d = [];
 try {
-for (var m = a(l), d = m.next(); !d.done; d = m.next()) {
-var p = d.value;
-if (!r || p !== r) {
-var f = c[p], y = null !== (i = null == f ? void 0 : f.lastSeen) && void 0 !== i ? i : 0;
-(!(null == f ? void 0 : f.scouted) || Game.time - y > 1e3) && u.push({
-room: p,
-lastSeen: y
+for (var p = a(m), f = p.next(); !f.done; f = p.next()) {
+var y = f.value;
+if (!r || y !== r) {
+var g = u[y], v = null !== (c = null == g ? void 0 : g.lastSeen) && void 0 !== c ? c : 0;
+(!(null == g ? void 0 : g.scouted) || Game.time - v > 1e3) && d.push({
+room: y,
+lastSeen: v
 });
 }
 }
@@ -28613,14 +28613,14 @@ error: e
 };
 } finally {
 try {
-d && !d.done && (n = m.return) && n.call(m);
+f && !f.done && (n = p.return) && n.call(p);
 } finally {
 if (o) throw o.error;
 }
 }
-return u.sort(function(e, t) {
+return d.sort(function(e, t) {
 return e.lastSeen - t.lastSeen;
-}), null === (s = u[0]) || void 0 === s ? void 0 : s.room;
+}), null === (l = d[0]) || void 0 === l ? void 0 : l.room;
 }
 }(e.room.name, t, r))) return delete e.memory.targetRoom, delete e.memory.lastExploredRoom, 
 {
