@@ -59,6 +59,12 @@ describe("Process manager bucket policy", () => {
         memory: { role: "builder", family: "economy", homeRoom: "W1N1" },
         spawning: false
       } as unknown as Creep,
+      "creep-upgrader": {
+        name: "creep-upgrader",
+        memory: { role: "upgrader", family: "economy", homeRoom: "W1N1" },
+        room: homeRoom,
+        spawning: false
+      } as unknown as Creep,
       "creep-remote-hauler": {
         name: "creep-remote-hauler",
         memory: { role: "remoteHauler", family: "economy", homeRoom: "W1N1" },
@@ -77,6 +83,7 @@ describe("Process manager bucket policy", () => {
 
     expect(kernel.getProcess("creep:creep-harvester")?.minBucket).to.equal(0);
     expect(kernel.getProcess("creep:creep-builder")?.minBucket).to.equal(lowMode);
+    expect(kernel.getProcess("creep:creep-upgrader")?.minBucket).to.equal(0);
     expect(kernel.getProcess("creep:creep-remote-hauler")?.minBucket).to.equal(lowMode);
     expect(kernel.getProcess("creep:creep-lab-tech")?.minBucket).to.equal(highMode);
     expect(kernel.getProcess("creep:creep-lab-tech")?.priority).to.equal(ProcessPriority.IDLE);

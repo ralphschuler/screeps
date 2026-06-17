@@ -284,7 +284,7 @@ export class CreepProcessManager {
       priority,
       frequency: "high", // Creeps run every tick
       interval: 1,
-      minBucket: this.getMinBucketForPriority(priority),
+      minBucket: this.getMinBucketForRole(creep, priority),
       cpuBudget: this.getCpuBudgetForPriority(priority),
       topology: { parentId: memory.homeRoom ? `room:${memory.homeRoom}` : undefined, group: "creep", layer: "creep" },
       execute: () => {
@@ -322,8 +322,19 @@ export class CreepProcessManager {
    * Competitive strategy: keep core economy/defense running, defer non-essential
    * work as bucket drops (economic/utility creep roles in low bucket).
    */
-  private getMinBucketForPriority(priority: ProcessPriority): number {
+  private getMinBucketForRole(creep: Creep, priority: ProcessPriority): number {
     const { lowMode, highMode } = getConfig().cpu.bucketThresholds;
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+
+    // Low-RCL controller progress is survival work: when the bucket is recovering,
+    // tiny seed-room upgraders must still call upgradeController every tick instead
+    // of preserving stale upgrade state while the scheduler skips their process.
+    if (memory.role === "upgrader") {
+      const room = Game.rooms[memory.homeRoom] ?? creep.room;
+      if (room?.controller?.my && room.controller.level <= 2) {
+        return 0;
+      }
+    }
 
     // Keep critical and high-priority continuity processes unscheduled only by
     // explicit emergency conditions (bucket is handled by kernel/core runtime).

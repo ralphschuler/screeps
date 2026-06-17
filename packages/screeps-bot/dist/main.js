@@ -29478,7 +29478,7 @@ name: "Creep ".concat(e.name, " (").concat(r, ")"),
 priority: o,
 frequency: "high",
 interval: 1,
-minBucket: this.getMinBucketForPriority(o),
+minBucket: this.getMinBucketForRole(e, o),
 cpuBudget: this.getCpuBudgetForPriority(o),
 topology: {
 parentId: t.homeRoom ? "room:".concat(t.homeRoom) : void 0,
@@ -29497,9 +29497,13 @@ var t = "creep:".concat(e);
 Gn.unregisterProcess(t), this.registeredCreeps.delete(e), ia.info("Unregistered creep process: ".concat(e), {
 subsystem: "CreepProcessManager"
 });
-}, e.prototype.getMinBucketForPriority = function(e) {
-var t = le().cpu.bucketThresholds, r = t.lowMode, o = t.highMode;
-return e >= en.HIGH ? 0 : e === en.MEDIUM || e === en.LOW ? r : e === en.IDLE ? o : 0;
+}, e.prototype.getMinBucketForRole = function(e, t) {
+var r, o, n = le().cpu.bucketThresholds, a = n.lowMode, i = n.highMode, s = e.memory;
+if ("upgrader" === s.role) {
+var c = null !== (r = Game.rooms[s.homeRoom]) && void 0 !== r ? r : e.room;
+if ((null === (o = null == c ? void 0 : c.controller) || void 0 === o ? void 0 : o.my) && c.controller.level <= 2) return 0;
+}
+return t >= en.HIGH ? 0 : t === en.MEDIUM || t === en.LOW ? a : t === en.IDLE ? i : 0;
 }, e.prototype.getCpuBudgetForPriority = function(e) {
 return e >= en.CRITICAL ? .012 : e >= en.HIGH ? .01 : e >= en.MEDIUM ? .008 : .006;
 }, e.prototype.getStats = function() {
