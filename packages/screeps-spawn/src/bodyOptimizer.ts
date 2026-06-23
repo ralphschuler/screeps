@@ -312,6 +312,15 @@ export function optimizeBody(options: BodyOptimizationOptions): BodyTemplate {
     case "crossShardCarrier":
       return optimizeHaulerBody(options);
 
+    case "interShardPioneer":
+      return optimizeBuilderBody(options);
+
+    case "interShardScout":
+      return { parts: [MOVE], cost: 50, minCapacity: 50 };
+
+    case "interShardClaimer":
+      return { parts: [CLAIM, MOVE], cost: 650, minCapacity: 650 };
+
     case "upgrader":
       return optimizeUpgraderBody(options);
 

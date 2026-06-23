@@ -46,6 +46,9 @@ const ROLE_PRIORITY_MAP: Record<string, ProcessPriority> = {
   powerWarrior: ProcessPriority.HIGH,
   larvaWorker: ProcessPriority.HIGH,
   pioneer: ProcessPriority.HIGH,
+  interShardPioneer: ProcessPriority.HIGH,
+  interShardClaimer: ProcessPriority.HIGH,
+  interShardScout: ProcessPriority.HIGH,
 
   // Medium priority roles (MEDIUM = 50)
   builder: ProcessPriority.MEDIUM,
@@ -99,6 +102,15 @@ function executeCreepRole(creep: Creep): void {
   // OPTIMIZATION: Early exit for spawning creeps
   // Spawning creeps can't perform actions, so skip all processing
   if (creep.spawning) {
+    return;
+  }
+
+  // Safety cleanup for malformed pre-hotfix intershard operation creeps that were
+  // spawned by generic role demand without route memory. Kill before state-machine
+  // replay can keep them doing local work.
+  if (typeof memory.role === "string" && memory.role.startsWith("interShard") && !memory.targetShard) {
+    creep.suicide();
+    delete memory.state;
     return;
   }
 

@@ -74,6 +74,17 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     maxPerRoom: 3,
     remoteRole: true
   },
+  interShardPioneer: {
+    role: "interShardPioneer",
+    family: "economy",
+    bodies: [
+      createBody([WORK, CARRY, MOVE, MOVE], 250),
+      createBody([WORK, WORK, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE], 500)
+    ],
+    priority: 95,
+    maxPerRoom: 3,
+    remoteRole: true
+  },
   harvester: {
     role: "harvester",
     family: "economy",
@@ -687,6 +698,22 @@ export const ROLE_DEFINITIONS: Record<string, RoleSpawnDef> = {
     bodies: [createBody([MOVE], 50)],
     priority: 30, // REDUCED from 65 - scouts are expensive CPU-wise, spawn only when truly needed
     maxPerRoom: 1, // REDUCED from 2 - one scout per room is sufficient for intel gathering
+    remoteRole: true
+  },
+  interShardScout: {
+    role: "interShardScout",
+    family: "utility",
+    bodies: [createBody([MOVE], 50)],
+    priority: 70,
+    maxPerRoom: 1,
+    remoteRole: true
+  },
+  interShardClaimer: {
+    role: "interShardClaimer",
+    family: "utility",
+    bodies: [createBody([CLAIM, MOVE], 650)],
+    priority: 80,
+    maxPerRoom: 1,
     remoteRole: true
   },
   claimer: {

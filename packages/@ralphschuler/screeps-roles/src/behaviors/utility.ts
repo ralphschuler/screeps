@@ -11,6 +11,8 @@ import { findCachedClosest } from "../cache";
 import { isExit } from "screeps-cartographer";
 import type { CreepAction, CreepContext } from "./types";
 import { memoryManager } from "../memory/manager";
+export { interShardClaimer } from "./interShardClaim";
+import { interShardClaimer } from "./interShardClaim";
 
 // =============================================================================
 // Empire / Intel Helpers
@@ -531,6 +533,8 @@ export function terminalManager(ctx: CreepContext): CreepAction {
 const utilityBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   scout,
   claimer,
+  interShardClaimer,
+  interShardScout: interShardClaimer,
   engineer,
   remoteWorker,
   linkManager,

@@ -24,6 +24,7 @@ import { roomProcessManager } from "./core/roomProcessManager";
 import { resolveVisualizationProfile, selectRoomsForVisualization } from "./core/visualizationMode";
 import { energyFlowPredictor } from "./economy/energyFlowPredictor";
 import { powerBankHarvestingManager } from "./empire/powerBankHarvesting";
+import { runInterShardFootprintEarly, runInterShardFootprintSpawner } from "./intershard/footprintOperation";
 import { resourceTransferCoordinator } from "./intershard/resourceTransferCoordinator";
 import { shardManager } from "./intershard/shardManager";
 import { labManager as botLabManager } from "./labs/labManager";
@@ -242,6 +243,10 @@ export function loop(): void {
     });
   }
 
+  // Intershard footprint work must run before the no-owned-room guard so portal
+  // arrivals on fresh target shards can record presence and claim neutral rooms.
+  runInterShardFootprintEarly();
+
   // Shard abandonment guard: if no owned rooms, skip colony processing but retain the
   // lightweight global maintenance above.
   const ownedRoomCount = Object.values(Game.rooms).filter(r => r.controller?.my).length;
@@ -298,6 +303,7 @@ export function loop(): void {
 
   // Run spawns before movement/kernel work so workforce recovery survives optional subsystem failures.
   unifiedStats.measureSubsystem("spawns", () => {
+    runInterShardFootprintSpawner();
     runSpawns();
   });
 

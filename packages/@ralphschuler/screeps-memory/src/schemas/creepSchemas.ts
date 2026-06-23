@@ -14,6 +14,7 @@ export type RoleFamily = "economy" | "military" | "utility" | "power";
 export type EconomyRole =
   | "larvaWorker"
   | "pioneer"
+  | "interShardPioneer"
   | "harvester"
   | "hauler"
   | "builder"
@@ -36,7 +37,7 @@ export type MilitaryRole = "guard" | "remoteGuard" | "healer" | "soldier" | "sie
 /**
  * Utility roles
  */
-export type UtilityRole = "scout" | "claimer" | "engineer" | "remoteWorker" | "linkManager" | "terminalManager";
+export type UtilityRole = "scout" | "claimer" | "interShardClaimer" | "interShardScout" | "engineer" | "remoteWorker" | "linkManager" | "terminalManager";
 
 /**
  * Power creep roles (for PowerCreeps)
@@ -96,6 +97,10 @@ export interface SwarmCreepMemory {
   homeRoom: string;
   /** Target room (if different from home) */
   targetRoom?: string;
+  /** Target shard for intershard operation creeps. */
+  targetShard?: string;
+  /** Portal room for intershard operation creeps. */
+  portalRoom?: string;
   /** Last explored room (for scouts to avoid cycling) */
   lastExploredRoom?: string;
   /** Current task */

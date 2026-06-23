@@ -619,6 +619,21 @@ export class ShardManager {
         this.repairInterShardMemory();
       }
 
+      // Preserve operation state written by the footprint manager between shard-manager ticks.
+      // ShardManager owns the normal periodic InterShardMemory write; without this merge,
+      // its cached memory would erase same-tick operation progress.
+      try {
+        const currentRaw = InterShardMemory.getLocal();
+        const current = currentRaw ? deserializeInterShardMemory(currentRaw) : null;
+        const currentOp = current?.footprintOperation;
+        const cachedOp = this.interShardMemory.footprintOperation;
+        if (currentOp && (!cachedOp || currentOp.updatedAt >= cachedOp.updatedAt)) {
+          this.interShardMemory.footprintOperation = currentOp;
+        }
+      } catch {
+        // Non-fatal: continue with cached state.
+      }
+
       const serialized = serializeInterShardMemory(this.interShardMemory);
 
       // Check size limit

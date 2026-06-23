@@ -73,6 +73,7 @@ export {
 // Export individual economy behavior functions
 export { larvaWorker } from "./behaviors/economy/larvaWorker";
 export { pioneer } from "./behaviors/economy/pioneer";
+export { interShardPioneer } from "./behaviors/economy/interShardPioneer";
 export { harvester } from "./behaviors/economy/harvester";
 export { hauler } from "./behaviors/economy/hauler";
 export { upgrader } from "./behaviors/economy/upgrader";
@@ -136,6 +137,7 @@ export {
 export {
   scout,
   claimer,
+  interShardClaimer,
   engineer,
   remoteWorker,
   linkManager,

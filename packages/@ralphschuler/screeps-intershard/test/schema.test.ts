@@ -30,6 +30,35 @@ describe("InterShardMemory Schema", () => {
     expect(restored!.lastSync).to.equal(12345);
   });
 
+  it("round-trips peaceful footprint operation state", () => {
+    const memory = createDefaultInterShardMemory();
+    memory.footprintOperation = {
+      id: "auto-footprint-v1",
+      enabled: true,
+      targetShards: ["shard0", "shard1", "shard2", "shard3", "shardX"],
+      targets: {
+        shard2: {
+          shard: "shard2",
+          status: "claimTargetSelected",
+          portalRoom: "W15S25",
+          portalPos: { x: 25, y: 25 },
+          destinationRoom: "W15S25",
+          claimTargetRoom: "W14S25",
+          attempts: 1,
+          lastUpdate: 123
+        }
+      },
+      startedAt: 100,
+      updatedAt: 123
+    };
+
+    const restored = deserializeInterShardMemory(serializeInterShardMemory(memory));
+
+    expect(restored?.footprintOperation?.targets.shard2.status).to.equal("claimTargetSelected");
+    expect(restored?.footprintOperation?.targets.shard2.portalPos).to.deep.equal({ x: 25, y: 25 });
+    expect(restored?.footprintOperation?.targets.shard2.claimTargetRoom).to.equal("W14S25");
+  });
+
   it("rejects invalid serialized data", () => {
     expect(deserializeInterShardMemory("{not valid json")).to.be.null;
   });

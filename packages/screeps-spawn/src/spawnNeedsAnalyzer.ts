@@ -1010,6 +1010,12 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
     return getPioneerSpawnAssignment(roomName, swarm) !== null;
   }
 
+  // Intershard footprint roles are requested explicitly by the bot footprint manager.
+  // Generic per-room demand must not spawn them without targetShard/portal memory.
+  if (role === "interShardScout" || role === "interShardClaimer" || role === "interShardPioneer") {
+    return false;
+  }
+
   // Mineral harvester needs extractor
   if (role === "mineralHarvester") {
     const mineral = room.find(FIND_MINERALS)[0];

@@ -28,6 +28,7 @@
 import type { CreepAction, CreepContext } from "../types";
 import { larvaWorker } from "./larvaWorker";
 import { pioneer } from "./pioneer";
+import { interShardPioneer } from "./interShardPioneer";
 import { harvester } from "./harvester";
 import { hauler } from "./hauler";
 import { upgrader } from "./upgrader";
@@ -41,6 +42,7 @@ import { labSupply } from "../labSupply";
 const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
   larvaWorker,
   pioneer,
+  interShardPioneer,
   harvester,
   hauler,
   builder,

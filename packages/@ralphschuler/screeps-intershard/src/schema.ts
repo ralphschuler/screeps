@@ -157,6 +157,39 @@ export interface GlobalStrategicTargets {
   enemies?: SharedEnemyIntel[];
 }
 
+export type InterShardFootprintStatus =
+  | "unreached"
+  | "reached"
+  | "claimTargetSelected"
+  | "claimerEnRoute"
+  | "claimed"
+  | "bootstrapping"
+  | "established"
+  | "blocked";
+
+export interface InterShardFootprintTarget {
+  shard: string;
+  status: InterShardFootprintStatus;
+  portalRoom?: string;
+  portalPos?: { x: number; y: number };
+  destinationRoom?: string;
+  claimTargetRoom?: string;
+  arrivedAt?: number;
+  claimedAt?: number;
+  attempts: number;
+  blockedReason?: string;
+  lastUpdate: number;
+}
+
+export interface InterShardFootprintOperation {
+  id: string;
+  enabled: boolean;
+  targetShards: string[];
+  targets: Record<string, InterShardFootprintTarget>;
+  startedAt: number;
+  updatedAt: number;
+}
+
 /**
  * Complete InterShardMemory structure
  */
@@ -169,6 +202,8 @@ export interface InterShardMemorySchema {
   globalTargets: GlobalStrategicTargets;
   /** Active inter-shard tasks */
   tasks: InterShardTask[];
+  /** Active peaceful all-shard footprint/colonization operation */
+  footprintOperation?: InterShardFootprintOperation;
   /** Last sync tick */
   lastSync: number;
   /** Checksum for validation */
@@ -186,6 +221,7 @@ export function createDefaultInterShardMemory(): InterShardMemorySchema {
       targetPowerLevel: 0
     },
     tasks: [],
+    footprintOperation: undefined,
     lastSync: 0,
     checksum: 0
   };
@@ -285,6 +321,26 @@ export function serializeInterShardMemory(memory: InterShardMemorySchema): strin
         a: e.isAlly ? 1 : 0
       }))
     },
+    o: memory.footprintOperation ? {
+      i: memory.footprintOperation.id,
+      e: memory.footprintOperation.enabled ? 1 : 0,
+      s: memory.footprintOperation.targetShards,
+      a: memory.footprintOperation.startedAt,
+      u: memory.footprintOperation.updatedAt,
+      t: Object.entries(memory.footprintOperation.targets).map(([name, target]) => ({
+        n: name,
+        st: target.status,
+        pr: target.portalRoom,
+        pp: target.portalPos ? `${target.portalPos.x},${target.portalPos.y}` : undefined,
+        dr: target.destinationRoom,
+        cr: target.claimTargetRoom,
+        ar: target.arrivedAt,
+        ca: target.claimedAt,
+        at: target.attempts,
+        b: target.blockedReason,
+        u: target.lastUpdate
+      }))
+    } : undefined,
     k: memory.tasks.map(t => ({
       i: t.id,
       y: t.type[0],
@@ -419,6 +475,39 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
       al?: string[];
       en?: { u: string; r: string[]; t: 0 | 1 | 2 | 3; s: number; a: number }[];
     };
+    const operationData = compact.o as {
+      i: string;
+      e: number;
+      s: string[];
+      a: number;
+      u: number;
+      t: { n: string; st: InterShardFootprintStatus; pr?: string; pp?: string; dr?: string; cr?: string; ar?: number; ca?: number; at?: number; b?: string; u: number }[];
+    } | undefined;
+
+    const footprintOperation = operationData ? {
+      id: operationData.i,
+      enabled: operationData.e === 1,
+      targetShards: operationData.s ?? [],
+      targets: Object.fromEntries((operationData.t ?? []).map(target => {
+        const [x, y] = target.pp?.split(",") ?? [];
+        return [target.n, {
+          shard: target.n,
+          status: target.st,
+          portalRoom: target.pr,
+          portalPos: x !== undefined && y !== undefined ? { x: parseInt(x, 10), y: parseInt(y, 10) } : undefined,
+          destinationRoom: target.dr,
+          claimTargetRoom: target.cr,
+          arrivedAt: target.ar,
+          claimedAt: target.ca,
+          attempts: target.at ?? 0,
+          blockedReason: target.b,
+          lastUpdate: target.u
+        }];
+      })),
+      startedAt: operationData.a,
+      updatedAt: operationData.u
+    } : undefined;
+
     const tasksData = compact.k as {
       i: string;
       y: string;
@@ -459,6 +548,7 @@ export function deserializeInterShardMemory(data: string): InterShardMemorySchem
       version: compact.v as number,
       shards,
       globalTargets,
+      footprintOperation,
       tasks: tasksData.map(t => {
         const task: InterShardTask = {
           id: t.i,
