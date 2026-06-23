@@ -1,92 +1,32 @@
 /**
  * Portal Manager - Discovery and Routing
  *
- * Manages portal discovery, caching, and routing for inter-shard and inter-room navigation.
- * Implements multi-room portal search using inter-shard memory.
+ * Manages portal discovery, caching, and routing for inter-shard and inter-room
+ * navigation. The public class stays as the orchestration layer; focused
+ * modules handle destination normalization, InterShardMemory payloads, shared
+ * constants, and data contracts.
  *
  * Design Principles (from ROADMAP.md):
- * - Use InterShardMemory (100 kB per shard) for shard-overgreifende Ziele, Status und Routen
+ * - Use InterShardMemory (100 kB per shard) for shard-overgreifende Ziele,
+ *   Status und Routen
  * - Aggressive caching + TTL to reduce expensive operations
  * - Low frequency updates (≥100 ticks) for portal mapping
  */
 
 import type { ICache, ILogger } from "../types";
+import {
+  PORTAL_CACHE_TTL,
+  PORTAL_MANAGER_SUBSYSTEM,
+  PORTAL_MAX_AGE,
+  PORTAL_ROUTE_CACHE_TTL
+} from "./constants";
+import { normalizePortalDestination } from "./destinations";
+import { encodePortalDataPayload, parsePortalDataPayload } from "./interShardMemory";
+import type { InterShardPortalData, PortalInfo, PortalRoute } from "./types";
 
-// =============================================================================
-// Types & Interfaces
-// =============================================================================
+export type { InterShardPortalData, PortalDestination, PortalInfo, PortalRoute } from "./types";
 
-/**
- * Portal destination information
- */
-export interface PortalDestination {
-  /** Destination shard name (if inter-shard) */
-  shard?: string;
-  /** Destination room name */
-  room: string;
-}
-
-/**
- * Portal information with location and destination
- */
-export interface PortalInfo {
-  /** Position of the portal */
-  pos: RoomPosition;
-  /** Destination information */
-  destination: PortalDestination;
-  /** Game tick when this portal was last seen */
-  lastSeen: number;
-}
-
-/**
- * Portal route from one room to another via portals
- */
-export interface PortalRoute {
-  /** Array of room names in the route */
-  rooms: string[];
-  /** Array of portal positions to traverse */
-  portals: RoomPosition[];
-  /** Distance estimate (number of rooms) */
-  distance: number;
-  /** Game tick when this route was calculated */
-  calculatedAt: number;
-}
-
-/**
- * Inter-shard portal data stored in InterShardMemory
- */
-interface InterShardPortalData {
-  /** Shard name */
-  shard: string;
-  /** Known portals on this shard, keyed by room name */
-  portals: Record<string, PortalDestination[]>;
-  /** Last update tick */
-  lastUpdate: number;
-}
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/** Cache TTL for portal discovery results (500 ticks = ~1.5 hours) */
-const PORTAL_CACHE_TTL = 500;
-
-/** Cache TTL for portal routes (1000 ticks = ~3 hours) */
-const PORTAL_ROUTE_CACHE_TTL = 1000;
-
-/** Max age for portal information before it's considered stale (10000 ticks) */
-const PORTAL_MAX_AGE = 10000;
-
-/** InterShardMemory key prefix for portal data */
-const ISM_PORTAL_KEY = "portals:";
-
-// =============================================================================
-// Portal Manager Class
-// =============================================================================
-
-/**
- * Portal manager handles portal discovery, caching, and routing
- */
+/** Portal manager handles portal discovery, caching, and routing. */
 export class PortalManager {
   private cache: ICache;
   private logger: ILogger;
@@ -95,10 +35,6 @@ export class PortalManager {
     this.cache = cache;
     this.logger = logger;
   }
-
-  // ===========================================================================
-  // Portal Discovery
-  // ===========================================================================
 
   /**
    * Discover portals in a room and cache the results.
@@ -110,50 +46,32 @@ export class PortalManager {
   discoverPortalsInRoom(roomName: string): PortalInfo[] | null {
     const cacheKey = `portals:room:${roomName}`;
     const cached = this.cache.get<PortalInfo[] | null>(cacheKey);
-    
+
     if (cached !== undefined) {
-      this.logger.debug(`Using cached portal data for room ${roomName}`, { 
-        subsystem: "PortalManager", 
+      this.logger.debug(`Using cached portal data for room ${roomName}`, {
+        subsystem: PORTAL_MANAGER_SUBSYSTEM,
         room: roomName,
-        meta: { portalCount: cached?.length ?? 0 } 
+        meta: { portalCount: cached?.length ?? 0 }
       });
       return cached;
     }
 
     const room = Game.rooms[roomName];
     if (!room) {
-      // Cache null to avoid repeated lookups for invisible rooms
+      // Cache null to avoid repeated lookups for invisible rooms.
       this.cache.set(cacheKey, null, PORTAL_CACHE_TTL);
       return null;
     }
 
-    // Find all portal structures
     const portalStructures = room.find(FIND_STRUCTURES, {
-      filter: (s): s is StructurePortal => s.structureType === STRUCTURE_PORTAL
+      filter: (structure): structure is StructurePortal => structure.structureType === STRUCTURE_PORTAL
     });
 
     const portals: PortalInfo[] = [];
 
     for (const portal of portalStructures) {
-      if (!portal.destination) continue;
-
-      let destination: PortalDestination;
-
-      // Check if destination is inter-shard or intra-shard
-      if ("shard" in portal.destination && "room" in portal.destination) {
-        // Inter-shard portal
-        destination = {
-          shard: portal.destination.shard,
-          room: portal.destination.room
-        };
-      } else if ("x" in portal.destination && "y" in portal.destination && "roomName" in portal.destination) {
-        // Intra-shard portal (RoomPosition destination)
-        destination = {
-          room: portal.destination.roomName
-        };
-      } else {
-        continue; // Unknown destination type
-      }
+      const destination = normalizePortalDestination(portal.destination);
+      if (!destination) continue;
 
       portals.push({
         pos: portal.pos,
@@ -162,17 +80,20 @@ export class PortalManager {
       });
     }
 
-    // Cache the results
     this.cache.set(cacheKey, portals, PORTAL_CACHE_TTL);
 
     if (portals.length > 0) {
-      this.logger.info(`Discovered ${portals.length} portal(s) in room ${roomName}`, { 
-        subsystem: "PortalManager", 
+      this.logger.info(`Discovered ${portals.length} portal(s) in room ${roomName}`, {
+        subsystem: PORTAL_MANAGER_SUBSYSTEM,
         room: roomName,
-        meta: { 
+        meta: {
           portalCount: portals.length,
-          destinations: portals.map(p => p.destination.shard ? `${p.destination.shard}:${p.destination.room}` : p.destination.room)
-        } 
+          destinations: portals.map(portal =>
+            portal.destination.shard
+              ? `${portal.destination.shard}:${portal.destination.room}`
+              : portal.destination.room
+          )
+        }
       });
     }
 
@@ -188,7 +109,6 @@ export class PortalManager {
   getPortalsToShard(targetShard: string): PortalInfo[] {
     const result: PortalInfo[] = [];
 
-    // Search through all visible rooms
     for (const roomName in Game.rooms) {
       const portals = this.discoverPortalsInRoom(roomName);
       if (!portals) continue;
@@ -210,14 +130,10 @@ export class PortalManager {
    * @param targetShard - Target shard name
    * @returns Portal info of the closest portal, or null if none found
    */
-  findClosestPortalToShard(
-    fromPos: RoomPosition,
-    targetShard: string
-  ): PortalInfo | null {
+  findClosestPortalToShard(fromPos: RoomPosition, targetShard: string): PortalInfo | null {
     const portals = this.getPortalsToShard(targetShard);
     if (portals.length === 0) return null;
 
-    // Find closest by linear distance (room coordinate distance)
     let closest: PortalInfo | null = null;
     let minDistance = Infinity;
 
@@ -232,16 +148,13 @@ export class PortalManager {
     return closest;
   }
 
-  // ===========================================================================
-  // Inter-Shard Memory Integration
-  // ===========================================================================
-
   /**
    * Store portal data for current shard in InterShardMemory.
    * This allows other shards to discover routes to this shard.
    *
    * Note: InterShardMemory stores a single string per shard. We use a JSON object
-   * to store multiple keys. The format is { portals: {...}, otherData: {...} }
+   * to store multiple keys. The portal map lives under the stable `"portals:"`
+   * key alongside other subsystem data.
    *
    * @returns true if successfully stored, false otherwise
    */
@@ -250,88 +163,26 @@ export class PortalManager {
       const currentShard = Game.shard?.name;
       if (!currentShard) return false;
 
-      // Collect all known portals from visible rooms
-      const portalsByRoom: Record<string, PortalDestination[]> = {};
-
-      for (const roomName in Game.rooms) {
-        const portals = this.discoverPortalsInRoom(roomName);
-        if (!portals || portals.length === 0) continue;
-
-        // Filter out stale portals
-        const validPortals = portals.filter(p => Game.time - p.lastSeen < PORTAL_MAX_AGE);
-        if (validPortals.length === 0) continue;
-
-        portalsByRoom[roomName] = validPortals.map(p => p.destination);
-      }
-
       const data: InterShardPortalData = {
         shard: currentShard,
-        portals: portalsByRoom,
+        portals: this.collectFreshPortalsByRoom(),
         lastUpdate: Game.time
       };
 
-      // Read existing ISM data and merge
-      let ismData: Record<string, unknown> = {};
-      try {
-        const existing = InterShardMemory.getLocal();
-        if (existing) {
-          ismData = JSON.parse(existing) as Record<string, unknown>;
-        }
-      } catch {
-        // If parsing fails, start fresh
-        ismData = {};
-      }
+      InterShardMemory.setLocal(encodePortalDataPayload(InterShardMemory.getLocal(), data));
 
-      // Store under a namespaced key
-      ismData[ISM_PORTAL_KEY] = data;
-
-      InterShardMemory.setLocal(JSON.stringify(ismData));
-
-      this.logger.debug("Published portal data to InterShardMemory", { 
-        subsystem: "PortalManager", 
-        meta: { portalCount: Object.keys(data.portals).length } 
+      this.logger.debug("Published portal data to InterShardMemory", {
+        subsystem: PORTAL_MANAGER_SUBSYSTEM,
+        meta: { portalCount: Object.keys(data.portals).length }
       });
 
       return true;
     } catch (error) {
-      this.logger.error(`Failed to publish to InterShardMemory: ${String(error)}`, { 
-        subsystem: "PortalManager" 
+      this.logger.error(`Failed to publish to InterShardMemory: ${String(error)}`, {
+        subsystem: PORTAL_MANAGER_SUBSYSTEM
       });
       return false;
     }
-  }
-
-  /**
-   * Validate portal data structure from InterShardMemory.
-   * Protects against malicious or corrupted data from other shards.
-   */
-  private isValidPortalData(data: unknown): data is InterShardPortalData {
-    if (typeof data !== "object" || data === null) return false;
-    
-    const obj = data as Record<string, unknown>;
-    
-    // Check required fields
-    if (typeof obj.shard !== "string") return false;
-    if (typeof obj.lastUpdate !== "number") return false;
-    if (typeof obj.portals !== "object" || obj.portals === null) return false;
-    
-    // Validate portals structure
-    const portals = obj.portals as Record<string, unknown>;
-    for (const roomName in portals) {
-      const roomPortals = portals[roomName];
-      if (!Array.isArray(roomPortals)) return false;
-      
-      // Validate each portal destination
-      for (const portal of roomPortals) {
-        if (typeof portal !== "object" || portal === null) return false;
-        const dest = portal as Record<string, unknown>;
-        if (typeof dest.room !== "string") return false;
-        // shard is optional but must be string if present
-        if (dest.shard !== undefined && typeof dest.shard !== "string") return false;
-      }
-    }
-    
-    return true;
   }
 
   /**
@@ -342,52 +193,38 @@ export class PortalManager {
    */
   getPortalDataFromInterShardMemory(shardName: string): InterShardPortalData | null {
     try {
-      // Get data from the target shard
       const data = InterShardMemory.getRemote(shardName);
-      
       if (!data) return null;
 
-      // Parse and validate the ISM data
-      let ismData: Record<string, unknown>;
-      try {
-        ismData = JSON.parse(data) as Record<string, unknown>;
-      } catch {
-        this.logger.warn(`Invalid JSON from shard ${shardName}`, { 
-          subsystem: "PortalManager", 
-          meta: { shard: shardName } 
-        });
+      const result = parsePortalDataPayload(data);
+      if (!result.ok) {
+        this.logger.warn(
+          result.reason === "invalid-json"
+            ? `Invalid JSON from shard ${shardName}`
+            : `Invalid portal data structure from shard ${shardName}`,
+          {
+            subsystem: PORTAL_MANAGER_SUBSYSTEM,
+            meta: { shard: shardName }
+          }
+        );
         return null;
       }
 
-      const portalData = ismData[ISM_PORTAL_KEY];
-      
-      // Validate structure before returning
-      if (!this.isValidPortalData(portalData)) {
-        this.logger.warn(`Invalid portal data structure from shard ${shardName}`, { 
-          subsystem: "PortalManager", 
-          meta: { shard: shardName } 
-        });
-        return null;
-      }
-
-      this.logger.debug(`Retrieved portal data from shard ${shardName}`, { 
-        subsystem: "PortalManager", 
-        meta: { shard: shardName, portalCount: Object.keys(portalData.portals).length } 
+      const portalData = result.data;
+      this.logger.debug(`Retrieved portal data from shard ${shardName}`, {
+        subsystem: PORTAL_MANAGER_SUBSYSTEM,
+        meta: { shard: shardName, portalCount: Object.keys(portalData.portals).length }
       });
 
       return portalData;
     } catch (error) {
-      this.logger.error(`Failed to read from InterShardMemory: ${String(error)}`, { 
-        subsystem: "PortalManager", 
-        meta: { shard: shardName } 
+      this.logger.error(`Failed to read from InterShardMemory: ${String(error)}`, {
+        subsystem: PORTAL_MANAGER_SUBSYSTEM,
+        meta: { shard: shardName }
       });
       return null;
     }
   }
-
-  // ===========================================================================
-  // Portal Routing
-  // ===========================================================================
 
   /**
    * Find a multi-room route to reach a portal leading to a specific shard.
@@ -400,33 +237,27 @@ export class PortalManager {
   findRouteToPortal(fromRoom: string, targetShard: string): PortalRoute | null {
     const cacheKey = `portal:route:${fromRoom}:${targetShard}`;
     const cached = this.cache.get<PortalRoute | null>(cacheKey);
-    
+
     if (cached !== undefined) {
       return cached;
     }
 
-    // Find the closest portal
     const startPos = new RoomPosition(25, 25, fromRoom);
     const portalInfo = this.findClosestPortalToShard(startPos, targetShard);
-    
+
     if (!portalInfo) {
       this.cache.set(cacheKey, null, PORTAL_ROUTE_CACHE_TTL);
       return null;
     }
 
-    // Calculate route using Game.map.findRoute
     const route = Game.map.findRoute(fromRoom, portalInfo.pos.roomName);
-    
+
     if (route === ERR_NO_PATH) {
       this.cache.set(cacheKey, null, PORTAL_ROUTE_CACHE_TTL);
       return null;
     }
 
-    const rooms: string[] = [fromRoom];
-    for (const step of route) {
-      rooms.push(step.room);
-    }
-
+    const rooms = this.routeStepsToRooms(fromRoom, route);
     const portalRoute: PortalRoute = {
       rooms,
       portals: [portalInfo.pos],
@@ -454,16 +285,11 @@ export class PortalManager {
     toRoom: string,
     toShard: string
   ): PortalRoute | null {
-    // If already on target shard, just find normal route
     if (fromShard === toShard) {
       const route = Game.map.findRoute(fromRoom, toRoom);
       if (route === ERR_NO_PATH) return null;
 
-      const rooms: string[] = [fromRoom];
-      for (const step of route) {
-        rooms.push(step.room);
-      }
-
+      const rooms = this.routeStepsToRooms(fromRoom, route);
       return {
         rooms,
         portals: [],
@@ -472,13 +298,8 @@ export class PortalManager {
       };
     }
 
-    // Find route to a portal leading to target shard
     return this.findRouteToPortal(fromRoom, toShard);
   }
-
-  // ===========================================================================
-  // Maintenance
-  // ===========================================================================
 
   /**
    * Periodic maintenance task for portal management.
@@ -493,13 +314,38 @@ export class PortalManager {
   maintainPortalCache(): number {
     let operations = 0;
 
-    // Publish to InterShardMemory
     if (this.publishPortalsToInterShardMemory()) {
       operations++;
     }
 
-    // Note: Heap cache has built-in TTL management, so we don't need to manually clean it
-
+    // Heap cache implementations own TTL expiration; no manual cleanup required.
     return operations;
+  }
+
+  private collectFreshPortalsByRoom(): Record<string, InterShardPortalData["portals"][string]> {
+    const portalsByRoom: Record<string, InterShardPortalData["portals"][string]> = {};
+
+    for (const roomName in Game.rooms) {
+      const portals = this.discoverPortalsInRoom(roomName);
+      if (!portals || portals.length === 0) continue;
+
+      const validPortals = portals.filter(portal => Game.time - portal.lastSeen < PORTAL_MAX_AGE);
+      if (validPortals.length === 0) continue;
+
+      portalsByRoom[roomName] = validPortals.map(portal => portal.destination);
+    }
+
+    return portalsByRoom;
+  }
+
+  private routeStepsToRooms(fromRoom: string, route: ReturnType<typeof Game.map.findRoute>): string[] {
+    const rooms = [fromRoom];
+    if (route === ERR_NO_PATH) return rooms;
+
+    for (const step of route) {
+      rooms.push(step.room);
+    }
+
+    return rooms;
   }
 }

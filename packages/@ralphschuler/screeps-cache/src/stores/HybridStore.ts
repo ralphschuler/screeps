@@ -57,7 +57,7 @@ export interface HybridStoreConfig {
 /**
  * Default persistence filter - persist expensive-to-compute data
  */
-function defaultPersistenceFilter(key: string, entry: CacheEntry): boolean {
+function defaultPersistenceFilter(key: string, _entry: CacheEntry): boolean {
   // Persist paths (expensive pathfinding)
   if (key.includes('path:') || key.includes(':path:')) return true;
   
@@ -152,7 +152,6 @@ export class HybridStore implements CacheStore {
   private rehydrate(heap: HeapLayer): void {
     const memory = this.getMemory();
     let loaded = 0;
-    let expired = 0;
 
     // Clean up expired entries during rehydration
     const keysToDelete: string[] = [];
@@ -163,7 +162,6 @@ export class HybridStore implements CacheStore {
         const age = Game.time - memEntry.cachedAt;
         if (memEntry.ttl === 0 ? age > 0 : age >= memEntry.ttl!) {
           keysToDelete.push(key);
-          expired++;
           continue; // Skip expired
         }
       }
@@ -347,7 +345,7 @@ export class HybridStore implements CacheStore {
     // Approximate JSON serialization size
     try {
       return JSON.stringify(data).length;
-    } catch (error) {
+    } catch {
       // Fallback to rough estimate if serialization fails
       // (e.g., circular references, non-serializable values)
       const entryCount = Object.keys(data).length;
@@ -373,14 +371,12 @@ export class HybridStore implements CacheStore {
       .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
     
     // Evict entries until we're under budget
-    let evicted = 0;
-    for (const [key, entry] of entries) {
+    for (const [key] of entries) {
       if (memory.memoryUsageBytes <= this.config.maxMemoryBytes) {
         break;
       }
       
       delete memory.data[key];
-      evicted++;
       
       // Re-estimate size
       memory.memoryUsageBytes = this.estimateMemorySize(memory.data);

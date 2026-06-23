@@ -13,6 +13,20 @@ Advanced pathfinding utilities for Screeps - portal management, path caching, an
 - **Type-Safe**: Full TypeScript support with comprehensive type definitions
 - **Well-Tested**: >80% test coverage with comprehensive unit tests
 
+## Portal Module Map
+
+`PortalManager` is the public facade. Internals are split by responsibility so
+routing behavior stays readable without changing consumer APIs:
+
+- `portal/types.ts` - portal discovery, route, and InterShardMemory contracts
+- `portal/constants.ts` - cache TTLs, stale-data limits, and stable key names
+- `portal/destinations.ts` - Screeps portal destination normalization
+- `portal/interShardMemory.ts` - namespaced payload encoding and validation
+- `portal/portalManager.ts` - orchestration, cache use, logging, and routing
+
+This follows the ROADMAP cache-first design: portal scans are cached, routes are
+cached separately, and cross-shard data is validated before use.
+
 ## Installation
 
 ```bash

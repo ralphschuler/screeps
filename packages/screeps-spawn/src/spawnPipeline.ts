@@ -10,7 +10,6 @@ import {
   buildDefenseAssistBody,
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
-  type CombatPower,
   type DefenseAssistRole,
   type ExistingDefensePower
 } from "./defenseAssistBody";
@@ -221,6 +220,11 @@ function isDefenseAssistRequest(request: SpawnRequest): boolean {
   );
 }
 
+function isHardDefenseThreat(threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>): boolean {
+  const strongest = threatProfile?.strongest;
+  return Boolean(strongest && (strongest.partCount >= 25 || strongest.score >= 250));
+}
+
 function addDefenderRequests(
   room: Room,
   swarm: SwarmState,
@@ -232,7 +236,11 @@ function addDefenderRequests(
   const priority = needs.urgency >= 2.0 || swarm.danger >= 3 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
 
   const threatProfile = analyzeDefenseAssistThreat(getActualHostileCreeps(room));
-  const defenderEnergy = priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy;
+  const defenderEnergy = isHardDefenseThreat(threatProfile)
+    ? maxEnergy
+    : priority === SpawnPriority.EMERGENCY
+      ? emergencyEnergy
+      : maxEnergy;
   const pendingDefenders = getPendingDefenderPower(room.name, maxEnergy);
   const activeDefenderPower = getActiveDefenderPower(room);
   const existingPower = mergeDefensePower(activeDefenderPower, pendingDefenders.power);
@@ -249,35 +257,39 @@ function addDefenderRequests(
 
   const guardsNeeded = plan.counts.guard;
   const guardBody = plan.bodies.guard ?? getThreatParityDefenderBody("guard", defenderEnergy, threatProfile);
-  for (let i = 0; i < guardsNeeded; i++) {
-    addOptimizedRequest(
-      room,
-      "guard",
-      "military",
-      priority,
-      defenderEnergy,
-      `guard_defense_${Game.time}_${i}`,
-      guardBody
-    );
+  if (guardsNeeded > 0 && guardBody) {
+    for (let i = 0; i < guardsNeeded; i++) {
+      addOptimizedRequest(
+        room,
+        "guard",
+        "military",
+        priority,
+        defenderEnergy,
+        `guard_defense_${Game.time}_${i}`,
+        guardBody
+      );
+    }
   }
 
   const rangersNeeded = plan.counts.ranger;
   const rangerBody = plan.bodies.ranger ?? getThreatParityDefenderBody("ranger", defenderEnergy, threatProfile);
-  for (let i = 0; i < rangersNeeded; i++) {
-    addOptimizedRequest(
-      room,
-      "ranger",
-      "military",
-      priority,
-      defenderEnergy,
-      `ranger_defense_${Game.time}_${i}`,
-      rangerBody
-    );
+  if (rangersNeeded > 0 && rangerBody) {
+    for (let i = 0; i < rangersNeeded; i++) {
+      addOptimizedRequest(
+        room,
+        "ranger",
+        "military",
+        priority,
+        defenderEnergy,
+        `ranger_defense_${Game.time}_${i}`,
+        rangerBody
+      );
+    }
   }
 
   const healersNeeded = plan.counts.healer;
   const healerBody = plan.bodies.healer ?? getThreatParityDefenderBody("healer", defenderEnergy, threatProfile);
-  if (healersNeeded > 0 && (needs.urgency >= 1.5 || plan.healerFloor > 0)) {
+  if (healersNeeded > 0 && healerBody && (needs.urgency >= 1.5 || plan.healerFloor > 0)) {
     for (let i = 0; i < healersNeeded; i++) {
       addOptimizedRequest(
         room,

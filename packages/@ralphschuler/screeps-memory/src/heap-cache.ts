@@ -24,6 +24,17 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import {
+  INFINITE_TTL,
+  hasCacheValue,
+  isCacheEntryExpired,
+  toPersistedEntry,
+  toRuntimeEntry,
+  type PersistedCacheEntry,
+  type RuntimeCacheEntry
+} from "./heap-cache/entries";
+
+export { INFINITE_TTL };
 
 // Augment Memory interface with cache property
 declare global {
@@ -31,7 +42,7 @@ declare global {
     _heapCache?: {
       version: number;
       lastSync: number;
-      data: Record<string, { value: unknown; lastModified: number; ttl?: number }>;
+      data: Record<string, PersistedCacheEntry>;
     };
   }
 }
@@ -40,19 +51,7 @@ declare global {
 // Types
 // =============================================================================
 
-/**
- * Entry in the heap cache with metadata
- */
-interface CacheEntry<T = unknown> {
-  /** Cached value */
-  value: T;
-  /** Last modified tick */
-  lastModified: number;
-  /** Whether entry has been modified since last persistence */
-  dirty: boolean;
-  /** Optional TTL in ticks (-1 for infinite) */
-  ttl?: number;
-}
+type CacheEntry<T = unknown> = RuntimeCacheEntry<T>;
 
 /**
  * Heap cache storage structure
@@ -75,7 +74,7 @@ interface CacheMemoryStore {
   /** Last sync tick */
   lastSync: number;
   /** Cached data as serializable records */
-  data: Record<string, { value: unknown; lastModified: number; ttl?: number }>;
+  data: Record<string, PersistedCacheEntry>;
 }
 
 // =============================================================================
@@ -87,9 +86,6 @@ const PERSISTENCE_INTERVAL = 10;
 
 /** Default TTL for cache entries (ticks) */
 const DEFAULT_TTL = 1000;
-
-/** Infinite TTL constant */
-export const INFINITE_TTL = -1;
 
 /** Current cache memory version */
 const CACHE_VERSION = 1;
@@ -177,27 +173,18 @@ export class HeapCacheManager {
 
     // Restore all entries from Memory to heap
     for (const [key, memEntry] of Object.entries(memory.data)) {
-      if (memEntry.value === undefined) {
+      if (!hasCacheValue(memEntry)) {
         delete memory.data[key];
         expiredCount++;
         continue;
       }
 
-      // Check if entry has expired based on TTL (-1 means infinite)
-      if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
-        const age = Game.time - memEntry.lastModified;
-        if (age > memEntry.ttl) {
-          expiredCount++;
-          continue; // Skip expired entries
-        }
+      if (isCacheEntryExpired(memEntry, Game.time)) {
+        expiredCount++;
+        continue; // Skip expired entries
       }
 
-      heap.entries.set(key, {
-        value: memEntry.value,
-        lastModified: memEntry.lastModified,
-        dirty: false,
-        ttl: memEntry.ttl
-      });
+      heap.entries.set(key, toRuntimeEntry(memEntry));
       rehydratedCount++;
     }
 
@@ -223,14 +210,10 @@ export class HeapCacheManager {
     // Try heap first (fast path)
     const entry = heap.entries.get(key);
     if (entry) {
-      // Check TTL (-1 means infinite, never expires)
-      if (entry.ttl !== undefined && entry.ttl !== INFINITE_TTL) {
-        const age = Game.time - entry.lastModified;
-        if (age > entry.ttl) {
-          // Expired, remove from cache
-          heap.entries.delete(key);
-          return undefined;
-        }
+      if (isCacheEntryExpired(entry, Game.time)) {
+        // Expired, remove from cache
+        heap.entries.delete(key);
+        return undefined;
       }
       return entry.value as T;
     }
@@ -239,28 +222,19 @@ export class HeapCacheManager {
     const memory = getCacheMemory();
     const memEntry = memory.data[key];
     if (memEntry) {
-      if (memEntry.value === undefined) {
+      if (!hasCacheValue(memEntry)) {
         delete memory.data[key];
         return undefined;
       }
 
-      // Check TTL (-1 means infinite, never expires)
-      if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
-        const age = Game.time - memEntry.lastModified;
-        if (age > memEntry.ttl) {
-          // Expired, clean up
-          delete memory.data[key];
-          return undefined;
-        }
+      if (isCacheEntryExpired(memEntry, Game.time)) {
+        // Expired, clean up
+        delete memory.data[key];
+        return undefined;
       }
 
       // Load into heap for future fast access
-      heap.entries.set(key, {
-        value: memEntry.value,
-        lastModified: memEntry.lastModified,
-        dirty: false,
-        ttl: memEntry.ttl
-      });
+      heap.entries.set(key, toRuntimeEntry(memEntry));
 
       return memEntry.value as T;
     }
@@ -348,7 +322,7 @@ export class HeapCacheManager {
 
     // Persist only dirty entries
     for (const [key, entry] of heap.entries) {
-      if (entry.value === undefined) {
+      if (!hasCacheValue(entry)) {
         heap.entries.delete(key);
         delete memory.data[key];
         continue;
@@ -361,11 +335,7 @@ export class HeapCacheManager {
       }
 
       if (entry.dirty) {
-        memory.data[key] = {
-          value: entry.value,
-          lastModified: entry.lastModified,
-          ttl: entry.ttl
-        };
+        memory.data[key] = toPersistedEntry(entry);
         entry.dirty = false;
         persistedCount++;
       }
@@ -434,25 +404,19 @@ export class HeapCacheManager {
     const memory = getCacheMemory();
     let cleanedCount = 0;
 
-    // Clean heap (skip entries with infinite TTL)
+    // Clean heap.
     for (const [key, entry] of heap.entries) {
-      if (entry.ttl !== undefined && entry.ttl !== INFINITE_TTL) {
-        const age = Game.time - entry.lastModified;
-        if (age > entry.ttl) {
-          heap.entries.delete(key);
-          cleanedCount++;
-        }
+      if (isCacheEntryExpired(entry, Game.time)) {
+        heap.entries.delete(key);
+        cleanedCount++;
       }
     }
 
-    // Clean Memory (skip entries with infinite TTL)
+    // Clean Memory.
     for (const [key, memEntry] of Object.entries(memory.data)) {
-      if (memEntry.ttl !== undefined && memEntry.ttl !== INFINITE_TTL) {
-        const age = Game.time - memEntry.lastModified;
-        if (age > memEntry.ttl) {
-          delete memory.data[key];
-          cleanedCount++;
-        }
+      if (isCacheEntryExpired(memEntry, Game.time)) {
+        delete memory.data[key];
+        cleanedCount++;
       }
     }
 

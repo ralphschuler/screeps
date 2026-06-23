@@ -53,7 +53,7 @@ Required assertion areas:
 - room/empire memory schema and pheromone channels
 - unified stats and spawn queue telemetry
 - CPU bucket health
-- seeded scenario behavior (`default-bootstrap`, `construction-economy`, `remote-mining`, `defense-hostile`, `alliance-safety`)
+- seeded scenario behavior (`default-bootstrap`, `construction-economy`, `remote-mining`, `defense-hostile`, `defense-hard-invader`, `alliance-safety`)
 - permanent ally safety for `TooAngel` and `TedRoastBeef`
 - critical error thresholds
 

@@ -1,81 +1,85 @@
 # @ralphschuler/screeps-pheromones
 
-Pheromone-based coordination system for Screeps swarm architecture.
+Pheromone-based room coordination for the Screeps swarm architecture.
 
-## Overview
+## Purpose
 
-This package implements a stigmergistic communication system using virtual pheromones to coordinate swarm behavior in Screeps. Pheromones enable decentralized decision-making where creeps respond to room-level signals without centralized control.
+This package implements ROADMAP Section 5: stigmergic communication through small numeric signals on each `SwarmState`. Rooms do not issue direct commands to creeps through this package; they publish pressure signals such as `harvest`, `build`, `defense`, and `war` that spawn and role systems can read.
 
-## Features
+## Signals
 
-- **8 Pheromone Types**: expand, harvest, build, upgrade, defense, war, siege, logistics, nukeTarget
-- **Periodic Updates**: Rolling average-based updates every 5-10 ticks
-- **Event-Driven Spikes**: Immediate response to hostiles, structure destruction, nukes
-- **Decay & Diffusion**: Automatic pheromone decay and propagation to neighbor rooms
-- **Metrics Tracking**: Rolling averages for energy, construction, hostiles, damage
+The current `PheromoneState` tracks:
 
-## Installation
+- `expand`
+- `harvest`
+- `build`
+- `upgrade`
+- `defense`
+- `war`
+- `siege`
+- `logistics`
+- `nukeTarget`
 
-```bash
-npm install @ralphschuler/screeps-pheromones
-```
+Each value is clamped to the configured range and decays during periodic updates.
+
+## Update flow
+
+1. `updateMetrics(room, swarm)` samples room state into rolling averages.
+   - source energy harvested
+   - controller progress
+   - actual hostile count and potential attack damage
+   - permanent allies are filtered by `@ralphschuler/screeps-core`
+2. `updatePheromones(swarm, room)` runs only when `Game.time >= swarm.nextUpdateTick`.
+   - applies configured decay
+   - adds room contribution pressure from metrics/current state
+   - sets `lastUpdate` and `nextUpdateTick`
+3. Event methods add immediate spikes for hostiles, destroyed structures, nukes, and lost remotes.
+4. Diffusion methods propagate selected high-level signals to neighboring rooms or cluster rooms.
+
+## Module map
+
+- `src/manager.ts` — public facade; owns config and per-room trackers.
+- `src/metrics.ts` — room sampling and rolling metric snapshots.
+- `src/contributionRules.ts` — periodic decay and contribution math.
+- `src/eventSignals.ts` — event-driven pheromone spikes.
+- `src/diffusionRules.ts` — cardinal room diffusion and cluster danger diffusion.
+- `src/sourceCache.ts` — tick-local source cache shared by metrics/contributions.
+- `src/limits.ts` — shared numeric clamping.
+- `src/rollingAverage.ts` — rolling average primitive and room tracker shape.
 
 ## Usage
 
 ```typescript
-import { pheromoneManager } from '@ralphschuler/screeps-pheromones';
+import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 
-// Update pheromones periodically
 pheromoneManager.updateMetrics(room, swarm);
 pheromoneManager.updatePheromones(swarm, room);
 
-// Handle events
 pheromoneManager.onHostileDetected(swarm, hostileCount, dangerLevel);
 pheromoneManager.onStructureDestroyed(swarm, structureType);
 pheromoneManager.onNukeDetected(swarm);
+pheromoneManager.onRemoteSourceLost(swarm);
 
-// Apply diffusion to neighbors
 pheromoneManager.applyDiffusion(roomSwarmMap);
 
-// Get dominant pheromone
 const dominant = pheromoneManager.getDominantPheromone(swarm.pheromones);
 ```
 
-## Architecture
+## Validation
 
-The pheromone system follows ROADMAP Section 5 specifications:
+From the repository root:
 
-- **Periodic Updates**: Use rolling averages to smooth metrics over 10 ticks
-- **Event Updates**: Immediate spikes for critical events (hostiles, nukes, structure loss)
-- **Decay**: Each pheromone type has a decay factor (0.9-0.99) applied per update
-- **Diffusion**: High-value pheromones (defense, war, expand) diffuse to neighbors
+```bash
+npm run build:pheromones
+npm run test:pheromones
+npm run lint -w @ralphschuler/screeps-pheromones --if-present
+```
 
-## API
+## Safety constraints
 
-### PheromoneManager
-
-Main class for managing pheromones.
-
-#### Methods
-
-- `updateMetrics(room: Room, swarm: SwarmState): void` - Update rolling average metrics
-- `updatePheromones(swarm: SwarmState, room: Room): void` - Periodic pheromone update with decay
-- `onHostileDetected(swarm: SwarmState, count: number, danger: 0|1|2|3): void` - Handle hostile detection
-- `onStructureDestroyed(swarm: SwarmState, type: StructureConstant): void` - Handle structure destroyed
-- `onNukeDetected(swarm: SwarmState): void` - Handle nuke detection
-- `onRemoteSourceLost(swarm: SwarmState): void` - Handle remote source lost
-- `applyDiffusion(rooms: Map<string, SwarmState>): void` - Apply diffusion to neighbors
-- `getDominantPheromone(pheromones: PheromoneState): keyof PheromoneState | null` - Get highest pheromone
-
-### RollingAverage
-
-Tracks rolling averages for metrics.
-
-#### Methods
-
-- `add(value: number): number` - Add value and return current average
-- `get(): number` - Get current average
-- `reset(): void` - Clear all values
+- Do not treat permanent allies (`TooAngel`, `TedRoastBeef`) as threat signals.
+- Keep pheromones as compact numeric state; avoid large Memory objects.
+- Preserve the public `PheromoneManager` API unless callers are migrated in the same change.
 
 ## License
 

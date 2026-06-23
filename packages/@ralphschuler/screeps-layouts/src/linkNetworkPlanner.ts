@@ -2,50 +2,30 @@
  * Dynamic link-network planner.
  *
  * Links are room-specific: controller, sources, storage, and spawn core vary by
- * room terrain. Static blueprints cannot safely express them, so this module
- * plans functional link positions from live room objects.
+ * room terrain. Static blueprints cannot safely express them, so this facade
+ * plans functional link positions from live room objects and delegates geometry,
+ * occupancy, and classification details to the `link-network/` modules.
  */
 
 import { getStructureLimits } from "./blueprints/constants";
+import {
+  CORE_LINK_PRIORITIES,
+  LINK_MIN_RCL,
+  classifyLinkByFunctionalRange,
+  collectBlockedPositions,
+  collectOccupiedLinkPositions,
+  findBuiltLinks,
+  findPlannedLinkRole,
+  getRange,
+  positionKey,
+  selectCandidate,
+  type LinkNetworkPlan,
+  type PlannedLinkPlacement,
+  type PlannedLinkRole,
+  type RoomObjectWithPos
+} from "./link-network";
 
-export type PlannedLinkRole = "storage" | "controller" | "spawn" | "source";
-
-export interface PlannedLinkPlacement {
-  x: number;
-  y: number;
-  roomName: string;
-  role: PlannedLinkRole;
-  /** Source/controller/storage/spawn id when available. */
-  targetId?: string;
-  /** Higher means this placement should consume link capacity earlier. */
-  priority: number;
-}
-
-export interface LinkNetworkPlan {
-  roomName: string;
-  rcl: number;
-  linkLimit: number;
-  placements: PlannedLinkPlacement[];
-}
-
-interface LinkCandidate {
-  x: number;
-  y: number;
-  score: number;
-}
-
-interface RoomObjectWithPos {
-  id?: string;
-  pos: RoomPosition;
-}
-
-const LINK_MIN_RCL = 5;
-const CORE_LINK_PRIORITIES: Record<PlannedLinkRole, number> = {
-  controller: 400,
-  source: 300,
-  storage: 200,
-  spawn: 100
-};
+export type { LinkNetworkPlan, PlannedLinkPlacement, PlannedLinkRole } from "./link-network";
 
 /** Plan dynamic link positions for an owned room. */
 export function planLinkNetwork(room: Room): LinkNetworkPlan {
@@ -59,34 +39,12 @@ export function planLinkNetwork(room: Room): LinkNetworkPlan {
 
   const blocked = collectBlockedPositions(room);
   const used = new Set<string>();
-
-  const addPlacement = (
-    role: PlannedLinkRole,
-    target: RoomObjectWithPos | undefined,
-    minRange: number,
-    maxRange: number,
-    priority: number,
-    scoreTarget?: RoomObjectWithPos
-  ): void => {
-    if (!target || placements.length >= linkLimit) return;
-    const candidate = selectCandidate(room, target.pos, minRange, maxRange, blocked, used, scoreTarget?.pos);
-    if (!candidate) return;
-    const placement: PlannedLinkPlacement = {
-      x: candidate.x,
-      y: candidate.y,
-      roomName: room.name,
-      role,
-      targetId: target.id,
-      priority
-    };
-    placements.push(placement);
-    used.add(positionKey(candidate.x, candidate.y));
-  };
-
   const storage = room.storage;
   const controller = room.controller;
   const spawns = room.find(FIND_MY_SPAWNS);
   const primarySpawn = spawns[0];
+
+  const addPlacement = createPlacementAdder(room, placements, linkLimit, blocked, used);
 
   // A useful link network needs at least one receiver and one source-fed sender.
   // RCL5 has only two links, so prefer controller + farthest source over a
@@ -94,9 +52,7 @@ export function planLinkNetwork(room: Room): LinkNetworkPlan {
   addPlacement("controller", controller, 2, 2, CORE_LINK_PRIORITIES.controller, storage ?? primarySpawn);
 
   const reference = storage ?? controller;
-  const rankedSources = room.find(FIND_SOURCES)
-    .slice()
-    .sort((a, b) => getRange(b.pos, reference.pos) - getRange(a.pos, reference.pos));
+  const rankedSources = rankSourcesByDistanceFromReference(room, reference);
   const storageReserve = storage && rcl >= 6 ? 1 : 0;
   const spawnReserve = primarySpawn && rcl >= 8 ? 1 : 0;
   const sourceCapacity = Math.max(0, linkLimit - placements.length - storageReserve - spawnReserve);
@@ -121,8 +77,7 @@ export function planLinkNetwork(room: Room): LinkNetworkPlan {
 
 /** Return exact planned link role for a link position, if it is part of the dynamic plan. */
 export function getPlannedLinkRole(room: Room, pos: RoomPosition): PlannedLinkRole | undefined {
-  const key = positionKey(pos.x, pos.y);
-  return planLinkNetwork(room).placements.find(placement => positionKey(placement.x, placement.y) === key)?.role;
+  return findPlannedLinkRole(planLinkNetwork(room).placements, pos);
 }
 
 /** Position keys for planned links. Useful for cleanup protection. */
@@ -130,27 +85,16 @@ export function getPlannedLinkPositionKeys(room: Room): Set<string> {
   return new Set(planLinkNetwork(room).placements.map(placement => positionKey(placement.x, placement.y)));
 }
 
-/** Classify a link by functional range if it is not at an exact planned position. */
+/** Classify a link by exact plan first, then by functional range. */
 export function classifyFunctionalLink(room: Room, link: StructureLink): PlannedLinkRole | undefined {
-  const plannedRole = getPlannedLinkRole(room, link.pos);
-  if (plannedRole) return plannedRole;
-
-  // Match LinkManager receiver priority while keeping source links as senders.
-  if (room.controller && link.pos.getRangeTo(room.controller) <= 2) return "controller";
-  if (room.storage && link.pos.getRangeTo(room.storage) <= 2) return "storage";
-  if (room.find(FIND_MY_SPAWNS).some(spawn => link.pos.getRangeTo(spawn) <= 2)) return "spawn";
-  if (room.find(FIND_SOURCES).some(source => link.pos.getRangeTo(source) <= 2)) return "source";
-  return undefined;
+  return getPlannedLinkRole(room, link.pos) ?? classifyLinkByFunctionalRange(room, link);
 }
 
 /** Planned positions plus any existing functional links that should survive cleanup. */
 export function getProtectedLinkPositionKeys(room: Room): Set<string> {
   const protectedPositions = getPlannedLinkPositionKeys(room);
-  const links = room.find(FIND_MY_STRUCTURES, {
-    filter: structure => structure.structureType === STRUCTURE_LINK
-  }) as StructureLink[];
 
-  for (const link of links) {
+  for (const link of findBuiltLinks(room)) {
     if (classifyFunctionalLink(room, link)) {
       protectedPositions.add(positionKey(link.pos.x, link.pos.y));
     }
@@ -165,18 +109,12 @@ export function placeLinkConstructionSites(room: Room, maxSites = 1): number {
   if (plan.placements.length === 0 || maxSites <= 0) return 0;
 
   const existingSites = room.find(FIND_MY_CONSTRUCTION_SITES);
-
-  const existingLinks = room.find(FIND_MY_STRUCTURES, {
-    filter: structure => structure.structureType === STRUCTURE_LINK
-  }) as StructureLink[];
-  const linkSites = existingSites.filter(site => site.structureType === STRUCTURE_LINK);
+  const existingLinks = findBuiltLinks(room);
+  const linkSites = existingSites.filter(site => site.structureType === STRUCTURE_LINK) as Array<ConstructionSite<STRUCTURE_LINK>>;
   let linkCount = existingLinks.length + linkSites.length;
   let placed = 0;
 
-  const occupiedLinkKeys = new Set<string>([
-    ...existingLinks.map(link => positionKey(link.pos.x, link.pos.y)),
-    ...linkSites.map(site => positionKey(site.pos.x, site.pos.y))
-  ]);
+  const occupiedLinkKeys = collectOccupiedLinkPositions(existingLinks, linkSites);
 
   for (const placement of plan.placements) {
     if (placed >= maxSites || linkCount >= plan.linkLimit) break;
@@ -194,65 +132,40 @@ export function placeLinkConstructionSites(room: Room, maxSites = 1): number {
   return placed;
 }
 
-function collectBlockedPositions(room: Room): Set<string> {
-  const blocked = new Set<string>();
-  const structures = room.find(FIND_STRUCTURES);
-  for (const structure of structures) {
-    // Existing links are allowed because the planner should be able to recognize
-    // and preserve exact planned positions that are already built.
-    if (structure.structureType === STRUCTURE_LINK) continue;
-    blocked.add(positionKey(structure.pos.x, structure.pos.y));
-  }
-
-  for (const site of room.find(FIND_MY_CONSTRUCTION_SITES)) {
-    blocked.add(positionKey(site.pos.x, site.pos.y));
-  }
-
-  return blocked;
-}
-
-function selectCandidate(
+function createPlacementAdder(
   room: Room,
-  target: RoomPosition,
-  minRange: number,
-  maxRange: number,
+  placements: PlannedLinkPlacement[],
+  linkLimit: number,
   blocked: Set<string>,
-  used: Set<string>,
-  scoreTarget?: RoomPosition
-): LinkCandidate | undefined {
-  const candidates: LinkCandidate[] = [];
-  const terrain = room.getTerrain();
+  used: Set<string>
+) {
+  return (
+    role: PlannedLinkRole,
+    target: RoomObjectWithPos | undefined,
+    minRange: number,
+    maxRange: number,
+    priority: number,
+    scoreTarget?: RoomObjectWithPos
+  ): void => {
+    if (!target || placements.length >= linkLimit) return;
 
-  for (let x = target.x - maxRange; x <= target.x + maxRange; x += 1) {
-    for (let y = target.y - maxRange; y <= target.y + maxRange; y += 1) {
-      const range = Math.max(Math.abs(target.x - x), Math.abs(target.y - y));
-      if (range < minRange || range > maxRange) continue;
-      if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-      if (terrain.get(x, y) === TERRAIN_MASK_WALL) continue;
+    const candidate = selectCandidate(room, target.pos, minRange, maxRange, blocked, used, scoreTarget?.pos);
+    if (!candidate) return;
 
-      const key = positionKey(x, y);
-      if (blocked.has(key) || used.has(key)) continue;
-
-      const score = scoreTarget ? getRange({ x, y }, scoreTarget) : 0;
-      candidates.push({ x, y, score });
-    }
-  }
-
-  candidates.sort((a, b) => {
-    const scoreCompare = a.score - b.score;
-    if (scoreCompare !== 0) return scoreCompare;
-    const xCompare = a.x - b.x;
-    if (xCompare !== 0) return xCompare;
-    return a.y - b.y;
-  });
-
-  return candidates[0];
+    placements.push({
+      x: candidate.x,
+      y: candidate.y,
+      roomName: room.name,
+      role,
+      targetId: target.id,
+      priority
+    });
+    used.add(positionKey(candidate.x, candidate.y));
+  };
 }
 
-function getRange(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-}
-
-function positionKey(x: number, y: number): string {
-  return `${x},${y}`;
+function rankSourcesByDistanceFromReference(room: Room, reference: RoomObjectWithPos): Source[] {
+  return room.find(FIND_SOURCES)
+    .slice()
+    .sort((a, b) => getRange(b.pos, reference.pos) - getRange(a.pos, reference.pos));
 }

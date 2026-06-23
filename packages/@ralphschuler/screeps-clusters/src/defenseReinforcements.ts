@@ -33,7 +33,7 @@ export interface DefenseReinforcementIntent {
   family: "military";
   priority: number;
   targetRoom: string;
-  additionalMemory: Pick<SwarmCreepMemory, "assistTarget" | "task">;
+  additionalMemory: Pick<SwarmCreepMemory, "assistTarget" | "task" | "targetRoom" | "defenseSquadId" | "defenseSquadSize" | "defenseSquadCreatedAt">;
   threatProfile?: DefenseAssistThreatProfile | null;
 }
 
@@ -291,6 +291,22 @@ function getRequestedSquadSize(
   return Math.max(requestedNeed, calculateDefenseAssistSquadSize(role, bestHelperEnergy, threatProfile));
 }
 
+function createDefenseSquadId(helperRoom: string, targetRoom: string, now: number): string {
+  return `defenseAssist:${helperRoom}:${targetRoom}:${now}`;
+}
+
+function getLocalWaveSize(
+  request: DefenseAssistanceRequest,
+  helper: DefenseReinforcementRoomState,
+  threatProfile: DefenseAssistThreatProfile | null | undefined
+): number {
+  const roles = (["guard", "ranger", "healer"] as const).filter(role => {
+    if (getRequestNeed(request, role) <= 0) return false;
+    return Boolean(buildDefenseAssistBody(role, helper.energyCapacityAvailable, threatProfile));
+  });
+  return Math.max(1, Math.min(DEFAULT_MAX_NEW_SPAWNS_PER_HELPER_ROOM, roles.length));
+}
+
 /**
  * Build spawn intents for helper-room reinforcements without mutating Game or Memory.
  */
@@ -332,7 +348,11 @@ export function planDefenseReinforcementSpawns(input: DefenseReinforcementPlanIn
           targetRoom: request.roomName,
           additionalMemory: {
             assistTarget: request.roomName,
-            task: DEFENSE_ASSIST_TASK
+            targetRoom: request.roomName,
+            task: DEFENSE_ASSIST_TASK,
+            defenseSquadId: createDefenseSquadId(helper.roomName, request.roomName, input.now),
+            defenseSquadSize: getLocalWaveSize(request, helper, threatProfile),
+            defenseSquadCreatedAt: input.now
           },
           threatProfile
         });

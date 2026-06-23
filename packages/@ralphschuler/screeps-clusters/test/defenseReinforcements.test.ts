@@ -141,6 +141,15 @@ describe("defense reinforcements", () => {
       ["W2N1", "guard", "W1N1", "W1N1"],
       ["W2N1", "ranger", "W1N1", "W1N1"]
     ]);
+    for (const intent of intents) {
+      expect(intent.additionalMemory).to.include({
+        task: "defenseAssist",
+        targetRoom: "W1N1",
+        defenseSquadId: "defenseAssist:W2N1:W1N1:1234",
+        defenseSquadSize: 2,
+        defenseSquadCreatedAt: 1234
+      });
+    }
   });
 
   it("does not duplicate an already pending reinforcement for the same helper, role, and target", async () => {

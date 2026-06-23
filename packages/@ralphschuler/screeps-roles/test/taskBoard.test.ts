@@ -58,6 +58,25 @@ function makeSource(id: Id<Source>, x: number, y: number): Source {
   } as unknown as Source;
 }
 
+function makeHostile(id: Id<Creep>, x: number, y: number, username = "admon"): Creep {
+  const body = [
+    { type: RANGED_ATTACK, hits: 100 },
+    { type: HEAL, hits: 100 },
+    { type: MOVE, hits: 100 }
+  ];
+
+  return {
+    id,
+    name: `hostile-${id}`,
+    owner: { username },
+    hits: 5000,
+    hitsMax: 5000,
+    body,
+    pos: { x, y, roomName: "W1N1" },
+    getActiveBodyparts: (type: BodyPartConstant) => body.filter(part => part.type === type && part.hits > 0).length
+  } as unknown as Creep;
+}
+
 function makeContext(creep: Creep, room: Room): CreepContext {
   return {
     creep,
@@ -349,6 +368,64 @@ describe("TaskBoard", () => {
     const stopped = taskBoard.getAssignedDeliveryAction(makeContext(creep, room));
     expect(stopped?.type).to.equal("transfer");
     expect((stopped as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+  });
+
+  it("uses ranged attacks for ranged-only defenders assigned defend tasks", () => {
+    const hostile = makeHostile("hostile1" as Id<Creep>, 20, 20);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_HOSTILE_CREEPS ? [hostile] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === hostile.id ? hostile : null;
+
+    const ranger = createMockCreep("ranger1", {
+      room,
+      memory: { role: "ranger", family: "military", homeRoom: room.name, version: 1 },
+      body: [{ type: RANGED_ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+    });
+    MockGame.creeps[ranger.name] = ranger;
+
+    const action = taskBoard.getAssignedAction(makeContext(ranger, room));
+
+    expect(action?.type).to.equal("rangedAttack");
+    expect((action as Extract<CreepAction, { type: "rangedAttack" }>).target).to.equal(hostile);
+  });
+
+  it("keeps melee defenders on attack actions for defend tasks", () => {
+    const hostile = makeHostile("hostile1" as Id<Creep>, 20, 20);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_HOSTILE_CREEPS ? [hostile] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === hostile.id ? hostile : null;
+
+    const guard = createMockCreep("guard1", {
+      room,
+      memory: { role: "guard", family: "military", homeRoom: room.name, version: 1 },
+      body: [{ type: ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+    });
+    MockGame.creeps[guard.name] = guard;
+
+    const action = taskBoard.getAssignedAction(makeContext(guard, room));
+
+    expect(action?.type).to.equal("attack");
+    expect((action as Extract<CreepAction, { type: "attack" }>).target).to.equal(hostile);
+  });
+
+  it("does not create defend assignments for permanent allies", () => {
+    const ally = makeHostile("ally1" as Id<Creep>, 20, 20, "TooAngel");
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_HOSTILE_CREEPS ? [ally] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === ally.id ? ally : null;
+
+    const ranger = createMockCreep("ranger1", {
+      room,
+      memory: { role: "ranger", family: "military", homeRoom: room.name, version: 1 },
+      body: [{ type: RANGED_ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+    });
+    MockGame.creeps[ranger.name] = ranger;
+
+    expect(taskBoard.getAssignedAction(makeContext(ranger, room))).to.equal(null);
+    expect(taskBoard.getStats(room.name)).to.include({ open: 0, assigned: 0, reservations: 0 });
   });
 
   it("can be disabled as rollback", () => {

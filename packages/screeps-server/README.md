@@ -88,7 +88,7 @@ npm run server:ci:down
 - `Memory.creepTaskBoard` exists and records room task boards
 - room/empire memory schemas and numeric pheromone channels
 - unified stats and spawn queue telemetry
-- default, construction, remote-mining, defense-hostile, and alliance-safety scenario assertions
+- default, construction, remote-mining, defense-hostile, defense-hard-invader, and alliance-safety scenario assertions
 - permanent allies (`TooAngel`, `TedRoastBeef`) are never treated as war targets
 - critical console error counter below threshold
 

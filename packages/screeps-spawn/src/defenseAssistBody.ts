@@ -38,6 +38,11 @@ const PART_SIZE_SCORE = 2;
 const HEAL_COVERAGE_RATIO = 0.5;
 const MAX_DEFENSE_ASSIST_SQUAD_SIZE = 8;
 const MAX_AGGREGATE_DEFENSE_RESPONSE_SIZE = 12;
+const HARD_THREAT_PART_THRESHOLD = 25;
+const HARD_THREAT_SCORE_THRESHOLD = 250;
+const HARD_THREAT_MIN_COMBAT_BODY_PARTS = 6;
+const HARD_THREAT_MIN_HEALER_BODY_PARTS = 4;
+const HARD_THREAT_MIN_COMBAT_PARTS = 2;
 
 function getPartType(part: BodyPartConstant | BodyPartDefinition): BodyPartConstant {
   return typeof part === "string" ? part : part.type;
@@ -228,6 +233,19 @@ function compareByPowerThenCost(a: BodyTemplate, b: BodyTemplate): number {
   return b.cost - a.cost;
 }
 
+function isHardThreat(threat: CombatPower | null | undefined): boolean {
+  return Boolean(
+    threat &&
+      (threat.partCount >= HARD_THREAT_PART_THRESHOLD || threat.score >= HARD_THREAT_SCORE_THRESHOLD)
+  );
+}
+
+function hasHardThreatBodyFloor(role: DefenseAssistRole, parts: BodyPartConstant[]): boolean {
+  const combatParts = parts.filter(part => part === ATTACK || part === RANGED_ATTACK || part === HEAL || part === WORK).length;
+  const minParts = role === "healer" ? HARD_THREAT_MIN_HEALER_BODY_PARTS : HARD_THREAT_MIN_COMBAT_BODY_PARTS;
+  return parts.length >= minParts && combatParts >= HARD_THREAT_MIN_COMBAT_PARTS;
+}
+
 /**
  * Build a defense-assist body that outclasses the strongest visible attacker when affordable.
  * If no single affordable body can do that, return the strongest body; callers can request a squad.
@@ -242,11 +260,17 @@ export function buildDefenseAssistBody(
 
   const strongestThreat = threatProfile?.strongest;
   if (strongestThreat && strongestThreat.score > 0) {
-    const outmatching = candidates
+    const viableCandidates = isHardThreat(strongestThreat)
+      ? candidates.filter(candidate => hasHardThreatBodyFloor(role, candidate.parts))
+      : candidates;
+    if (viableCandidates.length === 0) return null;
+
+    const outmatching = viableCandidates
       .filter(candidate => isDefenseAssistBodyStrongerThanThreat(candidate.parts, strongestThreat))
       .sort((a, b) => a.cost - b.cost || compareByPowerThenCost(a, b));
 
     if (outmatching.length > 0) return outmatching[0]!;
+    return [...viableCandidates].sort(compareByPowerThenCost)[0] ?? null;
   }
 
   return [...candidates].sort(compareByPowerThenCost)[0] ?? null;

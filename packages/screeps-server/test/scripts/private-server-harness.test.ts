@@ -45,6 +45,7 @@ describe("private-server harness module", () => {
       "construction-economy",
       "remote-mining",
       "defense-hostile",
+      "defense-hard-invader",
       "alliance-safety",
     ]);
     expect(options.artifactsDir).to.match(
@@ -171,6 +172,7 @@ describe("private-server harness module", () => {
         "construction-economy",
         "remote-mining",
         "defense-hostile",
+        "defense-hard-invader",
         "alliance-safety",
       ],
       finishedAt: null,
@@ -497,13 +499,14 @@ describe("private-server harness module", () => {
   });
 
   it("builds a runtime scenario seed command for private-server smoke coverage", () => {
-    const options = parseHarnessArgs(["--room=E1N1", "--scenarios=construction-economy,defense-hostile,alliance-safety,link-network,terminal-market-lab-economy"], {});
+    const options = parseHarnessArgs(["--room=E1N1", "--scenarios=construction-economy,defense-hostile,defense-hard-invader,alliance-safety,link-network,terminal-market-lab-economy"], {});
     const command = buildSeedRuntimeScenariosCommand(options);
 
     expect(command).to.include('const requestedRoom="E1N1"');
-    expect(command).to.include('const scenarios=["construction-economy","defense-hostile","alliance-safety","link-network","terminal-market-lab-economy"]');
+    expect(command).to.include('const scenarios=["construction-economy","defense-hostile","defense-hard-invader","alliance-safety","link-network","terminal-market-lab-economy"]');
     expect(command).to.include("type:'constructionSite'");
     expect(command).to.include("ScenarioEnemyAttacker");
+    expect(command).to.include("ScenarioHardInvader");
     expect(command).to.include("TooAngelScenarioAlly");
     expect(command).to.include("hasScenario('link-network')");
     expect(command).to.include("type:'storage'");
@@ -521,6 +524,16 @@ describe("private-server harness module", () => {
 
     expect(command).to.include("const defenseRoom=homeRoom;");
     expect(command).to.not.include("const defenseRoom=hasScenario('remote-mining')?remoteRoom:homeRoom;");
+  });
+
+  it("seeds the hard invader scenario with enough room capacity for real defender bodies", () => {
+    const options = parseHarnessArgs(["--room=E1N1", "--scenarios=defense-hard-invader"], {});
+    const command = buildSeedRuntimeScenariosCommand(options);
+
+    expect(command).to.include("ScenarioHardInvader");
+    expect(command).to.include("type:'extension'");
+    expect(command).to.include("level:4");
+    expect(command).to.include("hardInvader:hasScenario('defense-hard-invader')?{room:homeRoom,bodyParts:50}:undefined");
   });
 
   it("fails the run when screepsmod-testing reports failed tests", () => {

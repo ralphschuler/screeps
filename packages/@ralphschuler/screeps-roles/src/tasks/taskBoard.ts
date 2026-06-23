@@ -483,7 +483,17 @@ function getTaskDistance(creep: Creep, task: CreepTask): number {
   return 50;
 }
 
-function convertTaskToAction(task: CreepTask): CreepAction | null {
+function createDefendAction(ctx: CreepContext, target: Creep | Structure): CreepAction | null {
+  const hasMelee = ctx.creep.getActiveBodyparts(ATTACK) > 0;
+  const hasRanged = ctx.creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+
+  if (ctx.memory.role === "ranger" && hasRanged) return { type: "rangedAttack", target };
+  if (hasMelee) return { type: "attack", target };
+  if (hasRanged) return { type: "rangedAttack", target };
+  return null;
+}
+
+function convertTaskToAction(task: CreepTask, ctx: CreepContext): CreepAction | null {
   if (!task.targetId) return null;
   const target = Game.getObjectById(task.targetId);
   if (!target) return null;
@@ -504,7 +514,7 @@ function convertTaskToAction(task: CreepTask): CreepAction | null {
     case "heal":
       return { type: "heal", target: target as Creep };
     case "defend":
-      return { type: "attack", target: target as Creep | Structure };
+      return createDefendAction(ctx, target as Creep | Structure);
     default:
       return null;
   }
@@ -527,7 +537,7 @@ export class TaskBoard {
 
     const task = assignTask(board, ctx, { allowedTypes });
     if (!task) return null;
-    return convertTaskToAction(task);
+    return convertTaskToAction(task, ctx);
   }
 
   public getAssignedDeliveryAction(ctx: CreepContext): CreepAction | null {
@@ -543,7 +553,7 @@ export class TaskBoard {
     });
     if (!task) return null;
 
-    const action = convertTaskToAction(task);
+    const action = convertTaskToAction(task, ctx);
     if (action?.type === "transfer") return action;
     return null;
   }

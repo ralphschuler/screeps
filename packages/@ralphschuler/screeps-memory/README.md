@@ -54,6 +54,16 @@ Creep roles, memory structures, and squad definitions.
 ### Utility Schemas
 Visualization configuration and helper functions.
 
+## Heap Cache Contract
+
+`HeapCacheManager` is the package's write-ahead cache for values that need fast same-global reads plus optional Memory persistence after resets.
+
+- `set(key, value, ttl)` writes to heap immediately and marks the entry dirty for the next `persist()` call.
+- `ttl` is measured in game ticks; entries expire only after the full TTL has elapsed.
+- `INFINITE_TTL` entries never expire during `get()`, `rehydrateFromMemory()`, or `cleanExpired()`.
+- Keys prefixed with `memory:` are heap-only references and are intentionally not persisted back into `Memory._heapCache`.
+- `src/heap-cache/entries.ts` owns entry conversion and TTL checks so public cache operations stay small and consistent.
+
 ## Design Principles
 
 Following the swarm architecture principles from ROADMAP.md:

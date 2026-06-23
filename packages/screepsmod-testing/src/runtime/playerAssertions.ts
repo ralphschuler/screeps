@@ -164,14 +164,27 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
       if (owner) ownedUsers[owner] = true;
     });
     var hasOwnedUsers = Object.keys(ownedUsers).length > 0;
-    return values(game.creeps || {}).filter(function(creep) {
+    var creepMemory = memory.creeps || {};
+    var hasCreepMemory = Object.keys(creepMemory).length > 0;
+    var gameCreeps = game.creeps || {};
+    return Object.keys(gameCreeps).map(function(name) { return { name: name, creep: gameCreeps[name] }; }).filter(function(entry) {
+      var creep = entry.creep;
       if (!creep) return false;
       if (creep.my === false) return false;
+      var creepName = creep.name || entry.name;
+      if (hasCreepMemory) {
+        var storedMemory = creepName && creepMemory[creepName];
+        if (!storedMemory) return false;
+        if (typeof storedMemory.role !== 'string') {
+          var botManagedShape = Boolean(storedMemory.version || storedMemory.family || storedMemory.homeRoom || storedMemory.task || storedMemory.targetRoom || storedMemory.assignedRoom || storedMemory.sourceId);
+          if (!botManagedShape) return false;
+        }
+      }
       var owner = creep.owner && creep.owner.username;
       if (owner && hasOwnedUsers) return ownedUsers[owner] === true;
       if (owner) return creep.my === true;
       return creep.my === true || (creep.memory && typeof creep.memory === 'object' && Object.keys(creep.memory).length > 0);
-    });
+    }).map(function(entry) { return entry.creep; });
   }
   function hasBuilderRole() {
     return values(memory.creeps || {}).some(function(creepMemory) {
@@ -333,6 +346,9 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   }
   if (hasScenario('defense-hostile')) {
     runtimeAssertAfter(1200, 'defense scenario emits defensive runtime signal', ['scenario','defense-hostile'], hasDefenseSignal, 'defense scenario has no danger, defense task, or defense request signal');
+  }
+  if (hasScenario('defense-hard-invader')) {
+    runtimeAssertAfter(1200, 'hard invader scenario emits defensive runtime signal', ['scenario','defense-hard-invader'], hasDefenseSignal, 'hard invader scenario has no danger, defense task, or defense request signal');
   }
   if (hasScenario('alliance-safety')) {
     runtimeAssert('alliance scenario keeps permanent allies untargeted', ['scenario','alliance-safety'], function() {

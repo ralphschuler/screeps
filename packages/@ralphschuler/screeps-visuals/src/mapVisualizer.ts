@@ -12,6 +12,13 @@
  */
 
 import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-core";
+import {
+  calculateMapThreatLevel,
+  classifyHighwayRoom,
+  getDangerColor,
+  getMapThreatColor,
+  getPostureColor
+} from "./map-visualizer/rules";
 import type { MemoryManager } from "./types";
 
 /**
@@ -42,19 +49,6 @@ const DEFAULT_CONFIG: MapVisualizerConfig = {
   showResourceFlow: false,
   showHighways: false,
   opacity: 0.6
-};
-
-/**
- * Color schemes for room status
- */
-const DANGER_COLORS = ["#00ff00", "#ffff00", "#ff8800", "#ff0000"];
-const POSTURE_COLORS: Record<string, string> = {
-  eco: "#00ff00",
-  expand: "#00ffff",
-  defense: "#ffff00",
-  war: "#ff8800",
-  siege: "#ff0000",
-  evacuate: "#ff00ff"
 };
 
 /**
@@ -154,9 +148,8 @@ export class MapVisualizer {
       const swarm = this.memoryManager?.getOrInitSwarmState(room.name);
       const rcl = room.controller.level;
       
-      // Color based on danger level (bounds-checked)
-      const dangerIndex = swarm?.danger ? Math.min(Math.max(swarm.danger, 0), 3) : 0;
-      const color = DANGER_COLORS[dangerIndex] ?? "#ffffff";
+      // Color based on danger level (bounds-checked by pure rule)
+      const color = getDangerColor(swarm?.danger);
       
       // Draw circle indicator
       const circleStyle: CircleStyle = {
@@ -177,8 +170,9 @@ export class MapVisualizer {
 
       // Draw posture indicator
       if (swarm && swarm.posture && swarm.posture !== "eco") {
-        const postureColor = POSTURE_COLORS[swarm.posture as keyof typeof POSTURE_COLORS] ?? "#ffffff";
-        visual.text((swarm.posture as string).toUpperCase(), new RoomPosition(25, 30, room.name), {
+        const posture = swarm.posture as string;
+        const postureColor = getPostureColor(posture);
+        visual.text(posture.toUpperCase(), new RoomPosition(25, 30, room.name), {
           color: postureColor,
           fontSize: 6,
           align: "center"
@@ -256,8 +250,8 @@ export class MapVisualizer {
       const hostileStructures = getActualHostileStructures(room);
 
       if (hostiles.length > 0 || hostileStructures.length > 0) {
-        const threatLevel = hostiles.length + hostileStructures.length * 2;
-        const color = threatLevel > 10 ? "#ff0000" : "#ff8800";
+        const threatLevel = calculateMapThreatLevel(hostiles.length, hostileStructures.length);
+        const color = getMapThreatColor(threatLevel);
 
         // Draw threat indicator
         visual.rect(new RoomPosition(20, 20, room.name), 10, 10, {
@@ -365,22 +359,17 @@ export class MapVisualizer {
    */
   private drawHighways(visual: MapVisual): void {
     for (const room of Object.values(Game.rooms)) {
-      // Check if room is a highway (rooms with 0 in coordinates)
-      const match = room.name.match(/[WE](\d+)[NS](\d+)/);
-      if (!match) continue;
+      const highway = classifyHighwayRoom(room.name);
 
-      const x = parseInt(match[1], 10);
-      const y = parseInt(match[2], 10);
-
-      if (x % 10 === 0 || y % 10 === 0) {
+      if (highway.isHighway) {
         // This is a highway room
         visual.rect(new RoomPosition(0, 0, room.name), 50, 50, {
           fill: "#444444",
           opacity: this.config.opacity * 0.2
         });
 
-        // Mark SK rooms (highways with both coords divisible by 10)
-        if (x % 10 === 0 && y % 10 === 0) {
+        // Preserve the legacy SK marker rule for 10-by-10 highway crossings.
+        if (highway.showSourceKeeperLabel) {
           visual.text("SK", new RoomPosition(25, 25, room.name), {
             color: "#ff8800",
             fontSize: 12,

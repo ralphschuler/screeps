@@ -140,6 +140,19 @@ describe("roadNetworkPlanner", () => {
     expect(second.positions.has("35,35")).to.equal(true);
   });
 
+  it("keeps full remote-road paths when a remote is not directly adjacent", async () => {
+    const searchCalls = { count: 0 };
+    installGlobals(searchCalls);
+    const { calculateRemoteRoads, clearAllRoadNetworkCaches } = await import("../src/roadNetworkPlanner.ts");
+    clearAllRoadNetworkCaches();
+    const room = createRoom(() => []);
+
+    const roadsByRoom = calculateRemoteRoads(room, ["E1N0"]);
+
+    expect(roadsByRoom.get("W0N0")?.has("25,25")).to.equal(true);
+    expect(roadsByRoom.get("E1N0")?.has("25,25")).to.equal(true);
+  });
+
   it("clears cached valid road positions with clearRoadNetworkCache", async () => {
     const searchCalls = { count: 0 };
     installGlobals(searchCalls);

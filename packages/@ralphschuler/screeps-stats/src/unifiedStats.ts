@@ -25,13 +25,13 @@
 import { logger, memoryManager, EvolutionStage, RoomPosture, shardManager, getRoomFindCacheStats, getBodyPartCacheStats, getObjectCacheStats, getPathCacheStats, getRoleCacheStats, globalCache, getActualHostileCreeps } from "./interfaces";
 import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
 import { pathfindingMetrics } from "./pathfindingMetrics";
+import { formatAnomalyDetails, formatBudgetAlertDetails } from "./unified-stats/alertFormatting";
 import type {
   UnifiedStatsConfig,
   EmpireStats,
   RoomStatsEntry,
   NativeCallStats,
   CPUAnomaly,
-  CPUBudgetAlert,
   CPUBudgetReport,
   StatsSnapshot,
   ProfilerMemory,
@@ -69,7 +69,6 @@ const DEFAULT_CONFIG: UnifiedStatsConfig = {
 const BUDGET_THRESHOLD_EPSILON = 1e-9;
 const CONTROLLER_DOWNGRADE_RISK_TICKS = 5000;
 const CPU_ALERT_LOG_INTERVAL = 50;
-const CPU_ALERT_DETAIL_LIMIT = 5;
 const DEFAULT_CPU_DETAIL_TTL = 500;
 const DEFAULT_CPU_DETAIL_SAMPLE_RATE = 1;
 
@@ -161,9 +160,9 @@ export class UnifiedStatsManager {
     RawMemory.setActiveSegments([this.config.segmentId]);
     this.segmentRequested = true;
 
-    // BUGFIX: Preserve room stats across ticks for distributed room execution
-    // Room processes run every 5 ticks (eco rooms) but stats export every tick
-    // Solution: Keep previous room stats, update only when rooms execute
+    // Preserve room stats across ticks for distributed room execution.
+    // Room processes can run every 5 ticks while stats export every tick, so
+    // keep previous room stats and update each room only when its process runs.
     const previousRoomStats = this.preserveRoomStats();
     
     this.currentSnapshot = this.createEmptySnapshot();
@@ -256,7 +255,7 @@ export class UnifiedStatsManager {
       
       if (criticalAlerts.length > 0) {
         logger.error(
-          `CPU Budget: ${criticalAlerts.length} critical violations detected - ${this.formatBudgetAlertDetails(criticalAlerts)}`,
+          `CPU Budget: ${criticalAlerts.length} critical violations detected - ${formatBudgetAlertDetails(criticalAlerts, { processes: this.currentSnapshot.processes })}`,
           {
             subsystem: "CPUBudget"
           }
@@ -265,7 +264,7 @@ export class UnifiedStatsManager {
       
       if (warningAlerts.length > 0) {
         logger.warn(
-          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit) - ${this.formatBudgetAlertDetails(warningAlerts, false)}`,
+          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit) - ${formatBudgetAlertDetails(warningAlerts, { includeCpuUsage: false, processes: this.currentSnapshot.processes })}`,
           {
             subsystem: "CPUBudget"
           }
@@ -280,7 +279,7 @@ export class UnifiedStatsManager {
     // its own CPU/console problem and obscures the highest-value diagnostics.
     if (anomalies.length > 0 && this.shouldLogCpuAlert(this.lastAnomalyLogTick)) {
       logger.warn(
-        `CPU Anomalies: ${anomalies.length} detected - ${this.formatAnomalyDetails(anomalies)}`,
+        `CPU Anomalies: ${anomalies.length} detected - ${formatAnomalyDetails(anomalies)}`,
         {
           subsystem: "CPUProfiler"
         }
@@ -956,7 +955,7 @@ export class UnifiedStatsManager {
    * Validate CPU budgets for all rooms and generate alerts
    * Returns a report with budget status and any violations
    * 
-   * BUGFIX: Accounts for distributed execution (tickModulo) when validating budgets.
+   * Accounts for distributed execution (`tickModulo`) when validating budgets.
    * Rooms that run every N ticks should use ≤ (budget * N) CPU per execution.
    * For example: eco room with tickModulo=5 can use up to 0.1 * 5 = 0.5 CPU per execution.
    */
@@ -978,8 +977,8 @@ export class UnifiedStatsManager {
       const isWarRoom = this.isWarRoom(roomName);
       const baseBudgetLimit = isWarRoom ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom;
       
-      // BUGFIX: Adjust budget for distributed execution
-      // Room processes are registered as "room:ROOMNAME" in the kernel
+      // Adjust budget for distributed execution.
+      // Room processes are registered as "room:ROOMNAME" in the kernel.
       const processId = `room:${roomName}`;
       const roomProcess = this.currentSnapshot.processes[processId];
       
@@ -1137,43 +1136,6 @@ export class UnifiedStatsManager {
     return !Number.isFinite(lastLogTick) || Game.time - lastLogTick >= CPU_ALERT_LOG_INTERVAL;
   }
 
-  private formatBudgetAlertDetails(alerts: CPUBudgetAlert[], includeCpuUsage = true): string {
-    const details = [...alerts]
-      .sort((a, b) => b.percentUsed - a.percentUsed)
-      .slice(0, CPU_ALERT_DETAIL_LIMIT)
-      .map(a => {
-        const processId = `room:${a.target}`;
-        const process = this.currentSnapshot.processes[processId];
-        const modulo = process?.tickModulo ?? 1;
-        const moduloInfo = modulo > 1 ? ` [runs every ${modulo} ticks]` : "";
-        const percent = `${(a.percentUsed * 100).toFixed(1)}%`;
-        if (!includeCpuUsage) {
-          return `${a.target}: ${percent}${moduloInfo}`;
-        }
-        return `${a.target}: ${percent} (${a.cpuUsed.toFixed(3)}/${a.budgetLimit.toFixed(3)} CPU)${moduloInfo}`;
-      });
-
-    return this.appendOmittedDetails(details, alerts.length);
-  }
-
-  private formatAnomalyDetails(anomalies: CPUAnomaly[]): string {
-    const details = [...anomalies]
-      .sort((a, b) => b.multiplier - a.multiplier)
-      .slice(0, CPU_ALERT_DETAIL_LIMIT)
-      .map(a =>
-        `${a.target} (${a.type}): ${a.current.toFixed(3)} CPU (${a.multiplier.toFixed(1)}x baseline)${a.context ? ` - ${a.context}` : ""}`
-      );
-
-    return this.appendOmittedDetails(details, anomalies.length);
-  }
-
-  private appendOmittedDetails(details: string[], total: number): string {
-    const omitted = total - details.length;
-    if (omitted > 0) {
-      details.push(`... ${omitted} more omitted`);
-    }
-    return details.join(", ");
-  }
 
   private createEmptySnapshot(): StatsSnapshot {
     return {
@@ -1417,7 +1379,7 @@ export class UnifiedStatsManager {
           }
         }
 
-        // BUGFIX: Calculate per-creep average CPU, not total CPU for all creeps
+        // Calculate per-creep average CPU, not total CPU for all creeps.
         // measurements.length = number of creeps that executed this tick
         // totalCpu = sum of CPU used by all creeps that executed
         // avgCpuPerCreep = average CPU per creep that executed

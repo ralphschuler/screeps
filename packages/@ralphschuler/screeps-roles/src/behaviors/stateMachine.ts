@@ -60,6 +60,10 @@ const DEFAULT_STATE_TIMEOUT = 25;
  */
 const DEPOSIT_COOLDOWN_THRESHOLD = 100;
 
+function isExitPosition(pos: RoomPosition): boolean {
+  return pos.x === 0 || pos.x === 49 || pos.y === 0 || pos.y === 49;
+}
+
 /**
  * Type guard to check if an object has hits (is a Structure).
  */
@@ -71,6 +75,14 @@ interface StateValidityResult {
   valid: boolean;
   reason?: string;
   meta?: Record<string, unknown>;
+}
+
+export interface StateMachineOptions {
+  /**
+   * Optional safety hook that can preempt a committed state before normal
+   * completion checks. Keep this cheap and side-effect-free.
+   */
+  interrupt?: (ctx: CreepContext, currentState: CreepState) => CreepAction | null | undefined;
 }
 
 /**
@@ -224,11 +236,13 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
 
     case "moveToRoom":
     case "remoteMoveToRoom":
-      // Movement complete when in target room
+      // Movement complete when in target room and safely off exit tiles.
+      // Completing on an exit can make the next behavior tick bounce the creep
+      // straight back across the room boundary.
       // Uses state.targetRoom which is the temporary movement destination.
       // For remote creeps, memory.targetRoom is the permanent assignment (e.g., remote room)
       // while state.targetRoom might be different (e.g., home room when delivering resources).
-      return state.targetRoom !== undefined && ctx.room.name === state.targetRoom;
+      return state.targetRoom !== undefined && ctx.room.name === state.targetRoom && !isExitPosition(ctx.creep.pos);
 
     case "moveTo":
     case "remoteMoveTo":
@@ -423,13 +437,47 @@ function stateToAction(state: CreepState): CreepAction | null {
   }
 }
 
+function commitNewAction(ctx: CreepContext, newAction: CreepAction, logMessage: string): CreepAction {
+  // Safety check - if behavior returns null/undefined, default to idle.
+  if (!newAction || !newAction.type) {
+    logger.warn("Behavior returned invalid action, defaulting to idle", {
+      room: ctx.creep.pos.roomName,
+      creep: ctx.creep.name,
+      meta: { role: ctx.memory.role }
+    });
+    return { type: "idle" };
+  }
+
+  if (newAction.type !== "idle") {
+    ctx.memory.state = actionToState(newAction, ctx);
+    logger.info(logMessage, {
+      room: ctx.creep.pos.roomName,
+      creep: ctx.creep.name,
+      meta: {
+        action: newAction.type,
+        role: ctx.memory.role,
+        targetId: ctx.memory.state?.targetId
+      }
+    });
+  } else {
+    logger.info("Behavior returned idle action", {
+      room: ctx.creep.pos.roomName,
+      creep: ctx.creep.name,
+      meta: { role: ctx.memory.role }
+    });
+  }
+
+  return newAction;
+}
+
 /**
  * Evaluate behavior with state machine logic.
  * 
  * If creep has a valid ongoing state, continue that action.
  * Otherwise, evaluate new behavior and commit to it.
  * 
- * REFACTORED: Added safety checks to prevent infinite loops
+ * Invalid or completed memory state is cleared before re-evaluating behavior so
+ * creeps do not repeat stale actions indefinitely.
  * 
  * @param ctx Creep context
  * @param behaviorFn Behavior function to call when evaluating new action
@@ -437,10 +485,17 @@ function stateToAction(state: CreepState): CreepAction | null {
  */
 export function evaluateWithStateMachine(
   ctx: CreepContext,
-  behaviorFn: (ctx: CreepContext) => CreepAction
+  behaviorFn: (ctx: CreepContext) => CreepAction,
+  options: StateMachineOptions = {}
 ): CreepAction {
 
   const currentState = ctx.memory.state;
+
+  const interruptAction = currentState ? options.interrupt?.(ctx, currentState) : null;
+  if (interruptAction) {
+    delete ctx.memory.state;
+    return commitNewAction(ctx, interruptAction, "State interrupted, committed safety action");
+  }
 
   // Check if we have a valid ongoing state
   const validity = getStateValidity(currentState, ctx);
@@ -487,39 +542,5 @@ export function evaluateWithStateMachine(
   }
 
   // No valid state - evaluate new action
-  const newAction = behaviorFn(ctx);
-
-  // REFACTORED: Safety check - if behavior returns null/undefined, default to idle
-  // This prevents crashes if behavior functions have bugs
-  if (!newAction || !newAction.type) {
-    logger.warn("Behavior returned invalid action, defaulting to idle", {
-      room: ctx.creep.pos.roomName,
-      creep: ctx.creep.name,
-      meta: { role: ctx.memory.role }
-    });
-    return { type: "idle" };
-  }
-
-  // Don't store state for idle actions (they complete immediately)
-  if (newAction.type !== "idle") {
-    // Commit to this new action
-    ctx.memory.state = actionToState(newAction, ctx);
-    logger.info("Committed new state action", {
-      room: ctx.creep.pos.roomName,
-      creep: ctx.creep.name,
-      meta: {
-        action: newAction.type,
-        role: ctx.memory.role,
-        targetId: ctx.memory.state?.targetId
-      }
-    });
-  } else {
-    logger.info("Behavior returned idle action", {
-      room: ctx.creep.pos.roomName,
-      creep: ctx.creep.name,
-      meta: { role: ctx.memory.role }
-    });
-  }
-
-  return newAction;
+  return commitNewAction(ctx, behaviorFn(ctx), "Committed new state action");
 }

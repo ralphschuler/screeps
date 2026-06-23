@@ -685,13 +685,29 @@ export class ClusterManager {
 
       const needed = request.guardsNeeded + request.rangersNeeded + request.healersNeeded;
       const toAssign = Math.min(needed, availableDefenders.length);
+      const selectedDefenders = availableDefenders.slice(0, toAssign);
+      const selectedByRoom = selectedDefenders.reduce((counts, defender) => {
+        counts.set(defender.room.name, (counts.get(defender.room.name) ?? 0) + 1);
+        return counts;
+      }, new Map<string, number>());
 
-      for (let i = 0; i < toAssign; i++) {
-        const defender = availableDefenders[i];
-        if (!defender) continue;
-
-        const creepMem = defender.creep.memory as { assistTarget?: string; role?: string };
+      for (const defender of selectedDefenders) {
+        const creepMem = defender.creep.memory as {
+          assistTarget?: string;
+          targetRoom?: string;
+          task?: string;
+          role?: string;
+          defenseSquadId?: string;
+          defenseSquadSize?: number;
+          defenseSquadCreatedAt?: number;
+        };
+        const localSquadSize = Math.max(1, Math.min(3, selectedByRoom.get(defender.room.name) ?? 1));
         creepMem.assistTarget = request.roomName;
+        creepMem.targetRoom = request.roomName;
+        creepMem.task = "defenseAssist";
+        creepMem.defenseSquadId = `defenseAssist:${defender.room.name}:${request.roomName}:${Game.time}`;
+        creepMem.defenseSquadSize = localSquadSize;
+        creepMem.defenseSquadCreatedAt = Game.time;
         request.assignedCreeps.push(defender.creep.name);
 
         logger.info(

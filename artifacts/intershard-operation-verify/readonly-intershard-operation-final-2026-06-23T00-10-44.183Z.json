@@ -1,0 +1,94 @@
+{
+  "at": "2026-06-23T00:10:44.183Z",
+  "op": {
+    "enabled": true,
+    "targetShards": [
+      "shard0",
+      "shard1",
+      "shard2",
+      "shard3",
+      "shardX"
+    ],
+    "launchedAt": 71855433,
+    "cpuFloors": {
+      "shard0": 5,
+      "shard1": 20,
+      "shard2": 5,
+      "shard3": 10,
+      "shardX": 5
+    },
+    "lastRun": 71855617
+  },
+  "cpu": {
+    "used": 34.24573940000005,
+    "limit": 50,
+    "bucket": 10000,
+    "percent": 68.49276320000035,
+    "heap_mb": 95.43743896484375
+  },
+  "empire": {
+    "rooms": 4,
+    "creeps": 64,
+    "power_creeps": {
+      "total": 0,
+      "spawned": 0,
+      "eco": 0,
+      "combat": 0
+    },
+    "energy": {
+      "storage": 622065,
+      "terminal": 0,
+      "available": 2490,
+      "capacity": 4850
+    },
+    "credits": 5218.225,
+    "skipped_processes": 28
+  },
+  "interShardCreeps": {
+    "interShardScout_71855449_b8bmuwiqm": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetShard": "shard0",
+      "targetRoom": "W20S20",
+      "portalRoom": "W20S20",
+      "task": "interShardFootprint",
+      "workflowState": "movingToPortal",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71855608,
+        "timeout": 25,
+        "targetRoom": "W20S20"
+      }
+    },
+    "interShardScout_71855452_450w2ubu5": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetShard": "shard2",
+      "targetRoom": "W20S20",
+      "portalRoom": "W20S20",
+      "task": "interShardFootprint",
+      "workflowState": "movingToPortal",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71855611,
+        "timeout": 25,
+        "targetRoom": "W20S20"
+      }
+    },
+    "interShardScout_71855455_ukeexmb0o": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetShard": "shardX",
+      "targetRoom": "W20S20",
+      "portalRoom": "W20S20",
+      "task": "interShardFootprint",
+      "workflowState": "movingToPortal",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71855614,
+        "timeout": 25,
+        "targetRoom": "W20S20"
+      }
+    }
+  }
+}

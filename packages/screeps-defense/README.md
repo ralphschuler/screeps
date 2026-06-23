@@ -7,7 +7,8 @@ Defense subsystem for Screeps bot - comprehensive threat assessment, tower contr
 ### Threat Assessment
 - **Composite Threat Scoring**: Analyzes hostile creeps based on body composition, boosts, and capabilities
 - **Danger Levels**: 4-tier danger scale (0-3) aligned with ROADMAP Section 12
-- **DPS Calculation**: Accurate damage estimation considering attack and ranged attack parts
+- **DPS Calculation**: Estimates attack, ranged attack, and active WORK dismantle pressure
+- **Alliance Safety Filter**: Removes TooAngel and TedRoastBeef entities before scoring per ROADMAP Section 25
 - **Role Classification**: Identifies healers, ranged attackers, melee attackers, and dismantlers
 - **Tower Effectiveness**: Calculates actual tower damage with range falloff
 - **Recommended Response**: Suggests defense strategy (monitor, defend, assist, retreat, safemode)
@@ -174,17 +175,19 @@ interface ThreatAnalysis {
 ```
 
 **Threat Score Calculation**:
-- Base score from offensive parts (attack/ranged attack): +10 per part
+- Permanent allies are filtered before scoring; allied creeps never count as hostile pressure
+- Base score from offensive parts (attack/ranged attack): +10 per active part
 - Boosted creeps: +200
 - Healers: +100 (make attacks much harder)
-- Dismantlers (5+ work parts): +150 (threaten structures)
+- Active WORK parts: `max(100, WORK * DISMANTLE_POWER * 2)` when dismantle scoring is enabled
+- Rollback: set `Memory.defenseSettings.workPartThreatScoring = false` to use the legacy 5+ WORK dismantler score (+150)
 - Nukes: +500 (always triggers danger level 3)
 
 **Danger Levels**:
-- **0 (Calm)**: No threats (score = 0)
-- **1 (Hostile Sighted)**: Minor threat (score < 300)
-- **2 (Active Attack)**: Significant threat (score < 800)
-- **3 (Siege/Nuke)**: Critical threat (score >= 800 or nuke present)
+- **0 (Calm)**: No actual hostile creeps; raw score thresholds below 100 are non-actionable
+- **1 (Hostile Sighted)**: Minor threat (100 ≤ score < 500, or any visible non-allied hostile after scoring clamp)
+- **2 (Active Attack)**: Significant threat (500 ≤ score < 1000)
+- **3 (Siege/Nuke)**: Critical threat (score ≥ 1000 or nuke present)
 
 **Tower Damage Calculation**:
 The system accurately calculates tower effectiveness with distance falloff:

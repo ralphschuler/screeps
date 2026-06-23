@@ -1,0 +1,419 @@
+{
+  "generatedAt": "2026-06-16T20:51:36.159Z",
+  "hostname": "screeps.com",
+  "shard": "shard1",
+  "room": "W19S26",
+  "commit": "10a988e",
+  "consoleCheck": {
+    "called": false,
+    "reason": "Read-only roomObjects/memory endpoints only; no /api/user/console."
+  },
+  "samples": [
+    {
+      "time": 71720479,
+      "controller": {
+        "progress": 30602,
+        "progressTotal": 0
+      },
+      "spawn": {
+        "energy": 234,
+        "spawning": null
+      },
+      "upgraders": [
+        {
+          "name": "upgrader_71719739_fauzql82r",
+          "pos": [
+            35,
+            26
+          ],
+          "store": {
+            "energy": 0
+          },
+          "working": false,
+          "state": {
+            "action": "withdraw",
+            "startTick": 71720427,
+            "timeout": 25,
+            "targetId": "6a30a8956724f16c8639abb5",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "upgradeProgress": 3,
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "withdraw",
+            "ticks_to_live": 768,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71720046_qptqlnnxz",
+          "pos": [
+            27,
+            34
+          ],
+          "store": {
+            "energy": 46
+          },
+          "working": false,
+          "state": {
+            "action": "withdraw",
+            "startTick": 71720427,
+            "timeout": 25,
+            "targetId": "6a30a8956724f16c8639abb5",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "upgradeProgress": 1,
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "withdraw",
+            "ticks_to_live": 1075,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71720147_yd2ytxy4c",
+          "pos": [
+            22,
+            33
+          ],
+          "store": {
+            "energy": 46
+          },
+          "working": false,
+          "state": {
+            "action": "withdraw",
+            "startTick": 71720437,
+            "timeout": 25,
+            "targetId": "6a30a8956724f16c8639abb5",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "upgradeProgress": 1,
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "withdraw",
+            "ticks_to_live": 1176,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71720445_knyjxftyv",
+          "pos": [
+            31,
+            24
+          ],
+          "store": {
+            "energy": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "idle",
+            "ticks_to_live": 1474,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "haulers": [
+        {
+          "name": "hauler_71719946_dra4qbnjw",
+          "pos": [
+            32,
+            13
+          ],
+          "store": {
+            "energy": 100
+          },
+          "working": true,
+          "state": {
+            "action": "transfer",
+            "startTick": 71720476,
+            "timeout": 25,
+            "targetId": "6a30712565599203bb5cd1d2",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "transfer",
+            "ticks_to_live": 978,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "hauler_71720011_izl604c6k",
+          "pos": [
+            37,
+            24
+          ],
+          "store": {
+            "energy": 0
+          },
+          "working": false,
+          "state": {
+            "action": "pickup",
+            "startTick": 71720468,
+            "timeout": 25,
+            "targetId": "6a31b5f0b55becd8be54d4c4"
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "pickup",
+            "ticks_to_live": 1043,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ]
+    },
+    {
+      "time": 71720488,
+      "controller": {
+        "progress": 30602,
+        "progressTotal": 0
+      },
+      "spawn": {
+        "energy": 243,
+        "spawning": null
+      },
+      "upgraders": [
+        {
+          "name": "upgrader_71719739_fauzql82r",
+          "pos": [
+            35,
+            26
+          ],
+          "store": {
+            "energy": 0
+          },
+          "working": false,
+          "state": {
+            "action": "withdraw",
+            "startTick": 71720427,
+            "timeout": 25,
+            "targetId": "6a30a8956724f16c8639abb5",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "upgradeProgress": 3,
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "withdraw",
+            "ticks_to_live": 760,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71720046_qptqlnnxz",
+          "pos": [
+            27,
+            34
+          ],
+          "store": {
+            "energy": 46
+          },
+          "working": false,
+          "state": {
+            "action": "withdraw",
+            "startTick": 71720427,
+            "timeout": 25,
+            "targetId": "6a30a8956724f16c8639abb5",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "upgradeProgress": 1,
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "withdraw",
+            "ticks_to_live": 1067,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71720147_yd2ytxy4c",
+          "pos": [
+            22,
+            33
+          ],
+          "store": {
+            "energy": 46
+          },
+          "working": false,
+          "state": {
+            "action": "withdraw",
+            "startTick": 71720437,
+            "timeout": 25,
+            "targetId": "6a30a8956724f16c8639abb5",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "upgradeProgress": 1,
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "withdraw",
+            "ticks_to_live": 1168,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71720445_knyjxftyv",
+          "pos": [
+            31,
+            24
+          ],
+          "store": {
+            "energy": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "idle",
+            "ticks_to_live": 1466,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "haulers": [
+        {
+          "name": "hauler_71719946_dra4qbnjw",
+          "pos": [
+            32,
+            20
+          ],
+          "store": {
+            "energy": 100
+          },
+          "working": true,
+          "state": {
+            "action": "transfer",
+            "startTick": 71720476,
+            "timeout": 25,
+            "targetId": "6a30712565599203bb5cd1d2",
+            "data": {
+              "resourceType": "energy"
+            }
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "transfer",
+            "ticks_to_live": 970,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "hauler_71720011_izl604c6k",
+          "pos": [
+            34,
+            15
+          ],
+          "store": {
+            "energy": 0
+          },
+          "working": false,
+          "state": {
+            "action": "pickup",
+            "startTick": 71720468,
+            "timeout": 25,
+            "targetId": "6a31b5f0b55becd8be54d4c4"
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "pickup",
+            "ticks_to_live": 1035,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ]
+    }
+  ]
+}

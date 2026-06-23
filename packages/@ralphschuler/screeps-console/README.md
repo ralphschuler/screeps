@@ -4,28 +4,26 @@ Console command framework with decorators and plugin system for Screeps bots.
 
 ## Status
 
-⚠️ **Work in Progress** - This package is partially extracted and requires additional work to complete:
+`@ralphschuler/screeps-console` is the canonical framework owner for command registration, command decorators, generated help output, and global Screeps console exposure. See [ADR-0009](../../../docs/adr/0009-console-command-registry-ownership.md).
 
-1. **Interface Definitions**: Need to complete stub interfaces to match actual method signatures used in commands
-2. **Decorator Support**: Command decorator needs proper TypeScript configuration
-3. **Method Signatures**: Many console command methods reference properties/methods not yet stubbed
-4. **Integration Testing**: Package needs integration tests with consuming bot
+Some built-in command collections still depend on consuming-bot stubs in `interfaces.ts`, but the registry/decorator core is tested in this package.
 
-## Features (Planned)
+## Features
 
 - **Decorator-Based Commands**: Use `@Command` decorator to register console commands
-- **Plugin System**: Extensible command collections (economy, market, lab, etc.)
-- **Auto-Generated Help**: Automatic help() command with usage and examples
-- **Global Scope Integration**: Commands automatically exposed to game console
+- **Plugin-Friendly Collections**: Extensible command collections (economy, market, lab, etc.)
+- **Auto-Generated Help**: Automatic `help()` command with usage, examples, and category sorting
+- **Global Scope Integration**: Commands exposed to the Screeps console with lazy-loading support
 - **Command Categories**: Organized command groups (logging, visualization, stats, etc.)
 
-## Current Structure
+## Module Guide
 
-**Extracted Files:**
-- `commandRegistry.ts` (492 LOC) - Command registration and decorator system
-- `consoleCommands.ts` (1,080 LOC) - Core console commands
-
-**Total:** 1,572 LOC extracted
+- `commandRegistry.ts` - Public registry facade, lazy loading, command execution, and global exposure
+- `commandTypes.ts` - Shared command, registered-command, and decorator metadata types
+- `decoratorStore.ts` - Isolated storage/lookup for decorator metadata captured before instances exist
+- `helpFormatter.ts` - Pure deterministic rendering for registry-level and per-command help
+- `consoleCommands.ts` - Built-in command collections wired through decorators
+- `interfaces.ts` - Minimal dependency contracts/stubs supplied by a consuming bot
 
 ## Installation
 
@@ -33,7 +31,7 @@ Console command framework with decorators and plugin system for Screeps bots.
 npm install @ralphschuler/screeps-console
 ```
 
-## Usage (When Complete)
+## Usage
 
 ```typescript
 import { Command, commandRegistry, registerDecoratedCommands } from '@ralphschuler/screeps-console';
@@ -53,7 +51,7 @@ class MyCommands {
 
 // Register commands
 const myCommands = new MyCommands();
-registerDecoratedCommands([myCommands]);
+registerDecoratedCommands(myCommands);
 
 // Commands are now available in game console:
 // > test()
@@ -63,7 +61,7 @@ registerDecoratedCommands([myCommands]);
 // [Lists all registered commands with descriptions]
 ```
 
-## API Reference (Planned)
+## API Reference
 
 ### @Command Decorator
 
@@ -84,14 +82,24 @@ Marks a method as a console command.
 Central registry for console commands.
 
 **Methods:**
-- `registerCommand(metadata, handler)` - Manually register a command
-- `getCommand(name)` - Get command by name
-- `getAllCommands()` - Get all registered commands
-- `getCategories()` - Get all command categories
+- `register(metadata, handler)` - Manually register a command
+- `unregister(name)` - Remove a command
+- `execute(name, ...args)` - Run a command with error capture
+- `getCommand(name)` - Get command by name without triggering lazy loading
+- `getCommands()` - Get all registered commands, triggering lazy loading if enabled
+- `getCommandsByCategory()` - Get commands grouped by category
+- `generateHelp()` / `generateCommandHelp(name)` - Render deterministic help output
+- `exposeToGlobal()` - Expose command handlers and `help()` to the global Screeps console
+- `enableLazyLoading(callback)` - Defer command registration until first execution/help access
+- `reset()` / `clear()` - Clear registry state for tests or compatibility
 
-### registerDecoratedCommands(objects)
+### registerDecoratedCommands(instance)
 
-Scans objects for `@Command` decorated methods and registers them.
+Scans one object for `@Command` decorated methods and registers matching bound methods.
+
+### registerAllDecoratedCommands(...instances)
+
+Registers decorated commands from multiple command collection instances.
 
 ## Built-in Command Collections
 
@@ -112,16 +120,11 @@ This package requires the consuming bot to provide:
 
 See `interfaces.ts` for required contracts.
 
-## Completion Tasks
+## Remaining Extraction Work
 
-To complete this package extraction:
-
-1. **Fix Interface Signatures**: Update `interfaces.ts` to match all methods used in commands
-2. **Fix Decorator Issues**: Resolve TypeScript decorator configuration
-3. **Add Missing Methods**: Implement all methods referenced but not defined
-4. **Remove Bot-Specific Commands**: Separate truly generic commands from bot-specific ones
-5. **Add Tests**: Create unit tests for command registration and execution
-6. **Documentation**: Complete API documentation with examples
+- Replace minimal dependency stubs in `interfaces.ts` with stronger consuming-bot adapters.
+- Split generic command collections from bot-specific command groups as usage stabilizes.
+- Add integration tests from the consuming bot package for full console wiring.
 
 ## Contributing
 

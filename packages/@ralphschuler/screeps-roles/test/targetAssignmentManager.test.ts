@@ -1,8 +1,8 @@
 import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
 
-import { getAssignedSource } from "../src/economy/targetAssignmentManager";
-import { createMockCreep, MockGame, resetMockGame } from "./setup";
+import { getAssignedBuildTarget, getAssignedSource } from "../src/economy/targetAssignmentManager";
+import { createMockCreep, createMockRoom, MockGame, resetMockGame } from "./setup";
 
 describe("targetAssignmentManager memory initialization", () => {
   beforeEach(() => {
@@ -22,6 +22,29 @@ describe("targetAssignmentManager memory initialization", () => {
     expect(creep.memory.homeRoom).to.equal("W1N1");
     expect(creep.memory.working).to.equal(false);
     expect(creep.memory.room).to.equal("W1N1");
+  });
+
+  it("keeps normal builder construction assignment local", () => {
+    const localSite = { id: "LOCAL_SITE" as Id<ConstructionSite>, pos: new RoomPosition(10, 10, "W1N1") } as ConstructionSite;
+    const remoteSite = { id: "REMOTE_SITE" as Id<ConstructionSite>, pos: new RoomPosition(10, 10, "W2N1") } as ConstructionSite;
+    const homeRoom = createMockRoom("W1N1");
+    (homeRoom as unknown as { find: Room["find"] }).find = (type: FindConstant) =>
+      type === FIND_MY_CONSTRUCTION_SITES ? [localSite] : [];
+    MockGame.rooms.W1N1 = homeRoom;
+    MockGame.rooms.W2N1 = {
+      name: "W2N1",
+      find: (type: FindConstant) => type === FIND_MY_CONSTRUCTION_SITES ? [remoteSite] : []
+    } as Room;
+    const creep = createMockCreep("builder1", {
+      room: homeRoom,
+      memory: { role: "builder", homeRoom: "W1N1" },
+      pos: { findClosestByRange: () => localSite }
+    });
+
+    const result = getAssignedBuildTarget(creep);
+
+    expect(result).to.equal(localSite);
+    expect(creep.memory.targetId).to.equal("LOCAL_SITE");
   });
 
   it("returns source for stored sourceId and preserves assignment memory", () => {

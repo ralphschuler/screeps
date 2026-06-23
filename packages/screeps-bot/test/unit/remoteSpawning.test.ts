@@ -3,6 +3,7 @@ import { heapCache } from "@ralphschuler/screeps-memory";
 import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
 import {
   countRemoteCreepsByTargetRoom,
+  createSpawnPlan,
   getRemoteRoomNeedingWorkers,
   needsRole
 } from "@ralphschuler/screeps-spawn";
@@ -67,6 +68,7 @@ function createHomeRoom(name = "E1N1"): Room {
   return {
     name,
     controller: { my: true, level: 3 },
+    energyAvailable: 800,
     energyCapacityAvailable: 800,
     find: () => []
   } as unknown as Room;
@@ -74,7 +76,14 @@ function createHomeRoom(name = "E1N1"): Room {
 
 function createRemoteRoom(
   name: string,
-  opts: { owner?: string; reserver?: string; reservationTicks?: number; dangerousHostiles?: number } = {}
+  opts: {
+    owner?: string;
+    reserver?: string;
+    reservationTicks?: number;
+    dangerousHostiles?: number;
+    sites?: ConstructionSite[];
+    structures?: Structure[];
+  } = {}
 ): Room {
   const controller = {
     owner: opts.owner ? { username: opts.owner } : undefined,
@@ -92,6 +101,8 @@ function createRemoteRoom(
     find: (type: FindConstant) => {
       if (type === FIND_SOURCES) return [{ id: `${name}-source1` }, { id: `${name}-source2` }];
       if (type === FIND_HOSTILE_CREEPS) return Array(opts.dangerousHostiles ?? 0).fill(hostile);
+      if (type === FIND_MY_CONSTRUCTION_SITES) return opts.sites ?? [];
+      if (type === FIND_STRUCTURES) return opts.structures ?? [];
       return [];
     }
   } as unknown as Room;
@@ -389,6 +400,39 @@ describe("remote worker spawning", () => {
       const swarm = createMockSwarmState([]);
       const result = needsRole("E1N1", "remoteHarvester", swarm);
       assert.isFalse(result);
+    });
+
+    it("creates remoteWorker spawn requests with a concrete target room", () => {
+      global.Game.creeps = {
+        harvester1: { memory: { role: "harvester", homeRoom: "E1N1" }, spawning: false } as Creep,
+        hauler1: { memory: { role: "hauler", homeRoom: "E1N1" }, spawning: false } as Creep,
+        upgrader1: { memory: { role: "upgrader", homeRoom: "E1N1" }, spawning: false } as Creep
+      };
+      const remoteSite = { id: "remote-site" as Id<ConstructionSite>, structureType: STRUCTURE_CONTAINER } as ConstructionSite;
+      const homeRoom = createHomeRoom();
+      global.Game.rooms = { E1N1: homeRoom, E2N1: createRemoteRoom("E2N1", { sites: [remoteSite] }) };
+      const swarm = createMockSwarmState(["E2N1"]);
+
+      const plan = createSpawnPlan(homeRoom, swarm);
+      const request = plan.requests.find(req => req.role === "remoteWorker");
+
+      assert.isDefined(request, "remoteWorker should be requested when assigned remotes need workers");
+      assert.equal(request!.targetRoom, "E2N1");
+    });
+
+    it("does not create remoteWorker spawn requests without visible remote construction or repair", () => {
+      global.Game.creeps = {
+        harvester1: { memory: { role: "harvester", homeRoom: "E1N1" }, spawning: false } as Creep,
+        hauler1: { memory: { role: "hauler", homeRoom: "E1N1" }, spawning: false } as Creep,
+        upgrader1: { memory: { role: "upgrader", homeRoom: "E1N1" }, spawning: false } as Creep
+      };
+      const homeRoom = createHomeRoom();
+      global.Game.rooms = { E1N1: homeRoom, E2N1: createRemoteRoom("E2N1") };
+      const swarm = createMockSwarmState(["E2N1"]);
+
+      const plan = createSpawnPlan(homeRoom, swarm);
+
+      assert.isUndefined(plan.requests.find(req => req.role === "remoteWorker"));
     });
 
     it("should not spawn a reserver for a visible remote reserved by another player", () => {

@@ -14,13 +14,15 @@ function pos(x: number, y: number, roomName = "W1N1") {
   };
 }
 
-function lab(id: string, x: number, y: number): StructureLab {
+function lab(id: string, x: number, y: number, overrides: Partial<StructureLab> = {}): StructureLab {
   return {
     id,
     structureType: STRUCTURE_LAB,
     pos: pos(x, y),
     store: {},
-    cooldown: 0
+    cooldown: 0,
+    runReaction: () => OK,
+    ...overrides
   } as unknown as StructureLab;
 }
 
@@ -83,6 +85,67 @@ describe("LabConfigManager live config refresh", () => {
     const config = manager.exportConfig("W1N1");
     expect(config?.isValid).to.equal(true);
     expect(config?.labs.map(entry => entry.role).sort()).to.deep.equal(["input1", "input2", "output"]);
+  });
+
+  it("keeps line-spaced lab clusters valid by selecting the shared center as output", () => {
+    const manager = new LabConfigManager();
+    installRoom([lab("center", 25, 25), lab("east", 27, 25), lab("west", 23, 25)]);
+    manager.importConfig(staleConfig());
+
+    manager.initialize("W1N1");
+
+    const config = manager.exportConfig("W1N1");
+    expect(config?.isValid).to.equal(true);
+    expect(config?.labs.map(entry => entry.role)).to.deep.equal(["output", "input1", "input2"]);
+  });
+
+  it("reapplies the active reaction after refreshing stale roles", () => {
+    const manager = new LabConfigManager();
+    installRoom([lab("lab1", 25, 25), lab("lab2", 26, 25), lab("lab3", 25, 26)]);
+    manager.importConfig(
+      staleConfig({
+        activeReaction: {
+          input1: RESOURCE_HYDROGEN,
+          input2: RESOURCE_OXYGEN,
+          output: RESOURCE_HYDROXIDE
+        }
+      })
+    );
+
+    manager.initialize("W1N1");
+
+    const config = manager.exportConfig("W1N1");
+    expect(config?.labs.find(entry => entry.role === "input1")?.resourceType).to.equal(RESOURCE_HYDROGEN);
+    expect(config?.labs.find(entry => entry.role === "input2")?.resourceType).to.equal(RESOURCE_OXYGEN);
+    expect(config?.labs.find(entry => entry.role === "output")?.resourceType).to.equal(RESOURCE_HYDROXIDE);
+  });
+
+  it("runs only ready output labs", () => {
+    const reactionsRun: string[] = [];
+    const manager = new LabConfigManager();
+    installRoom([
+      lab("lab1", 25, 25),
+      lab("lab2", 26, 25),
+      lab("ready", 25, 26, {
+        runReaction: () => {
+          reactionsRun.push("ready");
+          return OK;
+        }
+      }),
+      lab("cooling", 26, 26, {
+        cooldown: 3,
+        runReaction: () => {
+          reactionsRun.push("cooling");
+          return OK;
+        }
+      })
+    ]);
+
+    manager.initialize("W1N1");
+    manager.setActiveReaction("W1N1", RESOURCE_HYDROGEN, RESOURCE_OXYGEN, RESOURCE_HYDROXIDE);
+
+    expect(manager.runReactions("W1N1")).to.equal(1);
+    expect(reactionsRun).to.deep.equal(["ready"]);
   });
 
   it("lists rooms with persisted lab config", () => {

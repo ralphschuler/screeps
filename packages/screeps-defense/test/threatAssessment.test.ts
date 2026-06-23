@@ -166,6 +166,51 @@ describe('Threat Assessment', () => {
       expect(analysis.threatScore).to.be.greaterThan(0);
     });
 
+    it('filters permanent allies before scoring threat', () => {
+      const tooAngel = {
+        id: 'ally-tooangel',
+        body: [
+          { type: ATTACK, hits: 100 },
+          { type: HEAL, hits: 100 }
+        ],
+        hits: 200,
+        hitsMax: 200,
+        owner: { username: 'TooAngel' }
+      };
+      const tedRoastBeef = {
+        id: 'ally-ted',
+        body: [
+          { type: RANGED_ATTACK, hits: 100 },
+          { type: WORK, hits: 100 }
+        ],
+        hits: 200,
+        hitsMax: 200,
+        owner: { username: 'TedRoastBeef' }
+      };
+      const enemy = {
+        id: 'enemy',
+        body: [
+          { type: ATTACK, hits: 100 },
+          { type: MOVE, hits: 50 }
+        ],
+        hits: 150,
+        hitsMax: 150,
+        owner: { username: 'Enemy' }
+      };
+
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [tooAngel, tedRoastBeef, enemy] : [];
+
+      const analysis = assessThreat(mockRoom);
+
+      expect(analysis.hostileCount).to.equal(1);
+      expect(analysis.totalHostileDPS).to.equal(30);
+      expect(analysis.totalHostileHitPoints).to.equal(150);
+      expect(analysis.healerCount).to.equal(0);
+      expect(analysis.rangedCount).to.equal(0);
+      expect(analysis.dismantlerCount).to.equal(0);
+      expect(analysis.meleeCount).to.equal(1);
+    });
+
     it('should count attack parts correctly', () => {
       const mockHostile = {
         id: 'hostile1',

@@ -1,8 +1,8 @@
-import { deserializeInterShardMemory, serializeInterShardMemory, createDefaultInterShardMemory, type InterShardFootprintTarget } from "@ralphschuler/screeps-intershard";
 import { logger } from "@ralphschuler/screeps-core";
+import { deserializeInterShardMemory, serializeInterShardMemory, createDefaultInterShardMemory, type InterShardFootprintTarget } from "@ralphschuler/screeps-intershard";
+import { runEconomyRole, runUtilityRole } from "@ralphschuler/screeps-roles";
 import { spawnQueue, SpawnPriority } from "@ralphschuler/screeps-spawn";
 import type { BodyTemplate } from "@ralphschuler/screeps-spawn";
-import { runEconomyRole, runUtilityRole } from "@ralphschuler/screeps-roles";
 
 const TARGET_SHARDS = ["shard0", "shard1", "shard2", "shard3", "shardX"];
 const CORE_SHARD = "shard1";

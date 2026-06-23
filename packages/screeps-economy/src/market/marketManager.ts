@@ -31,6 +31,7 @@ import { createDefaultMarketMemory, memoryManager } from "@ralphschuler/screeps-
 import type { EmpireMemory, PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@ralphschuler/screeps-memory";
 import { logger } from "@ralphschuler/screeps-core";
 import { LowFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
+import { rankActiveSellOrders, rankEmergencyBuyOrders } from "./orderSelection";
 
 function measureCpuDetail<T>(name: string, fn: () => T): T {
   const profiler = (globalThis as unknown as { cpuProfiler?: { measure?: <R>(label: string, work: () => R) => R } }).cpuProfiler;
@@ -822,35 +823,15 @@ export class MarketManager {
       .filter(o => o.remainingAmount > 0 && o.roomName);
     if (buyOrders.length === 0) return false;
 
-    const candidates = buyOrders
-      .map(order => {
-        if (!order.roomName) return undefined;
-
-        const remaining = order.remainingAmount ?? order.amount ?? 0;
-        const dealAmount = Math.min(amount, remaining, this.config.maxActiveSellAmount);
-        if (dealAmount <= 0) return undefined;
-
-        const energyCost = Game.market.calcTransactionCost(dealAmount, room.name, order.roomName);
-        const netValue = order.price * dealAmount - energyCost * this.config.energyCreditValue;
-
-        return {
-          order,
-          dealAmount,
-          energyCost,
-          netValue,
-          netUnitValue: netValue / dealAmount
-        };
-      })
-      .filter(
-        (candidate): candidate is {
-          order: Order;
-          dealAmount: number;
-          energyCost: number;
-          netValue: number;
-          netUnitValue: number;
-        } => candidate !== undefined && candidate.netValue > 0
-      )
-      .sort((a, b) => b.netUnitValue - a.netUnitValue || b.order.price - a.order.price);
+    const candidates = rankActiveSellOrders({
+      orders: buyOrders,
+      requestedAmount: amount,
+      sourceRoomName: room.name,
+      maxDealAmount: this.config.maxActiveSellAmount,
+      energyCreditValue: this.config.energyCreditValue,
+      calcTransactionCost: (dealAmount, fromRoomName, toRoomName) =>
+        Game.market.calcTransactionCost(dealAmount, fromRoomName, toRoomName)
+    });
 
     for (const candidate of candidates) {
       const { order, dealAmount, energyCost } = candidate;
@@ -1125,23 +1106,14 @@ export class MarketManager {
     if (orders.length === 0) return false;
     if (destinationTerminal.cooldown > 0) return false;
 
-    const candidateOrders = orders
-      .filter(order => order.roomName && order.remainingAmount > 0)
-      .map(order => {
-        const cappedOrderAmount = Math.min(order.remainingAmount ?? order.amount ?? 0, this.config.maxActiveBuyAmount, requestedAmount);
-        if (cappedOrderAmount <= 0) return undefined;
-
-        const transportCost = Game.market.calcTransactionCost(cappedOrderAmount, order.roomName!, destinationRoom.name);
-        const effectiveCost = order.price + transportCost / cappedOrderAmount;
-
-        return {
-          order,
-          cappedOrderAmount,
-          effectiveCost
-        };
-      })
-      .filter((entry): entry is { order: Order; cappedOrderAmount: number; effectiveCost: number } => entry !== undefined)
-      .sort((a, b) => a.effectiveCost - b.effectiveCost);
+    const candidateOrders = rankEmergencyBuyOrders({
+      orders,
+      requestedAmount,
+      destinationRoomName: destinationRoom.name,
+      maxDealAmount: this.config.maxActiveBuyAmount,
+      calcTransactionCost: (dealAmount, fromRoomName, toRoomName) =>
+        Game.market.calcTransactionCost(dealAmount, fromRoomName, toRoomName)
+    });
 
     if (candidateOrders.length === 0) return false;
 

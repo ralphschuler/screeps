@@ -1,11 +1,15 @@
 /**
  * Lab Configuration Manager
- * 
- * Manages lab role assignments and configuration
+ *
+ * Coordinates ROADMAP §16 lab clusters: keep live lab IDs synchronized, assign
+ * input/output/boost roles, persist compact config data, and execute only ready
+ * reaction labs. Geometry decisions live in `labLayout.ts`; this class owns
+ * Screeps state, Memory import/export, and logging side effects.
  */
 
 import type { LabRole, RoomLabConfig, ChemistryLogger } from "../types";
 import { noopLogger } from "../types";
+import { getReactionResourceForRole, planLabLayout, type LabLayoutNode } from "./labLayout";
 
 /**
  * Lab Config Manager Options
@@ -152,79 +156,34 @@ export class LabConfigManager {
     if (!reaction) return;
 
     for (const entry of config.labs) {
-      if (entry.role === "input1") entry.resourceType = reaction.input1;
-      else if (entry.role === "input2") entry.resourceType = reaction.input2;
-      else if (entry.role === "output") entry.resourceType = reaction.output;
+      const resourceType = getReactionResourceForRole(entry.role, reaction);
+      if (resourceType) entry.resourceType = resourceType;
     }
   }
 
   /**
-   * Auto-assign lab roles based on position and range optimization
+   * Auto-assign lab roles based on position and range optimization.
+   *
+   * This method owns the state mutation; `planLabLayout` owns the pure geometry
+   * decision. Keeping those concerns separate makes Screeps lab placement rules
+   * easier to reason about and unit test.
    */
   private autoAssignRoles(config: RoomLabConfig, labs: StructureLab[]): void {
-    if (labs.length < 3) {
+    const plan = planLabLayout(this.toLayoutNodes(labs));
+    if (!plan.isValid) {
       this.invalidateConfig(config);
-      return;
-    }
-
-    // Find labs that are within range 2 of at least 2 other labs
-    const labDistances: Map<Id<StructureLab>, Id<StructureLab>[]> = new Map();
-
-    for (const lab of labs) {
-      const inRangeLabs: Id<StructureLab>[] = [];
-      for (const other of labs) {
-        if (lab.id !== other.id && lab.pos.getRangeTo(other) <= 2) {
-          inRangeLabs.push(other.id);
-        }
+      if (plan.reason === "insufficient-reach" || plan.reason === "no-outputs") {
+        this.logger.warn(`Lab layout in ${config.roomName} is not optimal for reactions`, {
+          subsystem: "Labs"
+        });
       }
-      labDistances.set(lab.id, inRangeLabs);
-    }
-
-    // Find the two labs that have the most labs in range (best input candidates)
-    const labsByReach = labs
-      .map(lab => ({
-        lab,
-        reach: labDistances.get(lab.id)?.length ?? 0
-      }))
-      .sort((a, b) => b.reach - a.reach);
-
-    if (labsByReach.length < 3 || (labsByReach[0]?.reach ?? 0) < 2) {
-      this.invalidateConfig(config);
-      this.logger.warn(`Lab layout in ${config.roomName} is not optimal for reactions`, {
-        subsystem: "Labs"
-      });
       return;
     }
 
-    // Assign input labs
-    const input1Lab = labsByReach[0]?.lab;
-    const input2Lab = labsByReach[1]?.lab;
-
-    if (!input1Lab || !input2Lab) {
-      this.invalidateConfig(config);
-      return;
-    }
-
-    // Update config
+    const roleByLabId = new Map(plan.roles.map(role => [role.labId, role.role]));
     for (const entry of config.labs) {
-      if (entry.labId === input1Lab.id) {
-        entry.role = "input1";
-        entry.lastConfigured = Game.time;
-      } else if (entry.labId === input2Lab.id) {
-        entry.role = "input2";
-        entry.lastConfigured = Game.time;
-      } else {
-        // Check if this lab is in range of both inputs
-        const inRangeOf1 = input1Lab.pos.getRangeTo(Game.getObjectById(entry.labId)!) <= 2;
-        const inRangeOf2 = input2Lab.pos.getRangeTo(Game.getObjectById(entry.labId)!) <= 2;
-
-        if (inRangeOf1 && inRangeOf2) {
-          entry.role = "output";
-        } else {
-          entry.role = "boost";
-        }
-        entry.lastConfigured = Game.time;
-      }
+      entry.role = roleByLabId.get(entry.labId) ?? "unassigned";
+      entry.lastConfigured = Game.time;
     }
 
     config.isValid = true;
@@ -238,6 +197,13 @@ export class LabConfigManager {
         `${config.labs.filter(l => l.role === "boost").length} boost`,
       { subsystem: "Labs" }
     );
+  }
+
+  private toLayoutNodes(labs: StructureLab[]): LabLayoutNode[] {
+    return labs.map(lab => ({
+      id: lab.id,
+      pos: { x: lab.pos.x, y: lab.pos.y }
+    }));
   }
 
   /**
@@ -303,18 +269,7 @@ export class LabConfigManager {
     if (!config || !config.isValid) return false;
 
     config.activeReaction = { input1, input2, output };
-
-    // Update resource assignments
-    const input1Entry = config.labs.find(l => l.role === "input1");
-    const input2Entry = config.labs.find(l => l.role === "input2");
-
-    if (input1Entry) input1Entry.resourceType = input1;
-    if (input2Entry) input2Entry.resourceType = input2;
-
-    for (const entry of config.labs.filter(l => l.role === "output")) {
-      entry.resourceType = output;
-    }
-
+    this.applyActiveReactionResources(config);
     config.lastUpdate = Game.time;
 
     this.logger.info(`Set active reaction in ${roomName}: ${input1} + ${input2} -> ${output}`, {

@@ -1,0 +1,748 @@
+{
+  "generatedAt": "2026-06-16T02:02:04.284Z",
+  "hostname": "screeps.com",
+  "shard": "shard1",
+  "wantedCommit": "fd9d06b",
+  "localHead": null,
+  "worldStatus": {
+    "ok": 1,
+    "status": "normal"
+  },
+  "rooms": {
+    "W18S28": {
+      "objectCount": 28,
+      "controller": {
+        "level": 5,
+        "owner": "5dc0453f9b78abbd4ca04b05",
+        "safeMode": 71684808,
+        "safeModeAvailable": 3,
+        "safeModeCooldown": 71714808
+      },
+      "creeps": {
+        "my": 0,
+        "hostile": 5,
+        "defenders": []
+      },
+      "hostiles": [
+        {
+          "name": "r2332_9290",
+          "owner": "589f5265d25357e8253e3ee8",
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 30,
+            "move": 10,
+            "heal": 10
+          },
+          "x": 29,
+          "y": 41
+        },
+        {
+          "name": "r2332_9292",
+          "owner": "589f5265d25357e8253e3ee8",
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 8,
+            "ranged_attack": 1,
+            "move": 10,
+            "heal": 31
+          },
+          "x": 29,
+          "y": 38
+        },
+        {
+          "name": "t2332_9291",
+          "owner": "589f5265d25357e8253e3ee8",
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 12,
+            "attack": 28,
+            "move": 10
+          },
+          "x": 30,
+          "y": 39
+        },
+        {
+          "name": "t2332_9293",
+          "owner": "589f5265d25357e8253e3ee8",
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 12,
+            "attack": 28,
+            "move": 10
+          },
+          "x": 30,
+          "y": 43
+        },
+        {
+          "name": "r2332_9294",
+          "owner": "589f5265d25357e8253e3ee8",
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 8,
+            "ranged_attack": 1,
+            "move": 10,
+            "heal": 31
+          },
+          "x": 29,
+          "y": 42
+        }
+      ],
+      "structures": {
+        "spawns": [],
+        "towers": [],
+        "ramparts": 0
+      },
+      "sites": {
+        "total": 9,
+        "towers": [
+          {
+            "id": "6a309f75c0912cba0bfa495c",
+            "progress": 4356,
+            "progressTotal": 5000,
+            "x": 25,
+            "y": 19
+          },
+          {
+            "id": "6a309f9aa25b783c6bb977a9",
+            "progress": 0,
+            "progressTotal": 5000,
+            "x": 29,
+            "y": 19
+          }
+        ],
+        "ramparts": 1
+      }
+    },
+    "W19S26": {
+      "objectCount": 36,
+      "controller": {
+        "level": 2,
+        "owner": "5dc0453f9b78abbd4ca04b05",
+        "safeMode": null,
+        "safeModeAvailable": 1,
+        "safeModeCooldown": null
+      },
+      "creeps": {
+        "my": 0,
+        "hostile": 10,
+        "defenders": []
+      },
+      "hostiles": [
+        {
+          "name": "guard_71701303_wvkid578g",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 600,
+          "hitsMax": 600,
+          "body": {
+            "tough": 2,
+            "attack": 2,
+            "move": 2
+          },
+          "x": 14,
+          "y": 40
+        },
+        {
+          "name": "harvester_71701480_g4xi1heir",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 300,
+          "hitsMax": 300,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 1
+          },
+          "x": 33,
+          "y": 9
+        },
+        {
+          "name": "upgrader_71701489_shq1793zm",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 300,
+          "hitsMax": 300,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 1
+          },
+          "x": 40,
+          "y": 35
+        },
+        {
+          "name": "builder_71701530_g1c8jm4g5",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 400,
+          "hitsMax": 400,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 2
+          },
+          "x": 20,
+          "y": 29
+        },
+        {
+          "name": "harvester_71701821_2beotyfm4",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 300,
+          "hitsMax": 300,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 1
+          },
+          "x": 20,
+          "y": 30
+        },
+        {
+          "name": "upgrader_71701830_58icola6l",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 300,
+          "hitsMax": 300,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 1
+          },
+          "x": 38,
+          "y": 35
+        },
+        {
+          "name": "builder_71701861_bujjoka30",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 400,
+          "hitsMax": 400,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 2
+          },
+          "x": 43,
+          "y": 30
+        },
+        {
+          "name": "hauler_71702092_0jhibc3gm",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 400,
+          "hitsMax": 400,
+          "body": {
+            "carry": 2,
+            "move": 2
+          },
+          "x": 39,
+          "y": 36
+        },
+        {
+          "name": "hauler_71702120_nj537cbdm",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 400,
+          "hitsMax": 400,
+          "body": {
+            "carry": 2,
+            "move": 2
+          },
+          "x": 40,
+          "y": 36
+        },
+        {
+          "name": "upgrader_71702152_0795pnqis",
+          "owner": "5dc0453f9b78abbd4ca04b05",
+          "hits": 300,
+          "hitsMax": 300,
+          "body": {
+            "work": 1,
+            "carry": 1,
+            "move": 1
+          },
+          "x": 41,
+          "y": 35
+        }
+      ],
+      "structures": {
+        "spawns": [
+          {
+            "id": "6a30712565599203bb5cd1d2",
+            "name": "Spawn5",
+            "hits": 5000,
+            "hitsMax": 5000,
+            "spawning": null,
+            "energy": 300,
+            "x": 31,
+            "y": 25
+          }
+        ],
+        "towers": [],
+        "ramparts": 0
+      },
+      "sites": {
+        "total": 2,
+        "towers": [],
+        "ramparts": 0
+      }
+    }
+  },
+  "memory": {
+    "statsTick": 71702336,
+    "cpu": {
+      "used": 20.764430499984883,
+      "limit": 50,
+      "bucket": 9501,
+      "percent": 41.53035080002155,
+      "heap_mb": 100.73196411132812
+    },
+    "empire": {
+      "rooms": 4,
+      "creeps": 36,
+      "power_creeps": {
+        "total": 0,
+        "spawned": 0,
+        "eco": 0,
+        "combat": 0
+      },
+      "energy": {
+        "storage": 1232025,
+        "terminal": 225883,
+        "available": 2014,
+        "capacity": 4400
+      },
+      "credits": 5545.287,
+      "skipped_processes": 27
+    },
+    "rooms": {
+      "W18S28": {
+        "rcl": 5,
+        "energy": {
+          "available": 0,
+          "capacity": 0,
+          "storage": 0,
+          "terminal": 0
+        },
+        "controller": {
+          "progress": 696079,
+          "progress_total": 1215000,
+          "progress_percent": 57.29045267489712,
+          "ticks_to_downgrade": 73271,
+          "downgrade_risk": false
+        },
+        "creeps": 0,
+        "hostiles": 5,
+        "brain": {
+          "danger": 2,
+          "posture_code": 3,
+          "colony_level_code": 3
+        },
+        "pheromones": {
+          "expand": 0.7895864745709535,
+          "harvest": 99.41688491907965,
+          "build": 100,
+          "upgrade": 8.121026633475e-312,
+          "defense": 80,
+          "war": 40,
+          "siege": 100,
+          "logistics": 2.4585897431949895e-47,
+          "nukeTarget": 0,
+          "market": null,
+          "assist": null
+        },
+        "metrics": {
+          "energy": {
+            "harvested": 0,
+            "spawning": 0,
+            "construction": 0,
+            "repair": 0,
+            "tower": 0,
+            "available_for_sharing": 0,
+            "capacity_total": 0,
+            "need": 0
+          },
+          "controller_progress": 948,
+          "hostile_count": 5,
+          "damage_received": 2000,
+          "construction_sites": 11
+        },
+        "taskBoard": {
+          "tasks": 17,
+          "open_tasks": 17,
+          "assigned_tasks": 0,
+          "reservations": 0,
+          "stale_reservations": 0,
+          "blocked_reservations": 0
+        },
+        "spawn_queue": {
+          "total": 0,
+          "emergency": 0,
+          "high": 0,
+          "normal": 0,
+          "low": 0,
+          "in_progress": 0,
+          "spawned_last_tick": 0,
+          "total_spawns": 0,
+          "idle_spawns": 0,
+          "busy_spawns": 0,
+          "idle_spawn_ticks": 1374
+        },
+        "remote": {
+          "assigned": 2,
+          "visible": 1,
+          "reserved_by_me": 0,
+          "reserved_by_other": 0,
+          "min_reservation_ticks": 0,
+          "known_unsafe": 0
+        },
+        "defense": {
+          "towers": 0,
+          "tower_energy": 0,
+          "tower_energy_capacity": 0,
+          "tower_energy_percent": 0,
+          "tower_reserve_energy": 0,
+          "tower_reserve_deficit": 0
+        },
+        "profiler": {
+          "avg_cpu": 0.5489325368535989,
+          "peak_cpu": 26.979372299974784,
+          "samples": 21171
+        }
+      },
+      "W19S26": {
+        "rcl": 2,
+        "energy": {
+          "available": 300,
+          "capacity": 300,
+          "storage": 0,
+          "terminal": 0
+        },
+        "controller": {
+          "progress": 25929,
+          "progress_total": 45000,
+          "progress_percent": 57.620000000000005,
+          "ticks_to_downgrade": 10000,
+          "downgrade_risk": false
+        },
+        "creeps": 10,
+        "hostiles": 0,
+        "brain": {
+          "danger": 2,
+          "posture_code": 3,
+          "colony_level_code": 1
+        },
+        "pheromones": {
+          "expand": 4.888100023321625e-26,
+          "harvest": 84.13125076304647,
+          "build": 50.026825130968874,
+          "upgrade": 8.876806846070607e-53,
+          "defense": 100,
+          "war": 0.0000012436386164499722,
+          "siege": 0.007428379610712374,
+          "logistics": 2.5e-323,
+          "nukeTarget": 0
+        },
+        "metrics": {
+          "energy": {
+            "harvested": 0,
+            "spawning": 0,
+            "construction": 0,
+            "repair": 0,
+            "tower": 0,
+            "available_for_sharing": 0,
+            "capacity_total": 0,
+            "need": 0
+          },
+          "controller_progress": 24587,
+          "hostile_count": 1,
+          "damage_received": 200,
+          "construction_sites": 3
+        },
+        "taskBoard": {
+          "tasks": 13,
+          "open_tasks": 13,
+          "assigned_tasks": 0,
+          "reservations": 0,
+          "stale_reservations": 0,
+          "blocked_reservations": 0
+        },
+        "spawn_queue": {
+          "total": 3,
+          "emergency": 0,
+          "high": 0,
+          "normal": 0,
+          "low": 3,
+          "in_progress": 0,
+          "spawned_last_tick": 0,
+          "total_spawns": 1,
+          "idle_spawns": 1,
+          "busy_spawns": 0,
+          "idle_spawn_ticks": 3942
+        },
+        "remote": {
+          "assigned": 0,
+          "visible": 0,
+          "reserved_by_me": 0,
+          "reserved_by_other": 0,
+          "min_reservation_ticks": 0,
+          "known_unsafe": 0
+        },
+        "defense": {
+          "towers": 0,
+          "tower_energy": 0,
+          "tower_energy_capacity": 0,
+          "tower_energy_percent": 0,
+          "tower_reserve_energy": 0,
+          "tower_reserve_deficit": 0
+        },
+        "profiler": {
+          "avg_cpu": 0.07295715129681382,
+          "peak_cpu": 42.11184639998828,
+          "samples": 19401
+        }
+      }
+    },
+    "roles": {
+      "guard": {
+        "count": 3,
+        "avg_cpu": 0.10111368884813693,
+        "peak_cpu": 35.228562199976295,
+        "calls": 3,
+        "samples": 64684,
+        "spawning_count": 0,
+        "idle_count": 3,
+        "active_count": 0,
+        "avg_ticks_to_live": 500.6666666666667,
+        "total_body_parts": 67
+      },
+      "ranger": {
+        "count": 3,
+        "avg_cpu": 0.07575843367923343,
+        "peak_cpu": 16.301012649928452,
+        "calls": 2,
+        "samples": 38866,
+        "spawning_count": 1,
+        "idle_count": 2,
+        "active_count": 0,
+        "avg_ticks_to_live": 643.3333333333334,
+        "total_body_parts": 49
+      },
+      "healer": {
+        "count": 2,
+        "avg_cpu": 0.10308442382841987,
+        "peak_cpu": 32.282504800001334,
+        "calls": 1,
+        "samples": 8333,
+        "spawning_count": 1,
+        "idle_count": 1,
+        "active_count": 0,
+        "avg_ticks_to_live": 685.5,
+        "total_body_parts": 20
+      }
+    },
+    "spawnQueues": [
+      {
+        "path": "stats.rooms.W18S28.spawn_queue",
+        "value": {
+          "total": 0,
+          "emergency": 0,
+          "high": 0,
+          "normal": 0,
+          "low": 0,
+          "in_progress": 0,
+          "spawned_last_tick": 0,
+          "total_spawns": 0,
+          "idle_spawns": 0,
+          "busy_spawns": 0,
+          "idle_spawn_ticks": 1374
+        }
+      },
+      {
+        "path": "stats.rooms.W19S26.spawn_queue",
+        "value": {
+          "total": 3,
+          "emergency": 0,
+          "high": 0,
+          "normal": 0,
+          "low": 3,
+          "in_progress": 0,
+          "spawned_last_tick": 0,
+          "total_spawns": 1,
+          "idle_spawns": 1,
+          "busy_spawns": 0,
+          "idle_spawn_ticks": 3942
+        }
+      },
+      {
+        "path": "stats.rooms.W18S29.spawn_queue",
+        "value": {
+          "total": 6,
+          "emergency": 2,
+          "high": 0,
+          "normal": 0,
+          "low": 4,
+          "in_progress": 1,
+          "spawned_last_tick": 0,
+          "total_spawns": 1,
+          "idle_spawns": 0,
+          "busy_spawns": 1,
+          "idle_spawn_ticks": 2610
+        }
+      },
+      {
+        "path": "stats.rooms.W17S29.spawn_queue",
+        "value": {
+          "total": 3,
+          "emergency": 0,
+          "high": 0,
+          "normal": 0,
+          "low": 3,
+          "in_progress": 1,
+          "spawned_last_tick": 0,
+          "total_spawns": 1,
+          "idle_spawns": 0,
+          "busy_spawns": 1,
+          "idle_spawn_ticks": 2758
+        }
+      }
+    ],
+    "defenseRequests": [
+      {
+        "roomName": "W18S28",
+        "guardsNeeded": 1,
+        "rangersNeeded": 7,
+        "healersNeeded": 3,
+        "urgency": 2,
+        "createdAt": 71701952,
+        "threat": "Baseline defense force for RCL 5; 30 ranged parts detected; 10 heal parts detected; 1 boosted enemies (high threat)"
+      }
+    ],
+    "errorKeys": [
+      {
+        "path": "processes.core:memoryCleanup.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.core:memorySizeCheck.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.core:memorySegmentStats.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.cluster:pheromoneDiffusion.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.room:labConfig.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.room:pathCachePrecache.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:manager.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.expansion:manager.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:intelScanner.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.remote:infrastructure.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:pixelBuying.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:pixelGeneration.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:nuke.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:powerBank.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:powerCreep.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:shard.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:crossShardIntel.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:tooangel.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.terminal:manager.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.factory:manager.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.link:manager.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.empire:market.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.room:W17S29.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.room:W19S26.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.room:W18S29.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.creep:queenCarrier_71700790_een2uqpcu.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.creep:hauler_71700844_1eczs65hf.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.creep:harvester_71700940_slgu0kln6.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.creep:upgrader_71700976_r3h7s7gik.error_count",
+        "value": 0
+      },
+      {
+        "path": "processes.creep:harvester_71701039_ewchejkmn.error_count",
+        "value": 0
+      }
+    ]
+  },
+  "code": {
+    "error": "TypeError: api.raw.user.code is not a function"
+  },
+  "consoleCheck": {
+    "called": false,
+    "reason": "Skipped /api/user/console because screeps-api implements it as POST and it queues a console expression; checked Memory.stats/error fields instead."
+  }
+}

@@ -1,0 +1,7992 @@
+{
+  "generatedAt": "2026-06-23T19:24:33.328Z",
+  "shard": "shard1",
+  "observer": {
+    "username": "TedRoastBeef",
+    "id": "5dc0453f9b78abbd4ca04b05",
+    "cpu": 60,
+    "gcl": 22507586
+  },
+  "tickRange": {
+    "start": 71872697,
+    "final": 71873199,
+    "span": 502,
+    "firstSample": 71872697,
+    "lastSample": 71873199,
+    "sampleSpan": 502
+  },
+  "sampleCount": 32,
+  "cpu": {
+    "avg": 37.62835923124658,
+    "max": 65.08774509999785,
+    "bucketAvg": 7959,
+    "bucketMin": 5782,
+    "bucketStart": 5782,
+    "bucketEnd": 9232,
+    "bucketDelta": 3450,
+    "skippedAvg": 28.65625
+  },
+  "rolesLatest": {
+    "builder": 6,
+    "queenCarrier": 4,
+    "upgrader": 5,
+    "scout": 3,
+    "harvester": 6,
+    "guard": 6,
+    "hauler": 6,
+    "mineralHarvester": 1,
+    "pioneer": 3,
+    "interShardScout": 2,
+    "healer": 1,
+    "claimer": 1,
+    "ranger": 1
+  },
+  "rolesMaxSeen": {
+    "hauler": 6,
+    "interShardScout": 3,
+    "upgrader": 5,
+    "harvester": 6,
+    "healer": 4,
+    "guard": 10,
+    "claimer": 1,
+    "labTech": 1,
+    "ranger": 2,
+    "builder": 6,
+    "queenCarrier": 4,
+    "scout": 3,
+    "mineralHarvester": 1,
+    "pioneer": 3
+  },
+  "taskBoardLatest": {
+    "present": true,
+    "total": 247,
+    "assigned": 8,
+    "unassigned": 239,
+    "byStatus": {
+      "unknown": 125,
+      "open": 114,
+      "assigned": 8
+    },
+    "byType": {
+      "unknown": 129,
+      "storeEnergy": 2,
+      "upgrade": 4,
+      "repair": 30,
+      "build": 29,
+      "refillExtension": 47,
+      "refillTower": 4,
+      "refillSpawn": 1,
+      "defend": 1
+    },
+    "arrays": [
+      {
+        "path": "rooms.W17S29.tasks.W17S29:storeEnergy:69e37ccbdb4da6c93f3f83fd.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a380cb384c1720a2b21c4.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a19bbeb80514e0bfcdce1f1.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a19f5aeef10680540553023.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a19f6dfe799346a708a3bf9.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillTower:6a19facdf4fb902ad00dc315.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a0e55fac1d61e341e0a3e.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a10468c4d33d0bec20cf0.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a140f1e59f97cdf70014b.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillTower:6a1a144bba9c0f64c10ed635.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a2dc4c8989e7bc5c389a7c0.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a2de61e29757a3a47bd207e.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a2e14cbdf4d0170a5ced54f.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:69dd0cfab228f13ac386255f.allowedRoles",
+        "count": 7
+      },
+      {
+        "path": "rooms.W17S29.tasks.W17S29:refillExtension:69dd2479a894ef318795b528.allowedRoles",
+        "count": 7
+      }
+    ]
+  },
+  "spawnQueuesLatest": [
+    {
+      "path": "empire.claimQueue",
+      "count": 1,
+      "sample": [
+        {
+          "roomName": "W18S27",
+          "score": 66,
+          "distance": 1,
+          "claimed": false,
+          "lastEvaluated": 71634455
+        }
+      ]
+    }
+  ],
+  "defenseRoomsLatest": [
+    "W19S26"
+  ],
+  "clusterRoomsLatest": [],
+  "empireRoomsLatest": [
+    "W15S30",
+    "W15S31",
+    "W16S23",
+    "W16S24",
+    "W16S25",
+    "W16S26",
+    "W16S27",
+    "W16S28",
+    "W16S29",
+    "W16S30",
+    "W16S31",
+    "W17S23",
+    "W17S25",
+    "W17S26",
+    "W17S27",
+    "W17S28",
+    "W17S29",
+    "W17S30",
+    "W17S31",
+    "W18S24",
+    "W18S25",
+    "W18S26",
+    "W18S27",
+    "W18S28",
+    "W18S29",
+    "W18S30",
+    "W18S31",
+    "W18S32",
+    "W18S33",
+    "W18S34",
+    "W19S22",
+    "W19S23",
+    "W19S24",
+    "W19S25",
+    "W19S26",
+    "W19S27",
+    "W19S28",
+    "W19S29",
+    "W19S30",
+    "W19S31",
+    "W19S32",
+    "W19S33",
+    "W20S10",
+    "W20S11",
+    "W20S12",
+    "W20S13",
+    "W20S14",
+    "W20S15",
+    "W20S16",
+    "W20S17",
+    "W20S18",
+    "W20S19",
+    "W20S20",
+    "W20S21",
+    "W20S22",
+    "W20S23",
+    "W20S24",
+    "W20S25",
+    "W20S26",
+    "W20S27",
+    "W20S28",
+    "W20S29",
+    "W20S30",
+    "W20S5",
+    "W20S6",
+    "W20S7",
+    "W20S8",
+    "W20S9",
+    "W21S26",
+    "W21S27"
+  ],
+  "topProcesses": [
+    {
+      "key": "creep:scout_71872539_736e6jbge",
+      "name": "Creep scout_71872539_736e6jbge (scout)",
+      "avg": 16.797145154077977,
+      "max": 42.40509520001069,
+      "samples": 31
+    },
+    {
+      "key": "remote:infrastructure",
+      "name": "Remote Infrastructure Manager",
+      "avg": 6.982162849998559,
+      "max": 12.450593999999967,
+      "samples": 32
+    },
+    {
+      "key": "room:W17S29",
+      "name": "Room W17S29 (owned)",
+      "avg": 5.78235094888564,
+      "max": 44.998790600002394,
+      "samples": 32
+    },
+    {
+      "key": "empire:market",
+      "name": "Market Manager",
+      "avg": 3.4234851594369884,
+      "max": 7.073700400000007,
+      "samples": 32
+    },
+    {
+      "key": "expansion:manager",
+      "name": "Expansion Manager",
+      "avg": 2.5523359874978473,
+      "max": 3.5058582000000342,
+      "samples": 32
+    },
+    {
+      "key": "creep:interShardScout_71872693_yrkao8c8y",
+      "name": "Creep interShardScout_71872693_yrkao8c8y (interShardScout)",
+      "avg": 2.4610482000134652,
+      "max": 2.4610482000134652,
+      "samples": 1
+    },
+    {
+      "key": "creep:interShardScout_71872790_wjeprxuyo",
+      "name": "Creep interShardScout_71872790_wjeprxuyo (interShardScout)",
+      "avg": 2.2872017999907257,
+      "max": 2.2872017999907257,
+      "samples": 1
+    },
+    {
+      "key": "core:memorySegmentStats",
+      "name": "Memory Segment Stats",
+      "avg": 1.3405248999985222,
+      "max": 1.389360699991812,
+      "samples": 32
+    },
+    {
+      "key": "empire:shard",
+      "name": "Shard Manager",
+      "avg": 1.3364643342029001,
+      "max": 1.5185533999974723,
+      "samples": 32
+    },
+    {
+      "key": "room:W18S29",
+      "name": "Room W18S29 (owned)",
+      "avg": 1.05561895500741,
+      "max": 3.786977099996875,
+      "samples": 32
+    },
+    {
+      "key": "empire:manager",
+      "name": "Empire Manager",
+      "avg": 0.7599698099101394,
+      "max": 2.3138582999999926,
+      "samples": 32
+    },
+    {
+      "key": "empire:crossShardIntel",
+      "name": "Cross-Shard Intel",
+      "avg": 0.729350466027425,
+      "max": 1.136941000004299,
+      "samples": 31
+    }
+  ],
+  "topSubsystems": [
+    {
+      "key": "kernel",
+      "avg": 24.272249119600403,
+      "max": 89.55249720000029,
+      "samples": 32
+    },
+    {
+      "key": "spawns",
+      "avg": 6.354321661302175,
+      "max": 80.56758189999891,
+      "samples": 32
+    },
+    {
+      "key": "taskBoard",
+      "avg": 0.6587960097715662,
+      "max": 35.486747399991145,
+      "samples": 32
+    },
+    {
+      "key": "visualizations",
+      "avg": 0.31896709213761437,
+      "max": 46.066614100011066,
+      "samples": 29
+    },
+    {
+      "key": "processSync",
+      "avg": 0.08686820349831802,
+      "max": 31.36396899999818,
+      "samples": 32
+    },
+    {
+      "key": "scheduledTasks",
+      "avg": 0.009635154718797027,
+      "max": 25.051816399995005,
+      "samples": 26
+    },
+    {
+      "key": "ss2PacketQueue",
+      "avg": 0.003176111923344157,
+      "max": 12.572704300051555,
+      "samples": 32
+    },
+    {
+      "key": "eventQueue",
+      "avg": 0.0025080018096515,
+      "max": 21.14002019999316,
+      "samples": 32
+    },
+    {
+      "key": "powerCreeps",
+      "avg": 0.0021070663451966797,
+      "max": 8.264254699985031,
+      "samples": 30
+    }
+  ],
+  "roomHealthLatest": {
+    "W19S26": {
+      "controller": {
+        "level": 3,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 71863477,
+        "upgradeBlocked": null,
+        "x": 40,
+        "y": 38
+      },
+      "spawns": 1,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 1,
+      "alliedCreeps": 0,
+      "hostileSample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 8,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W17S29": {
+      "controller": {
+        "level": 6,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 70230536,
+        "upgradeBlocked": null,
+        "x": 12,
+        "y": 12
+      },
+      "spawns": 1,
+      "towers": 2,
+      "towerEnergy": 1340,
+      "myCreeps": 12,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": 66594,
+      "terminalEnergy": 0,
+      "allySafety": {
+        "alliesSeen": 64,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W18S28": {
+      "controller": {
+        "level": 5,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 71734821,
+        "upgradeBlocked": 71792019,
+        "x": 35,
+        "y": 30
+      },
+      "spawns": 1,
+      "towers": 2,
+      "towerEnergy": 491,
+      "myCreeps": 12,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 17,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W18S29": {
+      "controller": {
+        "level": 6,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 71884244,
+        "upgradeBlocked": null,
+        "x": 13,
+        "y": 34
+      },
+      "spawns": 1,
+      "towers": 2,
+      "towerEnergy": 1850,
+      "myCreeps": 14,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": 325115,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 51,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W15S30": {
+      "controller": null,
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W15S31": {
+      "controller": {
+        "level": 0,
+        "owner": null,
+        "reservation": null,
+        "safeMode": null,
+        "x": 7,
+        "y": 22
+      },
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W16S23": {
+      "controller": {
+        "level": 0,
+        "owner": "Invader",
+        "reservation": "Invader",
+        "safeMode": null,
+        "upgradeBlocked": null,
+        "x": 22,
+        "y": 30
+      },
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W16S24": {
+      "controller": null,
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 4,
+      "alliedCreeps": 0,
+      "hostileSample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W16S25": {
+      "controller": null,
+      "spawns": 0,
+      "towers": 4,
+      "towerEnergy": 2130,
+      "myCreeps": 0,
+      "hostileCreeps": 8,
+      "alliedCreeps": 0,
+      "hostileSample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22a",
+          "owner": "Source Keeper",
+          "x": 15,
+          "y": 11,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22e",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 32,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22f",
+          "owner": "Source Keeper",
+          "x": 15,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W16S26": {
+      "controller": null,
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 4,
+      "alliedCreeps": 0,
+      "hostileSample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W16S27": {
+      "controller": {
+        "level": 0,
+        "owner": "Invader",
+        "reservation": "Invader",
+        "safeMode": null,
+        "x": 13,
+        "y": 27
+      },
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    },
+    "W16S28": {
+      "controller": {
+        "level": 0,
+        "owner": null,
+        "reservation": null,
+        "safeMode": null,
+        "x": 35,
+        "y": 21
+      },
+      "spawns": 0,
+      "towers": 0,
+      "towerEnergy": 0,
+      "myCreeps": 0,
+      "hostileCreeps": 0,
+      "alliedCreeps": 0,
+      "hostileSample": [],
+      "alliedSample": [],
+      "storageEnergy": null,
+      "terminalEnergy": null,
+      "allySafety": {
+        "alliesSeen": 0,
+        "alliesNeverClassifiedHostile": true
+      }
+    }
+  },
+  "hostileSightings": [
+    {
+      "tick": 71872697,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872697,
+      "room": "W16S25",
+      "count": 5,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872697,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872713,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872713,
+      "room": "W16S25",
+      "count": 5,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872713,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872728,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872728,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872728,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872744,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872744,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872744,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872761,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872761,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872761,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872777,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872777,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872777,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872793,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872793,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872793,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872809,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872809,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872809,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872826,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872826,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872826,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872842,
+      "room": "W15S31",
+      "count": 1,
+      "sample": [
+        {
+          "name": "Oliver",
+          "owner": "eduter",
+          "x": 5,
+          "y": 44,
+          "hits": 100,
+          "hitsMax": 100,
+          "body": {
+            "move": 1
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872842,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872842,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872842,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872858,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872858,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872858,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872873,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872873,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872873,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872890,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 2,
+          "y": 13,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872890,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872890,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872890,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872906,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 18,
+          "y": 26,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872906,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872906,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872906,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872922,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 32,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872922,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872922,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872922,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872938,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 23,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872938,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872938,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872938,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872955,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 25,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872955,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872955,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872955,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872971,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 34,
+          "y": 29,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872971,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872971,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872971,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872988,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872988,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872988,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71872988,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873004,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873004,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873004,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873004,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873021,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 35,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873021,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 17,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 39,
+          "y": 28,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 40,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873021,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873021,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873036,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 19,
+          "y": 26,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873036,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 6,
+          "y": 16,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 29,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 41,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873036,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873036,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873053,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 13,
+          "y": 10,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873053,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 6,
+          "y": 16,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 29,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 41,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873053,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873053,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873069,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 22,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873069,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 6,
+          "y": 16,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 29,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 41,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873069,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873069,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873085,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 36,
+          "y": 27,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873085,
+      "room": "W15S30",
+      "count": 1,
+      "sample": [
+        {
+          "name": "Lincoln",
+          "owner": "eduter",
+          "x": 12,
+          "y": 15,
+          "hits": 100,
+          "hitsMax": 100,
+          "body": {
+            "move": 1
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873085,
+      "room": "W16S24",
+      "count": 5,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "skKiller_e3",
+          "owner": "Mirroar",
+          "x": 2,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "move": 25,
+            "attack": 20,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873085,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873085,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873102,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 42,
+          "y": 32,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873102,
+      "room": "W16S24",
+      "count": 5,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "skKiller_e3",
+          "owner": "Mirroar",
+          "x": 3,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "move": 25,
+            "attack": 20,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873102,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873102,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873119,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 34,
+          "y": 32,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873119,
+      "room": "W16S24",
+      "count": 5,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "skKiller_e3",
+          "owner": "Mirroar",
+          "x": 4,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "move": 25,
+            "attack": 20,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873119,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873119,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873135,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 43,
+          "y": 30,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873135,
+      "room": "W16S24",
+      "count": 5,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "skKiller_e3",
+          "owner": "Mirroar",
+          "x": 5,
+          "y": 41,
+          "hits": 3600,
+          "hitsMax": 5000,
+          "body": {
+            "move": 25,
+            "attack": 20,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873135,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873135,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873152,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873152,
+      "room": "W16S24",
+      "count": 5,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "skKiller_e3",
+          "owner": "Mirroar",
+          "x": 7,
+          "y": 39,
+          "hits": 2020,
+          "hitsMax": 5000,
+          "body": {
+            "move": 25,
+            "attack": 20,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873152,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873152,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873168,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873168,
+      "room": "W16S24",
+      "count": 5,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "skKiller_e3",
+          "owner": "Mirroar",
+          "x": 7,
+          "y": 39,
+          "hits": 480,
+          "hitsMax": 5000,
+          "body": {
+            "move": 25,
+            "attack": 20,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873168,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873168,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873185,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873185,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873185,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873185,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873199,
+      "room": "W19S26",
+      "count": 1,
+      "sample": [
+        {
+          "name": "r_8_ae72",
+          "owner": "admon",
+          "x": 41,
+          "y": 33,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 20,
+            "move": 25,
+            "heal": 5
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873199,
+      "room": "W16S24",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf220",
+          "owner": "Source Keeper",
+          "x": 45,
+          "y": 5,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf223",
+          "owner": "Source Keeper",
+          "x": 4,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf224",
+          "owner": "Source Keeper",
+          "x": 38,
+          "y": 31,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf226",
+          "owner": "Source Keeper",
+          "x": 8,
+          "y": 42,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873199,
+      "room": "W16S25",
+      "count": 8,
+      "sample": [
+        {
+          "name": "defender0",
+          "owner": "Invader",
+          "x": 10,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender1",
+          "owner": "Invader",
+          "x": 12,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender2",
+          "owner": "Invader",
+          "x": 11,
+          "y": 7,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "ranged_attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "defender3",
+          "owner": "Invader",
+          "x": 11,
+          "y": 8,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "attack": 25,
+            "move": 25
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf22c",
+          "owner": "Source Keeper",
+          "x": 41,
+          "y": 14,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    },
+    {
+      "tick": 71873199,
+      "room": "W16S26",
+      "count": 4,
+      "sample": [
+        {
+          "name": "Keeper5982fd5ab097071b4adbf235",
+          "owner": "Source Keeper",
+          "x": 44,
+          "y": 15,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf238",
+          "owner": "Source Keeper",
+          "x": 43,
+          "y": 37,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf232",
+          "owner": "Source Keeper",
+          "x": 11,
+          "y": 6,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        },
+        {
+          "name": "Keeper5982fd5ab097071b4adbf239",
+          "owner": "Source Keeper",
+          "x": 7,
+          "y": 39,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "body": {
+            "tough": 17,
+            "move": 13,
+            "attack": 10,
+            "ranged_attack": 10
+          }
+        }
+      ]
+    }
+  ],
+  "allySightings": [],
+  "allySafety": {
+    "configuredAllies": [
+      "TooAngel",
+      "TedRoastBeef"
+    ],
+    "allySightings": 0,
+    "hostileSightingsExcludeAllies": true,
+    "notes": "TooAngel and TedRoastBeef are classified as allies, never hostiles."
+  },
+  "candidates": [
+    {
+      "title": "Add low-risk W19S26 responder/avoidance behavior for visible hostiles",
+      "impact": "high",
+      "evidence": "high",
+      "risk": "medium",
+      "score": 17,
+      "details": {
+        "W19S26": {
+          "controller": {
+            "level": 3,
+            "owner": "TedRoastBeef",
+            "reservation": null,
+            "safeMode": 71863477,
+            "upgradeBlocked": null,
+            "x": 40,
+            "y": 38
+          },
+          "spawns": 1,
+          "towers": 0,
+          "towerEnergy": 0,
+          "myCreeps": 0,
+          "hostileCreeps": 1,
+          "alliedCreeps": 0,
+          "hostileSample": [
+            {
+              "name": "r_8_ae72",
+              "owner": "admon",
+              "x": 41,
+              "y": 33,
+              "hits": 5000,
+              "hitsMax": 5000,
+              "body": {
+                "ranged_attack": 20,
+                "move": 25,
+                "heal": 5
+              }
+            }
+          ],
+          "alliedSample": [],
+          "storageEnergy": null,
+          "terminalEnergy": null,
+          "allySafety": {
+            "alliesSeen": 8,
+            "alliesNeverClassifiedHostile": true
+          }
+        },
+        "sightings": [
+          {
+            "tick": 71873135,
+            "room": "W19S26",
+            "count": 1,
+            "sample": [
+              {
+                "name": "r_8_ae72",
+                "owner": "admon",
+                "x": 43,
+                "y": 30,
+                "hits": 5000,
+                "hitsMax": 5000,
+                "body": {
+                  "ranged_attack": 20,
+                  "move": 25,
+                  "heal": 5
+                }
+              }
+            ]
+          },
+          {
+            "tick": 71873152,
+            "room": "W19S26",
+            "count": 1,
+            "sample": [
+              {
+                "name": "r_8_ae72",
+                "owner": "admon",
+                "x": 41,
+                "y": 33,
+                "hits": 5000,
+                "hitsMax": 5000,
+                "body": {
+                  "ranged_attack": 20,
+                  "move": 25,
+                  "heal": 5
+                }
+              }
+            ]
+          },
+          {
+            "tick": 71873168,
+            "room": "W19S26",
+            "count": 1,
+            "sample": [
+              {
+                "name": "r_8_ae72",
+                "owner": "admon",
+                "x": 41,
+                "y": 33,
+                "hits": 5000,
+                "hitsMax": 5000,
+                "body": {
+                  "ranged_attack": 20,
+                  "move": 25,
+                  "heal": 5
+                }
+              }
+            ]
+          },
+          {
+            "tick": 71873185,
+            "room": "W19S26",
+            "count": 1,
+            "sample": [
+              {
+                "name": "r_8_ae72",
+                "owner": "admon",
+                "x": 41,
+                "y": 33,
+                "hits": 5000,
+                "hitsMax": 5000,
+                "body": {
+                  "ranged_attack": 20,
+                  "move": 25,
+                  "heal": 5
+                }
+              }
+            ]
+          },
+          {
+            "tick": 71873199,
+            "room": "W19S26",
+            "count": 1,
+            "sample": [
+              {
+                "name": "r_8_ae72",
+                "owner": "admon",
+                "x": 41,
+                "y": 33,
+                "hits": 5000,
+                "hitsMax": 5000,
+                "body": {
+                  "ranged_attack": 20,
+                  "move": 25,
+                  "heal": 5
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Reduce task/spawn backlog by tightening spawn intent prioritization",
+      "impact": "high",
+      "evidence": "medium",
+      "risk": "low",
+      "score": 16,
+      "details": {
+        "taskBoard": {
+          "present": true,
+          "total": 247,
+          "assigned": 8,
+          "unassigned": 239,
+          "byStatus": {
+            "unknown": 125,
+            "open": 114,
+            "assigned": 8
+          },
+          "byType": {
+            "unknown": 129,
+            "storeEnergy": 2,
+            "upgrade": 4,
+            "repair": 30,
+            "build": 29,
+            "refillExtension": 47,
+            "refillTower": 4,
+            "refillSpawn": 1,
+            "defend": 1
+          },
+          "arrays": [
+            {
+              "path": "rooms.W17S29.tasks.W17S29:storeEnergy:69e37ccbdb4da6c93f3f83fd.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a380cb384c1720a2b21c4.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a19bbeb80514e0bfcdce1f1.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a19f5aeef10680540553023.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a19f6dfe799346a708a3bf9.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillTower:6a19facdf4fb902ad00dc315.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a0e55fac1d61e341e0a3e.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a10468c4d33d0bec20cf0.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a1a140f1e59f97cdf70014b.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillTower:6a1a144bba9c0f64c10ed635.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a2dc4c8989e7bc5c389a7c0.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a2de61e29757a3a47bd207e.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:6a2e14cbdf4d0170a5ced54f.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:69dd0cfab228f13ac386255f.allowedRoles",
+              "count": 7
+            },
+            {
+              "path": "rooms.W17S29.tasks.W17S29:refillExtension:69dd2479a894ef318795b528.allowedRoles",
+              "count": 7
+            }
+          ]
+        },
+        "spawnQueues": [
+          {
+            "path": "empire.claimQueue",
+            "count": 1,
+            "sample": [
+              {
+                "roomName": "W18S27",
+                "score": 66,
+                "distance": 1,
+                "claimed": false,
+                "lastEvaluated": 71634455
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Optimize/throttle hottest CPU path: creep:scout_71872539_736e6jbge (Creep scout_71872539_736e6jbge (scout))",
+      "impact": "medium",
+      "evidence": "high",
+      "risk": "medium",
+      "score": 14,
+      "details": {
+        "cpuAvg": 37.62835923124658,
+        "cpuMax": 65.08774509999785,
+        "bucketMin": 5782,
+        "bucketDelta": 3450,
+        "hottest": {
+          "key": "creep:scout_71872539_736e6jbge",
+          "name": "Creep scout_71872539_736e6jbge (scout)",
+          "avg": 16.797145154077977,
+          "max": 42.40509520001069,
+          "samples": 31
+        },
+        "topProcesses": [
+          {
+            "key": "creep:scout_71872539_736e6jbge",
+            "name": "Creep scout_71872539_736e6jbge (scout)",
+            "avg": 16.797145154077977,
+            "max": 42.40509520001069,
+            "samples": 31
+          },
+          {
+            "key": "remote:infrastructure",
+            "name": "Remote Infrastructure Manager",
+            "avg": 6.982162849998559,
+            "max": 12.450593999999967,
+            "samples": 32
+          },
+          {
+            "key": "room:W17S29",
+            "name": "Room W17S29 (owned)",
+            "avg": 5.78235094888564,
+            "max": 44.998790600002394,
+            "samples": 32
+          },
+          {
+            "key": "empire:market",
+            "name": "Market Manager",
+            "avg": 3.4234851594369884,
+            "max": 7.073700400000007,
+            "samples": 32
+          },
+          {
+            "key": "expansion:manager",
+            "name": "Expansion Manager",
+            "avg": 2.5523359874978473,
+            "max": 3.5058582000000342,
+            "samples": 32
+          }
+        ],
+        "topSubsystems": [
+          {
+            "key": "kernel",
+            "avg": 24.272249119600403,
+            "max": 89.55249720000029,
+            "samples": 32
+          },
+          {
+            "key": "spawns",
+            "avg": 6.354321661302175,
+            "max": 80.56758189999891,
+            "samples": 32
+          },
+          {
+            "key": "taskBoard",
+            "avg": 0.6587960097715662,
+            "max": 35.486747399991145,
+            "samples": 32
+          },
+          {
+            "key": "visualizations",
+            "avg": 0.31896709213761437,
+            "max": 46.066614100011066,
+            "samples": 29
+          },
+          {
+            "key": "processSync",
+            "avg": 0.08686820349831802,
+            "max": 31.36396899999818,
+            "samples": 32
+          }
+        ]
+      }
+    }
+  ]
+}

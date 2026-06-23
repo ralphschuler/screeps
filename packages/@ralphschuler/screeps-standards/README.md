@@ -59,7 +59,7 @@ for (const { sender, message } of incomingMessages) {
 - `parseJSON<T>(message: string)` - Parse JSON message content
 - `formatJSON<T>(data: T)` - Format data as JSON string
 
-**Configuration:**
+**Internal Limits:**
 
 - `MAX_DESCRIPTION_LENGTH = 100` - Maximum terminal description length
 - `MESSAGE_CHUNK_SIZE = 91` - Bytes per packet (100 - 9 header bytes)
@@ -71,14 +71,17 @@ for (const { sender, message } of incomingMessages) {
 ### SS2 Message Format
 
 Transaction descriptions follow this format:
-```
+
+```text
 msg_id|packet_id|{final_packet|}message_chunk
 ```
 
-- `msg_id`: 3-character alphanumeric message identifier
+- `msg_id`: 3-character alphanumeric message identifier generated for outgoing packets; incoming parsing preserves the existing 1-3 character acceptance
 - `packet_id`: Packet sequence number (0-99)
-- `final_packet`: Total packet count (only in first packet)
-- `message_chunk`: Piece of the message content
+- `final_packet`: Final packet index, present only in packet `0`
+- `message_chunk`: Piece of the message content; pipe characters are allowed inside the payload
+
+The public `parseTransaction()` façade delegates to a pure parser module so protocol syntax stays isolated from Screeps state, packet queues, and terminal side effects.
 
 ## Memory Usage
 
@@ -87,6 +90,10 @@ The package extends the global Memory interface:
 ```typescript
 interface Memory {
   ss2PacketQueue?: SS2PacketQueue;
+  ss2TerminalComms?: {
+    messageBuffers?: { [key: string]: SS2MessageBufferSerialized };
+    nextMessageId?: number;
+  };
 }
 ```
 

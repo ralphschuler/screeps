@@ -1,0 +1,135 @@
+{
+  "at": "2026-06-23T00:06:47.225Z",
+  "op": {
+    "enabled": true,
+    "targetShards": [
+      "shard0",
+      "shard1",
+      "shard2",
+      "shard3",
+      "shardX"
+    ],
+    "launchedAt": 71855433,
+    "cpuFloors": {
+      "shard0": 5,
+      "shard1": 20,
+      "shard2": 5,
+      "shard3": 10,
+      "shardX": 5
+    },
+    "lastRun": 71855558
+  },
+  "cpu": {
+    "used": 42.36345449999999,
+    "limit": 50,
+    "bucket": 9923,
+    "percent": 84.72839620000013,
+    "heap_mb": 99.06253814697266
+  },
+  "empire": {
+    "rooms": 4,
+    "creeps": 65,
+    "power_creeps": {
+      "total": 0,
+      "spawned": 0,
+      "eco": 0,
+      "combat": 0
+    },
+    "energy": {
+      "storage": 624506,
+      "terminal": 0,
+      "available": 3182,
+      "capacity": 4850
+    },
+    "credits": 5218.225,
+    "skipped_processes": 30
+  },
+  "interShardCreeps": {
+    "interShardScout_71855433_psm982i0a": {
+      "role": "interShardScout",
+      "homeRoom": "W18S28",
+      "targetRoom": "W18S28"
+    },
+    "interShardPioneer_71855433_mhepr7x9o": {
+      "role": "interShardPioneer",
+      "homeRoom": "W18S29",
+      "targetRoom": "W18S29"
+    },
+    "interShardPioneer_71855433_99davw5v3": {
+      "role": "interShardPioneer",
+      "homeRoom": "W19S26",
+      "targetRoom": "W19S26",
+      "state": {
+        "action": "build",
+        "startTick": 71855541,
+        "timeout": 25,
+        "targetId": "6a38b28cc734ca6c07007871"
+      }
+    },
+    "interShardScout_71855445_q7dh5ga8z": {
+      "role": "interShardScout",
+      "homeRoom": "W19S26",
+      "targetRoom": "W19S26"
+    },
+    "interShardScout_71855446_ntq3oicpv": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetRoom": "W17S29"
+    },
+    "interShardScout_71855449_b8bmuwiqm": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetShard": "shard0",
+      "targetRoom": "W20S20",
+      "portalRoom": "W20S20",
+      "task": "interShardFootprint",
+      "workflowState": "movingToPortal",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71855556,
+        "timeout": 25,
+        "targetRoom": "W20S20"
+      }
+    },
+    "interShardScout_71855452_450w2ubu5": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetShard": "shard2",
+      "targetRoom": "W20S20",
+      "portalRoom": "W20S20",
+      "task": "interShardFootprint",
+      "workflowState": "movingToPortal",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71855533,
+        "timeout": 25,
+        "targetRoom": "W20S20"
+      }
+    },
+    "interShardScout_71855455_ukeexmb0o": {
+      "role": "interShardScout",
+      "homeRoom": "W17S29",
+      "targetShard": "shardX",
+      "targetRoom": "W20S20",
+      "portalRoom": "W20S20",
+      "task": "interShardFootprint",
+      "workflowState": "movingToPortal",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71855536,
+        "timeout": 25,
+        "targetRoom": "W20S20"
+      }
+    },
+    "interShardPioneer_71855465_gilcuk2jr": {
+      "role": "interShardPioneer",
+      "homeRoom": "W17S29",
+      "targetRoom": "W17S29"
+    },
+    "interShardClaimer_71855489_dp7rhesvg": {
+      "role": "interShardClaimer",
+      "homeRoom": "W17S29",
+      "targetRoom": "W17S29"
+    }
+  }
+}

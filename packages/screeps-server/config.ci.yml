@@ -40,6 +40,7 @@ screepsmod:
       - construction-economy
       - remote-mining
       - defense-hostile
+      - defense-hard-invader
       - alliance-safety
     testFiles:
       - /workspace/packages/screepsmod-testing/dist/suites/ci-state-tests.js

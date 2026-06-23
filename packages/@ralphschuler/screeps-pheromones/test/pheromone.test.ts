@@ -59,6 +59,41 @@ describe("Pheromone System", () => {
       // War should decay slower than harvest
       expect(swarm.pheromones.war).to.be.greaterThan(swarm.pheromones.harvest);
     });
+
+    it("skips periodic updates until the room's next update tick", () => {
+      const swarm = createDefaultSwarmState();
+      swarm.pheromones.defense = 50;
+      swarm.nextUpdateTick = 1005;
+      swarm.lastUpdate = 990;
+
+      const room = {
+        name: "W1N1",
+        find: () => {
+          throw new Error("find should not run before nextUpdateTick");
+        }
+      } as unknown as Room;
+
+      pheromoneManager.updatePheromones(swarm, room);
+
+      expect(swarm.pheromones.defense).to.equal(50);
+      expect(swarm.nextUpdateTick).to.equal(1005);
+      expect(swarm.lastUpdate).to.equal(990);
+    });
+
+    it("records the next scheduled update after periodic decay and contribution", () => {
+      const swarm = createDefaultSwarmState();
+      swarm.nextUpdateTick = 0;
+
+      const room = {
+        name: "W1N1",
+        find: () => []
+      } as unknown as Room;
+
+      pheromoneManager.updatePheromones(swarm, room);
+
+      expect(swarm.nextUpdateTick).to.equal(Game.time + DEFAULT_PHEROMONE_CONFIG.updateInterval);
+      expect(swarm.lastUpdate).to.equal(Game.time);
+    });
   });
 
   describe("Event-Driven Updates", () => {
@@ -127,9 +162,9 @@ describe("Pheromone System", () => {
       const swarm = createDefaultSwarmState();
       swarm.danger = 0;
 
-  pheromoneManager.onNukeDetected(swarm);
+      pheromoneManager.onNukeDetected(swarm);
 
-  expect(swarm.danger).to.equal(3);
+      expect(swarm.danger).to.equal(3);
       expect(swarm.pheromones.siege).to.be.at.least(50);
     });
 
@@ -175,6 +210,50 @@ describe("Pheromone System", () => {
       pheromoneManager.applyDiffusion(rooms);
 
       expect(swarm2.pheromones.defense).to.equal(0);
+    });
+
+    it("caps the target pheromone at the source room's intensity", () => {
+      const source = createDefaultSwarmState();
+      const target = createDefaultSwarmState();
+
+      source.pheromones.defense = 10;
+      target.pheromones.defense = 9;
+
+      const rooms = new Map<string, typeof source>();
+      rooms.set("W1N1", source);
+      rooms.set("W2N1", target);
+
+      pheromoneManager.applyDiffusion(rooms);
+
+      expect(target.pheromones.defense).to.equal(10);
+    });
+
+    it("diffuses across cardinal room names at the world origin", () => {
+      const source = createDefaultSwarmState();
+      source.pheromones.defense = 20;
+
+      const north = createDefaultSwarmState();
+      const south = createDefaultSwarmState();
+      const east = createDefaultSwarmState();
+      const west = createDefaultSwarmState();
+      const diagonal = createDefaultSwarmState();
+
+      const rooms = new Map<string, typeof source>([
+        ["W0N0", source],
+        ["W0N1", north],
+        ["W0S0", south],
+        ["E0N0", east],
+        ["W1N0", west],
+        ["E0S0", diagonal]
+      ]);
+
+      pheromoneManager.applyDiffusion(rooms);
+
+      expect(north.pheromones.defense).to.be.greaterThan(0);
+      expect(south.pheromones.defense).to.be.greaterThan(0);
+      expect(east.pheromones.defense).to.be.greaterThan(0);
+      expect(west.pheromones.defense).to.be.greaterThan(0);
+      expect(diagonal.pheromones.defense).to.equal(0);
     });
   });
 

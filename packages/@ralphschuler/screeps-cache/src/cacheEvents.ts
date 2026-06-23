@@ -13,9 +13,8 @@
  * - spawn.completed, rcl.upgrade
  */
 
-import { eventBus, EventPriority } from "@ralphschuler/screeps-core";
+import { createLogger, eventBus, EventPriority } from "@ralphschuler/screeps-core";
 import { cacheCoherence, InvalidationScope } from "./CacheCoherence";
-import { createLogger } from "@ralphschuler/screeps-core";
 
 const logger = createLogger("CacheEvents");
 

@@ -18,6 +18,7 @@ Default scenarios:
 - `construction-economy`
 - `remote-mining`
 - `defense-hostile`
+- `defense-hard-invader`
 - `alliance-safety`
 
 Override with `SCREEPS_TEST_SCENARIOS=none` or a comma list.

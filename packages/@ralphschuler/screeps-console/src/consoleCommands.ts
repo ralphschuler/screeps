@@ -12,8 +12,6 @@
  * - Configuration: Commands for viewing/modifying bot configuration
  */
 
-/* eslint-disable max-classes-per-file */
-
 import { Command, commandRegistry, registerDecoratedCommands } from "./commandRegistry";
 import { 
   kernel,

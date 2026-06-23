@@ -19,13 +19,21 @@ function hostile(
   } as unknown as Creep;
 }
 
+type TowerFindTargets = Record<number, RoomObject | RoomObject[] | null>;
+
 function tower(
-  targets: Record<number, RoomObject | null> = {},
+  targets: TowerFindTargets = {},
   energy = 100,
 ): StructureTower {
   return {
     store: { getUsedCapacity: () => energy },
-    pos: { findClosestByRange: (type: number) => targets[type] ?? null },
+    pos: {
+      findClosestByRange: (type: number, opts?: { filter?: (target: RoomObject) => boolean }) => {
+        const target = targets[type];
+        const candidates = Array.isArray(target) ? target : target ? [target] : [];
+        return candidates.find((candidate) => !opts?.filter || opts.filter(candidate)) ?? null;
+      },
+    },
   } as unknown as StructureTower;
 }
 
@@ -189,6 +197,56 @@ describe("tower action policy", () => {
     });
 
     expect(action).to.deep.equal({ type: "repair", target: damagedStructure });
+  });
+
+  it("repairs routine damaged structures before weak walls and ramparts", () => {
+    const damagedRoad = {
+      hits: 50,
+      hitsMax: 100,
+      structureType: STRUCTURE_ROAD,
+    } as Structure;
+    const weakRampart = {
+      hits: 500,
+      hitsMax: 10000,
+      structureType: STRUCTURE_RAMPART,
+    } as Structure;
+
+    const action = selectTowerAction({
+      tower: tower({ [FIND_STRUCTURES]: [weakRampart, damagedRoad] }, 900),
+      hostiles: [],
+      posture: "eco",
+      rcl: 4,
+      danger: 0,
+      isCombatPosture: false,
+      wallRepairTarget: 1000,
+    });
+
+    expect(action).to.deep.equal({ type: "repair", target: damagedRoad });
+  });
+
+  it("repairs weak walls and ramparts when no routine repair target is eligible", () => {
+    const healthyRoad = {
+      hits: 95,
+      hitsMax: 100,
+      structureType: STRUCTURE_ROAD,
+    } as Structure;
+    const weakRampart = {
+      hits: 500,
+      hitsMax: 10000,
+      structureType: STRUCTURE_RAMPART,
+    } as Structure;
+
+    const action = selectTowerAction({
+      tower: tower({ [FIND_STRUCTURES]: [healthyRoad, weakRampart] }, 900),
+      hostiles: [],
+      posture: "eco",
+      rcl: 4,
+      danger: 0,
+      isCombatPosture: false,
+      wallRepairTarget: 1000,
+    });
+
+    expect(action).to.deep.equal({ type: "repair", target: weakRampart });
   });
 
   it("allows explicit repair reserve override as a rollback knob", () => {

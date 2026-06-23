@@ -15,6 +15,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+import { summarizeHostileBody } from "./bodyThreatProfile";
 
 interface DefenseSettingsMemory {
   defenseSettings?: {
@@ -22,8 +23,6 @@ interface DefenseSettingsMemory {
     workPartThreatScoring?: boolean;
   };
 }
-
-const MIN_WORK_PART_THREAT_SCORE = 100;
 
 function isWorkPartThreatScoringEnabled(): boolean {
   if (typeof Memory === "undefined") return true;
@@ -54,7 +53,7 @@ export interface ThreatAnalysis {
   meleeCount: number;
   /** Number of boosted hostiles */
   boostedCount: number;
-  /** Number of dismantlers (5+ work parts) */
+  /** Number of hostiles with active WORK dismantle pressure (or legacy 5+ WORK when rollback is enabled) */
   dismantlerCount: number;
   /** Estimated energy cost to spawn defenders */
   estimatedDefenderCost: number;
@@ -111,67 +110,17 @@ export function assessThreat(room: Room): ThreatAnalysis {
   const scoreWorkPartThreats = isWorkPartThreatScoringEnabled();
 
   for (const hostile of hostiles) {
-    let attackParts = 0;
-    let rangedParts = 0;
-    let healParts = 0;
-    let workParts = 0;
-    
-    // Analyze body composition
-    for (const part of hostile.body) {
-      if (part.hits === 0) continue; // Skip destroyed parts
-      
-      switch (part.type) {
-        case ATTACK:
-          attackParts++;
-          break;
-        case RANGED_ATTACK:
-          rangedParts++;
-          break;
-        case HEAL:
-          healParts++;
-          break;
-        case WORK:
-          workParts++;
-          break;
-      }
-    }
+    const bodyProfile = summarizeHostileBody(hostile, { scoreWorkPartThreats });
 
-    // Calculate defensive pressure. WORK parts do not damage creeps, but each active part
-    // can dismantle structures for DISMANTLE_POWER hits/tick and must trigger defense.
-    const dismantlePower = scoreWorkPartThreats ? workParts * DISMANTLE_POWER : 0;
-    totalDPS += attackParts * 30 + rangedParts * 10 + dismantlePower;
+    totalDPS += bodyProfile.dps;
     totalHP += hostile.hits;
+    threatScore += bodyProfile.scoreContribution;
 
-    // Check for boosts
-    const isBoosted = hostile.body.some(p => p.boost);
-    if (isBoosted) {
-      boostedCount++;
-      threatScore += 200; // Boosted creeps are serious threats
-    }
-
-    // Role classification
-    if (healParts > 0) {
-      healerCount++;
-      threatScore += 100; // Healers make attacks much harder
-    }
-    if (rangedParts > 0) {
-      rangedCount++;
-    }
-    if (attackParts > 0) {
-      meleeCount++;
-    }
-    if (scoreWorkPartThreats) {
-      if (workParts > 0) {
-        dismantlerCount++;
-        threatScore += Math.max(MIN_WORK_PART_THREAT_SCORE, dismantlePower * 2);
-      }
-    } else if (workParts >= 5) {
-      dismantlerCount++;
-      threatScore += 150; // Legacy dismantler threshold.
-    }
-
-    // Base score by offensive capability
-    threatScore += (attackParts + rangedParts) * 10;
+    if (bodyProfile.isBoosted) boostedCount++;
+    if (bodyProfile.isHealer) healerCount++;
+    if (bodyProfile.isRanged) rangedCount++;
+    if (bodyProfile.isMelee) meleeCount++;
+    if (bodyProfile.isDismantler) dismantlerCount++;
   }
 
   // Calculate tower effectiveness with distance-based damage falloff

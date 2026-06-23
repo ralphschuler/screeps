@@ -6,6 +6,7 @@
 
 import { SS2MessageBuffer, SS2TransactionMessage, SS2MessageBufferSerialized } from "./types.js";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { parseSS2TransactionDescription } from "./ss2/description.js";
 
 const logger = createLogger("SS2TerminalComms");
 
@@ -138,42 +139,18 @@ export class SS2TerminalComms {
   }
 
   /**
-   * Parse SS2 transaction description
-   * Format: msg_id|packet_id|{final_packet|}message_chunk
-   * Regex: ^([\da-zA-Z]{1,3})\|([\d]{1,2})\|.+
+   * Parse SS2 transaction description.
+   *
+   * Format: `msg_id|packet_id|{final_packet|}message_chunk`.
+   * Kept as the public façade while the pure parser lives in `ss2/description`.
+   *
    * @param description Transaction description
    * @returns Parsed message or null
    */
   public static parseTransaction(
     description: string
   ): SS2TransactionMessage | null {
-    const regex = /^([\da-zA-Z]{1,3})\|([\d]{1,2})\|(.+)$/;
-    const match = description.match(regex);
-
-    if (!match) {
-      return null;
-    }
-
-    const msgId = match[1];
-    const packetId = parseInt(match[2], 10);
-    let messageChunk = match[3];
-    let finalPacket: number | undefined;
-
-    // Check if first packet contains final_packet indicator
-    if (packetId === 0) {
-      const finalPacketMatch = messageChunk.match(/^(\d{1,2})\|(.+)$/);
-      if (finalPacketMatch) {
-        finalPacket = parseInt(finalPacketMatch[1], 10);
-        messageChunk = finalPacketMatch[2];
-      }
-    }
-
-    return {
-      msgId,
-      packetId,
-      finalPacket,
-      messageChunk,
-    };
+    return parseSS2TransactionDescription(description);
   }
 
   /**

@@ -1,0 +1,474 @@
+{
+  "generatedAt": "2026-06-15T15:22:57.786Z",
+  "hostname": "screeps.com",
+  "verification": {
+    "wantedCommit": "7e12722",
+    "localHead": "fd9d06b",
+    "branch": "main",
+    "note": "local HEAD differs from requested historical commit"
+  },
+  "user": {
+    "ok": 1,
+    "username": "TedRoastBeef"
+  },
+  "worldStatus": {
+    "ok": 1,
+    "status": "normal"
+  },
+  "shardInfo": {
+    "ok": 1,
+    "shards": [
+      {
+        "name": "shard0",
+        "lastTicks": [
+          3860,
+          3977,
+          4033,
+          4004,
+          4233,
+          4053,
+          3833,
+          3775,
+          3821,
+          3966,
+          4009,
+          4041,
+          4474,
+          4185,
+          3984,
+          4053,
+          3952,
+          3933,
+          3973,
+          3932,
+          3797,
+          3848,
+          3754,
+          3876,
+          3870,
+          3938,
+          3813,
+          4091,
+          3868,
+          3941
+        ],
+        "cpuLimit": 0,
+        "rooms": 7122,
+        "users": 229,
+        "tick": 3975.7054168599066
+      },
+      {
+        "name": "shard1",
+        "lastTicks": [
+          3474,
+          3540,
+          3510,
+          3668,
+          3656,
+          3847,
+          3574,
+          3558,
+          3443,
+          3665,
+          3548,
+          3767,
+          3439,
+          3682,
+          3351,
+          3701,
+          3523,
+          3651,
+          3607,
+          3810,
+          3678,
+          3959,
+          3744,
+          3864,
+          3581,
+          3593,
+          3489,
+          3651,
+          3525,
+          3729
+        ],
+        "cpuLimit": 0,
+        "rooms": 10512,
+        "users": 246,
+        "tick": 3631.2438308036362
+      },
+      {
+        "name": "shard2",
+        "lastTicks": [
+          4445,
+          4215,
+          4158,
+          4339,
+          4287,
+          4430,
+          4366,
+          4371,
+          4362,
+          4387,
+          4421,
+          4325,
+          4550,
+          4499,
+          4469,
+          4284,
+          4320,
+          4286,
+          4389,
+          4193,
+          4189,
+          4357,
+          4520,
+          4206,
+          4276,
+          4487,
+          4463,
+          4277,
+          4199,
+          4107
+        ],
+        "cpuLimit": 0,
+        "rooms": 10512,
+        "users": 267,
+        "tick": 4351.226003971307
+      },
+      {
+        "name": "shard3",
+        "lastTicks": [
+          3594,
+          3726,
+          3634,
+          3657,
+          3738,
+          3615,
+          3549,
+          3674,
+          3550,
+          3688,
+          3665,
+          3594,
+          3854,
+          3904,
+          3685,
+          3581,
+          3958,
+          4119,
+          3926,
+          4168,
+          4063,
+          4071,
+          3736,
+          4048,
+          3808,
+          3527,
+          3670,
+          3672,
+          3764,
+          3572
+        ],
+        "cpuLimit": 20,
+        "rooms": 10374,
+        "users": 1053,
+        "tick": 3745.068586119469
+      },
+      {
+        "name": "shardX",
+        "lastTicks": [
+          1976,
+          1853,
+          1999,
+          1863,
+          2048,
+          1905,
+          1851,
+          2012,
+          2098,
+          1853,
+          2128,
+          1969,
+          2095,
+          2162,
+          1799,
+          2059,
+          1873,
+          2321,
+          1955,
+          2248,
+          2184,
+          2012,
+          2045,
+          2119,
+          2293,
+          2050,
+          2164,
+          2134,
+          1913,
+          1895
+        ],
+        "rooms": 5256,
+        "users": 102,
+        "tick": 2003.79493059071
+      }
+    ]
+  },
+  "code": {
+    "remoteMainSha256": "f41d0803be8837d2ad502b526cbb44d2d1d4387ea4581ddca5e18b9ad70a62ef",
+    "wantedCommitDistSha256": "38c05effa10ca0c362dacb745e61eab0e4ab8f1f291195e7eea28ee874c2c0e9",
+    "remoteMatchesWantedCommitDist": false
+  },
+  "rooms": {
+    "ok": 1,
+    "shards": {
+      "shard0": [],
+      "shard1": [],
+      "shard2": [],
+      "shard3": [],
+      "shardX": []
+    },
+    "reservations": {
+      "shard0": [],
+      "shard1": [],
+      "shard2": [],
+      "shard3": [],
+      "shardX": []
+    }
+  },
+  "overview": {
+    "ok": 1,
+    "statsMax": 173160,
+    "totals": {
+      "creepsLost": 530,
+      "energyHarvested": 51620,
+      "energyConstruction": 7023,
+      "energyControl": 1084,
+      "energyCreeps": 49020,
+      "creepsProduced": 642
+    },
+    "shards": {
+      "shard0": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          75764532,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard1": {
+        "rooms": [
+          "W17S29",
+          "W18S28",
+          "W18S29",
+          "W19S26"
+        ],
+        "stats": {
+          "W17S29": [
+            {
+              "value": 1712,
+              "endTime": 3711529
+            },
+            {
+              "value": 3016,
+              "endTime": 3711530
+            },
+            {
+              "value": 2328,
+              "endTime": 3711531
+            },
+            {
+              "value": 2896,
+              "endTime": 3711532
+            },
+            {
+              "value": 2456,
+              "endTime": 3711533
+            },
+            {
+              "value": 2296,
+              "endTime": 3711534
+            },
+            {
+              "value": 2016,
+              "endTime": 3711535
+            },
+            {
+              "value": 512,
+              "endTime": 3711536
+            }
+          ],
+          "W18S28": [
+            {
+              "value": 1040,
+              "endTime": 3711529
+            },
+            {
+              "value": 0,
+              "endTime": 3711530
+            },
+            {
+              "value": 0,
+              "endTime": 3711531
+            },
+            {
+              "value": 0,
+              "endTime": 3711532
+            },
+            {
+              "value": 0,
+              "endTime": 3711533
+            },
+            {
+              "value": 0,
+              "endTime": 3711534
+            },
+            {
+              "value": 0,
+              "endTime": 3711535
+            },
+            {
+              "value": 0,
+              "endTime": 3711536
+            }
+          ],
+          "W18S29": [
+            {
+              "value": 2328,
+              "endTime": 3711529
+            },
+            {
+              "value": 3080,
+              "endTime": 3711530
+            },
+            {
+              "value": 2328,
+              "endTime": 3711531
+            },
+            {
+              "value": 1712,
+              "endTime": 3711532
+            },
+            {
+              "value": 1808,
+              "endTime": 3711533
+            },
+            {
+              "value": 2320,
+              "endTime": 3711534
+            },
+            {
+              "value": 2132,
+              "endTime": 3711535
+            },
+            {
+              "value": 796,
+              "endTime": 3711536
+            }
+          ],
+          "W19S26": [
+            {
+              "value": 1840,
+              "endTime": 3711529
+            },
+            {
+              "value": 1704,
+              "endTime": 3711530
+            },
+            {
+              "value": 1816,
+              "endTime": 3711531
+            },
+            {
+              "value": 1816,
+              "endTime": 3711532
+            },
+            {
+              "value": 1192,
+              "endTime": 3711533
+            },
+            {
+              "value": 958,
+              "endTime": 3711534
+            },
+            {
+              "value": 1146,
+              "endTime": 3711535
+            },
+            {
+              "value": 272,
+              "endTime": 3711536
+            }
+          ]
+        },
+        "gametimes": [
+          71692003,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard2": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          75202225,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard3": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          80879348,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shardX": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          2216382,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "memoryStats": {
+    "rooms": null
+  },
+  "roomObjects": {}
+}

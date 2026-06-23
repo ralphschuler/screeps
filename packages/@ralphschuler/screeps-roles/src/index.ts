@@ -142,7 +142,8 @@ export {
   remoteWorker,
   linkManager,
   terminalManager,
-  evaluateUtilityBehavior
+  evaluateUtilityBehavior,
+  getUtilityStateInterrupt
 } from "./behaviors/utility";
 
 // =============================================================================

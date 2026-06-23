@@ -12,7 +12,9 @@ export {
   getCommandDecoratorMetadata,
   registerAllDecoratedCommands,
   registerDecoratedCommands,
-  type CommandMetadata
+  type CommandDecoratorMetadata,
+  type CommandMetadata,
+  type RegisteredCommand
 } from './commandRegistry';
 
 // Export command collections

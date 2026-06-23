@@ -102,9 +102,9 @@ export function automatedBaseConstruction(room: Room) {
   
   // 3. Calculate and place road network
   const roadNetwork = calculateRoadNetwork(room, anchor);
-  const roadsPlaced = placeRoadConstructionSites(room, anchor, roadNetwork, 3);
+  const roadsPlaced = placeRoadConstructionSites(room, anchor, 3);
   
-  console.log(`${room.name}: Placed ${sitesPlaced} structures, ${roadsPlaced} roads`);
+  console.log(`${room.name}: Planned ${roadNetwork.positions.size} road tiles, placed ${sitesPlaced} structures, ${roadsPlaced} roads`);
 }
 ```
 
@@ -308,15 +308,22 @@ console.log(`Placed ${count} construction sites`);
 
 ### Road Networks
 
+Road planning is split into small internal modules:
+- `infrastructure`: hub-to-source/controller/mineral roads
+- `exitRoads`: permanent hub-to-exit roads and live near-exit fallback protection
+- `remoteRoads`: remote-mining path protection grouped by room
+- `validRoads`: blueprint cleanup allow-list assembly
+- `construction`: rate-limited local road construction-site placement
+
 #### `calculateRoadNetwork(room: Room, anchor: RoomPosition): RoomRoadNetwork`
 
-Calculates optimal road positions connecting infrastructure.
+Calculates local infrastructure road positions for sources, controller, and RCL6+ mineral.
 
 **Parameters:**
 - `room`: Room to calculate for
-- `anchor`: Base anchor position
+- `anchor`: Base anchor position used before storage exists
 
-**Returns:** `RoomRoadNetwork` with planned road segments and positions.
+**Returns:** `RoomRoadNetwork` with compact `"x,y"` position keys.
 
 **Example:**
 ```typescript
@@ -324,19 +331,29 @@ const network = calculateRoadNetwork(room, anchor);
 console.log(`Road network: ${network.positions.size} tiles`);
 ```
 
+#### `placeRoadConstructionSites(room: Room, anchor: RoomPosition, maxSites?: number): number`
+
+Places a limited batch of local infrastructure road construction sites. Remote-road maps are not passed here; they are used for road protection/validation.
+
+**Example:**
+```typescript
+const placed = placeRoadConstructionSites(room, anchor, 3);
+```
+
 #### `calculateRemoteRoads(homeRoom: Room, remoteRooms: string[]): Map<string, Set<string>>`
 
-Calculates roads to remote mining rooms.
+Calculates protected road positions to remote-mining rooms and groups them by room name. Directly adjacent remotes get an extra explicit exit-approach path; distance-2+ remotes still get full PathFinder route protection.
 
 **Parameters:**
 - `homeRoom`: Your main room
-- `remoteRooms`: Names of remote rooms
+- `remoteRooms`: Names of assigned remote rooms
 
-**Returns:** Array of road positions spanning multiple rooms
+**Returns:** `Map<roomName, Set<"x,y">>` for cleanup protection or caller-specific construction logic.
 
 **Example:**
 ```typescript
 const remoteRoads = calculateRemoteRoads(room, ['W1N2', 'W2N1']);
+const homeRoomRemoteRoads = remoteRoads.get(room.name) ?? new Set<string>();
 ```
 
 ### Anchor Finding
@@ -445,40 +462,40 @@ export function autoConstruct(room: Room) {
 
 ### Example 2: Remote Mining Road Network
 
-**Scenario:** Calculate roads to remote mining rooms
+**Scenario:** Protect roads that connect a room to assigned remotes.
 
 **Code:**
 ```typescript
-import { calculateRemoteRoads, placeRoadConstructionSites } from '@ralphschuler/screeps-layouts';
+import { calculateRemoteRoads, getValidRoadPositions, placeRoadConstructionSites } from '@ralphschuler/screeps-layouts';
 
-export function buildRemoteRoads(homeRoom: Room) {
-  // Get remote mining rooms from memory
+export function protectRemoteRoads(homeRoom: Room) {
   const remoteRooms = Memory.rooms[homeRoom.name]?.remotes || [];
-  
-  if (remoteRooms.length === 0) return;
-  
-  // Calculate optimal road network
-  const roads = calculateRemoteRoads(homeRoom, remoteRooms);
-  
-  // Place road sites (limit to 3 per tick to manage construction)
   const anchor = Memory.rooms[homeRoom.name]?.anchor;
-  if (anchor) {
-    const count = placeRoadConstructionSites(
-      homeRoom,
-      new RoomPosition(anchor.x, anchor.y, homeRoom.name),
-      roads,
-      3
-    );
-    console.log(`${homeRoom.name}: Placed ${count} remote road sites`);
-  }
+  if (!anchor) return;
+
+  const anchorPos = new RoomPosition(anchor.x, anchor.y, homeRoom.name);
+
+  // Calculate remote-road protection grouped by room for visuals or custom build logic.
+  const roadsByRoom = calculateRemoteRoads(homeRoom, remoteRooms);
+  const homeRoomRemoteRoads = roadsByRoom.get(homeRoom.name) ?? new Set<string>();
+
+  // Use the public validator to include blueprint roads, local infrastructure roads,
+  // permanent exit roads, remote roads, and live near-exit fallback protection.
+  const protectedRoads = getValidRoadPositions(homeRoom, anchorPos, [], remoteRooms);
+
+  // Local infrastructure roads can still be placed incrementally.
+  const placed = placeRoadConstructionSites(homeRoom, anchorPos, 3);
+  console.log(
+    `${homeRoom.name}: ${homeRoomRemoteRoads.size} home-room remote road tiles, ${protectedRoads.size} protected road tiles, ${placed} local road sites placed`
+  );
 }
 ```
 
 **Explanation:**
 1. Retrieve remote mining room list from memory
-2. Calculate complete road network across multiple rooms
-3. Place construction sites incrementally (3 per tick)
-4. System handles pathfinding and multi-room coordination
+2. Calculate remote road positions grouped by room
+3. Build a cleanup-safe road allow-list with `getValidRoadPositions`
+4. Place local road construction sites incrementally
 
 ### Example 3: Blueprint Comparison
 
@@ -603,7 +620,7 @@ const ROAD_CACHE_TTL = 1000;
    ```typescript
    // Place roads every 10 ticks instead of every tick
    if (Game.time % 10 === 0) {
-     placeRoadConstructionSites(room, anchor, roads, 3);
+     placeRoadConstructionSites(room, anchor, 3);
    }
    ```
 

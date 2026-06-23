@@ -25,6 +25,12 @@ describe("CacheCoherence", () => {
       getObjectById: () => null
     };
     g.Memory = {};
+
+    // HeapStore persists namespace maps on global; clear them so each test starts
+    // with fresh cache contents instead of inheriting entries from prior tests.
+    for (const key of Object.keys(g)) {
+      if (key.startsWith("_cacheHeap_")) delete g[key];
+    }
     
     // Note: These tests use isolated instances rather than singleton instances
     // (cacheCoherence and globalCache) to prevent state leakage between tests
@@ -239,8 +245,63 @@ describe("CacheCoherence", () => {
       assert.isBelow(sizeAfter, sizeBefore);
     });
 
-    // Note: Testing actual eviction is complex as it depends on
-    // memory estimation. This is better tested via integration tests.
+    it("should evict lower-priority caches before protected high-priority caches", () => {
+      coherence.registerCache("object", cache1, CacheLayer.L1, { priority: 100 });
+      coherence.registerCache("path", cache2, CacheLayer.L2, { priority: 1 });
+      coherence.setMemoryEstimate("object", 1000);
+      coherence.setMemoryEstimate("path", 1000);
+
+      for (let i = 0; i < 10; i++) {
+        cache1.set(`object-${i}`, `value-${i}`, { namespace: "object" });
+        cache2.set(`path-${i}`, `value-${i}`, { namespace: "path" });
+      }
+
+      coherence.setMemoryBudget(19_000);
+
+      const evicted = coherence.enforceMemoryLimits();
+
+      assert.equal(evicted, 1);
+      assert.equal(cache1.getCacheStats("object").size, 10);
+      assert.equal(cache2.getCacheStats("path").size, 9);
+    });
+
+    it("should keep evicting lower-priority caches until the budget target is met", () => {
+      coherence.registerCache("object", cache1, CacheLayer.L1, { priority: 100 });
+      coherence.registerCache("path", cache2, CacheLayer.L2, { priority: 1 });
+      coherence.setMemoryEstimate("object", 1000);
+      coherence.setMemoryEstimate("path", 1000);
+
+      for (let i = 0; i < 10; i++) {
+        cache1.set(`object-${i}`, `value-${i}`, { namespace: "object" });
+        cache2.set(`path-${i}`, `value-${i}`, { namespace: "path" });
+      }
+
+      coherence.setMemoryBudget(10_000);
+
+      const evicted = coherence.enforceMemoryLimits();
+      const stats = coherence.getCacheStats();
+
+      assert.equal(evicted, 10);
+      assert.equal(cache1.getCacheStats("object").size, 10);
+      assert.equal(cache2.getCacheStats("path").size, 0);
+      assert.equal(stats.totalMemory, 10_000);
+    });
+
+    it("should trim at least ten percent from a selected over-budget namespace", () => {
+      coherence.registerCache("path", cache2, CacheLayer.L2);
+      coherence.setMemoryEstimate("path", 1000);
+
+      for (let i = 0; i < 100; i++) {
+        cache2.set(`path-${i}`, `value-${i}`, { namespace: "path" });
+      }
+
+      coherence.setMemoryBudget(99_000);
+
+      const evicted = coherence.enforceMemoryLimits();
+
+      assert.equal(evicted, 10);
+      assert.equal(cache2.getCacheStats("path").size, 90);
+    });
   });
 
   describe("Cleanup", () => {
@@ -331,6 +392,23 @@ describe("CacheCoherence", () => {
       
       const invalidated = coherence.invalidate(scope);
       assert.isAtLeast(invalidated, 1);
+    });
+
+    it("should escape creep names before building invalidation regexes", () => {
+      coherence.registerCache("object", cache1, CacheLayer.L1);
+
+      cache1.set("creep:Worker[1]", "literal", { namespace: "object" });
+      cache1.set("creep:Worker1", "regex-collision", { namespace: "object" });
+
+      const invalidated = coherence.invalidate({
+        type: "creep",
+        creepName: "Worker[1]",
+        namespaces: ["object"]
+      });
+
+      assert.equal(invalidated, 1);
+      assert.isUndefined(cache1.get("creep:Worker[1]", { namespace: "object" }));
+      assert.equal(cache1.get("creep:Worker1", { namespace: "object" }), "regex-collision");
     });
   });
 });

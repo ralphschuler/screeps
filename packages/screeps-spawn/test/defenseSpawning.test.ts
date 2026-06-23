@@ -148,8 +148,9 @@ describe("defense spawn throttling", () => {
     assert.equal(guardRequest?.targetRoom, "W19S28");
     assert.equal(guardRequest?.priority, SpawnPriority.EMERGENCY);
     assert.include(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W19S28" });
-    assert.equal(guardRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:-1000");
+    assert.equal(guardRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:1000");
     assert.equal(guardRequest?.additionalMemory?.defenseSquadSize, 1);
+    assert.equal(guardRequest?.additionalMemory?.defenseSquadCreatedAt, Game.time);
   });
 
   it("assigns the same defense squad id to a helper room reinforcement wave", () => {
@@ -181,11 +182,11 @@ describe("defense spawn throttling", () => {
     assert.sameMembers(assistRequests.map(request => request.role), ["guard", "ranger", "healer"]);
     assert.deepEqual(
       [...new Set(assistRequests.map(request => request.additionalMemory?.defenseSquadId))],
-      ["defenseAssist:W17S29:W19S28:990"]
+      ["defenseAssist:W17S29:W19S28:1000"]
     );
     for (const request of assistRequests) {
       assert.equal(request.additionalMemory?.defenseSquadSize, 3);
-      assert.equal(request.additionalMemory?.defenseSquadCreatedAt, 990);
+      assert.equal(request.additionalMemory?.defenseSquadCreatedAt, Game.time);
     }
   });
 
@@ -457,6 +458,54 @@ describe("defense spawn throttling", () => {
     assert.isOk(guardRequest);
     assert.isAtLeast(guardRequest!.body.parts.length, hostile.body.length);
     assert.isAtLeast(calculateCombatPower(guardRequest!.body.parts).score, calculateCombatPower(hostile.body).score);
+  });
+
+  it("does not spawn three-part rangers against hard ranged healer invaders", () => {
+    const helper = createRoom([], "W17S29", 300, 300);
+    const hardInvader = createHostile(createRepeatedParts([TOUGH, 5], [RANGED_ATTACK, 25], [MOVE, 10], [HEAL, 10]));
+    const attacked = createRoom([hardInvader], "W19S28", 300, 300);
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 0,
+        rangersNeeded: 1,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "hard ranged healer"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const rangerRequest = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(request => request.role === "ranger");
+
+    if (rangerRequest) {
+      assert.isAtLeast(rangerRequest.body.parts.length, 6);
+      assert.isAtLeast(rangerRequest.body.parts.filter(part => part === RANGED_ATTACK).length, 2);
+    }
+  });
+
+  it("uses capacity-sized local emergency defenders against visible hard threats", () => {
+    const hostile = createHostile(createRepeatedParts([TOUGH, 5], [RANGED_ATTACK, 25], [MOVE, 10], [HEAL, 10]));
+    const room = createRoom([hostile], "W1N1", 1800, 300);
+    Game.rooms.W1N1 = room;
+
+    populateSpawnQueue(room, { danger: 3, posture: "defense" } as any);
+
+    const defenderRequests = spawnQueue.getPendingRequests("W1N1")
+      .filter(request => request.role === "guard" || request.role === "ranger" || request.role === "healer");
+
+    assert.isAbove(defenderRequests.length, 0);
+    assert.isTrue(defenderRequests.every(request => request.body.parts.length >= 6));
+    assert.isTrue(defenderRequests.every(request => request.body.cost > room.energyAvailable));
   });
 
   it("plans aggregate friendly fight power strictly above visible hostile power", () => {

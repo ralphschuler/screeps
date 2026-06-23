@@ -3,11 +3,15 @@ import {
   buildBehavior,
   executeAction,
   evaluateEconomyBehavior,
+  evaluateUtilityBehavior,
+  getUtilityStateInterrupt,
   guard,
   harvestBehavior,
   haulBehavior,
   healer,
   remoteHarvester,
+  remoteWorker,
+  evaluateWithStateMachine,
   setLabManagerProvider,
   setRemoteMoveHandler,
   soldier,
@@ -451,6 +455,218 @@ describe("Behavior Contracts", () => {
     expect(guard).to.be.a("function");
     expect(soldier).to.be.a("function");
     expect(healer).to.be.a("function");
+  });
+
+  it("remoteWorker builds remote construction before hauling home", () => {
+    const remoteRoom = createMockRoom("W2N1");
+    const site = {
+      id: "remote-container-site" as Id<ConstructionSite>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: new RoomPosition(20, 20, "W2N1"),
+      room: remoteRoom
+    } as ConstructionSite;
+    (remoteRoom as unknown as { find: Room["find"] }).find = (type: FindConstant) => {
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [site];
+      return [];
+    };
+    const creep = createMockCreep("remoteWorker1", {
+      room: remoteRoom,
+      memory: { role: "remoteWorker", homeRoom: "W1N1", targetRoom: "W2N1", working: true },
+      store: { getUsedCapacity: () => 50, getFreeCapacity: () => 0, getCapacity: () => 50, energy: 50 }
+    });
+
+    const action = remoteWorker({
+      ...createContext("remoteWorker"),
+      creep,
+      room: remoteRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: false,
+      isFull: true,
+      isEmpty: false,
+      hostiles: []
+    });
+
+    expect(action.type).to.equal("build");
+    expect((action as Extract<CreepAction, { type: "build" }>).target).to.equal(site);
+  });
+
+  it("remoteWorker retreats home from dangerous remote hostiles", () => {
+    const remoteRoom = createMockRoom("W2N1");
+    const hostile = { getActiveBodyparts: (part: BodyPartConstant) => part === ATTACK ? 1 : 0 } as Creep;
+    const creep = createMockCreep("remoteWorker2", {
+      room: remoteRoom,
+      memory: { role: "remoteWorker", homeRoom: "W1N1", targetRoom: "W2N1", working: false }
+    });
+
+    const action = remoteWorker({
+      ...createContext("remoteWorker"),
+      creep,
+      room: remoteRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: false,
+      hostiles: [hostile]
+    });
+
+    expect(action.type).to.equal("remoteMoveToRoom");
+    expect((action as Extract<CreepAction, { type: "remoteMoveToRoom" }>).roomName).to.equal("W1N1");
+  });
+
+  it("remoteWorker unloads excess remote energy after returning home", () => {
+    const homeRoom = createMockRoom("W1N1");
+    const storage = {
+      id: "home-storage" as Id<StructureStorage>,
+      structureType: STRUCTURE_STORAGE,
+      pos: new RoomPosition(25, 25, "W1N1"),
+      room: homeRoom,
+      store: { getUsedCapacity: () => 0, getFreeCapacity: () => 1000 }
+    } as unknown as StructureStorage;
+    const creep = createMockCreep("remoteWorker3", {
+      room: homeRoom,
+      memory: { role: "remoteWorker", homeRoom: "W1N1", targetRoom: "W2N1", working: true },
+      store: { getUsedCapacity: () => 50, getFreeCapacity: () => 0, getCapacity: () => 50, energy: 50 }
+    });
+
+    const action = remoteWorker({
+      ...createContext("remoteWorker"),
+      creep,
+      room: homeRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: true,
+      isFull: true,
+      isEmpty: false,
+      storage,
+      hostiles: []
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "transfer" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
+  it("remoteWorker unloads at home before reacting to local hostiles", () => {
+    const homeRoom = createMockRoom("W1N1");
+    const storage = {
+      id: "home-storage" as Id<StructureStorage>,
+      structureType: STRUCTURE_STORAGE,
+      pos: new RoomPosition(25, 25, "W1N1"),
+      room: homeRoom,
+      store: { getUsedCapacity: () => 0, getFreeCapacity: () => 1000 }
+    } as unknown as StructureStorage;
+    const hostile = { getActiveBodyparts: (part: BodyPartConstant) => part === ATTACK ? 1 : 0 } as Creep;
+    const creep = createMockCreep("remoteWorker3b", {
+      room: homeRoom,
+      memory: { role: "remoteWorker", homeRoom: "W1N1", targetRoom: "W2N1", working: true },
+      store: { getUsedCapacity: () => 50, getFreeCapacity: () => 0, getCapacity: () => 50, energy: 50 }
+    });
+
+    const action = remoteWorker({
+      ...createContext("remoteWorker"),
+      creep,
+      room: homeRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: true,
+      isFull: true,
+      isEmpty: false,
+      storage,
+      hostiles: [hostile]
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+  });
+
+  it("interrupts committed remoteWorker work when dangerous remote hostiles appear", () => {
+    const remoteRoom = createMockRoom("W2N1");
+    const site = {
+      id: "remote-container-site" as Id<ConstructionSite>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: new RoomPosition(20, 20, "W2N1"),
+      room: remoteRoom
+    } as ConstructionSite;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id =>
+      id === "remote-container-site" ? site : null;
+    const hostile = { getActiveBodyparts: (part: BodyPartConstant) => part === ATTACK ? 1 : 0 } as Creep;
+    const creep = createMockCreep("remoteWorker4", {
+      room: remoteRoom,
+      pos: new RoomPosition(25, 25, "W2N1"),
+      memory: {
+        role: "remoteWorker",
+        homeRoom: "W1N1",
+        targetRoom: "W2N1",
+        working: true,
+        state: { action: "build", targetId: "remote-container-site" as Id<ConstructionSite>, startTick: Game.time, timeout: 25 }
+      },
+      store: { getUsedCapacity: () => 50, getFreeCapacity: () => 0, getCapacity: () => 50, energy: 50 }
+    });
+
+    const action = evaluateWithStateMachine({
+      ...createContext("remoteWorker"),
+      creep,
+      room: remoteRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: false,
+      isFull: true,
+      isEmpty: false,
+      hostiles: [hostile]
+    }, evaluateUtilityBehavior, { interrupt: getUtilityStateInterrupt });
+
+    expect(action.type).to.equal("remoteMoveToRoom");
+    expect((action as Extract<CreepAction, { type: "remoteMoveToRoom" }>).roomName).to.equal("W1N1");
+    expect(creep.memory.state?.action).to.equal("remoteMoveToRoom");
+    expect(creep.memory.state?.targetRoom).to.equal("W1N1");
+  });
+
+  it("keeps room movement state active while on the target room exit", () => {
+    const room = createMockRoom("W2N1");
+    const creep = createMockCreep("mover1", {
+      room,
+      pos: new RoomPosition(0, 25, "W2N1"),
+      memory: {
+        role: "remoteWorker",
+        homeRoom: "W1N1",
+        targetRoom: "W2N1",
+        state: { action: "remoteMoveToRoom", targetRoom: "W2N1", startTick: Game.time, timeout: 25, data: { routeType: "hauler" } }
+      }
+    });
+    const action = evaluateWithStateMachine({
+      ...createContext("remoteWorker"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: false
+    }, () => ({ type: "idle" }));
+
+    expect(action.type).to.equal("remoteMoveToRoom");
+  });
+
+  it("completes room movement state after entering target room interior", () => {
+    const room = createMockRoom("W2N1");
+    const creep = createMockCreep("mover2", {
+      room,
+      pos: new RoomPosition(25, 25, "W2N1"),
+      memory: {
+        role: "remoteWorker",
+        homeRoom: "W1N1",
+        targetRoom: "W2N1",
+        state: { action: "remoteMoveToRoom", targetRoom: "W2N1", startTick: Game.time, timeout: 25, data: { routeType: "hauler" } }
+      }
+    });
+    const action = evaluateWithStateMachine({
+      ...createContext("remoteWorker"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: false
+    }, () => ({ type: "idle" }));
+
+    expect(action.type).to.equal("idle");
   });
 
   it("routes remote movement actions through the injected movement handler", () => {

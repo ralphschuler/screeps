@@ -60,17 +60,22 @@ global.status(); // Runs the command
 ```
 
 ### CPU Budget Manager
-Dynamic CPU allocation and tracking:
-- Per-subsystem CPU budgets
-- Adaptive budget adjustment
-- CPU usage monitoring
+ROADMAP-aligned CPU guardrails for expensive subsystems:
+- Eco room, war room, overmind, and fallback subsystem budgets
+- Structured warnings/errors when a subsystem exceeds its budget
+- Function wrappers that measure `Game.cpu.getUsed()` before and after work
+- Violation summaries for spotting repeat CPU offenders
 
 ```typescript
 import { cpuBudgetManager } from '@ralphschuler/screeps-core';
 
-const budget = cpuBudgetManager.allocate('mining', 10);
-// Use allocated CPU
-cpuBudgetManager.record('mining', Game.cpu.getUsed());
+const result = cpuBudgetManager.executeWithBudget('remoteMining', 'ecoRoom', () => {
+  return runRemoteMining(room);
+});
+
+if (result === null) {
+  // Wrapped work threw; the manager already logged the error with subsystem context.
+}
 ```
 
 ## Installation
@@ -119,9 +124,12 @@ import {
 
 ### CPU Budget
 
-- `cpuBudgetManager.allocate(subsystem, amount)` - Allocate CPU budget
-- `cpuBudgetManager.record(subsystem, used)` - Record CPU usage
-- `cpuBudgetManager.getStats()` - Get budget statistics
+- `cpuBudgetManager.checkBudget(subsystem, type, cpuUsed)` - Check an explicit CPU measurement against the configured budget
+- `cpuBudgetManager.executeWithBudget(subsystem, type, fn)` - Measure and run a function, returning `null` on thrown errors
+- `cpuBudgetManager.executeRoomWithBudget(roomName, isWarRoom, fn)` - Measure room logic with eco/war room limits
+- `cpuBudgetManager.getViolationsSummary()` - Return budget violations sorted by repeat offenders
+- `cpuBudgetManager.resetViolations()` - Clear violation counters
+- `cpuBudgetManager.getConfig()` / `cpuBudgetManager.updateConfig(config)` - Read or merge runtime budget config
 
 ## License
 

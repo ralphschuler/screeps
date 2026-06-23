@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { HeapCacheManager } from "../src/heap-cache.ts";
+import { HeapCacheManager, INFINITE_TTL } from "../src/heap-cache.ts";
 
 describe("HeapCacheManager", () => {
   let tick = 1000;
@@ -56,5 +56,37 @@ describe("HeapCacheManager", () => {
     assert.equal(persisted, 1);
     assert.notProperty((global as any).Memory._heapCache.data, "memory:empire");
     assert.property((global as any).Memory._heapCache.data, "path:remote");
+  });
+
+  it("expires finite TTL entries only after their full lifetime", () => {
+    cache.initialize();
+    cache.set("source-slots:W1N1", 2, 10);
+
+    (global as any).Game.time = tick + 10;
+    assert.equal(cache.get("source-slots:W1N1"), 2);
+
+    (global as any).Game.time = tick + 11;
+    assert.isUndefined(cache.get("source-slots:W1N1"));
+  });
+
+  it("keeps infinite TTL entries through rehydrate and cleanup", () => {
+    (global as any).Game.time = tick + 5000;
+    (global as any).Memory._heapCache = {
+      version: 1,
+      lastSync: tick,
+      data: {
+        forever: {
+          value: "cached-room-plan",
+          lastModified: tick,
+          ttl: INFINITE_TTL
+        }
+      }
+    };
+
+    cache.initialize();
+
+    assert.equal(cache.get("forever"), "cached-room-plan");
+    assert.equal(cache.cleanExpired(), 0);
+    assert.equal(cache.get("forever"), "cached-room-plan");
   });
 });

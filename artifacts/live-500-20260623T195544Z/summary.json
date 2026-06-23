@@ -1,0 +1,1762 @@
+{
+  "generatedAt": "2026-06-23T20:32:24.569Z",
+  "metadata": {
+    "startedAt": "2026-06-23T19:59:39.349Z",
+    "hostname": "screeps.com",
+    "shard": "shard1",
+    "requestedTickSpan": 500,
+    "sampleStepTicks": 20,
+    "pollMs": 10000,
+    "maxRoomsPerSample": 25,
+    "user": "TedRoastBeef",
+    "finishedAt": "2026-06-23T20:32:24.568Z"
+  },
+  "tickRange": {
+    "first": 71873740,
+    "last": 71874241,
+    "span": 501,
+    "requested": 500
+  },
+  "sampleCount": 25,
+  "roomsObserved": [
+    "W17S29",
+    "W18S27",
+    "W18S28",
+    "W18S29",
+    "W18S30",
+    "W18S33",
+    "W18S34",
+    "W19S26",
+    "W19S27",
+    "W19S28",
+    "W19S29",
+    "W20S20",
+    "W5S15"
+  ],
+  "apiPolicy": {
+    "readOnly": true,
+    "methodsUsed": [
+      "api.time",
+      "api.memory.get",
+      "api.raw.game.roomObjects",
+      "api.raw.game.roomStatus",
+      "api.me"
+    ],
+    "stateChangingEndpointsUsed": false,
+    "alliesNeverHostile": [
+      "TooAngel",
+      "TedRoastBeef"
+    ]
+  },
+  "cpu": {
+    "avgUsed": 30.403,
+    "maxUsed": 55.52,
+    "minUsed": 9.844,
+    "firstBucket": 6301,
+    "lastBucket": 2939,
+    "minBucket": 199,
+    "avgBucket": 6362.32,
+    "avgSkippedProcesses": 31.76,
+    "maxSkippedProcesses": 46,
+    "avgHeapMb": 80.329
+  },
+  "roomHealth": {
+    "W19S26": {
+      "samples": 25,
+      "rcl": 3,
+      "avgEnergyAvailable": 0,
+      "avgEnergyCapacity": 0,
+      "avgHostiles": 0.76,
+      "maxHostiles": 1,
+      "avgSpawnQueueTotal": 0,
+      "maxSpawnQueueTotal": 0,
+      "avgSpawnQueueEmergency": 0,
+      "maxSpawnQueueEmergency": 0,
+      "avgOpenTasks": 7.56,
+      "avgAssignedTasks": 0.24,
+      "avgCreeps": 1.16,
+      "minTowerEnergyPercent": 0,
+      "firstControllerProgress": 29.653,
+      "lastControllerProgress": 29.653,
+      "downgradeRisk": false
+    },
+    "W17S29": {
+      "samples": 25,
+      "rcl": 6,
+      "avgEnergyAvailable": 926,
+      "avgEnergyCapacity": 2300,
+      "avgHostiles": 0,
+      "maxHostiles": 0,
+      "avgSpawnQueueTotal": 7,
+      "maxSpawnQueueTotal": 10,
+      "avgSpawnQueueEmergency": 0.64,
+      "maxSpawnQueueEmergency": 2,
+      "avgOpenTasks": 38.4,
+      "avgAssignedTasks": 1.84,
+      "avgCreeps": 13.2,
+      "minTowerEnergyPercent": 66.5,
+      "firstControllerProgress": 48.413,
+      "lastControllerProgress": 48.437,
+      "downgradeRisk": false
+    },
+    "W18S29": {
+      "samples": 25,
+      "rcl": 6,
+      "avgEnergyAvailable": 1016.6,
+      "avgEnergyCapacity": 1800,
+      "avgHostiles": 0,
+      "maxHostiles": 0,
+      "avgSpawnQueueTotal": 9.04,
+      "maxSpawnQueueTotal": 22,
+      "avgSpawnQueueEmergency": 2.36,
+      "maxSpawnQueueEmergency": 15,
+      "avgOpenTasks": 34.64,
+      "avgAssignedTasks": 2.12,
+      "avgCreeps": 13.4,
+      "minTowerEnergyPercent": 85.5,
+      "firstControllerProgress": 4.062,
+      "lastControllerProgress": 4.111,
+      "downgradeRisk": false
+    },
+    "W18S28": {
+      "samples": 25,
+      "rcl": 5,
+      "avgEnergyAvailable": 155.72,
+      "avgEnergyCapacity": 300,
+      "avgHostiles": 0,
+      "maxHostiles": 0,
+      "avgSpawnQueueTotal": 6.16,
+      "maxSpawnQueueTotal": 7,
+      "avgSpawnQueueEmergency": 0,
+      "maxSpawnQueueEmergency": 0,
+      "avgOpenTasks": 22.64,
+      "avgAssignedTasks": 0.36,
+      "avgCreeps": 12.36,
+      "minTowerEnergyPercent": 49.1,
+      "firstControllerProgress": 57.557,
+      "lastControllerProgress": 57.573,
+      "downgradeRisk": false
+    }
+  },
+  "latestRoles": {
+    "hauler": {
+      "count": 5,
+      "active": 3,
+      "idle": 2,
+      "spawning": 0,
+      "avgCpu": 0.155,
+      "peakCpu": 46.996,
+      "avgTtl": 426.6,
+      "bodyParts": 88
+    },
+    "pioneer": {
+      "count": 2,
+      "active": 1,
+      "idle": 1,
+      "spawning": 0,
+      "avgCpu": 0.145,
+      "peakCpu": 26.248,
+      "avgTtl": 751.5,
+      "bodyParts": 6
+    },
+    "healer": {
+      "count": 4,
+      "active": 0,
+      "idle": 4,
+      "spawning": 0,
+      "avgCpu": 0.089,
+      "peakCpu": 32.283,
+      "avgTtl": 1118.5,
+      "bodyParts": 72
+    },
+    "harvester": {
+      "count": 6,
+      "active": 2,
+      "idle": 4,
+      "spawning": 0,
+      "avgCpu": 0.257,
+      "peakCpu": 38.004,
+      "avgTtl": 746.167,
+      "bodyParts": 54
+    },
+    "queenCarrier": {
+      "count": 3,
+      "active": 2,
+      "idle": 1,
+      "spawning": 0,
+      "avgCpu": 0.233,
+      "peakCpu": 23.362,
+      "avgTtl": 1012.333,
+      "bodyParts": 48
+    },
+    "interShardScout": {
+      "count": 3,
+      "active": 0,
+      "idle": 3,
+      "spawning": 0,
+      "avgCpu": 0.09,
+      "peakCpu": 8.808,
+      "avgTtl": 701.667,
+      "bodyParts": 3
+    },
+    "guard": {
+      "count": 11,
+      "active": 0,
+      "idle": 9,
+      "spawning": 2,
+      "avgCpu": 0.081,
+      "peakCpu": 35.229,
+      "avgTtl": 932.727,
+      "bodyParts": 194
+    },
+    "ranger": {
+      "count": 1,
+      "active": 0,
+      "idle": 1,
+      "spawning": 0,
+      "avgCpu": 0.066,
+      "peakCpu": 27.371,
+      "avgTtl": 1038,
+      "bodyParts": 18
+    }
+  },
+  "latestCreeps": {
+    "count": 51,
+    "byRole": {
+      "hauler": 5,
+      "pioneer": 2,
+      "interShardScout": 3,
+      "harvester": 6,
+      "upgrader": 6,
+      "builder": 4,
+      "claimer": 1,
+      "queenCarrier": 3,
+      "guard": 11,
+      "healer": 4,
+      "ranger": 1,
+      "scout": 4,
+      "labTech": 1
+    },
+    "byCurrentRoom": {
+      "unknown": 45,
+      "W18S28": 2,
+      "W17S29": 2,
+      "W18S29": 2
+    },
+    "byHomeRoom": {
+      "W17S29": 20,
+      "W18S28": 16,
+      "W18S29": 15
+    },
+    "byAction": {
+      "unknown": 51
+    }
+  },
+  "latestTaskBoard": {
+    "enabled": true,
+    "totalTasks": 113,
+    "openTasks": 109,
+    "assignedTasks": 4,
+    "byType": {
+      "storeEnergy": 2,
+      "upgrade": 4,
+      "repair": 30,
+      "build": 30,
+      "refillExtension": 40,
+      "refillTower": 5,
+      "refillSpawn": 2
+    },
+    "rooms": {
+      "W17S29": {
+        "tasks": 50,
+        "open": 49,
+        "assigned": 1,
+        "reservations": 1,
+        "byType": {
+          "storeEnergy": 1,
+          "upgrade": 1,
+          "repair": 10,
+          "build": 1,
+          "refillExtension": 34,
+          "refillTower": 2,
+          "refillSpawn": 1
+        },
+        "highestPriority": 200
+      },
+      "W18S29": {
+        "tasks": 30,
+        "open": 27,
+        "assigned": 3,
+        "reservations": 3,
+        "byType": {
+          "upgrade": 1,
+          "repair": 10,
+          "storeEnergy": 1,
+          "build": 10,
+          "refillExtension": 6,
+          "refillTower": 2
+        },
+        "highestPriority": 100
+      },
+      "W18S28": {
+        "tasks": 23,
+        "open": 23,
+        "assigned": 0,
+        "reservations": 0,
+        "byType": {
+          "upgrade": 1,
+          "repair": 10,
+          "build": 10,
+          "refillTower": 1,
+          "refillSpawn": 1
+        },
+        "highestPriority": 200
+      },
+      "W19S26": {
+        "tasks": 7,
+        "open": 7,
+        "assigned": 0,
+        "reservations": 0,
+        "byType": {
+          "upgrade": 1,
+          "build": 6
+        },
+        "highestPriority": 200
+      },
+      "W19S27": {
+        "tasks": 0,
+        "open": 0,
+        "assigned": 0,
+        "reservations": 0,
+        "byType": {}
+      },
+      "W19S28": {
+        "tasks": 2,
+        "open": 2,
+        "assigned": 0,
+        "reservations": 0,
+        "byType": {
+          "build": 2
+        },
+        "highestPriority": 200
+      },
+      "W18S27": {
+        "tasks": 1,
+        "open": 1,
+        "assigned": 0,
+        "reservations": 0,
+        "byType": {
+          "build": 1
+        },
+        "highestPriority": 50
+      }
+    }
+  },
+  "latestDefenseRequests": [],
+  "latestEmpire": {
+    "ownedRooms": {
+      "W17S29": {
+        "name": "W17S29",
+        "rcl": 6,
+        "role": "core",
+        "clusterId": "W17S29-cluster",
+        "energyAvailable": 610,
+        "energyCapacityAvailable": 2300
+      },
+      "W18S28": {
+        "name": "W18S28",
+        "rcl": 5,
+        "role": "core",
+        "clusterId": "W18S28-cluster",
+        "energyAvailable": 182,
+        "energyCapacityAvailable": 300
+      },
+      "W18S29": {
+        "name": "W18S29",
+        "rcl": 6,
+        "role": "core",
+        "clusterId": "W18S29-cluster",
+        "energyAvailable": 1360,
+        "energyCapacityAvailable": 1800
+      },
+      "W19S26": {
+        "name": "W19S26",
+        "rcl": 3,
+        "role": "core",
+        "clusterId": "W19S26-cluster",
+        "energyAvailable": 0,
+        "energyCapacityAvailable": 0
+      }
+    },
+    "claimQueue": [
+      {
+        "roomName": "W18S27",
+        "score": 66,
+        "distance": 1,
+        "claimed": false,
+        "lastEvaluated": 71634455
+      }
+    ],
+    "warTargets": [
+      "admon",
+      "W18S33",
+      "W18S34"
+    ],
+    "warTargetRooms": [],
+    "hostilePlayers": [],
+    "playerPostures": {
+      "players": {
+        "Invader": {
+          "username": "Invader",
+          "incidents": [
+            {
+              "tick": 71873452,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873453,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873454,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873455,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873457,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873458,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873459,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873460,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873461,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71873462,
+              "roomName": "W18S29",
+              "severity": "hostileCombat"
+            }
+          ],
+          "lastIncidentTick": 71873462,
+          "attackCount": 10,
+          "state": "war",
+          "warDeclaredAt": 71606412
+        },
+        "admon": {
+          "username": "admon",
+          "incidents": [
+            {
+              "tick": 71874116,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874117,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874118,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874119,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874120,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874121,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874122,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874123,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874124,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71874125,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            }
+          ],
+          "lastIncidentTick": 71874125,
+          "attackCount": 10,
+          "state": "war",
+          "warDeclaredAt": 71607907
+        },
+        "Tigga": {
+          "username": "Tigga",
+          "incidents": [
+            {
+              "tick": 71851560,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71851561,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71851562,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71851563,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71853860,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71853862,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71853864,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71853871,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71853878,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            },
+            {
+              "tick": 71853885,
+              "roomName": "W19S26",
+              "severity": "hostileCombat"
+            }
+          ],
+          "lastIncidentTick": 71853885,
+          "attackCount": 10,
+          "state": "war",
+          "warDeclaredAt": 71690745
+        }
+      },
+      "threshold": 3,
+      "windowTicks": 20000
+    },
+    "recoveryRooms": {},
+    "lastUpdate": 71874229
+  },
+  "latestRoomObjects": {
+    "W19S26": {
+      "room": "W19S26",
+      "objectCount": 14,
+      "byType": {
+        "source": 2,
+        "mineral": 1,
+        "energy": 1,
+        "tombstone": 1,
+        "controller": 1,
+        "constructionSite": 6,
+        "creep": 2
+      },
+      "controller": {
+        "x": 40,
+        "y": 38,
+        "level": 3,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 71863477,
+        "downgradeTime": 71884361
+      },
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 191,
+      "constructionSites": {
+        "total": 6,
+        "mineOrAllied": 6
+      },
+      "decay": {
+        "roadsUnder50": 0
+      },
+      "creeps": {
+        "mine": 2,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 8,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W18S33": {
+      "room": "W18S33",
+      "objectCount": 66,
+      "byType": {
+        "source": 1,
+        "mineral": 1,
+        "container": 1,
+        "constructedWall": 15,
+        "energy": 1,
+        "controller": 1,
+        "spawn": 1,
+        "extension": 36,
+        "tower": 1,
+        "rampart": 2,
+        "storage": 1,
+        "terminal": 1,
+        "powerSpawn": 1,
+        "creep": 3
+      },
+      "controller": {
+        "x": 29,
+        "y": 6,
+        "level": 8,
+        "owner": "eduter",
+        "reservation": null,
+        "safeMode": null,
+        "downgradeTime": 72074241
+      },
+      "spawns": {
+        "total": 1,
+        "busy": 0,
+        "idle": 1
+      },
+      "towers": {
+        "total": 1,
+        "energy": 1000,
+        "capacity": 1000,
+        "energyPercent": 100
+      },
+      "extensions": {
+        "energy": 7200,
+        "capacity": 7200,
+        "energyPercent": 100
+      },
+      "storageEnergy": 11429,
+      "droppedEnergy": 214,
+      "constructionSites": {
+        "total": 0,
+        "mineOrAllied": 0
+      },
+      "decay": {
+        "roadsUnder50": 0,
+        "rampartMinHits": 208801,
+        "wallMinHits": 125001
+      },
+      "creeps": {
+        "mine": 0,
+        "allies": 0,
+        "hostiles": 3,
+        "others": 0,
+        "myCombatParts": 0,
+        "hostileCombatParts": 14,
+        "allyCombatParts": 0,
+        "hostileDetails": [
+          {
+            "name": "NathanLeo",
+            "owner": "eduter",
+            "x": 7,
+            "y": 4,
+            "hits": 600,
+            "hitsMax": 600,
+            "ttl": 71874526,
+            "body": {
+              "move": 1,
+              "work": 5
+            },
+            "boostedParts": 0,
+            "combatParts": 5
+          },
+          {
+            "name": "DeclanNoah",
+            "owner": "eduter",
+            "x": 26,
+            "y": 8,
+            "hits": 1200,
+            "hitsMax": 1200,
+            "ttl": 71875333,
+            "body": {
+              "move": 2,
+              "work": 9,
+              "carry": 1
+            },
+            "boostedParts": 0,
+            "combatParts": 9
+          },
+          {
+            "name": "IanZachary",
+            "owner": "eduter",
+            "x": 10,
+            "y": 6,
+            "hits": 1800,
+            "hitsMax": 1800,
+            "ttl": 71875387,
+            "body": {
+              "carry": 9,
+              "move": 9
+            },
+            "boostedParts": 0,
+            "combatParts": 0
+          }
+        ],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": [
+          "eduter"
+        ]
+      }
+    },
+    "W18S34": {
+      "room": "W18S34",
+      "objectCount": 125,
+      "byType": {
+        "source": 2,
+        "mineral": 1,
+        "container": 2,
+        "constructedWall": 51,
+        "road": 20,
+        "controller": 1,
+        "spawn": 1,
+        "extension": 36,
+        "tower": 1,
+        "rampart": 4,
+        "storage": 1,
+        "terminal": 1,
+        "creep": 4
+      },
+      "controller": {
+        "x": 21,
+        "y": 25,
+        "level": 6,
+        "owner": "eduter",
+        "reservation": null,
+        "safeMode": null,
+        "downgradeTime": 71994241
+      },
+      "spawns": {
+        "total": 1,
+        "busy": 0,
+        "idle": 1
+      },
+      "towers": {
+        "total": 1,
+        "energy": 990,
+        "capacity": 1000,
+        "energyPercent": 99
+      },
+      "extensions": {
+        "energy": 1800,
+        "capacity": 1800,
+        "energyPercent": 100
+      },
+      "storageEnergy": 41821,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 0,
+        "mineOrAllied": 0
+      },
+      "decay": {
+        "roadsUnder50": 0,
+        "rampartMinHits": 207701,
+        "wallMinHits": 125001
+      },
+      "creeps": {
+        "mine": 0,
+        "allies": 0,
+        "hostiles": 4,
+        "others": 0,
+        "myCombatParts": 0,
+        "hostileCombatParts": 26,
+        "allyCombatParts": 0,
+        "hostileDetails": [
+          {
+            "name": "LukeCaden",
+            "owner": "eduter",
+            "x": 38,
+            "y": 41,
+            "hits": 600,
+            "hitsMax": 600,
+            "ttl": 71874664,
+            "body": {
+              "move": 1,
+              "work": 5
+            },
+            "boostedParts": 0,
+            "combatParts": 5
+          },
+          {
+            "name": "Riley",
+            "owner": "eduter",
+            "x": 22,
+            "y": 28,
+            "hits": 1900,
+            "hitsMax": 1900,
+            "ttl": 71875330,
+            "body": {
+              "move": 3,
+              "work": 15,
+              "carry": 1
+            },
+            "boostedParts": 0,
+            "combatParts": 15
+          },
+          {
+            "name": "RyanCaleb",
+            "owner": "eduter",
+            "x": 36,
+            "y": 39,
+            "hits": 1500,
+            "hitsMax": 1500,
+            "ttl": 71875378,
+            "body": {
+              "work": 1,
+              "carry": 9,
+              "move": 5
+            },
+            "boostedParts": 0,
+            "combatParts": 1
+          },
+          {
+            "name": "Lucy",
+            "owner": "eduter",
+            "x": 25,
+            "y": 36,
+            "hits": 600,
+            "hitsMax": 600,
+            "ttl": 71875541,
+            "body": {
+              "move": 1,
+              "work": 5
+            },
+            "boostedParts": 0,
+            "combatParts": 5
+          }
+        ],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": [
+          "eduter"
+        ]
+      }
+    },
+    "W17S29": {
+      "room": "W17S29",
+      "objectCount": 217,
+      "byType": {
+        "source": 2,
+        "mineral": 1,
+        "constructedWall": 23,
+        "road": 107,
+        "container": 5,
+        "energy": 2,
+        "controller": 1,
+        "spawn": 1,
+        "extension": 40,
+        "rampart": 9,
+        "storage": 1,
+        "terminal": 1,
+        "extractor": 1,
+        "tower": 2,
+        "lab": 3,
+        "link": 3,
+        "constructionSite": 1,
+        "creep": 13,
+        "tombstone": 1
+      },
+      "controller": {
+        "x": 12,
+        "y": 12,
+        "level": 6,
+        "owner": "TedRoastBeef",
+        "safeMode": 70230536,
+        "downgradeTime": 71994153
+      },
+      "spawns": {
+        "total": 1,
+        "busy": 0,
+        "idle": 1
+      },
+      "towers": {
+        "total": 2,
+        "energy": 1750,
+        "capacity": 2000,
+        "energyPercent": 87.5
+      },
+      "extensions": {
+        "energy": 310,
+        "capacity": 2000,
+        "energyPercent": 15.5
+      },
+      "storageEnergy": 54754,
+      "droppedEnergy": 2800,
+      "constructionSites": {
+        "total": 1,
+        "mineOrAllied": 1
+      },
+      "decay": {
+        "roadsUnder50": 0,
+        "rampartMinHits": 4657001,
+        "wallMinHits": 1
+      },
+      "creeps": {
+        "mine": 13,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 59,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W18S28": {
+      "room": "W18S28",
+      "objectCount": 45,
+      "byType": {
+        "source": 2,
+        "mineral": 1,
+        "constructedWall": 1,
+        "road": 10,
+        "container": 2,
+        "energy": 1,
+        "controller": 1,
+        "spawn": 1,
+        "constructionSite": 12,
+        "tower": 1,
+        "rampart": 2,
+        "creep": 11
+      },
+      "controller": {
+        "x": 35,
+        "y": 30,
+        "level": 5,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 71734821,
+        "downgradeTime": 71954073
+      },
+      "spawns": {
+        "total": 1,
+        "busy": 1,
+        "idle": 0
+      },
+      "towers": {
+        "total": 1,
+        "energy": 496,
+        "capacity": 1000,
+        "energyPercent": 49.6
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 68,
+      "constructionSites": {
+        "total": 12,
+        "mineOrAllied": 12
+      },
+      "decay": {
+        "roadsUnder50": 0,
+        "rampartMinHits": 72961,
+        "wallMinHits": 26401
+      },
+      "creeps": {
+        "mine": 11,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 35,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W18S29": {
+      "room": "W18S29",
+      "objectCount": 296,
+      "byType": {
+        "source": 2,
+        "mineral": 1,
+        "constructedWall": 65,
+        "road": 153,
+        "container": 5,
+        "controller": 1,
+        "spawn": 1,
+        "extension": 30,
+        "tower": 2,
+        "storage": 1,
+        "rampart": 4,
+        "link": 3,
+        "constructionSite": 13,
+        "creep": 14,
+        "tombstone": 1
+      },
+      "controller": {
+        "x": 13,
+        "y": 34,
+        "level": 6,
+        "owner": "TedRoastBeef",
+        "reservation": null,
+        "safeMode": 71884244,
+        "downgradeTime": 71994149
+      },
+      "spawns": {
+        "total": 1,
+        "busy": 1,
+        "idle": 0
+      },
+      "towers": {
+        "total": 2,
+        "energy": 1690,
+        "capacity": 2000,
+        "energyPercent": 84.5
+      },
+      "extensions": {
+        "energy": 1250,
+        "capacity": 1500,
+        "energyPercent": 83.333
+      },
+      "storageEnergy": 313999,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 13,
+        "mineOrAllied": 13
+      },
+      "decay": {
+        "roadsUnder50": 0,
+        "rampartMinHits": 2897101,
+        "wallMinHits": 1
+      },
+      "creeps": {
+        "mine": 14,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 105,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W18S27": {
+      "room": "W18S27",
+      "objectCount": 10,
+      "byType": {
+        "source": 1,
+        "controller": 1,
+        "mineral": 1,
+        "constructedWall": 2,
+        "constructionSite": 1,
+        "creep": 4
+      },
+      "controller": {
+        "x": 21,
+        "y": 15,
+        "level": 0,
+        "owner": null,
+        "reservation": null,
+        "safeMode": null,
+        "downgradeTime": null
+      },
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 1,
+        "mineOrAllied": 1
+      },
+      "decay": {
+        "roadsUnder50": 0,
+        "wallMinHits": 13041
+      },
+      "creeps": {
+        "mine": 4,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 18,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W19S27": {
+      "room": "W19S27",
+      "objectCount": 5,
+      "byType": {
+        "controller": 1,
+        "source": 1,
+        "mineral": 1,
+        "creep": 2
+      },
+      "controller": {
+        "x": 32,
+        "y": 44,
+        "level": 0,
+        "owner": null,
+        "reservation": null,
+        "safeMode": null,
+        "downgradeTime": null
+      },
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 0,
+        "mineOrAllied": 0
+      },
+      "decay": {
+        "roadsUnder50": 0
+      },
+      "creeps": {
+        "mine": 2,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 9,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W19S28": {
+      "room": "W19S28",
+      "objectCount": 7,
+      "byType": {
+        "source": 2,
+        "controller": 1,
+        "mineral": 1,
+        "constructionSite": 2,
+        "creep": 1
+      },
+      "controller": {
+        "x": 20,
+        "y": 8,
+        "level": 0,
+        "owner": null,
+        "reservation": null,
+        "safeMode": null,
+        "downgradeTime": null
+      },
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 2,
+        "mineOrAllied": 2
+      },
+      "decay": {
+        "roadsUnder50": 0
+      },
+      "creeps": {
+        "mine": 1,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 0,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W19S29": {
+      "room": "W19S29",
+      "objectCount": 8,
+      "byType": {
+        "controller": 1,
+        "source": 1,
+        "mineral": 1,
+        "constructionSite": 4,
+        "creep": 1
+      },
+      "controller": {
+        "x": 37,
+        "y": 16,
+        "level": 0,
+        "owner": null,
+        "reservation": null,
+        "safeMode": null,
+        "downgradeTime": null
+      },
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 4,
+        "mineOrAllied": 4
+      },
+      "decay": {
+        "roadsUnder50": 0
+      },
+      "creeps": {
+        "mine": 1,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 1,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W20S20": {
+      "room": "W20S20",
+      "objectCount": 8,
+      "byType": {
+        "terminal": 1,
+        "portal": 3,
+        "deposit": 1,
+        "creep": 3
+      },
+      "controller": null,
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 0,
+        "mineOrAllied": 0
+      },
+      "decay": {
+        "roadsUnder50": 0
+      },
+      "creeps": {
+        "mine": 3,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 0,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    },
+    "W5S15": {
+      "room": "W5S15",
+      "objectCount": 5,
+      "byType": {
+        "source": 3,
+        "mineral": 1,
+        "extractor": 1
+      },
+      "controller": null,
+      "spawns": {
+        "total": 0,
+        "busy": 0,
+        "idle": 0
+      },
+      "towers": {
+        "total": 0,
+        "energy": 0,
+        "capacity": 0
+      },
+      "extensions": {
+        "energy": 0,
+        "capacity": 0
+      },
+      "storageEnergy": 0,
+      "droppedEnergy": 0,
+      "constructionSites": {
+        "total": 0,
+        "mineOrAllied": 0
+      },
+      "decay": {
+        "roadsUnder50": 0
+      },
+      "creeps": {
+        "mine": 0,
+        "allies": 0,
+        "hostiles": 0,
+        "others": 0,
+        "myCombatParts": 0,
+        "hostileCombatParts": 0,
+        "allyCombatParts": 0,
+        "hostileDetails": [],
+        "allyDetails": []
+      },
+      "allySafety": {
+        "alliesExcludedFromHostiles": true,
+        "allyNames": [],
+        "hostileNames": []
+      }
+    }
+  },
+  "hostiles": [
+    {
+      "room": "W18S33",
+      "hostiles": [
+        {
+          "name": "NathanLeo",
+          "owner": "eduter",
+          "x": 7,
+          "y": 4,
+          "hits": 600,
+          "hitsMax": 600,
+          "ttl": 71874526,
+          "body": {
+            "move": 1,
+            "work": 5
+          },
+          "boostedParts": 0,
+          "combatParts": 5
+        },
+        {
+          "name": "DeclanNoah",
+          "owner": "eduter",
+          "x": 26,
+          "y": 8,
+          "hits": 1200,
+          "hitsMax": 1200,
+          "ttl": 71875333,
+          "body": {
+            "move": 2,
+            "work": 9,
+            "carry": 1
+          },
+          "boostedParts": 0,
+          "combatParts": 9
+        },
+        {
+          "name": "IanZachary",
+          "owner": "eduter",
+          "x": 10,
+          "y": 6,
+          "hits": 1800,
+          "hitsMax": 1800,
+          "ttl": 71875387,
+          "body": {
+            "carry": 9,
+            "move": 9
+          },
+          "boostedParts": 0,
+          "combatParts": 0
+        }
+      ],
+      "hostileCombatParts": 14,
+      "myCombatParts": 0
+    },
+    {
+      "room": "W18S34",
+      "hostiles": [
+        {
+          "name": "LukeCaden",
+          "owner": "eduter",
+          "x": 38,
+          "y": 41,
+          "hits": 600,
+          "hitsMax": 600,
+          "ttl": 71874664,
+          "body": {
+            "move": 1,
+            "work": 5
+          },
+          "boostedParts": 0,
+          "combatParts": 5
+        },
+        {
+          "name": "Riley",
+          "owner": "eduter",
+          "x": 22,
+          "y": 28,
+          "hits": 1900,
+          "hitsMax": 1900,
+          "ttl": 71875330,
+          "body": {
+            "move": 3,
+            "work": 15,
+            "carry": 1
+          },
+          "boostedParts": 0,
+          "combatParts": 15
+        },
+        {
+          "name": "RyanCaleb",
+          "owner": "eduter",
+          "x": 36,
+          "y": 39,
+          "hits": 1500,
+          "hitsMax": 1500,
+          "ttl": 71875378,
+          "body": {
+            "work": 1,
+            "carry": 9,
+            "move": 5
+          },
+          "boostedParts": 0,
+          "combatParts": 1
+        },
+        {
+          "name": "Lucy",
+          "owner": "eduter",
+          "x": 25,
+          "y": 36,
+          "hits": 600,
+          "hitsMax": 600,
+          "ttl": 71875541,
+          "body": {
+            "move": 1,
+            "work": 5
+          },
+          "boostedParts": 0,
+          "combatParts": 5
+        }
+      ],
+      "hostileCombatParts": 26,
+      "myCombatParts": 0
+    }
+  ],
+  "allySafety": [
+    {
+      "room": "W18S33",
+      "alliesExcludedFromHostiles": true,
+      "allyNames": [],
+      "hostileNames": [
+        "eduter"
+      ]
+    },
+    {
+      "room": "W18S34",
+      "alliesExcludedFromHostiles": true,
+      "allyNames": [],
+      "hostileNames": [
+        "eduter"
+      ]
+    }
+  ],
+  "candidateIssues": [
+    {
+      "rank": 1,
+      "id": "hostile-pressure:W19S26",
+      "rankScore": 96,
+      "impact": "high",
+      "urgency": "high",
+      "risk": "medium",
+      "title": "W19S26 hostile pressure / bootstrap-defense gap",
+      "evidence": [
+        "stats hostiles max=1",
+        "latest hostile owners=unknown",
+        "hostile combat parts=0; local my combat parts=8",
+        "defense requests=[]"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-defense",
+        "packages/@ralphschuler/screeps-spawn",
+        "packages/@ralphschuler/screeps-roles"
+      ]
+    },
+    {
+      "rank": 2,
+      "id": "spawn-backlog:W18S29",
+      "rankScore": 94,
+      "impact": "high",
+      "urgency": "high",
+      "risk": "low-medium",
+      "title": "W18S29 spawn queue backlog",
+      "evidence": [
+        "avg queue=9.04; max queue=22",
+        "avg emergency=2.36; max emergency=15",
+        "avg energy=1016.6/1800"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-spawn",
+        "packages/@ralphschuler/screeps-roles"
+      ]
+    },
+    {
+      "rank": 3,
+      "id": "idle-combat-vs-active-hostile",
+      "rankScore": 88,
+      "impact": "high",
+      "urgency": "high",
+      "risk": "medium",
+      "title": "Combat creeps idle while a hostile combat creep is present",
+      "evidence": [
+        "guard idle=9/11",
+        "healer idle=4/4",
+        "latest hostile combat parts=40"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-defense",
+        "packages/@ralphschuler/screeps-roles"
+      ]
+    },
+    {
+      "rank": 4,
+      "id": "spawn-backlog:W17S29",
+      "rankScore": 84,
+      "impact": "high",
+      "urgency": "medium",
+      "risk": "low-medium",
+      "title": "W17S29 spawn queue backlog",
+      "evidence": [
+        "avg queue=7; max queue=10",
+        "avg emergency=0.64; max emergency=2",
+        "avg energy=926/2300"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-spawn",
+        "packages/@ralphschuler/screeps-roles"
+      ]
+    },
+    {
+      "rank": 5,
+      "id": "task-backlog:W17S29",
+      "rankScore": 79.6,
+      "impact": "medium-high",
+      "urgency": "medium",
+      "risk": "low",
+      "title": "W17S29 open task backlog with low assignment",
+      "evidence": [
+        "avg open tasks=38.4",
+        "avg assigned tasks=1.84",
+        "avg creeps=13.2"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-economy",
+        "packages/@ralphschuler/screeps-roles",
+        "packages/@ralphschuler/screeps-spawn"
+      ]
+    },
+    {
+      "rank": 6,
+      "id": "task-backlog:W18S29",
+      "rankScore": 78.66,
+      "impact": "medium-high",
+      "urgency": "medium",
+      "risk": "low",
+      "title": "W18S29 open task backlog with low assignment",
+      "evidence": [
+        "avg open tasks=34.64",
+        "avg assigned tasks=2.12",
+        "avg creeps=13.4"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-economy",
+        "packages/@ralphschuler/screeps-roles",
+        "packages/@ralphschuler/screeps-spawn"
+      ]
+    },
+    {
+      "rank": 7,
+      "id": "cpu-bucket-spikes",
+      "rankScore": 78,
+      "impact": "medium-high",
+      "urgency": "high",
+      "risk": "low-medium",
+      "title": "CPU spikes / skipped low-frequency work",
+      "evidence": [
+        "cpu max=55.52",
+        "bucket min=199",
+        "skipped processes max=46"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-kernel",
+        "packages/@ralphschuler/screeps-cache",
+        "packages/@ralphschuler/screeps-roles"
+      ]
+    },
+    {
+      "rank": 8,
+      "id": "task-backlog:W18S28",
+      "rankScore": 75.66,
+      "impact": "medium-high",
+      "urgency": "medium",
+      "risk": "low",
+      "title": "W18S28 open task backlog with low assignment",
+      "evidence": [
+        "avg open tasks=22.64",
+        "avg assigned tasks=0.36",
+        "avg creeps=12.36"
+      ],
+      "likelyAreas": [
+        "packages/@ralphschuler/screeps-economy",
+        "packages/@ralphschuler/screeps-roles",
+        "packages/@ralphschuler/screeps-spawn"
+      ]
+    }
+  ],
+  "errors": []
+}

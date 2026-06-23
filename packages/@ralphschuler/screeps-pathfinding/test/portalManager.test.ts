@@ -244,6 +244,24 @@ describe("PortalManager", () => {
       expect(setLocalCalled).to.be.true;
     });
 
+    it("should preserve unrelated InterShardMemory keys while publishing portal data", () => {
+      Game.shard = { name: 'shard0', type: 'normal', ptr: false };
+
+      (global as any).InterShardMemory.getLocal = () => {
+        return JSON.stringify({ diplomacy: { allies: ["TooAngel"] } });
+      };
+
+      (global as any).InterShardMemory.setLocal = (data: string) => {
+        const parsed = JSON.parse(data);
+        expect(parsed.diplomacy).to.deep.equal({ allies: ["TooAngel"] });
+        expect(parsed).to.have.property("portals:");
+      };
+
+      const result = portalManager.publishPortalsToInterShardMemory();
+
+      expect(result).to.be.true;
+    });
+
     it("should return false when shard name is unavailable", () => {
       Game.shard = undefined;
       

@@ -10,6 +10,7 @@ import {
 } from "./defenseAssistBody";
 import { getDefenderPriorityBoost } from "./defenderManager";
 import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
+import { isRemoteEconomyRole } from "./remoteRoleDemand";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import {
   countCreepsByRole,
@@ -174,14 +175,12 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
       continue;
     }
 
-    const remoteTargetRoom =
-      roleName === "remoteHarvester" || roleName === "remoteHauler"
-        ? getRemoteRoomNeedingWorkers(room.name, roleName, swarm)
-        : null;
+    const remoteEconomyRole = isRemoteEconomyRole(roleName);
+    const remoteTargetRoom = remoteEconomyRole ? getRemoteRoomNeedingWorkers(room.name, roleName, swarm) : null;
     const claimerAssignment = roleName === "claimer" ? getClaimerSpawnAssignment(room.name, swarm) : null;
     const pioneerAssignment = roleName === "pioneer" ? getPioneerSpawnAssignment(room.name, swarm) : null;
 
-    if ((roleName === "remoteHarvester" || roleName === "remoteHauler") && !remoteTargetRoom) {
+    if (remoteEconomyRole && !remoteTargetRoom) {
       continue;
     }
     if (roleName === "claimer" && !claimerAssignment) {
@@ -241,14 +240,22 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
       demand.priority >= SpawnPriority.EMERGENCY || demand.bootstrap
         ? availableEnergy
         : Math.max(maxEnergy, predictedEnergy);
-    const defenseAssistBody =
-      demand.assistTarget && isDefenseAssistMilitaryRole(demand.roleName)
-        ? buildDefenseAssistBody(
-            demand.roleName,
-            maxEnergy,
-            getVisibleDefenseAssistThreatProfile(demand.assistTarget)
-          )
-        : null;
+    const defenseAssistRole = demand.assistTarget && isDefenseAssistMilitaryRole(demand.roleName)
+      ? demand.roleName
+      : null;
+    const isDefenseAssistDemand = Boolean(defenseAssistRole);
+    const defenseAssistThreatProfile = demand.assistTarget
+      ? getVisibleDefenseAssistThreatProfile(demand.assistTarget)
+      : null;
+    const defenseAssistBody = defenseAssistRole
+      ? buildDefenseAssistBody(
+          defenseAssistRole,
+          maxEnergy,
+          defenseAssistThreatProfile
+        )
+      : null;
+    if (isDefenseAssistDemand && defenseAssistThreatProfile && !defenseAssistBody && !demand.bodyOverride) return null;
+
     const body =
       demand.bodyOverride ??
       defenseAssistBody ??

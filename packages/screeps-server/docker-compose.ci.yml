@@ -20,7 +20,7 @@ services:
       SCREEPS_CLI_PORT: "21026"
       SCREEPS_CLI_PASSWORD: ${SCREEPS_CLI_PASSWORD:-ci-password}
       SHARD_NAME: ${SHARD_NAME:-shard0}
-      SCREEPS_TEST_SCENARIOS: ${SCREEPS_TEST_SCENARIOS:-default-bootstrap,construction-economy,remote-mining,defense-hostile,alliance-safety}
+      SCREEPS_TEST_SCENARIOS: ${SCREEPS_TEST_SCENARIOS:-default-bootstrap,construction-economy,remote-mining,defense-hostile,defense-hard-invader,alliance-safety}
       STEAM_KEY: ${STEAM_KEY:-ci-offline-private-server-key}
       MONGO_HOST: mongo
       REDIS_HOST: redis

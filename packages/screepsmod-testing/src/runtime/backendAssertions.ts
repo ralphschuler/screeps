@@ -105,6 +105,19 @@ function countCreepRoles(memory: any): Record<string, number> {
   return counts;
 }
 
+function hardDefenseCreepsAreNotTiny(memory: any, creeps: any[]): boolean {
+  return creeps.every(creep => {
+    const name = String(creep?.name ?? '');
+    const memoryRole = memory.creeps?.[name]?.role;
+    const role = creep?.memory?.role ?? memoryRole;
+    if (role !== 'ranger') return true;
+    const targetRoom = creep?.memory?.targetRoom ?? memory.creeps?.[name]?.targetRoom;
+    const task = creep?.memory?.task ?? memory.creeps?.[name]?.task;
+    if (task !== 'defenseAssist' && !targetRoom) return true;
+    return (creep?.body ?? []).length >= 6;
+  });
+}
+
 function collectRemoteAssignments(memory: any): Record<string, string[]> {
   const assignments: Record<string, string[]> = {};
   const rooms = memory.rooms ?? {};
@@ -221,6 +234,8 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   const storageStructures = objects?.find ? await toArray(await objects.find({ type: 'storage', ...input.userIdFilter })) : [];
   const terminalStructures = objects?.find ? await toArray(await objects.find({ type: 'terminal', ...input.userIdFilter })) : [];
   const labStructures = objects?.find ? await toArray(await objects.find({ type: 'lab', ...input.userIdFilter })) : [];
+  const hardInvaders = objects?.find ? await toArray(await objects.find({ type: 'creep', name: 'ScenarioHardInvader' })) : [];
+  const hardInvaderSeed = input.memory.screepsmodTestingScenarios?.hardInvader;
   const linkSites = constructionSites.filter(site => site?.structureType === 'link');
   const siteTypes: Record<string, number> = {};
   for (const site of constructionSites) {
@@ -242,6 +257,12 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     terminalRooms: terminalStructures.map(terminal => terminal.room),
     labRooms: labStructures.map(lab => lab.room)
   };
+  diagnostics.defenseHardInvader = {
+    count: hardInvaders.length,
+    bodyParts: hardInvaders.map(creep => (creep?.body ?? []).length),
+    rooms: hardInvaders.map(creep => creep?.room),
+    seed: hardInvaderSeed
+  };
 
   if (input.scenarios.indexOf('default-bootstrap') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario','default-bootstrap'], () => input.ownedControllers.length > 0 && input.spawns.length > 0, 'default bootstrap scenario lacks owned controller or spawn');
@@ -254,6 +275,11 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   }
   if (input.scenarios.indexOf('defense-hostile') >= 0) {
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hostile emits defensive runtime signal', ['scenario','defense-hostile'], () => hasDefenseSignal(input.memory), 'defense scenario has no danger, defense task, or defense request signal');
+  }
+  if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
+    runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario defense-hard-invader seeds a 50-part hostile', ['scenario','defense-hard-invader','seed'], () => hardInvaders.some(creep => (creep?.body ?? []).length >= 50) || (hardInvaderSeed?.bodyParts ?? 0) >= 50, 'hard invader scenario did not seed a 50-part hostile');
+    runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader emits defensive runtime signal', ['scenario','defense-hard-invader'], () => hasDefenseSignal(input.memory), 'hard invader scenario has no danger, defense task, or defense request signal');
+    runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader avoids tiny ranger defenders', ['scenario','defense-hard-invader','body'], () => hardDefenseCreepsAreNotTiny(input.memory, input.creeps), 'hard invader scenario spawned a tiny ranger defender');
   }
   if (input.scenarios.indexOf('alliance-safety') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario alliance-safety keeps permanent allies untargeted', ['scenario','alliance-safety'], () => !creepTargetsAllies(input.memory) && !hasAllyName(input.memory.empire?.warTargets ?? []), 'alliance scenario found ally targeting');

@@ -141,6 +141,18 @@ function createRoom(options: MockRoomOptions): Room {
 describe("link network planner", () => {
   before(installScreepsConstants);
 
+  it("orders link candidates by score, then x, then y", async () => {
+    const { selectCandidate } = await import("../src/link-network");
+    const room = { getTerrain: () => ({ get: () => 0 }) } as unknown as Room;
+    const blocked = new Set<string>();
+    const used = new Set<string>();
+
+    expect(selectCandidate(room, position(10, 10) as RoomPosition, 1, 1, blocked, used, position(10, 5) as RoomPosition))
+      .to.deep.include({ x: 9, y: 9, score: 4 });
+    expect(selectCandidate(room, position(10, 10) as RoomPosition, 1, 1, blocked, used, position(6, 10) as RoomPosition))
+      .to.deep.include({ x: 9, y: 9, score: 3 });
+  });
+
   it("plans no links before RCL 5", async () => {
     const { planLinkNetwork } = await import("../src/index.ts");
     const room = createRoom({ rcl: 4, storage: { x: 25, y: 25 }, controller: { x: 25, y: 35 }, spawns: [{ x: 20, y: 20 }], sources: [] });
@@ -222,6 +234,44 @@ describe("link network planner", () => {
 
     expect(placeLinkConstructionSites(room, 3)).to.equal(2);
     expect(calls.map(call => call.structureType)).to.deep.equal([STRUCTURE_LINK, STRUCTURE_LINK]);
+  });
+
+  it("classifies exact planned source links before functional receiver fallbacks", async () => {
+    const { classifyFunctionalLink, planLinkNetwork } = await import("../src/index.ts");
+    const room = createRoom({
+      rcl: 5,
+      storage: { x: 25, y: 25 },
+      controller: { x: 25, y: 35 },
+      spawns: [{ x: 20, y: 20 }],
+      sources: [{ id: "source", x: 26, y: 25 }]
+    });
+    const sourcePlacement = planLinkNetwork(room).placements.find(placement => placement.role === "source");
+    expect(sourcePlacement).to.not.equal(undefined);
+
+    const link = {
+      pos: position(sourcePlacement!.x, sourcePlacement!.y),
+      structureType: STRUCTURE_LINK
+    } as StructureLink;
+
+    expect(link.pos.getRangeTo(room.storage!)).to.be.lessThanOrEqual(2);
+    expect(classifyFunctionalLink(room, link)).to.equal("source");
+  });
+
+  it("protects built functional links even when they are not exact planned positions", async () => {
+    const { getPlannedLinkPositionKeys, getProtectedLinkPositionKeys } = await import("../src/index.ts");
+    const functionalControllerLink = { x: 27, y: 35 };
+    const key = `${functionalControllerLink.x},${functionalControllerLink.y}`;
+    const room = createRoom({
+      rcl: 5,
+      storage: { x: 25, y: 25 },
+      controller: { x: 25, y: 35 },
+      spawns: [{ x: 20, y: 20 }],
+      sources: [{ id: "source", x: 40, y: 40 }],
+      structures: [{ ...functionalControllerLink, structureType: STRUCTURE_LINK }]
+    });
+
+    expect(getPlannedLinkPositionKeys(room).has(key)).to.equal(false);
+    expect(getProtectedLinkPositionKeys(room).has(key)).to.equal(true);
   });
 
   it("does not mark planned dynamic links as misplaced blueprint cleanup targets", async () => {
