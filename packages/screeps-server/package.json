@@ -45,10 +45,10 @@
     "chai": "^6.2.2",
     "mocha": "^11.7.6",
     "sinon": "^22.0.0",
-    "screeps-api": "^1.10.0",
+    "screeps-api": "^2.0.1",
     "sinon-chai": "^4.0.1",
     "ts-node": "^10.2.0",
-    "tsx": "^4.22.2",
+    "tsx": "^4.22.4",
     "typescript": "^5.4.3"
   },
   "ts-node": {
