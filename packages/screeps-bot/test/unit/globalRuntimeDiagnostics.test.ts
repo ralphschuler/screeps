@@ -22,9 +22,15 @@ function createLoggerSpy() {
 }
 
 describe("global runtime diagnostics", () => {
+  let previousGame: unknown;
+  let previousMemory: unknown;
+
   beforeEach(() => {
+    previousGame = (global as any).Game;
+    previousMemory = (global as any).Memory;
     resetGlobalRuntimeDiagnosticsForTests();
     (global as any).Game = {
+      ...(previousGame as Record<string, unknown>),
       time: 100,
       shard: { name: "shard0" }
     };
@@ -33,6 +39,10 @@ describe("global runtime diagnostics", () => {
 
   afterEach(() => {
     resetGlobalRuntimeDiagnosticsForTests();
+    (global as any).Game = previousGame;
+    (global as any).Memory = previousMemory;
+    previousGame = undefined;
+    previousMemory = undefined;
   });
 
   it("records a compact Memory counter on global reset", () => {
@@ -98,6 +108,39 @@ describe("global runtime diagnostics", () => {
       lastTick: 110
     });
     assert.lengthOf(warnMessages, 1);
+  });
+
+  it("normalizes corrupt persisted diagnostics before updating counters", () => {
+    (global as any).Memory = {
+      __globalResetCount: 4,
+      runtimeDiagnostics: {
+        global: {
+          heapId: "",
+          resetCount: Number.NaN,
+          switchCount: -1,
+          lastTick: Number.NaN,
+          lastResetTick: undefined
+        }
+      }
+    };
+
+    const event = runGlobalRuntimeDiagnostics({ createHeapId: () => "heap-a" });
+
+    assert.deepInclude(event, {
+      type: "reset",
+      heapId: "heap-a",
+      currentTick: 100,
+      resetCount: 5,
+      switchCount: 0
+    });
+    assert.deepInclude((global as any).Memory.runtimeDiagnostics.global, {
+      heapId: "heap-a",
+      resetCount: 5,
+      switchCount: 0,
+      lastTick: 100,
+      lastResetTick: 100
+    });
+    assert.equal((global as any).Memory.__globalResetCount, 5);
   });
 
   it("throttles repeated switch warnings but keeps counting switches", () => {

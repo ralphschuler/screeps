@@ -4,7 +4,8 @@
  * Screeps can occasionally alternate between more than one VM heap for the same
  * shard. Heap/global state then appears to jump backwards relative to Game.time.
  * This diagnostic keeps a tiny per-heap tick marker and compact Memory counters
- * so the bot can observe the condition without changing behavior.
+ * so the bot can observe the condition without clearing heap state or skipping
+ * ticks.
  */
 
 const GLOBAL_STATE_KEY = "__screepsGlobalRuntimeDiagnostics";
@@ -68,16 +69,42 @@ function getGlobalStateOwner(): GlobalRuntimeStateOwner {
 }
 
 function createDefaultHeapId(): string {
-  const shardName = typeof Game?.shard?.name === "string" ? Game.shard.name : "shard";
+  const shardName = typeof Game.shard?.name === "string" ? Game.shard.name : "shard";
   const randomPart = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
   return `${shardName}:${Game.time}:${randomPart}`;
+}
+
+function asNonNegativeFiniteNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function asFiniteTick(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asOptionalFiniteTick(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function ensureDiagnosticsMemory(heapId: string): GlobalRuntimeDiagnosticsMemory {
   Memory.runtimeDiagnostics ??= {};
 
-  const existing = Memory.runtimeDiagnostics.global;
-  if (existing) return existing;
+  const existing = Memory.runtimeDiagnostics.global as Partial<GlobalRuntimeDiagnosticsMemory> | undefined;
+  if (existing && typeof existing === "object") {
+    const normalized: GlobalRuntimeDiagnosticsMemory = {
+      heapId: typeof existing.heapId === "string" && existing.heapId.length > 0 ? existing.heapId : heapId,
+      resetCount: asNonNegativeFiniteNumber(existing.resetCount, Math.max(0, Memory.__globalResetCount ?? 0)),
+      switchCount: asNonNegativeFiniteNumber(existing.switchCount, 0),
+      lastTick: asFiniteTick(existing.lastTick, Game.time),
+      lastResetTick: asFiniteTick(existing.lastResetTick, Game.time),
+      lastSwitchTick: asOptionalFiniteTick(existing.lastSwitchTick),
+      lastSwitchPreviousTick: asOptionalFiniteTick(existing.lastSwitchPreviousTick),
+      lastWarningTick: asOptionalFiniteTick(existing.lastWarningTick)
+    };
+
+    Memory.runtimeDiagnostics.global = normalized;
+    return normalized;
+  }
 
   const resetCount = Math.max(0, Memory.__globalResetCount ?? 0);
   const diagnostics: GlobalRuntimeDiagnosticsMemory = {
@@ -140,7 +167,7 @@ function recordSwitch(
         heapId: state.heapId,
         previousTick,
         currentTick: Game.time,
-        skippedTicks: Game.time - previousTick - 1,
+        skippedTicks: Math.max(0, Game.time - previousTick - 1),
         switchCount: diagnostics.switchCount
       }
     });
