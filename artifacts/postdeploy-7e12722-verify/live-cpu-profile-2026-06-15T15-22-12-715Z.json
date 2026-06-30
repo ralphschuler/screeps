@@ -1,0 +1,415 @@
+{
+  "generated_at": "2026-06-15T15:22:12.709Z",
+  "hostname": "screeps.com",
+  "samples_requested": 5,
+  "interval_ms": 2000,
+  "shards": {
+    "shard1": {
+      "samples": 5,
+      "tick_first": 71691987,
+      "tick_last": 71691990,
+      "cpu_avg": 26.216649899999947,
+      "cpu_max": 40.98729809999986,
+      "bucket_avg": 9791.8,
+      "bucket_min": 9766,
+      "skipped_avg": 23.8,
+      "top_subsystems": [
+        {
+          "key": "kernel",
+          "avg": 11.406174577907104,
+          "max": 12.19659974129711,
+          "samples": 5,
+          "peak": 84.54377450002357,
+          "calls": 1
+        },
+        {
+          "key": "spawns",
+          "avg": 5.166331680490295,
+          "max": 5.422609474602784,
+          "samples": 5,
+          "peak": 49.91427609999994,
+          "calls": 1
+        },
+        {
+          "key": "visualizations",
+          "avg": 0.5627285617976676,
+          "max": 0.565436525509418,
+          "samples": 5,
+          "peak": 37.151990200007276,
+          "calls": 1
+        },
+        {
+          "key": "taskBoard",
+          "avg": 0.5315242192470586,
+          "max": 0.5739867524018528,
+          "samples": 5,
+          "peak": 35.486747399991145,
+          "calls": 1
+        },
+        {
+          "key": "processSync",
+          "avg": 0.11359817532300773,
+          "max": 0.11988101812542944,
+          "samples": 5,
+          "peak": 31.36396899999818,
+          "calls": 1
+        },
+        {
+          "key": "scheduledTasks",
+          "avg": 0.014246864466459255,
+          "max": 0.0152328802259995,
+          "samples": 5,
+          "peak": 25.051816399995005,
+          "calls": 1
+        },
+        {
+          "key": "eventQueue",
+          "avg": 0.0037915048794162397,
+          "max": 0.0038178396557324093,
+          "samples": 5,
+          "peak": 21.14002019999316,
+          "calls": 1
+        },
+        {
+          "key": "ss2PacketQueue",
+          "avg": 0.0033165615219350316,
+          "max": 0.003416432386361464,
+          "samples": 5,
+          "peak": 12.572704300051555,
+          "calls": 1
+        },
+        {
+          "key": "powerCreeps",
+          "avg": 0.0023784968058125867,
+          "max": 0.002543522859250104,
+          "samples": 5,
+          "peak": 3.206738599925302,
+          "calls": 1
+        }
+      ],
+      "top_processes": [
+        {
+          "key": "room:W17S29",
+          "avg": 12.018929970000062,
+          "max": 12.511694650000052,
+          "samples": 5,
+          "name": "Room W17S29 (owned)",
+          "max_cpu": 21.109442000000058,
+          "frequency": "high",
+          "run_count": 6,
+          "skipped_count": 20,
+          "cpu_budget": 0.06
+        },
+        {
+          "key": "empire:manager",
+          "avg": 2.1672287000000097,
+          "max": 2.1672287000000097,
+          "samples": 5,
+          "name": "Empire Manager",
+          "max_cpu": 2.1672287000000097,
+          "frequency": "low",
+          "run_count": 1,
+          "skipped_count": 25,
+          "cpu_budget": 0.05
+        },
+        {
+          "key": "room:W18S29",
+          "avg": 1.440043419999904,
+          "max": 1.440043419999904,
+          "samples": 5,
+          "name": "Room W18S29 (owned)",
+          "max_cpu": 1.791011699999899,
+          "frequency": "high",
+          "run_count": 5,
+          "skipped_count": 21,
+          "cpu_budget": 0.06
+        },
+        {
+          "key": "expansion:manager",
+          "avg": 1.4394588000000113,
+          "max": 1.4394588000000113,
+          "samples": 5,
+          "name": "Expansion Manager",
+          "max_cpu": 1.4394588000000113,
+          "frequency": "medium",
+          "run_count": 1,
+          "skipped_count": 25,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "core:memorySegmentStats",
+          "avg": 1.3509535000000028,
+          "max": 1.3509535000000028,
+          "samples": 5,
+          "name": "Memory Segment Stats",
+          "max_cpu": 1.3509535000000028,
+          "frequency": "low",
+          "run_count": 1,
+          "skipped_count": 24,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "empire:shard",
+          "avg": 1.2702105000000188,
+          "max": 1.2702105000000188,
+          "samples": 5,
+          "name": "Shard Manager",
+          "max_cpu": 1.2702105000000188,
+          "frequency": "low",
+          "run_count": 1,
+          "skipped_count": 24,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "empire:market",
+          "avg": 1.207382799999948,
+          "max": 1.207382799999948,
+          "samples": 5,
+          "name": "Market Manager",
+          "max_cpu": 1.207382799999948,
+          "frequency": "low",
+          "run_count": 1,
+          "skipped_count": 24,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "empire:intelScanner",
+          "avg": 1.184678733333385,
+          "max": 1.184678733333385,
+          "samples": 5,
+          "name": "Intel Scanner",
+          "max_cpu": 2.1458176999999523,
+          "frequency": "low",
+          "run_count": 3,
+          "skipped_count": 23,
+          "cpu_budget": 0.02
+        },
+        {
+          "key": "remote:infrastructure",
+          "avg": 1.0316077200000109,
+          "max": 1.7193462000000181,
+          "samples": 5,
+          "name": "Remote Infrastructure Manager",
+          "max_cpu": 1.7193462000000181,
+          "frequency": "medium",
+          "run_count": 1,
+          "skipped_count": 24,
+          "cpu_budget": 0.05
+        },
+        {
+          "key": "empire:tooangel",
+          "avg": 0.9994686000000002,
+          "max": 0.9994686000000002,
+          "samples": 5,
+          "name": "TooAngel Manager",
+          "max_cpu": 0.9994686000000002,
+          "frequency": "low",
+          "run_count": 1,
+          "skipped_count": 24,
+          "cpu_budget": 0.1
+        },
+        {
+          "key": "empire:crossShardIntel",
+          "avg": 0.8958768000000532,
+          "max": 0.8958768000000532,
+          "samples": 5,
+          "name": "Cross-Shard Intel",
+          "max_cpu": 0.8958768000000532,
+          "frequency": "low",
+          "run_count": 1,
+          "skipped_count": 24,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "room:W19S26",
+          "avg": 0.7947445666492856,
+          "max": 0.812069473913052,
+          "samples": 5,
+          "name": "Room W19S26 (owned)",
+          "max_cpu": 4.821438699999987,
+          "frequency": "high",
+          "run_count": 26,
+          "skipped_count": 0,
+          "cpu_budget": 0.12
+        },
+        {
+          "key": "room:W18S28",
+          "avg": 0.763971421721069,
+          "max": 0.7867020739130339,
+          "samples": 5,
+          "name": "Room W18S28 (owned)",
+          "max_cpu": 6.054383400000006,
+          "frequency": "high",
+          "run_count": 26,
+          "skipped_count": 0,
+          "cpu_budget": 0.12
+        },
+        {
+          "key": "creep:guard_71691884_e09d3t28x",
+          "avg": 0.5758712093333452,
+          "max": 0.8720673000000261,
+          "samples": 5,
+          "name": "Creep guard_71691884_e09d3t28x (guard)",
+          "max_cpu": 1.621591399999943,
+          "frequency": "high",
+          "run_count": 5,
+          "skipped_count": 0,
+          "cpu_budget": 0.01
+        },
+        {
+          "key": "creep:labTech_71690516_bfxsgd6qo",
+          "avg": 0.513567383811851,
+          "max": 0.5222140086956465,
+          "samples": 5,
+          "name": "Creep labTech_71690516_bfxsgd6qo (labTech)",
+          "max_cpu": 1.533273300000019,
+          "frequency": "high",
+          "run_count": 25,
+          "skipped_count": 0,
+          "cpu_budget": 0.006
+        }
+      ],
+      "top_rooms": [
+        {
+          "key": "W17S29",
+          "avg": 9.443946849733223,
+          "max": 9.93702931097947,
+          "samples": 5,
+          "peak": 71.40210819999993,
+          "rcl": 6,
+          "creeps": 14
+        },
+        {
+          "key": "W18S29",
+          "avg": 1.0825395915679956,
+          "max": 1.0825395915679956,
+          "samples": 5,
+          "peak": 37.44734409998637,
+          "rcl": 5,
+          "creeps": 11
+        },
+        {
+          "key": "W19S26",
+          "avg": 0.583459558639885,
+          "max": 0.6039683490803511,
+          "samples": 5,
+          "peak": 42.11184639998828,
+          "rcl": 2,
+          "creeps": 5
+        },
+        {
+          "key": "W18S28",
+          "avg": 0.39930762144209925,
+          "max": 0.4099114018146602,
+          "samples": 5,
+          "peak": 26.979372299974784,
+          "rcl": 5,
+          "creeps": 1
+        }
+      ],
+      "top_roles": [
+        {
+          "key": "labTech",
+          "avg": 0.4263414302777077,
+          "max": 0.4433124005294668,
+          "samples": 5,
+          "peak": 7.57181880006101,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        },
+        {
+          "key": "ranger",
+          "avg": 0.32682399081840136,
+          "max": 0.3694333526928692,
+          "samples": 5,
+          "peak": 16.301012649928452,
+          "count": 2,
+          "active": 0,
+          "idle": 2
+        },
+        {
+          "key": "guard",
+          "avg": 0.30791633094871307,
+          "max": 0.32242720792975743,
+          "samples": 5,
+          "peak": 20.984882100005052,
+          "count": 3,
+          "active": 0,
+          "idle": 2
+        },
+        {
+          "key": "queenCarrier",
+          "avg": 0.26770140925298325,
+          "max": 0.28173567422685125,
+          "samples": 5,
+          "peak": 23.36209979990963,
+          "count": 4,
+          "active": 4,
+          "idle": 0
+        },
+        {
+          "key": "scout",
+          "avg": 0.2589243826719347,
+          "max": 0.2619616067601127,
+          "samples": 5,
+          "peak": 47.11937619998935,
+          "count": 2,
+          "active": 0,
+          "idle": 2
+        },
+        {
+          "key": "harvester",
+          "avg": 0.2332969817588122,
+          "max": 0.23386011551794705,
+          "samples": 5,
+          "peak": 38.00387519993819,
+          "count": 6,
+          "active": 1,
+          "idle": 4
+        },
+        {
+          "key": "hauler",
+          "avg": 0.22198257007009295,
+          "max": 0.22651263684996026,
+          "samples": 5,
+          "peak": 46.99619729997357,
+          "count": 4,
+          "active": 3,
+          "idle": 1
+        },
+        {
+          "key": "upgrader",
+          "avg": 0.18310579175366057,
+          "max": 0.1889175194677167,
+          "samples": 5,
+          "peak": 10.637389966635965,
+          "count": 5,
+          "active": 3,
+          "idle": 2
+        },
+        {
+          "key": "builder",
+          "avg": 0.18070517974479977,
+          "max": 0.1839489860201927,
+          "samples": 5,
+          "peak": 26.51968929998111,
+          "count": 3,
+          "active": 3,
+          "idle": 0
+        },
+        {
+          "key": "mineralHarvester",
+          "avg": 0.10671304620480829,
+          "max": 0.11124283177787515,
+          "samples": 5,
+          "peak": 22.730211399990367,
+          "count": 1,
+          "active": 0,
+          "idle": 1
+        }
+      ],
+      "top_cpu_details": []
+    }
+  }
+}

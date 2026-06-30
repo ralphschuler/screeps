@@ -9,13 +9,24 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
-import { findDistributedTarget } from "@ralphschuler/screeps-utils";
+import { findDistributedTarget, registerAssignment } from "@ralphschuler/screeps-utils";
 import { findCachedClosest } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "@ralphschuler/screeps-core";
 import { taskBoard } from "../../tasks";
+import { getTerminalEnergyExportRequest } from "../../tasks/energyExport";
 
 const logger = createLogger("HaulerBehavior");
+
+const TERMINAL_ENERGY_TARGET = 20000;
+const STORAGE_ENERGY_RESERVE = 50000;
+const MINERAL_STORAGE_BUFFER = 5000;
+const TERMINAL_MINERAL_TARGET = 10000;
+const HAULER_DISTRIBUTED_TARGET_CACHE_TTL = 5;
+
+interface HaulerTargetCacheMemory {
+  haulerTargetCache?: Record<string, { id: string; tick: number }>;
+}
 
 /**
  * Hauler - Transport all resources to appropriate destinations.
@@ -82,6 +93,9 @@ export function hauler(ctx: CreepContext): CreepAction {
       const closest = findCachedClosest(ctx.creep, towersWithCapacity, "hauler_tower", 15);
       if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
     }
+
+    const terminalBufferAction = deliverTerminalBuffer(ctx, resourceType);
+    if (terminalBufferAction) return terminalBufferAction;
 
     // 4. Storage fourth
     if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
@@ -151,7 +165,7 @@ export function hauler(ctx: CreepContext): CreepAction {
     c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
   );
   if (containersWithEnergy.length > 0) {
-    const distributed = findDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
+    const distributed = getCachedDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
     if (distributed) {
       logger.debug(`${ctx.creep.name} hauler withdrawing from container ${distributed.id} with ${distributed.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
       return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
@@ -169,7 +183,7 @@ export function hauler(ctx: CreepContext): CreepAction {
   // 4. Containers with minerals (use distributed for mineral transport)
   // OPTIMIZATION: Use cached mineral containers from room context to avoid expensive room.find()
   if (ctx.mineralContainers.length > 0) {
-    const distributed = findDistributedTarget(ctx.creep, ctx.mineralContainers, "mineral_container");
+    const distributed = getCachedDistributedTarget(ctx.creep, ctx.mineralContainers, "mineral_container");
     if (distributed) {
       // Find first mineral type in container using Object.keys for better performance
       const mineralType = Object.keys(distributed.store).find(
@@ -196,6 +210,9 @@ export function hauler(ctx: CreepContext): CreepAction {
     }
   }
 
+  const terminalSupplyAction = collectTerminalBufferFromStorage(ctx);
+  if (terminalSupplyAction) return terminalSupplyAction;
+
   // 5. Storage (single target, no distribution needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
     logger.debug(`${ctx.creep.name} hauler withdrawing from storage`);
@@ -204,4 +221,86 @@ export function hauler(ctx: CreepContext): CreepAction {
 
   logger.warn(`${ctx.creep.name} hauler idle (no energy sources found)`);
   return { type: "idle" };
+}
+
+function getCachedDistributedTarget<T extends RoomObject & _HasId>(creep: Creep, targets: T[], typeKey: string): T | null {
+  const memory = (creep.memory ??= {} as CreepMemory) as HaulerTargetCacheMemory;
+  const cache = memory.haulerTargetCache ??= {};
+  const cached = cache[typeKey];
+
+  if (cached && Game.time - cached.tick <= HAULER_DISTRIBUTED_TARGET_CACHE_TTL) {
+    const target = targets.find(candidate => candidate.id === cached.id);
+    if (target) {
+      registerAssignment(creep, target, typeKey);
+      return target;
+    }
+  }
+
+  const target = findDistributedTarget(creep, targets, typeKey);
+  if (target) {
+    cache[typeKey] = { id: target.id, tick: Game.time };
+  } else {
+    delete cache[typeKey];
+  }
+  return target;
+}
+
+function deliverTerminalBuffer(ctx: CreepContext, resourceType: ResourceConstant | undefined): CreepAction | null {
+  if (!resourceType || !ctx.terminal || !ctx.storage) return null;
+
+  if (resourceType === RESOURCE_ENERGY) {
+    const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+    const storageEnergy = ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+    const terminalFree = ctx.terminal.store.getFreeCapacity(RESOURCE_ENERGY);
+
+    const exportRequest = getTerminalEnergyExportRequest(ctx.room);
+
+    if (
+      (terminalEnergy < TERMINAL_ENERGY_TARGET && storageEnergy > STORAGE_ENERGY_RESERVE && terminalFree > 0) ||
+      Boolean(exportRequest)
+    ) {
+      return { type: "transfer", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+    }
+
+    return null;
+  }
+
+  const terminalFree = ctx.terminal.store.getFreeCapacity(resourceType);
+  if (terminalFree > 0) {
+    return { type: "transfer", target: ctx.terminal, resourceType };
+  }
+
+  return null;
+}
+
+function collectTerminalBufferFromStorage(ctx: CreepContext): CreepAction | null {
+  if (!ctx.storage || !ctx.terminal) return null;
+  if (ctx.terminal.cooldown > 0) return null;
+
+  const terminalFree = ctx.terminal.store.getFreeCapacity();
+  if (terminalFree <= 0) return null;
+
+  const terminalEnergy = ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+  const storageEnergy = ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+
+  if (
+    (terminalEnergy < TERMINAL_ENERGY_TARGET && storageEnergy > STORAGE_ENERGY_RESERVE) ||
+    getTerminalEnergyExportRequest(ctx.room)
+  ) {
+    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  }
+
+  const resources = Object.keys(ctx.storage.store) as ResourceConstant[];
+  for (const resourceType of resources) {
+    if (resourceType === RESOURCE_ENERGY) continue;
+
+    const storageAmount = ctx.storage.store.getUsedCapacity(resourceType);
+    const terminalAmount = ctx.terminal.store.getUsedCapacity(resourceType);
+
+    if (storageAmount > MINERAL_STORAGE_BUFFER && terminalAmount < TERMINAL_MINERAL_TARGET) {
+      return { type: "withdraw", target: ctx.storage, resourceType };
+    }
+  }
+
+  return null;
 }

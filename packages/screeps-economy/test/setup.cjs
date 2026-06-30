@@ -126,12 +126,6 @@ const stubs = {
     fulfillDefenseRequest: () => ({})
   },
   
-  '@bot/layouts/roadNetworkPlanner': {
-    getRoadNetwork: () => ({}),
-    planRoadNetwork: () => ({}),
-    buildRoadNetwork: () => ({})
-  },
-  
   '@bot/memory/schemas': {
     SwarmCreepMemory: {},
     RoomMemory: {},

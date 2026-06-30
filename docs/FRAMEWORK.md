@@ -153,7 +153,7 @@ Common utilities and helper functions.
 
 Position utilities and pathfinding helpers.
 
-#### @ralphschuler/screeps-tasks
+#### @ralphschuler/screeps-roles
 
 Task system for creep behavior.
 

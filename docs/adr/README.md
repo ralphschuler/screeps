@@ -44,6 +44,8 @@ Each ADR follows a standard format (see [template](#template) below):
 
 - [ADR-0007: Spawn Queue Prioritization](0007-spawn-queue-prioritization.md) - Priority-based spawn queue algorithm
 - [ADR-0008: Tower Targeting Algorithm](0008-tower-targeting-algorithm.md) - Tower target selection and energy efficiency
+- [ADR-0009: Console Command Registry Ownership](0009-console-command-registry-ownership.md) - Framework-first ownership of command registry/decorator behavior
+- [ADR-0010: Intershard Spawn Port Injection](0010-intershard-spawn-port-injection.md) - Port-based spawn integration for cross-shard carriers
 
 ## Creating a New ADR
 
@@ -174,4 +176,4 @@ Proposed → Accepted → [Deprecated | Superseded]
 
 ---
 
-*For questions about ADRs or this documentation, see [CONTRIBUTING_DOCS.md](../CONTRIBUTING_DOCS.md)*
+*For questions about ADRs or this documentation, see [CONTRIBUTING.md](../../CONTRIBUTING.md).*

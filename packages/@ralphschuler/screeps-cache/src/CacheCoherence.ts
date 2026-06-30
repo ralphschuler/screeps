@@ -18,6 +18,12 @@
 
 import { CacheManager } from "./CacheManager";
 import { CacheStats } from "./CacheEntry";
+import { InvalidationPatternCache } from "./cache-coherence/invalidationPatterns";
+import {
+  createDefaultMemoryEstimates,
+  enforceMemoryBudget as enforceRegisteredCacheMemoryBudget,
+  estimateTotalMemory as estimateRegisteredCacheMemory
+} from "./cache-coherence/memoryBudgetPolicy";
 
 /**
  * Cache layer designation for hierarchical caching
@@ -117,18 +123,10 @@ export class CacheCoherenceManager {
   private totalMemoryBudget = this.DEFAULT_MEMORY_BUDGET;
   
   /** Cached regex patterns for common invalidations */
-  private regexCache = new Map<string, RegExp>();
+  private invalidationPatterns = new InvalidationPatternCache();
   
   /** Estimated bytes per cache entry by namespace (configurable) */
-  private estimatedBytesPerEntry: Record<string, number> = {
-    object: 512,      // Small - mostly object references
-    bodypart: 256,    // Very small - just numbers
-    path: 2048,       // Large - serialized paths
-    roomFind: 1024,   // Medium - array of objects
-    role: 512,        // Small - role assignments
-    closest: 256,     // Small - single object reference
-    default: 1024     // Default estimate
-  };
+  private estimatedBytesPerEntry = createDefaultMemoryEstimates();
 
   /**
    * Register a cache layer with the coherence manager
@@ -193,8 +191,7 @@ export class CacheCoherenceManager {
 
         case "room":
           if (scope.roomName) {
-            // Use cached regex pattern
-            const pattern = this.getRoomPattern(scope.roomName);
+            const pattern = this.invalidationPatterns.forRoom(scope.roomName);
             const count = cache.manager.invalidatePattern(pattern, namespace);
             invalidated += count;
           }
@@ -202,8 +199,7 @@ export class CacheCoherenceManager {
 
         case "creep":
           if (scope.creepName) {
-            // Use cached regex pattern
-            const pattern = this.getCreepPattern(scope.creepName);
+            const pattern = this.invalidationPatterns.forCreep(scope.creepName);
             const count = cache.manager.invalidatePattern(pattern, namespace);
             invalidated += count;
           }
@@ -219,9 +215,10 @@ export class CacheCoherenceManager {
 
         case "structure":
           if (scope.structureType && scope.roomName) {
-            // Use cached regex pattern
-            const patternStr = `${this.escapeRegex(scope.roomName)}.*${scope.structureType}`;
-            const pattern = this.getCachedRegex(patternStr);
+            const pattern = this.invalidationPatterns.forStructure(
+              scope.roomName,
+              scope.structureType
+            );
             const count = cache.manager.invalidatePattern(pattern, namespace);
             invalidated += count;
           }
@@ -234,121 +231,14 @@ export class CacheCoherenceManager {
   }
 
   /**
-   * Get or create cached regex pattern
-   * Uses LRU eviction by re-inserting on access
-   */
-  private getCachedRegex(pattern: string): RegExp {
-    let regex = this.regexCache.get(pattern);
-    
-    if (regex) {
-      // Refresh entry to maintain LRU ordering (most recently used at the end)
-      this.regexCache.delete(pattern);
-    } else {
-      regex = new RegExp(pattern);
-    }
-    
-    this.regexCache.set(pattern, regex);
-    
-    // Limit cache size to prevent memory leak
-    if (this.regexCache.size > 100) {
-      // Remove least recently used entry (first in Map due to insertion order)
-      const firstKey = this.regexCache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.regexCache.delete(firstKey);
-      }
-    }
-    
-    return regex;
-  }
-
-  /**
-   * Escape special regex characters
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  /**
-   * Build and cache regex pattern for room invalidation
-   */
-  private getRoomPattern(roomName: string): RegExp {
-    const escapedRoom = this.escapeRegex(roomName);
-    const patternStr = `(^|:)${escapedRoom}($|:)`;
-    return this.getCachedRegex(patternStr);
-  }
-
-  /**
-   * Build and cache regex pattern for creep invalidation
-   */
-  private getCreepPattern(creepName: string): RegExp {
-    const escapedCreep = this.escapeRegex(creepName);
-    return this.getCachedRegex(escapedCreep);
-  }
-
-  /**
    * Enforce memory limits across all caches
    */
   public enforceMemoryLimits(): number {
-    // Get current memory usage estimate
-    const currentMemory = this.estimateTotalMemory();
-    
-    if (currentMemory <= this.totalMemoryBudget) {
-      return 0; // Within budget
-    }
-
-    // Need to evict - calculate how much
-    const targetReduction = currentMemory - this.totalMemoryBudget;
-    let totalEvicted = 0;
-
-    // Sort caches by priority (lower priority evicted first)
-    const sortedCaches = Array.from(this.registeredCaches.values())
-      .sort((a, b) => a.priority - b.priority);
-
-    // Evict from lowest priority caches first using LRU
-    for (const cache of sortedCaches) {
-      if (totalEvicted >= targetReduction) break;
-
-      const stats = cache.manager.getCacheStats(cache.namespace);
-      const cacheSize = stats.size;
-      
-      if (cacheSize === 0) continue;
-
-      // Calculate how many entries to evict (10% or enough to meet target)
-      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] 
-        ?? this.estimatedBytesPerEntry.default;
-      const entriesNeeded = Math.ceil((targetReduction - totalEvicted) / bytesPerEntry);
-      const toEvict = Math.min(
-        Math.max(1, Math.floor(cacheSize * 0.1)),
-        entriesNeeded
-      );
-      
-      // Evict using the cache manager's LRU eviction when available
-      const managerAny = cache.manager as any;
-      let actuallyEvicted = 0;
-      
-      if (typeof managerAny.evictLRU === "function") {
-        // Use proper LRU eviction if available
-        managerAny.evictLRU(cache.namespace, toEvict);
-        actuallyEvicted = toEvict;
-      } else {
-        // Fallback: use cleanup which only removes expired entries
-        // This isn't true LRU but will reduce cache size
-        // TODO: Implement proper LRU eviction in CacheManager.evictLRU(namespace, count)
-        // Issue URL: https://github.com/ralphschuler/screeps/issues/883
-        for (let i = 0; i < toEvict; i++) {
-          const evicted = cache.manager.cleanup();
-          if (evicted > 0) {
-            actuallyEvicted += evicted;
-          } else {
-            break; // No more to evict
-          }
-        }
-      }
-
-      totalEvicted += actuallyEvicted;
-    }
-
-    return totalEvicted;
+    return enforceRegisteredCacheMemoryBudget(
+      this.registeredCaches.values(),
+      this.totalMemoryBudget,
+      this.estimatedBytesPerEntry
+    );
   }
 
   /**
@@ -356,16 +246,10 @@ export class CacheCoherenceManager {
    * Uses configurable per-namespace estimates for accuracy
    */
   private estimateTotalMemory(): number {
-    let total = 0;
-    
-    for (const cache of this.registeredCaches.values()) {
-      const stats = cache.manager.getCacheStats(cache.namespace);
-      const bytesPerEntry = this.estimatedBytesPerEntry[cache.namespace] 
-        ?? this.estimatedBytesPerEntry.default;
-      total += stats.size * bytesPerEntry;
-    }
-    
-    return total;
+    return estimateRegisteredCacheMemory(
+      this.registeredCaches.values(),
+      this.estimatedBytesPerEntry
+    );
   }
 
   /**

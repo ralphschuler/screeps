@@ -72,16 +72,16 @@ describe("Defense Assistance System", () => {
       assert.isTrue(result, "Room should need assistance when spawn is busy");
     });
 
-    it("should return false when danger level is low", () => {
+    it("should return true when danger is stale but dangerous hostiles are visible", () => {
       mockSwarm.danger = 0;
       const result = needsDefenseAssistance(mockRoom as Room, mockSwarm);
-      assert.isFalse(result, "Room should not need assistance when danger is low");
+      assert.isTrue(result, "Room should request helper waves when hostiles are visible");
     });
 
-    it("should return false when danger is 1 (not significant)", () => {
+    it("should return true for danger 1 with visible dangerous hostiles", () => {
       mockSwarm.danger = 1;
       const result = needsDefenseAssistance(mockRoom as Room, mockSwarm);
-      assert.isFalse(result, "Room should not need assistance for minor threats");
+      assert.isTrue(result, "Room should request assistance for visible hostile pressure");
     });
 
     it("should return true when room has no spawns", () => {
@@ -109,7 +109,10 @@ describe("Defense Assistance System", () => {
           return [{ spawning: null }] as StructureSpawn[];
         } else if (type === FIND_MY_CREEPS) {
           // Has sufficient defenders
-          return [{ memory: { role: "guard" } }, { memory: { role: "ranger" } }] as unknown as Creep[];
+          return [
+            { memory: { role: "guard" }, body: [{ type: ATTACK, hits: 100 }] },
+            { memory: { role: "ranger" }, body: [{ type: RANGED_ATTACK, hits: 100 }] }
+          ] as unknown as Creep[];
         }
         return [];
       };
@@ -165,6 +168,11 @@ describe("Defense Assistance System", () => {
 
     it("should return null when assistance is not needed", () => {
       mockSwarm.danger = 0;
+      mockRoom.find = (type: FindConstant) => {
+        if (type === FIND_HOSTILE_CREEPS || type === FIND_MY_CREEPS) return [];
+        if (type === FIND_MY_SPAWNS) return [{ spawning: null }] as StructureSpawn[];
+        return [];
+      };
       const request = createDefenseRequest(mockRoom as Room, mockSwarm);
       assert.isNull(request, "Should not create request when assistance not needed");
     });

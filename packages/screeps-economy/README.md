@@ -29,6 +29,7 @@ Economy subsystem for Screeps bot - manages resource flow, production, and tradi
 - Automated order creation and management
 - War-mode aggressive purchasing
 - Terminal logistics integration
+- Transport-cost-aware immediate sell and emergency-buy order ranking
 
 ## Installation
 
@@ -151,7 +152,7 @@ The package includes comprehensive tests covering:
 - **Link Management**: Tests for LinkManager configuration and setup
 - **Terminal Router**: Tests for network graph building, cost calculation, caching, and TTL
 - **Factory Management**: Tests for production planning (coming soon)
-- **Market Trading**: Tests for trend analysis and order management (coming soon)
+- **Market Trading**: Tests for trend analysis, order management, and pure order-selection scoring
 
 **Test Coverage**: >75% (target in progress)
 
@@ -173,6 +174,8 @@ test/
   ├── exports.test.ts        # Package exports validation
   ├── LinkManager.test.ts    # Link management tests
   ├── TerminalRouter.test.ts # Terminal routing tests
+  ├── MarketManager.test.ts  # Market manager integration behavior
+  ├── orderSelection.test.ts # Pure market order scoring rules
   └── ...                    # Additional test files
 ```
 
@@ -184,7 +187,8 @@ test/
 - ✅ Cache TTL expiration and refresh
 - ✅ Multi-hop route optimization (in progress)
 - 📝 Factory production planning (planned)
-- 📝 Market trend analysis (planned)
+- ✅ Market active-sell and emergency-buy order ranking
+- 📝 Market trend analysis expansion (planned)
 
 ## License
 

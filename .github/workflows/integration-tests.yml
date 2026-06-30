@@ -65,8 +65,8 @@ jobs:
 
       - name: Run private-server smoke test
         working-directory: packages/screeps-server
-        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000 --project=screeps-smoke-${{ github.run_id }}
-        timeout-minutes: 25
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=3000 --project=screeps-smoke-${{ github.run_id }}
+        timeout-minutes: 45
 
       - name: Upload smoke summary
         if: always()
@@ -77,6 +77,7 @@ jobs:
             packages/screeps-server/artifacts/smoke/summary.json
             packages/screeps-server/artifacts/smoke/summary.md
             packages/screeps-server/artifacts/smoke/harness.log
+            packages/screeps-server/artifacts/smoke/scenario-*.json
           retention-days: 30
           if-no-files-found: warn
 

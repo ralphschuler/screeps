@@ -39,7 +39,7 @@
  */
 
 import type { IPathCache, ILogger, RemoteRouteType } from "../types";
-import { getRemoteMiningRoomCallback } from "../analysis/remoteRoomUtils";
+import { hasCompleteRemotePath, searchRemotePath } from "./remotePathSearch";
 
 // =============================================================================
 // Constants
@@ -150,14 +150,9 @@ export class RemotePathCache {
       if (spawns.length > 0) {
         const mainSpawn = spawns[0];
         for (const source of sources) {
-          const pathToSource = PathFinder.search(mainSpawn.pos, { pos: source.pos, range: 1 }, {
-            plainCost: 2,
-            swampCost: 10,
-            maxRooms: 16,
-            roomCallback: (roomName) => getRemoteMiningRoomCallback(roomName, this.logger)
-          });
+          const pathToSource = searchRemotePath(mainSpawn.pos, source.pos, this.logger);
           
-          if (!pathToSource.incomplete && pathToSource.path.length > 0) {
+          if (hasCompleteRemotePath(pathToSource)) {
             // Convert RoomPosition[] to PathStep[] before caching
             const pathSteps = this.pathCache.convertRoomPositionsToPathSteps(pathToSource.path);
             this.cacheRemoteMiningPath(
@@ -182,14 +177,9 @@ export class RemotePathCache {
           : sources.map(s => s.pos);
         
         for (const sourcePos of haulerSources) {
-          const pathToHome = PathFinder.search(sourcePos, { pos: storage.pos, range: 1 }, {
-            plainCost: 2,
-            swampCost: 10,
-            maxRooms: 16,
-            roomCallback: (roomName) => getRemoteMiningRoomCallback(roomName, this.logger)
-          });
+          const pathToHome = searchRemotePath(sourcePos, storage.pos, this.logger);
           
-          if (!pathToHome.incomplete && pathToHome.path.length > 0) {
+          if (hasCompleteRemotePath(pathToHome)) {
             // Convert RoomPosition[] to PathStep[] before caching
             const pathSteps = this.pathCache.convertRoomPositionsToPathSteps(pathToHome.path);
             this.cacheRemoteMiningPath(
@@ -233,14 +223,9 @@ export class RemotePathCache {
     }
     
     // Cache miss - calculate new path
-    const result = PathFinder.search(from, { pos: to, range: 1 }, {
-      plainCost: 2,
-      swampCost: 10,
-      maxRooms: 16,
-      roomCallback: (roomName) => getRemoteMiningRoomCallback(roomName, this.logger)
-    });
+    const result = searchRemotePath(from, to, this.logger);
     
-    if (!result.incomplete && result.path.length > 0) {
+    if (hasCompleteRemotePath(result)) {
       // Convert RoomPosition[] to PathStep[] before caching
       const pathSteps = this.pathCache.convertRoomPositionsToPathSteps(result.path);
       this.cacheRemoteMiningPath(from, to, pathSteps, routeType);

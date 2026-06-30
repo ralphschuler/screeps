@@ -28,6 +28,30 @@ class TestProcess extends BaseProcess {
   protected deserializeState(state: Record<string, unknown>): void {
     this.runCount = state.runCount as number;
   }
+
+  public readSyscallsForTest(): IPosisProcessSyscalls {
+    return this.syscalls;
+  }
+
+  public readMemoryForTest(): Record<string, unknown> {
+    return this.memory;
+  }
+
+  public sleepForTest(ticks: number): void {
+    this.sleep(ticks);
+  }
+
+  public sendMessageForTest(targetId: string, message: unknown): void {
+    this.sendMessage(targetId, message);
+  }
+
+  public getSharedMemoryForTest(key: string): unknown {
+    return this.getSharedMemory(key);
+  }
+
+  public setSharedMemoryForTest(key: string, value: unknown): void {
+    this.setSharedMemory(key, value);
+  }
 }
 
 describe("BaseProcess", () => {
@@ -78,11 +102,11 @@ describe("BaseProcess", () => {
     });
 
     it("should throw error when accessing syscalls before init", () => {
-      expect(() => (process as any).syscalls).to.throw(/not initialized/);
+      expect(() => process.readSyscallsForTest()).to.throw(/not initialized/);
     });
 
     it("should throw error when accessing memory before init", () => {
-      expect(() => (process as any).memory).to.throw(/not initialized/);
+      expect(() => process.readMemoryForTest()).to.throw(/not initialized/);
     });
   });
 
@@ -212,13 +236,13 @@ describe("BaseProcess", () => {
     });
 
     it("should call sleep syscall", () => {
-      (process as any).sleep(10);
+      process.sleepForTest(10);
       expect(sleepTicks).to.equal(10);
     });
 
     it("should call sendMessage syscall", () => {
       const message = { data: "test" };
-      (process as any).sendMessage("target", message);
+      process.sendMessageForTest("target", message);
       
       expect(sentMessage).to.not.be.undefined;
       expect(sentMessage!.targetId).to.equal("target");
@@ -226,8 +250,8 @@ describe("BaseProcess", () => {
     });
 
     it("should get and set shared memory", () => {
-      (process as any).setSharedMemory("key1", "value1");
-      const value = (process as any).getSharedMemory("key1");
+      process.setSharedMemoryForTest("key1", "value1");
+      const value = process.getSharedMemoryForTest("key1");
       
       expect(value).to.equal("value1");
     });

@@ -82,8 +82,9 @@ export function canSkipBehaviorEvaluation(
     return false;
   }
   
-  // Must have a valid state with start tick
-  if (!state || !state.startTick) {
+  // Must have a valid state with a recorded start tick. Tick 0 is valid in
+  // tests and private-server harnesses, so only reject missing values.
+  if (!state || state.startTick === undefined) {
     return false;
   }
   

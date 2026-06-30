@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-06-16T23:54:27.788Z",
+  "hostname": "screeps.com",
+  "branch": "main",
+  "commit": "212606d",
+  "shard": "shard1",
+  "room": "W17S29",
+  "consoleCheck": {
+    "called": false,
+    "reason": "Read-only roomObjects/memory/stats endpoints only; no /api/user/console."
+  },
+  "samples": [
+    {
+      "time": 71723346,
+      "scouts": [],
+      "knownRooms": {
+        "W18S29": {
+          "name": "W18S29",
+          "lastSeen": 71722850,
+          "sources": 2,
+          "controllerLevel": 5,
+          "owner": "TedRoastBeef",
+          "mineralType": "Z",
+          "threatLevel": 0,
+          "scouted": true,
+          "terrain": "plains",
+          "isHighway": false,
+          "isSK": false,
+          "towerCount": 2,
+          "spawnCount": 1,
+          "hasPortal": false
+        }
+      }
+    },
+    {
+      "time": 71723354,
+      "scouts": [],
+      "knownRooms": {
+        "W18S29": {
+          "name": "W18S29",
+          "lastSeen": 71722850,
+          "sources": 2,
+          "controllerLevel": 5,
+          "owner": "TedRoastBeef",
+          "mineralType": "Z",
+          "threatLevel": 0,
+          "scouted": true,
+          "terrain": "plains",
+          "isHighway": false,
+          "isSK": false,
+          "towerCount": 2,
+          "spawnCount": 1,
+          "hasPortal": false
+        }
+      }
+    }
+  ]
+}

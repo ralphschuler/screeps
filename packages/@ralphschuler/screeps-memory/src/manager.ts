@@ -55,6 +55,11 @@ const MEMORY_PRUNING_INTERVAL = 100;
  * Checks memory usage and alerts when approaching limits.
  */
 const MEMORY_MONITORING_INTERVAL = 50;
+/**
+ * Max number of dead creep records to remove per cleanup pass.
+ * A small bounded batch avoids CPU spikes when Memory.creeps is large.
+ */
+const DEAD_CREEP_CLEANUP_BATCH_SIZE = 25;
 
 /**
  * Memory Manager class
@@ -64,6 +69,11 @@ export class MemoryManager {
   private lastCleanupTick = 0;
   private lastPruningTick = 0;
   private lastMonitoringTick = 0;
+  /**
+   * Bounded dead-creep cleanup state to avoid full scans every cleanup interval.
+   */
+  private deadCreepCleanupCursor = 0;
+  private deadCreepCleanupCandidates: string[] = [];
 
   /**
    * Initialize all memory structures
@@ -128,12 +138,13 @@ export class MemoryManager {
   public getEmpire(): EmpireMemory {
     const cacheKey = `memory:${EMPIRE_KEY}`;
     let empire = heapCache.get<EmpireMemory>(cacheKey);
-    
-    if (!empire) {
-      this.ensureEmpireMemory();
-      const mem = Memory as unknown as Record<string, EmpireMemory>;
-      // Cache a reference to the Memory object for fast access
-      // Changes to this object will need to be re-cached to persist
+    this.ensureEmpireMemory();
+    const mem = Memory as unknown as Record<string, EmpireMemory>;
+
+    if (!empire || empire !== mem[EMPIRE_KEY]) {
+      // Cache the current Memory reference. Screeps/admin tooling can replace
+      // the underlying Memory object between ticks, so stale heap references
+      // must not hide externally seeded intel or configuration.
       heapCache.set(cacheKey, mem[EMPIRE_KEY], INFINITE_TTL);
       empire = mem[EMPIRE_KEY];
     }
@@ -178,16 +189,18 @@ export class MemoryManager {
   public getSwarmState(roomName: string): SwarmState | undefined {
     const cacheKey = `memory:room:${roomName}:swarm`;
     let swarmState = heapCache.get<SwarmState>(cacheKey);
-    
-    if (!swarmState) {
-      const roomMemory = Memory.rooms?.[roomName];
-      if (!roomMemory) return undefined;
-      const roomSwarm = (roomMemory as unknown as { swarm?: SwarmState }).swarm;
-      if (roomSwarm) {
-        // Cache a reference to the Memory object for fast access
-        heapCache.set(cacheKey, roomSwarm, INFINITE_TTL);
-        swarmState = roomSwarm;
-      }
+    const roomMemory = Memory.rooms?.[roomName];
+    if (!roomMemory) return undefined;
+
+    const roomSwarm = (roomMemory as unknown as { swarm?: SwarmState }).swarm;
+    if (!roomSwarm) return undefined;
+
+    if (!swarmState || swarmState !== roomSwarm) {
+      // Refresh when Memory was replaced externally between ticks. Without this,
+      // remote assignment/intel edits made by the private-server harness or game
+      // console can be hidden behind stale infinite-TTL heap references.
+      heapCache.set(cacheKey, roomSwarm, INFINITE_TTL);
+      swarmState = roomSwarm;
     }
     
     return swarmState;
@@ -235,23 +248,52 @@ export class MemoryManager {
   }
 
   /**
-   * Clean up dead creep memory
-   * OPTIMIZATION: Use for-in loop instead of Object.keys() to avoid creating temporary array.
-   * With 100+ creeps, this saves ~0.1 CPU per cleanup cycle.
-   * TODO(P3): PERF - Add batch cleanup with configurable limit to spread cost across ticks
-   * For 1000+ creeps, cleaning all at once might be expensive
-   * TODO(P3): FEATURE - Consider tracking high-value creep data before cleanup for post-mortem analysis
-   * Log or cache stats for expensive boosted creeps to analyze their effectiveness
+   * Clean up dead creep memory.
+   * Uses a bounded batched pass to avoid CPU spikes from one-shot scans in
+   * large rooms/shards while still converging to full cleanup over a few ticks.
+   * TODO(P3): FEATURE - Consider tracking high-value creep data before cleanup for
+   * post-mortem analysis.
    */
-  public cleanDeadCreeps(): number {
+  public cleanDeadCreeps(maxDeletions = DEAD_CREEP_CLEANUP_BATCH_SIZE): number {
+    const creeps = Memory.creeps;
+    if (!creeps) {
+      this.deadCreepCleanupCandidates = [];
+      this.deadCreepCleanupCursor = 0;
+      return 0;
+    }
+
+    // Refill the scan window if needed (first tick or after completion).
+    if (this.deadCreepCleanupCandidates.length === 0) {
+      this.deadCreepCleanupCandidates = Object.keys(creeps);
+      this.deadCreepCleanupCursor = 0;
+    }
+
     let cleaned = 0;
-    // Use for-in loop instead of Object.keys() - more memory efficient
-    for (const name in Memory.creeps) {
+
+    const maxToProcess = Math.max(1, maxDeletions);
+    const end = Math.min(
+      this.deadCreepCleanupCursor + maxToProcess,
+      this.deadCreepCleanupCandidates.length
+    );
+
+    // Process at most maxToProcess entries per invocation.
+    // This keeps cleanup CPU-stable under heavy dead-creep churn.
+    for (let i = this.deadCreepCleanupCursor; i < end; i += 1) {
+      const name = this.deadCreepCleanupCandidates[i];
       if (!(name in Game.creeps)) {
         delete Memory.creeps[name];
         cleaned++;
       }
     }
+
+    this.deadCreepCleanupCursor = end;
+
+    // Refresh candidates after full pass; allow short-term name churn.
+    if (this.deadCreepCleanupCursor >= this.deadCreepCleanupCandidates.length) {
+      this.deadCreepCleanupCandidates = [];
+      this.deadCreepCleanupCursor = 0;
+    }
+
     return cleaned;
   }
 

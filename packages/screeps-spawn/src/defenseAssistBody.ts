@@ -1,0 +1,22 @@
+// Compatibility re-export: defense-assist combat planning is owned by @ralphschuler/screeps-defense.
+export {
+  addCombatPower,
+  analyzeDefenseAssistThreat,
+  buildDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
+  calculateCombatPower,
+  calculateDefenseAssistSquadSize,
+  calculateThreatParitySquadSize,
+  emptyCombatPower,
+  getVisibleDefenseAssistThreatProfile,
+  isDefenseAssistBodyStrongerThanThreat,
+  isDefenseAssistMilitaryRole,
+  isDefenseAssistThreatProfileHard,
+  multiplyCombatPower,
+  type BodyTemplate,
+  type CombatPower,
+  type DefenseAggregateResponsePlan,
+  type DefenseAssistRole,
+  type DefenseAssistThreatProfile,
+  type ExistingDefensePower,
+} from "@ralphschuler/screeps-defense";

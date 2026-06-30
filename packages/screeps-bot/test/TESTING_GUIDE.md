@@ -43,7 +43,7 @@ This allows TypeScript interfaces to be imported for type checking without causi
 
 ### Mock Setup
 
-Tests use a comprehensive mock environment defined in `test/setup-mocha.cjs`:
+Tests use a comprehensive mock environment defined in `test/setup-mocha.mjs`, loaded by `.mocharc.json`:
 
 - **Game Object**: Mocked with rooms, creeps, spawns, CPU, market, etc.
 - **Memory Object**: Global memory structure
@@ -67,9 +67,8 @@ test/
 │   ├── Performance & Monitoring
 │   └── Standards & Protocols
 ├── integration/       # 1 integration test file
-├── setup-mocha.cjs   # Global test setup and mocks
-├── mocha.opts        # Mocha configuration (legacy)
-├── .mocharc.json     # Mocha configuration (current)
+├── setup-mocha.mjs   # Global test setup and mocks
+├── .mocharc.json     # Mocha configuration
 └── types.d.ts        # Test-specific type definitions
 ```
 

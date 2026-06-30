@@ -15,5 +15,5 @@
     "allowUnreachableCode": false
   },
   "include": ["src/**/*.ts", "../**/src/**/*.ts"],
-  "exclude": ["node_modules", "test/**/*", "scripts/**/*", "src/tests/**/*"]
+  "exclude": ["node_modules", "test/**/*", "scripts/**/*", "src/tests/**/*", "../screepsmod-testing/**/*"]
 }

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { configureLogger, LogLevel, logger } from "../../src/core/logger";
 
-// Use global sinon from test setup (setup-mocha.js)
+// Use global sinon from test setup (setup-mocha.mjs)
 declare const sinon: typeof import("sinon");
 
 describe("Logger JSON Output", () => {
@@ -278,6 +278,111 @@ describe("Logger JSON Output", () => {
 
     // Shard from Game.shard.name should be preserved
     expect(parsed.shard).to.equal("shard1");
+  });
+});
+
+describe("Logger sampling and rate limiting", () => {
+  let sandbox: sinon.SinonSandbox;
+  let consoleLogStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    consoleLogStub = sandbox.stub(console, "log");
+
+    configureLogger({
+      level: LogLevel.DEBUG,
+      cpuLogging: false,
+      enableBatching: false,
+      debugSampleRate: 1,
+      maxEntriesPerSubsystemPerTick: 0,
+      maxEntriesPerTick: 0
+    });
+    logger.flush();
+    consoleLogStub.resetHistory();
+
+    (global as any).Game = { time: 12345 };
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("should sample debug logs using configured sample rate", () => {
+    configureLogger({
+      debugSampleRate: 0.5
+    });
+
+    logger.debug("d1");
+    logger.debug("d2");
+    logger.debug("d3");
+    logger.debug("d4");
+    logger.debug("d5");
+    logger.debug("d6");
+
+    expect(consoleLogStub.callCount).to.equal(3);
+    const messages = consoleLogStub.getCalls().map(call => JSON.parse(call.args[0]).message);
+    expect(messages).to.deep.equal(["d2", "d4", "d6"]);
+  });
+
+  it("should drop all debug logs when sample rate is 0", () => {
+    configureLogger({
+      debugSampleRate: 0
+    });
+
+    logger.debug("d1");
+    logger.debug("d2");
+
+    expect(consoleLogStub.called).to.be.false;
+  });
+
+  it("should enforce per-subsystem rate limits", () => {
+    configureLogger({
+      maxEntriesPerSubsystemPerTick: 2
+    });
+
+    logger.info("A1", { subsystem: "combat" });
+    logger.info("A2", { subsystem: "combat" });
+    logger.info("A3", { subsystem: "combat" });
+    logger.info("B1", { subsystem: "economy" });
+
+    expect(consoleLogStub.callCount).to.equal(3);
+
+    const entries = ["A1", "A2", "B1"]; // third combat message should be dropped
+    const messages = consoleLogStub.getCalls().map(call => JSON.parse(call.args[0]).message);
+    expect(messages).to.deep.equal(entries);
+  });
+
+  it("should enforce global per-tick rate limits", () => {
+    configureLogger({
+      maxEntriesPerTick: 3
+    });
+
+    logger.info("1");
+    logger.info("2");
+    logger.info("3");
+    logger.info("4");
+
+    expect(consoleLogStub.callCount).to.equal(3);
+    const messages = consoleLogStub.getCalls().map(call => JSON.parse(call.args[0]).message);
+    expect(messages).to.deep.equal(["1", "2", "3"]);
+  });
+
+  it("should reset rate limiting counters on tick change", () => {
+    configureLogger({
+      maxEntriesPerTick: 1
+    });
+
+    logger.info("tick1-a");
+    logger.info("tick1-b");
+
+    expect(consoleLogStub.callCount).to.equal(1);
+
+    (global as any).Game.time = 12346;
+    logger.info("tick2-a");
+
+    expect(consoleLogStub.callCount).to.equal(2);
+    const messages = consoleLogStub.getCalls().map(call => JSON.parse(call.args[0]).message);
+    expect(messages).to.deep.equal(["tick1-a", "tick2-a"]);
   });
 });
 

@@ -72,12 +72,16 @@ export {
 
 // Export individual economy behavior functions
 export { larvaWorker } from "./behaviors/economy/larvaWorker";
+export { pioneer } from "./behaviors/economy/pioneer";
+export { interShardPioneer } from "./behaviors/economy/interShardPioneer";
 export { harvester } from "./behaviors/economy/harvester";
 export { hauler } from "./behaviors/economy/hauler";
 export { upgrader } from "./behaviors/economy/upgrader";
 export { builder } from "./behaviors/economy/builder";
 export { mineralHarvester, depositHarvester } from "./behaviors/economy/mining";
 export { remoteHarvester, remoteHauler } from "./behaviors/economy/remote";
+export { setLabManagerProvider, labManager } from "./labs/labManager";
+export type { LabManagerProvider, LabResourceNeed } from "./labs/labManager";
 
 // =============================================================================
 // Pheromone System
@@ -133,11 +137,13 @@ export {
 export {
   scout,
   claimer,
+  interShardClaimer,
   engineer,
   remoteWorker,
   linkManager,
   terminalManager,
-  evaluateUtilityBehavior
+  evaluateUtilityBehavior,
+  getUtilityStateInterrupt
 } from "./behaviors/utility";
 
 // =============================================================================
@@ -147,4 +153,4 @@ export {
 export { runEconomyRole } from "./roles/economy";
 export { runMilitaryRole } from "./roles/military";
 export { runUtilityRole } from "./roles/utility";
-export { runPowerRole } from "./roles/power";
+export { runPowerCreepRole, runPowerRole } from "./roles/power";

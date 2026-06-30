@@ -188,10 +188,10 @@ export enum EvolutionStage {
 **Status**: COMPLIANT
 
 **Implementation**:
-- Blueprints system: `src/layouts/blueprints.ts`
-- Layout planner: `src/layouts/layoutPlanner.ts`
-- Extension generator: `src/layouts/extensionGenerator.ts`
-- Road network planner: `src/layouts/roadNetworkPlanner.ts`
+- Blueprints system: `@ralphschuler/screeps-layouts/src/blueprints/`
+- Layout planner: `@ralphschuler/screeps-layouts/src/layoutPlanner.ts`
+- Extension generator: `@ralphschuler/screeps-layouts/src/extensionGenerator.ts`
+- Road network planner: `@ralphschuler/screeps-layouts/src/roadNetworkPlanner.ts`
 - RCL-aware structure limits respected
 
 **Evidence**:
@@ -209,8 +209,8 @@ export enum EvolutionStage {
 - **Verteidigung**: defender, rangedDefender, healer (in `src/roles/military/`)
 - **Offensive**: soldier, siegeDismantler, harasser, squads (in `src/roles/military/` and `@ralphschuler/screeps-clusters`)
 - **Utility**: Various utility roles
-- **Power Creeps**: `src/roles/power/`
-- **Architecture**: State machine-based with behaviors (see `docs/STATE_MACHINES.md`)
+- **Power Creeps**: Runtime behavior is imported from `@ralphschuler/screeps-roles` via `runPowerRole`; lifecycle/assignment lives in `src/empire/powerCreepManager.ts`
+- **Architecture**: State machine-based with framework role behaviors (see `@ralphschuler/screeps-roles`)
 
 **Missing: Job-Market System (Pull-Based Architecture)**
 
@@ -233,19 +233,19 @@ The ROADMAP envisions a **job-market system** where:
 - ❌ Missing: Pull-based autonomous creep behavior
 
 **Task System Extension**:
-- **`packages/screeps-tasks`**: Provides action-based task composition but uses push-based assignment, not pull-based job market
+- **`packages/@ralphschuler/screeps-roles`**: Provides action-based task composition but uses push-based assignment, not pull-based job market
   - Has action composition (HarvestAction, TransferAction, etc.)
-  - Has TaskManager for lifecycle management
-  - Missing: Job queue, claiming, utility scoring
-  - Note: Available but not integrated into main bot
+  - Has TaskBoard for room-local task generation, reservation, and diagnostics
+  - Integrated into the main bot through staggered room refreshes in `src/SwarmBot.ts` and console diagnostics in `src/core/commands/TaskCommands.ts`
+  - Missing: full pull-based job queue and utility scoring across all creep behavior
 
 **Recommendation**: Implement job-market system as described in the new requirement to achieve true swarm-based pull architecture.
 
 **Evidence**:
-- Current role implementation in `src/roles/` directories
-- State machine documentation in `docs/STATE_MACHINES.md`
-- Task system available in `packages/screeps-tasks` but doesn't implement job-market pattern
-- No job queue, claiming, or utility AI scoring system found in codebase
+- Main bot imports framework role behavior from `@ralphschuler/screeps-roles`
+- Power creep lifecycle and assignment are managed by `src/empire/powerCreepManager.ts`
+- TaskBoard refresh is wired into `src/SwarmBot.ts`, with diagnostics exposed by `src/core/commands/TaskCommands.ts`
+- No full pull-based utility-AI job-market system found in codebase
 
 ### ✅ Section 11: Cluster- & Empire-Logik
 
@@ -302,10 +302,10 @@ The ROADMAP envisions a **job-market system** where:
 **Status**: COMPLIANT
 
 **Implementation**:
-- **Power creep roles**: `src/roles/power/` directory with operators
-- **GPL management**: Tracked in empire state
+- **Power creep behavior**: `runPowerRole` from `@ralphschuler/screeps-roles` runs power creep operators
+- **GPL management**: `src/empire/powerCreepManager.ts` tracks GPL progression and assignments
 - **Power spawn integration**: Economy systems manage power processing
-- **Interval-based updates**: Power creeps use CPU-efficient tick intervals
+- **Interval-based updates**: Power creep management uses low-frequency kernel scheduling and the runtime loop gates execution on CPU budget
 
 **Evidence**:
 - Operator powers for spawns, towers, labs, storage

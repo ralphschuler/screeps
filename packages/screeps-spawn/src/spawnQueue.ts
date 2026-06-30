@@ -122,8 +122,8 @@ class SpawnQueueManager {
 
   /**
    * Get next spawn request for a room.
-   * Returns only the highest-priority pending request when affordable.
-   * Lower-priority requests do not bypass an unaffordable higher-priority request.
+   * Returns the highest-priority pending request that is currently affordable.
+   * Unaffordable requests remain queued and are skipped until enough energy exists.
    */
   getNextRequest(roomName: string, availableEnergy: number): SpawnRequest | null {
     const queue = this.getQueue(roomName);
@@ -131,10 +131,23 @@ class SpawnQueueManager {
     // Clean up completed spawns
     this.cleanupInProgress(queue);
 
-    const request = queue.requests.find(candidate => !this.isRequestInProgress(queue, candidate.id));
-    if (!request) return null;
+    const requestIndex = queue.requests.findIndex(
+      candidate => !this.isRequestInProgress(queue, candidate.id) && candidate.body.cost <= availableEnergy
+    );
 
-    return request.body.cost <= availableEnergy ? request : null;
+    if (requestIndex < 0) {
+      return null;
+    }
+
+    const skippedCount = requestIndex;
+    if (skippedCount > 0) {
+      logger.debug(
+        `Skipping ${skippedCount} unaffordable spawn request(s) in ${roomName} to run affordable request ${queue.requests[requestIndex].id}`,
+        { subsystem: "SpawnQueue" }
+      );
+    }
+
+    return queue.requests[requestIndex];
   }
 
   /**
@@ -228,16 +241,18 @@ class SpawnQueueManager {
     if (availableSpawns.length === 0) return 0;
 
     let spawnsInitiated = 0;
+    let availableEnergy = room.energyAvailable ?? 0;
 
     // Try to spawn using each available spawn
     for (const spawn of availableSpawns) {
-      const request = this.getNextRequest(roomName, room.energyAvailable);
+      const request = this.getNextRequest(roomName, availableEnergy);
       if (!request) break; // No more spawnable requests
 
       // Attempt to spawn
       const result = executeSpawnRequest(spawn, request);
       if (result === OK) {
         spawnsInitiated++;
+        availableEnergy -= request.body.cost;
         this.markInProgress(roomName, request.id, spawn.id);
         this.removeRequest(roomName, request.id);
       } else if (result !== ERR_NOT_ENOUGH_ENERGY) {
@@ -280,14 +295,23 @@ class SpawnQueueManager {
     inProgress: number;
   } {
     const queue = this.getQueue(roomName);
-    return {
+    const stats = {
       total: queue.requests.length,
-      emergency: queue.requests.filter(r => r.priority >= SpawnPriority.EMERGENCY).length,
-      high: queue.requests.filter(r => r.priority >= SpawnPriority.HIGH && r.priority < SpawnPriority.EMERGENCY).length,
-      normal: queue.requests.filter(r => r.priority >= SpawnPriority.NORMAL && r.priority < SpawnPriority.HIGH).length,
-      low: queue.requests.filter(r => r.priority < SpawnPriority.NORMAL).length,
+      emergency: 0,
+      high: 0,
+      normal: 0,
+      low: 0,
       inProgress: queue.inProgress.size
     };
+
+    for (const request of queue.requests) {
+      if (request.priority >= SpawnPriority.EMERGENCY) stats.emergency++;
+      else if (request.priority >= SpawnPriority.HIGH) stats.high++;
+      else if (request.priority >= SpawnPriority.NORMAL) stats.normal++;
+      else stats.low++;
+    }
+
+    return stats;
   }
 }
 

@@ -5,17 +5,6 @@
  * - Room posture (eco, expand, defensive, war, siege, evacuate, nukePrep)
  * - Pheromone levels (harvest, logistics, build, defense, etc.)
  * - Dynamic conditions (threats, focus rooms)
- *
- * TODO: Investigate military overallocation in defensive posture
- * Analysis date: 2025-12-28
- * Observed pattern: Rooms in defensive posture spawn excessive military creeps (60%+ of total)
- * Investigation needed:
- * 1. Check if room posture is stuck on "defensive"/"war" instead of "eco"
- * 2. Verify danger level and threat assessment in roomNode.ts
- * 3. Review pheromone.defense values - may be stuck high
- * 4. Consider adding auto-recovery: defensive→eco when no hostiles for N ticks
- * 5. Review getDefenderPriorityBoost() for excessive military spawn triggers
- * Related: See SHARD3_INVESTIGATION.md for detailed analysis
  */
 
 import { memoryManager } from "@ralphschuler/screeps-memory";
@@ -25,14 +14,44 @@ import { getDefenderPriorityBoost } from "./defenderManager";
 /** Priority boost for upgraders in focus rooms */
 const FOCUS_ROOM_UPGRADER_PRIORITY_BOOST = 60;
 
+/** Defensive posture keeps full combat weight only when real danger exists. */
+const DEFENSIVE_MILITARY_DANGER_THRESHOLD = 2;
+
 /**
  * Get spawn weight multipliers based on room posture.
  * These weights adjust role priorities based on the room's current strategic stance.
  *
  * @param posture - Current room posture (eco, expand, defensive, war, siege, evacuate, nukePrep)
+ * @param context - Optional runtime context to avoid over-allocation in stale defensive states
  * @returns Record mapping role names to weight multipliers
  */
-export function getPostureSpawnWeights(posture: string): Record<string, number> {
+export function getPostureSpawnWeights(
+  posture: string,
+  context: { danger?: number } = {}
+): Record<string, number> {
+  if (posture === "defensive" && (context.danger ?? 0) < DEFENSIVE_MILITARY_DANGER_THRESHOLD) {
+    // Calm defensive rooms should remain alive-first:
+    // keep one defensive reserve while avoiding long stretches of military-only spawning.
+    return {
+      harvester: 1.2,
+      hauler: 1.1,
+      upgrader: 1.0,
+      builder: 0.9,
+      queenCarrier: 1.0,
+      guard: 1.3,
+      remoteGuard: 0.9,
+      healer: 0.4,
+      ranger: 0.0,
+      soldier: 0.0,
+      siegeUnit: 0.0,
+      scout: 0.0,
+      engineer: 1.0,
+      remoteHarvester: 0.6,
+      remoteHauler: 0.6,
+      interRoomCarrier: 1.2
+    };
+  }
+
   switch (posture) {
     case "eco":
       return {
@@ -214,6 +233,7 @@ export function getPheromoneMult(role: string, pheromones: Record<string, number
   const pheromoneKey = map[role];
   if (!pheromoneKey) return 1.0;
 
-  const value = pheromones[pheromoneKey] ?? 0;
-  return 0.5 + (value / 100) * 1.5;
+  const rawValue = pheromones[pheromoneKey] ?? 0;
+  const clampedValue = Number.isFinite(rawValue) ? Math.max(0, Math.min(rawValue, 100)) : 0;
+  return 0.5 + (clampedValue / 100) * 1.5;
 }

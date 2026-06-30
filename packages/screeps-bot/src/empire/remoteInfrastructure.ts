@@ -12,6 +12,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { calculateRemoteRoads } from "@ralphschuler/screeps-layouts";
 import { memoryManager } from "@ralphschuler/screeps-memory";
+import { getConfig } from "../config";
 import { ProcessPriority } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import {
@@ -32,6 +33,7 @@ const MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM = 5;
  * Maximum number of road construction sites to place per room per tick
  */
 const MAX_ROAD_SITES_PER_TICK = 3;
+const REMOTE_ROAD_CACHE_TTL = 1500;
 
 /**
  * Remote Infrastructure Manager Configuration
@@ -45,11 +47,18 @@ export interface RemoteInfrastructureConfig {
   maxSitesPerRemotePerTick: number;
 }
 
+const REMOTE_INFRASTRUCTURE_MIN_BUCKET = getConfig().cpu.bucketThresholds.highMode + 1800;
+
 const DEFAULT_CONFIG: RemoteInfrastructureConfig = {
-  updateInterval: 50,
-  minBucket: 2000,
+  updateInterval: 250,
+  minBucket: REMOTE_INFRASTRUCTURE_MIN_BUCKET,
   maxSitesPerRemotePerTick: 2
 };
+
+function measureCpuDetail<T>(name: string, fn: () => T): T {
+  const profiler = (globalThis as unknown as { cpuProfiler?: { measure?: <R>(label: string, work: () => R) => R } }).cpuProfiler;
+  return profiler?.measure ? profiler.measure(name, fn) : fn();
+}
 
 /**
  * Remote Infrastructure Manager Class
@@ -57,6 +66,7 @@ const DEFAULT_CONFIG: RemoteInfrastructureConfig = {
 @ProcessClass()
 export class RemoteInfrastructureManager {
   private config: RemoteInfrastructureConfig;
+  private remoteRoadCache = new Map<string, { expires: number; roads: Map<string, Set<string>> }>();
 
   public constructor(config: Partial<RemoteInfrastructureConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -68,8 +78,8 @@ export class RemoteInfrastructureManager {
    */
   @MediumFrequencyProcess("remote:infrastructure", "Remote Infrastructure Manager", {
     priority: ProcessPriority.LOW,
-    interval: 50,
-    minBucket: 2000,
+    interval: 1000,
+    minBucket: REMOTE_INFRASTRUCTURE_MIN_BUCKET,
     cpuBudget: 0.05
   })
   public run(): void {
@@ -86,8 +96,8 @@ export class RemoteInfrastructureManager {
       const remoteAssignments = swarm.remoteAssignments ?? [];
       if (remoteAssignments.length === 0) continue;
 
-      const intent = this.getRemoteInfrastructureIntent(room, remoteAssignments);
-      this.executeRemoteInfrastructureIntent(intent);
+      const intent = measureCpuDetail("remoteInfrastructure.intent", () => this.getRemoteInfrastructureIntent(room, remoteAssignments));
+      measureCpuDetail("remoteInfrastructure.execute", () => this.executeRemoteInfrastructureIntent(intent));
     }
   }
 
@@ -100,13 +110,20 @@ export class RemoteInfrastructureManager {
   }
 
   private getRemoteInfrastructureSnapshot(homeRoom: Room, remoteAssignments: string[]): RemoteInfrastructureSnapshot {
-    const remoteRoadsByRoom = calculateRemoteRoads(homeRoom, remoteAssignments);
+    const remoteRoadsByRoom = measureCpuDetail("remoteInfrastructure.remoteRoadCache", () => this.getCachedRemoteRoads(homeRoom, remoteAssignments));
     const visibleRooms: Record<string, RemoteInfrastructureRoomSnapshot> = {};
 
+    const myUsername = this.getMyUsername();
     for (const roomName of [homeRoom.name, ...remoteAssignments]) {
       const room = Game.rooms[roomName];
       if (!room) continue;
-      visibleRooms[roomName] = this.getRoomSnapshot(room, remoteRoadsByRoom.get(roomName) ?? new Set<string>());
+      const isRemoteRoom = roomName !== homeRoom.name;
+      visibleRooms[roomName] = measureCpuDetail("remoteInfrastructure.roomSnapshot", () =>
+        this.getRoomSnapshot(room, remoteRoadsByRoom.get(roomName) ?? new Set<string>(), {
+          includeSources: isRemoteRoom,
+          myUsername
+        })
+      );
     }
 
     return {
@@ -120,35 +137,81 @@ export class RemoteInfrastructureManager {
     };
   }
 
-  private getRoomSnapshot(room: Room, roadPositions: Set<string>): RemoteInfrastructureRoomSnapshot {
-    const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
-    const roadSites = constructionSites.filter(site => site.structureType === STRUCTURE_ROAD);
-    const roads = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_ROAD });
-    const terrain = room.getTerrain();
-    const parsedRoadPositions = [...roadPositions].map(posKey => {
-      const [xStr, yStr] = posKey.split(",");
-      return { x: parseInt(xStr, 10), y: parseInt(yStr, 10) };
-    });
+  private getCachedRemoteRoads(homeRoom: Room, remoteAssignments: string[]): Map<string, Set<string>> {
+    const key = this.getRemoteRoadCacheKey(homeRoom, remoteAssignments);
+    const cached = this.remoteRoadCache.get(key);
+    if (cached && cached.expires > Game.time) {
+      return cached.roads;
+    }
+
+    const roads = measureCpuDetail("remoteInfrastructure.calculateRemoteRoads", () => calculateRemoteRoads(homeRoom, remoteAssignments));
+    this.remoteRoadCache.set(key, { expires: Game.time + REMOTE_ROAD_CACHE_TTL, roads });
+    this.pruneRemoteRoadCache();
+    return roads;
+  }
+
+  private getRemoteRoadCacheKey(homeRoom: Room, remoteAssignments: string[]): string {
+    const hub = homeRoom.storage?.pos ?? homeRoom.find(FIND_MY_SPAWNS)[0]?.pos;
+    const hubKey = hub ? `${hub.x},${hub.y}` : "no-hub";
+    return `${homeRoom.name}:${hubKey}:${[...remoteAssignments].sort().join("|")}`;
+  }
+
+  private pruneRemoteRoadCache(): void {
+    if (this.remoteRoadCache.size <= 50) return;
+    for (const [key, value] of this.remoteRoadCache) {
+      if (value.expires <= Game.time) {
+        this.remoteRoadCache.delete(key);
+      }
+    }
+  }
+
+  private getRoomSnapshot(
+    room: Room,
+    roadPositions: Set<string>,
+    options: { includeSources: boolean; myUsername: string }
+  ): RemoteInfrastructureRoomSnapshot {
+    const constructionSites = measureCpuDetail("remoteInfrastructure.findConstructionSites", () => room.find(FIND_CONSTRUCTION_SITES));
+    const controller = {
+      ownerUsername: room.controller?.owner?.username,
+      reservationUsername: room.controller?.reservation?.username
+    };
+    const canBuildInRoom =
+      (controller.ownerUsername === undefined || controller.ownerUsername === options.myUsername) &&
+      (controller.reservationUsername === undefined || controller.reservationUsername === options.myUsername);
+    const hasSiteCapacity = constructionSites.length < MAX_CONSTRUCTION_SITES_PER_REMOTE_ROOM;
+    const shouldInspectRoads = roadPositions.size > 0 && hasSiteCapacity;
+    const roadSites = shouldInspectRoads ? constructionSites.filter(site => site.structureType === STRUCTURE_ROAD) : [];
+    const roads = shouldInspectRoads
+      ? measureCpuDetail("remoteInfrastructure.findRoads", () => room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_ROAD }))
+      : [];
+    const terrain = shouldInspectRoads ? room.getTerrain() : undefined;
+    const parsedRoadPositions = shouldInspectRoads
+      ? [...roadPositions].map(posKey => {
+          const [xStr, yStr] = posKey.split(",");
+          return { x: parseInt(xStr, 10), y: parseInt(yStr, 10) };
+        })
+      : [];
 
     return {
       name: room.name,
       constructionSiteCount: constructionSites.length,
-      controller: {
-        ownerUsername: room.controller?.owner?.username,
-        reservationUsername: room.controller?.reservation?.username
-      },
-      sources: this.getSourceSnapshots(room),
+      controller,
+      sources: options.includeSources && canBuildInRoom && hasSiteCapacity
+        ? measureCpuDetail("remoteInfrastructure.sourceSnapshots", () => this.getSourceSnapshots(room))
+        : undefined,
       roadPositions: parsedRoadPositions,
       roadKeys: roads.map(road => `${road.pos.x},${road.pos.y}`),
       roadSiteKeys: roadSites.map(site => `${site.pos.x},${site.pos.y}`),
-      wallKeys: parsedRoadPositions
-        .filter(pos => terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL)
-        .map(pos => `${pos.x},${pos.y}`)
+      wallKeys: terrain
+        ? parsedRoadPositions
+          .filter(pos => terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL)
+          .map(pos => `${pos.x},${pos.y}`)
+        : []
     };
   }
 
   private getSourceSnapshots(room: Room): RemoteInfrastructureRoomSnapshot["sources"] {
-    return room.find(FIND_SOURCES).map(source => ({
+    return measureCpuDetail("remoteInfrastructure.findSources", () => room.find(FIND_SOURCES)).map(source => ({
       id: source.id,
       positions: this.getSourcePositionSnapshots(source)
     }));

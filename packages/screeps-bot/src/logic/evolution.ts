@@ -79,6 +79,13 @@ export interface SpawnProfile {
 }
 
 /**
+ * Hostile posture recovery window (ticks).
+ * Keeps defensive posture briefly after hostiles are gone so the bot doesn't
+ * overreact to stale pheromone spikes from transient threats.
+ */
+const HOSTILE_RECOVERY_TICKS = 200;
+
+/**
  * Posture configurations
  */
 export const POSTURE_PROFILES: Record<RoomPosture, SpawnProfile> = {
@@ -249,6 +256,8 @@ export class PostureManager {
     }
 
     const { pheromones, danger } = swarm;
+    const lastHostileTick = typeof swarm.lastHostileTick === "number" ? swarm.lastHostileTick : 0;
+    const hasRecentHostileSignal = lastHostileTick > 0 && Game.time - lastHostileTick <= HOSTILE_RECOVERY_TICKS;
 
     // Danger-based posture
     if (danger >= 3) {
@@ -258,18 +267,20 @@ export class PostureManager {
       return "war";
     }
 
-    // Pheromone-based posture
-    if (pheromones.siege > 30) {
+    // Pheromone-based posture. We gate war/defense/siege persistence on
+    // recent hostile presence to avoid sticky defensive posture after threats
+    // pass and pheromones decay slowly.
+    if (pheromones.siege > 30 && hasRecentHostileSignal) {
       return "siege";
     }
-    if (pheromones.war > 25) {
+    if (pheromones.war > 25 && hasRecentHostileSignal) {
       return "war";
     }
-    // Defense pheromone threshold raised from 20 to 35 to prevent
-    // defensive posture from persisting after minor threats clear.
-    // Pheromones decay slowly (0.9-0.99 factor), so a higher threshold
-    // prevents prolonged military over-allocation.
-    if (pheromones.defense > 35) {
+    // Defense threshold raised from 20 to 35 to prevent defensive posture from
+    // persisting after minor threats clear. Also require recent hostile signal.
+    // Pheromones decay slowly (0.9-0.99 factor), so this avoids long-term
+    // over-allocation of spawn capacity.
+    if (pheromones.defense > 35 && hasRecentHostileSignal) {
       return "defensive";
     }
     if (pheromones.nukeTarget > 40) {
@@ -367,32 +378,6 @@ export class PostureManager {
   public allowsExpansion(posture: RoomPosture): boolean {
     return posture === "eco" || posture === "expand";
   }
-}
-
-/**
- * Calculate danger level from threat metrics
- */
-export function calculateDangerLevel(
-  hostileCount: number,
-  damagePerTick: number,
-  enemyStructures: boolean
-): 0 | 1 | 2 | 3 {
-  // Critical threat
-  if (hostileCount >= 10 || damagePerTick >= 2000) {
-    return 3;
-  }
-
-  // High threat
-  if (hostileCount >= 5 || damagePerTick >= 1000) {
-    return 2;
-  }
-
-  // Medium threat
-  if (hostileCount >= 2 || damagePerTick >= 300 || enemyStructures) {
-    return 1;
-  }
-
-  return 0;
 }
 
 /**

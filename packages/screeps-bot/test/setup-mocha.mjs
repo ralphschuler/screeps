@@ -113,6 +113,255 @@ process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 import Module from 'module';
 const originalResolveFilename = Module._resolveFilename;
 
+function isAlliedTestEntity(entity) {
+  const username = entity?.owner?.username;
+  return username === 'TooAngel' || username === 'TedRoastBeef';
+}
+
+function filterAlliedTestEntities(entities) {
+  const firstAllyIndex = entities.findIndex(isAlliedTestEntity);
+  return firstAllyIndex === -1 ? entities : entities.filter(entity => !isAlliedTestEntity(entity));
+}
+
+const defenseAssistRoles = new Set(['guard', 'ranger', 'healer']);
+const defenseAssistPartCosts = {
+  move: 50,
+  work: 100,
+  carry: 50,
+  attack: 80,
+  ranged_attack: 150,
+  heal: 250,
+  claim: 600,
+  tough: 10
+};
+
+function getTestPartType(part) {
+  return typeof part === 'string' ? part : part?.type;
+}
+
+function isTestActivePart(part) {
+  return typeof part === 'string' || (part?.hits ?? 0) > 0;
+}
+
+function calculateTestCombatPower(parts = []) {
+  let partCount = 0;
+  let attack = 0;
+  let ranged = 0;
+  let heal = 0;
+  let dismantle = 0;
+
+  for (const part of parts) {
+    if (!isTestActivePart(part)) continue;
+    partCount++;
+    const type = getTestPartType(part);
+    if (type === 'attack') attack += 30;
+    if (type === 'ranged_attack') ranged += 10;
+    if (type === 'heal') heal += 12;
+    if (type === 'work') dismantle += 50;
+  }
+
+  return { partCount, attack, ranged, heal, dismantle, score: attack + ranged + heal + dismantle + partCount * 2 };
+}
+
+function emptyTestCombatPower() {
+  return { partCount: 0, attack: 0, ranged: 0, heal: 0, dismantle: 0, score: 0 };
+}
+
+function addTestCombatPower(a, b) {
+  return {
+    partCount: a.partCount + b.partCount,
+    attack: a.attack + b.attack,
+    ranged: a.ranged + b.ranged,
+    heal: a.heal + b.heal,
+    dismantle: a.dismantle + b.dismantle,
+    score: a.score + b.score
+  };
+}
+
+function multiplyTestCombatPower(power, count) {
+  return {
+    partCount: power.partCount * count,
+    attack: power.attack * count,
+    ranged: power.ranged * count,
+    heal: power.heal * count,
+    dismantle: power.dismantle * count,
+    score: power.score * count
+  };
+}
+
+function testBodyCost(parts) {
+  return parts.reduce((sum, part) => sum + (defenseAssistPartCosts[part] ?? 0), 0);
+}
+
+function buildTestDefenseAssistBody(role, energyCapacity) {
+  const unit = role === 'guard' ? ['attack', 'move'] : role === 'ranger' ? ['ranged_attack', 'move'] : ['heal', 'move'];
+  const unitCost = testBodyCost(unit);
+  const unitCount = Math.min(25, Math.floor((energyCapacity ?? 0) / unitCost));
+  if (!defenseAssistRoles.has(role) || unitCount <= 0) return null;
+  const parts = Array.from({ length: unitCount }, () => unit).flat();
+  const cost = testBodyCost(parts);
+  return { parts, cost, minCapacity: cost };
+}
+
+function analyzeTestDefenseAssistThreat(hostiles = []) {
+  if (hostiles.length === 0) return null;
+  let strongest = null;
+  let total = emptyTestCombatPower();
+  for (const hostile of hostiles) {
+    const power = calculateTestCombatPower(hostile.body ?? []);
+    total = addTestCombatPower(total, power);
+    if (!strongest || power.score > strongest.score) strongest = power;
+  }
+  return { hostileCount: hostiles.length, strongest, total };
+}
+
+function calculateTestAggregateDefenseResponsePlan(energyCapacity, threatProfile, baseNeeds = {}, existingPower, maxSize = 12) {
+  const counts = {
+    guard: Math.max(0, Math.floor(baseNeeds.guard ?? 0)),
+    ranger: Math.max(0, Math.floor(baseNeeds.ranger ?? 0)),
+    healer: Math.max(0, Math.floor(baseNeeds.healer ?? 0))
+  };
+  const bodies = {
+    guard: buildTestDefenseAssistBody('guard', energyCapacity),
+    ranger: buildTestDefenseAssistBody('ranger', energyCapacity),
+    healer: buildTestDefenseAssistBody('healer', energyCapacity)
+  };
+  const powers = Object.fromEntries(Object.entries(bodies).filter(([, body]) => body).map(([role, body]) => [role, calculateTestCombatPower(body.parts)]));
+  const planCount = () => counts.guard + counts.ranger + counts.healer;
+  const totalPower = () => {
+    let total = emptyTestCombatPower();
+    for (const role of defenseAssistRoles) {
+      if (existingPower?.[role]) total = addTestCombatPower(total, existingPower[role]);
+      if (powers[role] && counts[role] > 0) total = addTestCombatPower(total, multiplyTestCombatPower(powers[role], counts[role]));
+    }
+    return total;
+  };
+  let capped = false;
+  while (threatProfile && totalPower().score <= threatProfile.total.score && planCount() < maxSize) counts.guard++;
+  if (planCount() >= maxSize && threatProfile && totalPower().score <= threatProfile.total.score) capped = true;
+  if (threatProfile && counts.guard + counts.ranger >= 3 && counts.healer === 0 && bodies.healer && planCount() < maxSize) counts.healer = 1;
+  return { counts, bodies, totalPower: totalPower(), healerFloor: counts.healer > 0 ? 1 : 0, targetScore: threatProfile?.total?.score ?? 0, capped };
+}
+
+function findTestRoomObjects(room, findConstant) {
+  if (typeof room?.find !== 'function') return [];
+  return room.find(findConstant) ?? [];
+}
+
+function getTestHostileCreeps(room) {
+  return findTestRoomObjects(room, global.FIND_HOSTILE_CREEPS).filter(creep => !isAlliedTestEntity(creep));
+}
+
+function hasTestActivePart(creep, partTypes) {
+  return (creep?.body ?? []).some(part => isTestActivePart(part) && partTypes.includes(getTestPartType(part)));
+}
+
+function analyzeTestDefenderNeeds(room) {
+  const result = { guards: 0, rangers: 0, healers: 0, urgency: 1.0, reasons: [] };
+  const hostiles = getTestHostileCreeps(room);
+  if (hostiles.length === 0) return result;
+
+  let meleeCount = 0;
+  let rangedCount = 0;
+  let healerCount = 0;
+  let dismantlerCount = 0;
+  let boostedCount = 0;
+
+  for (const hostile of hostiles) {
+    const activeBody = (hostile.body ?? []).filter(isTestActivePart);
+    if (activeBody.some(part => part?.boost !== undefined)) boostedCount++;
+    for (const part of activeBody) {
+      const type = getTestPartType(part);
+      if (type === 'attack') meleeCount++;
+      if (type === 'ranged_attack') rangedCount++;
+      if (type === 'heal') healerCount++;
+      if (type === 'work') dismantlerCount++;
+    }
+  }
+
+  if (meleeCount > 0) {
+    result.guards = Math.max(1, Math.ceil(meleeCount / 4));
+    result.reasons.push(`${meleeCount} melee parts detected`);
+  }
+  if (rangedCount > 0) {
+    result.rangers = Math.max(1, Math.ceil(rangedCount / 6));
+    result.reasons.push(`${rangedCount} ranged parts detected`);
+  }
+  if (healerCount > 0) {
+    result.healers = Math.max(1, Math.ceil(healerCount / 8));
+    result.reasons.push(`${healerCount} heal parts detected`);
+  }
+  if (dismantlerCount > 0) {
+    result.guards += Math.ceil(dismantlerCount / 5);
+    result.reasons.push(`${dismantlerCount} work parts detected`);
+  }
+  if (boostedCount > 0) {
+    result.guards = Math.ceil(result.guards * 1.5);
+    result.rangers = Math.ceil(result.rangers * 1.5);
+    result.healers = Math.ceil(result.healers * 1.5);
+    result.urgency = 2.0;
+    result.reasons.push(`${boostedCount} boosted enemies`);
+  }
+  if (hostiles.length >= 2 || boostedCount > 0 || healerCount > 0 || dismantlerCount > 0) {
+    result.guards = Math.max(result.guards, 2);
+    result.rangers = Math.max(result.rangers, 2);
+  }
+  if (hostiles.length >= 3) result.healers = Math.max(result.healers, 1);
+  if (hostiles.length >= 5) {
+    result.urgency = Math.max(result.urgency, 1.5);
+    result.reasons.push(`${hostiles.length} hostiles (large attack)`);
+  }
+
+  return result;
+}
+
+function getTestCurrentDefenders(room) {
+  const creeps = findTestRoomObjects(room, global.FIND_MY_CREEPS);
+  return {
+    guards: creeps.filter(creep => !creep.spawning && creep.memory?.role === 'guard' && hasTestActivePart(creep, ['attack', 'ranged_attack'])).length,
+    rangers: creeps.filter(creep => !creep.spawning && creep.memory?.role === 'ranger' && hasTestActivePart(creep, ['ranged_attack'])).length,
+    healers: creeps.filter(creep => !creep.spawning && creep.memory?.role === 'healer' && hasTestActivePart(creep, ['heal'])).length
+  };
+}
+
+function getTestDefenderPriorityBoost(room, swarm, role) {
+  const needs = analyzeTestDefenderNeeds(room);
+  const current = getTestCurrentDefenders(room);
+  if (role === 'guard' && current.guards < needs.guards) return 100 * needs.urgency;
+  if (role === 'ranger' && current.rangers < needs.rangers) return 100 * needs.urgency;
+  if (role === 'healer' && current.healers < needs.healers) return 100 * needs.urgency;
+  return 0;
+}
+
+function needsTestEmergencyDefenders(room, swarm = {}) {
+  const needs = analyzeTestDefenderNeeds(room);
+  const current = getTestCurrentDefenders(room);
+  return ((needs.guards > 0 && current.guards === 0) || (needs.rangers > 0 && current.rangers === 0)) && (needs.urgency >= 2.0 || (swarm.danger ?? 0) >= 3);
+}
+
+function needsTestDefenseAssistance(room, swarm = {}) {
+  const needs = analyzeTestDefenderNeeds(room);
+  const current = getTestCurrentDefenders(room);
+  const deficit = Math.max(0, needs.guards - current.guards) + Math.max(0, needs.rangers - current.rangers) + Math.max(0, needs.healers - current.healers);
+  return deficit > 0 && ((swarm.danger ?? 0) >= 2 || getTestHostileCreeps(room).length > 0);
+}
+
+function createTestDefenseRequest(room, swarm = {}) {
+  if (!needsTestDefenseAssistance(room, swarm)) return null;
+  const needs = analyzeTestDefenderNeeds(room);
+  const current = getTestCurrentDefenders(room);
+  return {
+    roomName: room.name,
+    guardsNeeded: Math.max(0, needs.guards - current.guards),
+    rangersNeeded: Math.max(0, needs.rangers - current.rangers),
+    healersNeeded: Math.max(0, needs.healers - current.healers),
+    urgency: needs.urgency,
+    createdAt: global.Game?.time ?? 0,
+    threat: needs.reasons.join('; '),
+    assignedCreeps: []
+  };
+}
+
 // Create comprehensive stub modules for all @bot and @ralphschuler dependencies
 const stubs = {
   '@bot/core/logger': {
@@ -147,8 +396,13 @@ const stubs = {
   
   '@bot/spawning/defenderManager': {
     DefenseRequest: class {},
-    createDefenseRequest: () => ({}),
-    fulfillDefenseRequest: () => ({})
+    analyzeDefenderNeeds: analyzeTestDefenderNeeds,
+    createDefenseRequest: createTestDefenseRequest,
+    fulfillDefenseRequest: () => ({}),
+    getCurrentDefenders: getTestCurrentDefenders,
+    getDefenderPriorityBoost: getTestDefenderPriorityBoost,
+    needsDefenseAssistance: needsTestDefenseAssistance,
+    needsEmergencyDefenders: needsTestEmergencyDefenders
   },
   
   '@bot/layouts/roadNetworkPlanner': {
@@ -219,18 +473,9 @@ const stubs = {
       const username = structure?.owner?.username;
       return username === 'TooAngel' || username === 'TedRoastBeef';
     },
-    filterAllyCreeps: (creeps) => creeps.filter(creep => {
-      const username = creep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    filterAllyPowerCreeps: (powerCreeps) => powerCreeps.filter(powerCreep => {
-      const username = powerCreep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    filterAllyStructures: (structures) => structures.filter(structure => {
-      const username = structure?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
+    filterAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
+    filterAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
+    filterAllyStructures: (structures) => filterAlliedTestEntities(structures),
     getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
       const username = creep?.owner?.username;
       return username !== 'TooAngel' && username !== 'TedRoastBeef';
@@ -250,6 +495,29 @@ const stubs = {
       });
       return hostiles.length > 0;
     },
+    analyzeDefenderNeeds: analyzeTestDefenderNeeds,
+    createDefenseRequest: createTestDefenseRequest,
+    getCurrentDefenders: getTestCurrentDefenders,
+    getDefenderPriorityBoost: getTestDefenderPriorityBoost,
+    needsDefenseAssistance: needsTestDefenseAssistance,
+    needsEmergencyDefenders: needsTestEmergencyDefenders,
+    addCombatPower: addTestCombatPower,
+    analyzeDefenseAssistThreat: analyzeTestDefenseAssistThreat,
+    buildDefenseAssistBody: buildTestDefenseAssistBody,
+    calculateAggregateDefenseResponsePlan: calculateTestAggregateDefenseResponsePlan,
+    calculateCombatPower: calculateTestCombatPower,
+    calculateDefenseAssistSquadSize: () => 1,
+    calculateThreatParitySquadSize: () => 1,
+    emptyCombatPower: emptyTestCombatPower,
+    getVisibleDefenseAssistThreatProfile: (roomName) => {
+      const room = global.Game.rooms[roomName];
+      if (!room) return null;
+      return analyzeTestDefenseAssistThreat(room.find(global.FIND_HOSTILE_CREEPS).filter(creep => !isAlliedTestEntity(creep)));
+    },
+    isDefenseAssistBodyStrongerThanThreat: (parts, threat) => !threat || calculateTestCombatPower(parts).score >= threat.score,
+    isDefenseAssistMilitaryRole: (role) => defenseAssistRoles.has(role),
+    isDefenseAssistThreatProfileHard: (profile) => Boolean(profile && ((profile.strongest?.partCount ?? 0) >= 25 || (profile.total?.score ?? 0) >= 250)),
+    multiplyCombatPower: multiplyTestCombatPower,
     ThreatLevel: {},
     TowerManager: class {},
     RampartManager: class {},
@@ -323,6 +591,46 @@ const stubs = {
       error: () => {},
       debug: () => {}
     }),
+    NON_AGGRESSION_PACT_PLAYERS: ['TooAngel', 'TedRoastBeef'],
+    isAllyPlayer: (username) => username === 'TooAngel' || username === 'TedRoastBeef',
+    isAllyOwned: (entity) => {
+      const username = entity?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyCreep: (creep) => {
+      const username = creep?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyPowerCreep: (powerCreep) => {
+      const username = powerCreep?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    isAllyStructure: (structure) => {
+      const username = structure?.owner?.username;
+      return username === 'TooAngel' || username === 'TedRoastBeef';
+    },
+    filterAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
+    filterAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
+    filterAllyStructures: (structures) => filterAlliedTestEntities(structures),
+    getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
+      const username = creep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => {
+      const username = powerCreep?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => {
+      const username = structure?.owner?.username;
+      return username !== 'TooAngel' && username !== 'TedRoastBeef';
+    }),
+    hasActualHostiles: (room) => {
+      const hostiles = room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
+        const username = creep?.owner?.username;
+        return username !== 'TooAngel' && username !== 'TedRoastBeef';
+      });
+      return hostiles.length > 0;
+    },
     EventBus: class {},
     CommandRegistry: class {},
     CPUBudgetManager: class {}

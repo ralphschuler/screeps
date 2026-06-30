@@ -9,13 +9,14 @@
   },
   "scripts": {
     "test": "npm run test:smoke",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "server:ci:up": "docker compose -f docker-compose.ci.yml -p screeps-ci up --build -d",
     "server:ci:down": "docker compose -f docker-compose.ci.yml -p screeps-ci down -v --remove-orphans",
     "server:local:up": "node scripts/start-local-server.js",
     "server:local:down": "docker compose -f docker-compose.ci.yml -p screeps-local down --remove-orphans",
     "server:local:reset": "docker compose -f docker-compose.ci.yml -p screeps-local down -v --remove-orphans",
     "server:local:logs": "docker compose -f docker-compose.ci.yml -p screeps-local logs -f --tail=200",
-    "test:smoke": "node scripts/run-private-server-test.js --mode=smoke --durationMinutes=5 --maxTicks=1000",
+    "test:smoke": "node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=3000",
     "test:long": "node scripts/run-private-server-test.js --mode=long --durationMinutes=120 --maxTicks=72000",
     "test:integration": "npm run test:smoke",
     "test:integration:legacy": "mocha --no-config --require tsx \"test/integration/**/*.test.ts\"",
@@ -23,6 +24,9 @@
     "test:packages": "mocha --no-config --require tsx \"test/packages/**/*.test.ts\" \"test/scripts/**/*.test.ts\"",
     "test:watch": "mocha --watch --require tsx test/**/*.test.ts",
     "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:smoke",
+    "cpu:snapshot": "node scripts/export-live-structural-snapshot.js",
+    "cpu:benchmark": "node scripts/run-cpu-benchmark.js",
+    "cpu:arena": "node scripts/run-arena-benchmark.js",
     "posttest": "node scripts/analyze-tests.js"
   },
   "keywords": [
@@ -45,10 +49,10 @@
     "chai": "^6.2.2",
     "mocha": "^11.7.6",
     "sinon": "^22.0.0",
-    "screeps-api": "^1.10.0",
+    "screeps-api": "^2.0.1",
     "sinon-chai": "^4.0.1",
     "ts-node": "^10.2.0",
-    "tsx": "^4.22.2",
+    "tsx": "^4.22.4",
     "typescript": "^5.4.3"
   },
   "ts-node": {

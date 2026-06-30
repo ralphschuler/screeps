@@ -12,14 +12,13 @@
  */
 
 import type { StructurePlacement } from "./blueprints/types";
-import { logger } from "@ralphschuler/screeps-core";
 
 /**
  * Maximum number of extension positions to generate.
  * Set higher than 60 (the RCL 8 limit) to provide flexibility when
  * some positions are blocked by terrain or other structures.
  */
-const MAX_GENERATED_EXTENSIONS = 80;
+export const MAX_GENERATED_EXTENSIONS = 80;
 
 /**
  * Generate extension positions in a checkerboard pattern.
@@ -38,60 +37,10 @@ export function generateExtensions(count: number): StructurePlacement[] {
   // Checkerboard pattern - positions are arranged so no extensions
   // share an edge (only potentially corners)
   // Pattern: place extensions where (x + y) is even to create checkerboard
-  const pattern: {x: number, y: number}[] = [
-    // Ring 1 (distance 2 from spawn) - 4 positions
-    { x: -2, y: 0 }, { x: 2, y: 0 },
-    { x: 0, y: -2 }, { x: 0, y: 2 },
-    
-    // Ring 2 (distance 2-3) - extensions at odd distances with even sum
-    { x: -2, y: -2 }, { x: 2, y: -2 },
-    { x: -2, y: 2 }, { x: 2, y: 2 },
-    { x: -1, y: -3 }, { x: 1, y: -3 },
-    { x: -1, y: 3 }, { x: 1, y: 3 },
-    { x: -3, y: -1 }, { x: 3, y: -1 },
-    { x: -3, y: 1 }, { x: 3, y: 1 },
-    
-    // Ring 3 (distance 3-4) - extending the checkerboard
-    { x: -4, y: 0 }, { x: 4, y: 0 },
-    { x: 0, y: -4 }, { x: 0, y: 4 },
-    { x: -3, y: -3 }, { x: 3, y: -3 },
-    { x: -3, y: 3 }, { x: 3, y: 3 },
-    { x: -4, y: -2 }, { x: 4, y: -2 },
-    { x: -4, y: 2 }, { x: 4, y: 2 },
-    { x: -2, y: -4 }, { x: 2, y: -4 },
-    { x: -2, y: 4 }, { x: 2, y: 4 },
-    
-    // Ring 4 (distance 4-5)
-    { x: -1, y: -5 }, { x: 1, y: -5 },
-    { x: -1, y: 5 }, { x: 1, y: 5 },
-    { x: -5, y: -1 }, { x: 5, y: -1 },
-    { x: -5, y: 1 }, { x: 5, y: 1 },
-    { x: -4, y: -4 }, { x: 4, y: -4 },
-    { x: -4, y: 4 }, { x: 4, y: 4 },
-    { x: -3, y: -5 }, { x: 3, y: -5 },
-    { x: -3, y: 5 }, { x: 3, y: 5 },
-    { x: -5, y: -3 }, { x: 5, y: -3 },
-    { x: -5, y: 3 }, { x: 5, y: 3 },
-    
-    // Ring 5 (distance 5-6) - outer ring for max extensions
-    { x: -6, y: 0 }, { x: 6, y: 0 },
-    { x: 0, y: -6 }, { x: 0, y: 6 },
-    { x: -6, y: -2 }, { x: 6, y: -2 },
-    { x: -6, y: 2 }, { x: 6, y: 2 },
-    { x: -2, y: -6 }, { x: 2, y: -6 },
-    { x: -2, y: 6 }, { x: 2, y: 6 },
-    { x: -5, y: -5 }, { x: 5, y: -5 },
-    { x: -5, y: 5 }, { x: 5, y: 5 },
-    { x: -4, y: -6 }, { x: 4, y: -6 },
-    { x: -4, y: 6 }, { x: 4, y: 6 },
-    { x: -6, y: -4 }, { x: 6, y: -4 },
-    { x: -6, y: 4 }, { x: 6, y: 4 }
-  ];
-  
-  for (let i = 0; i < Math.min(count, pattern.length); i++) {
+  for (let i = 0; i < Math.min(count, CHECKERBOARD_EXTENSION_PATTERN.length); i++) {
     extensions.push({
-      x: pattern[i].x,
-      y: pattern[i].y,
+      x: CHECKERBOARD_EXTENSION_PATTERN[i].x,
+      y: CHECKERBOARD_EXTENSION_PATTERN[i].y,
       structureType: STRUCTURE_EXTENSION
     });
   }
@@ -143,4 +92,27 @@ export function addExtensionsToBlueprint(
     .slice(0, needed);
   
   return [...existingStructures, ...newExtensions];
+}
+
+export interface ExtensionPatternPosition {
+  x: number;
+  y: number;
+}
+
+export const CHECKERBOARD_EXTENSION_PATTERN: ExtensionPatternPosition[] = [
+  { x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: -2 }, { x: 0, y: 2 },
+  { x: -2, y: -2 }, { x: 2, y: -2 }, { x: -2, y: 2 }, { x: 2, y: 2 }, { x: -1, y: -3 }, { x: 1, y: -3 }, { x: -1, y: 3 }, { x: 1, y: 3 }, { x: -3, y: -1 }, { x: 3, y: -1 }, { x: -3, y: 1 }, { x: 3, y: 1 },
+  { x: -4, y: 0 }, { x: 4, y: 0 }, { x: 0, y: -4 }, { x: 0, y: 4 }, { x: -3, y: -3 }, { x: 3, y: -3 }, { x: -3, y: 3 }, { x: 3, y: 3 }, { x: -4, y: -2 }, { x: 4, y: -2 }, { x: -4, y: 2 }, { x: 4, y: 2 }, { x: -2, y: -4 }, { x: 2, y: -4 }, { x: -2, y: 4 }, { x: 2, y: 4 },
+  { x: -1, y: -5 }, { x: 1, y: -5 }, { x: -1, y: 5 }, { x: 1, y: 5 }, { x: -5, y: -1 }, { x: 5, y: -1 }, { x: -5, y: 1 }, { x: 5, y: 1 }, { x: -4, y: -4 }, { x: 4, y: -4 }, { x: -4, y: 4 }, { x: 4, y: 4 }, { x: -3, y: -5 }, { x: 3, y: -5 }, { x: -3, y: 5 }, { x: 3, y: 5 }, { x: -5, y: -3 }, { x: 5, y: -3 }, { x: -5, y: 3 }, { x: 5, y: 3 },
+  { x: -6, y: 0 }, { x: 6, y: 0 }, { x: 0, y: -6 }, { x: 0, y: 6 }, { x: -6, y: -2 }, { x: 6, y: -2 }, { x: -6, y: 2 }, { x: 6, y: 2 }, { x: -2, y: -6 }, { x: 2, y: -6 }, { x: -2, y: 6 }, { x: 2, y: 6 }, { x: -5, y: -5 }, { x: 5, y: -5 }, { x: -5, y: 5 }, { x: 5, y: 5 }, { x: -4, y: -6 }, { x: 4, y: -6 }, { x: -4, y: 6 }, { x: 4, y: 6 }, { x: -6, y: -4 }, { x: 6, y: -4 }, { x: -6, y: 4 }, { x: 6, y: 4 }
+];
+
+export function hasEdgeAdjacentExtensions(extensions: ExtensionPatternPosition[]): boolean {
+  const positions = new Set(extensions.map(pos => `${pos.x},${pos.y}`));
+  return extensions.some(pos =>
+    positions.has(`${pos.x + 1},${pos.y}`) ||
+    positions.has(`${pos.x - 1},${pos.y}`) ||
+    positions.has(`${pos.x},${pos.y + 1}`) ||
+    positions.has(`${pos.x},${pos.y - 1}`)
+  );
 }

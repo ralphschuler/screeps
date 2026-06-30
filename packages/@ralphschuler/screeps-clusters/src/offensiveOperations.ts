@@ -16,13 +16,13 @@
  * Implements ROADMAP Section 12: Offensive Combat
  */
 
-import type { ClusterMemory, SquadDefinition } from "./types";
+import type { ClusterMemory } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "./adapters/memoryAdapter";
 import { findAttackTargets, markRoomAttacked, validateTarget } from "./attackTargetSelector";
 import { type OffensiveDoctrine, canLaunchDoctrine, selectDoctrine } from "./offensiveDoctrine";
 import { createOffensiveSquad, shouldDissolveSquad, validateSquadState } from "./squadCoordinator";
-import { isSquadForming, startSquadFormation, updateSquadFormations } from "./squadFormationManager";
+import { isSquadForming, isSquadReadyToExecute, startSquadFormation, updateSquadFormations } from "./squadFormationManager";
 
 const MAX_CONCURRENT_OPS = 2;
 const FORMATION_TIMEOUT = 1000;
@@ -222,8 +222,15 @@ function updateSingleOperation(op: OffensiveOperation): void {
   }
 }
 
-function updateFormingOperation(op: OffensiveOperation, _cluster: ClusterMemory): void {
-  const allFormed = op.squadIds.every(squadId => !isSquadForming(squadId));
+function updateFormingOperation(op: OffensiveOperation, cluster: ClusterMemory): void {
+  const allFormed = op.squadIds.every(squadId => {
+    const squad = cluster.squads.find(candidate => candidate.id === squadId);
+    if (!squad) return false;
+    if (!isSquadReadyToExecute(squad) && !isSquadForming(squadId)) {
+      startSquadFormation(cluster, squad);
+    }
+    return isSquadReadyToExecute(squad);
+  });
 
   if (allFormed) {
     op.state = "executing";

@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-06-16T23:33:42.786Z",
+  "hostname": "screeps.com",
+  "branch": "main",
+  "commit": "cde7ceb",
+  "shard": "shard1",
+  "room": "W17S29",
+  "consoleCheck": {
+    "called": false,
+    "reason": "Read-only roomObjects/memory/stats endpoints only; no /api/user/console."
+  },
+  "samples": [
+    {
+      "time": 71723014,
+      "scouts": [
+        {
+          "name": "scout_71721957_je729e635",
+          "pos": [
+            13,
+            29
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "stats": {
+            "role": "scout",
+            "home_room": "W17S29",
+            "current_room": "W17S29",
+            "cpu": 0,
+            "action": "idle",
+            "ticks_to_live": 445,
+            "hits": 100,
+            "hits_max": 100,
+            "body_parts": 1,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "knownRooms": {
+        "W18S29": {
+          "name": "W18S29",
+          "lastSeen": 71722850,
+          "sources": 2,
+          "controllerLevel": 5,
+          "owner": "TedRoastBeef",
+          "mineralType": "Z",
+          "threatLevel": 0,
+          "scouted": true,
+          "terrain": "plains",
+          "isHighway": false,
+          "isSK": false,
+          "towerCount": 2,
+          "spawnCount": 1,
+          "hasPortal": false
+        }
+      }
+    },
+    {
+      "time": 71723022,
+      "scouts": [
+        {
+          "name": "scout_71721957_je729e635",
+          "pos": [
+            13,
+            29
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "stats": {
+            "role": "scout",
+            "home_room": "W17S29",
+            "current_room": "W17S29",
+            "cpu": 0,
+            "action": "idle",
+            "ticks_to_live": 437,
+            "hits": 100,
+            "hits_max": 100,
+            "body_parts": 1,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "knownRooms": {
+        "W18S29": {
+          "name": "W18S29",
+          "lastSeen": 71722850,
+          "sources": 2,
+          "controllerLevel": 5,
+          "owner": "TedRoastBeef",
+          "mineralType": "Z",
+          "threatLevel": 0,
+          "scouted": true,
+          "terrain": "plains",
+          "isHighway": false,
+          "isSK": false,
+          "towerCount": 2,
+          "spawnCount": 1,
+          "hasPortal": false
+        }
+      }
+    }
+  ]
+}

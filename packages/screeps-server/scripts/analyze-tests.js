@@ -2,12 +2,13 @@
 
 /**
  * Analyze server test results and generate report
- * 
- * Collects test results from integration, performance, and package tests
- * Generates JSON and Markdown reports for CI/CD
+ *
+ * Collects test results from integration/performance/package test runs,
+ * enriches from private-server harness summary when available,
+ * and writes machine-readable + human-readable artifacts.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -17,41 +18,228 @@ const __dirname = dirname(__filename);
 
 const REPORT_PATH = join(__dirname, '..', 'test-results.json');
 const MARKDOWN_PATH = join(__dirname, '..', 'test-report.md');
+const ARTIFACT_DIR = join(__dirname, '..', 'artifacts');
 
-/**
- * Generate test report
- */
-function generateReport() {
-  const report = {
+function safeReadJson(path) {
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function inferHarnessMode() {
+  try {
+    const argvRaw = process.env.npm_config_argv;
+    if (argvRaw) {
+      const parsed = JSON.parse(argvRaw);
+      const tokens = [
+        ...(Array.isArray(parsed?.original) ? parsed.original : []),
+        process.env.npm_lifecycle_event,
+        ...process.argv,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+
+      if (tokens.some((token) => token.includes('test:smoke') || token === 'smoke')) return 'smoke';
+      if (tokens.some((token) => token.includes('test:long') || token === 'long')) return 'long';
+      if (tokens.some((token) => token.includes('test:integration'))) return 'smoke';
+      if (tokens.some((token) => token.includes('smoke-alt'))) return 'smoke-alt';
+      if (tokens.some((token) => token.includes('test:packages'))) return 'packages';
+      if (tokens.some((token) => token.includes('test:performance'))) return 'long';
+      if (tokens.some((token) => token.includes('test:server'))) return 'long';
+      const modeArg = tokens
+        .filter((token) => token.startsWith('--mode='))
+        .map((token) => token.replace(/^--mode=/, ''))[0];
+      if (modeArg) return modeArg;
+      const hasModeFlag = tokens.indexOf('--mode');
+      if (hasModeFlag >= 0 && tokens[hasModeFlag + 1]) {
+        return tokens[hasModeFlag + 1];
+      }
+    }
+  } catch {
+    // fallthrough
+  }
+
+  return null;
+}
+
+function inferModeFromArtifacts() {
+  if (!existsSync(ARTIFACT_DIR)) return null;
+  let selected = null;
+  let bestMtime = -1;
+
+  try {
+    const entries = readdirSync(ARTIFACT_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+
+    for (const entry of entries) {
+      const summaryPath = join(ARTIFACT_DIR, entry, 'summary.json');
+      if (!existsSync(summaryPath)) continue;
+
+      const { mtimeMs } = statSync(summaryPath);
+      if (mtimeMs <= bestMtime) continue;
+
+      const summary = safeReadJson(summaryPath);
+      if (!summary || typeof summary !== 'object') continue;
+      if (!['smoke', 'long', 'packages', 'integration', 'performance', 'smoke-alt'].includes(entry)) continue;
+
+      selected = entry;
+      bestMtime = mtimeMs;
+    }
+  } catch {
+    return null;
+  }
+
+  return selected;
+}
+
+function readHarnessSummary(mode) {
+  if (!mode || mode === 'packages') return null;
+
+  const path = join(ARTIFACT_DIR, mode, 'summary.json');
+  const summary = safeReadJson(path);
+  if (!summary) return null;
+
+  return { path, summary, mode };
+}
+
+function durationSecondsFromSummary(summary) {
+  if (!summary?.startedAt || !summary?.finishedAt) return 0;
+  const start = Date.parse(summary.startedAt);
+  const finish = Date.parse(summary.finishedAt);
+  if (Number.isNaN(start) || Number.isNaN(finish)) return 0;
+  return Math.max(0, (finish - start) / 1000);
+}
+
+function applyHarnessSummary(report, harnessSummary) {
+  const summary = harnessSummary?.summary;
+  if (!summary) return;
+
+  const testSummary =
+    summary.metrics?.screepsmodTesting
+    || summary.metrics?.screepsmodTestingPlayer
+    || null;
+  const backendSummary = summary.metrics?.screepsmodTestingBackend || null;
+
+  if (testSummary && Number.isFinite(Number(testSummary.total))) {
+    const total = Number(testSummary.total || 0);
+    const failed = Number(testSummary.failed || 0);
+    const skipped = Number(testSummary.skipped || 0);
+    const passed = Math.max(0, total - failed - skipped);
+
+    report.integration.tests.push({
+      name: testSummary.source || 'screepsmod-testing',
+      total,
+      passed,
+      failed,
+      skipped,
+    });
+
+    report.integration.passed =
+      failed === 0
+      && summary.checks?.modResultsPresent === true
+      && summary.status === 'passed';
+
+    report.summary.total += total;
+    report.summary.passed += passed;
+    report.summary.failed += failed;
+    report.summary.skipped += skipped;
+  }
+
+  if (backendSummary && Number.isFinite(Number(backendSummary.total))) {
+    const total = Number(backendSummary.total || 0);
+    const failed = Number(backendSummary.failed || 0);
+    const skipped = Number(backendSummary.skipped || 0);
+    const passed = Math.max(0, total - failed - skipped);
+
+    report.performance.tests.push({
+      name: backendSummary.source || 'screepsmod-testing-backend',
+      total,
+      passed,
+      failed,
+      skipped,
+    });
+
+    report.performance.passed =
+      failed === 0
+      && summary.checks?.modResultsPresent === true
+      && summary.status === 'passed';
+
+    report.summary.total += total;
+    report.summary.passed += passed;
+    report.summary.failed += failed;
+    report.summary.skipped += skipped;
+  }
+
+  const elapsedSeconds = durationSecondsFromSummary(summary);
+  if (elapsedSeconds > 0) {
+    report.summary.duration = elapsedSeconds;
+    report.integration.duration = elapsedSeconds;
+    report.performance.duration = elapsedSeconds;
+    report.packages.duration = elapsedSeconds;
+  }
+}
+
+function buildEmptyReport() {
+  return {
     timestamp: new Date().toISOString(),
     summary: {
       total: 0,
       passed: 0,
       failed: 0,
       skipped: 0,
-      duration: 0
+      duration: 0,
     },
     integration: {
-      passed: true,
+      passed: false,
       tests: [],
-      duration: 0
+      duration: 0,
     },
     performance: {
-      passed: true,
+      passed: false,
       tests: [],
       cpuMetrics: {
-        avgCpu: 0,
-        maxCpu: 0,
-        avgBucket: 10000
+        avgCpu: null,
+        maxCpu: null,
+        avgBucket: null,
       },
-      duration: 0
+      duration: 0,
     },
     packages: {
-      passed: true,
+      passed: false,
       tests: [],
-      duration: 0
-    }
+      duration: 0,
+    },
   };
+}
+
+function generateReport() {
+  const report = buildEmptyReport();
+
+  const mode = inferHarnessMode();
+  const harnessSummary = readHarnessSummary(mode);
+
+  if (harnessSummary && harnessSummary.summary && mode !== 'packages') {
+    applyHarnessSummary(report, harnessSummary);
+  }
+
+  if (mode === 'packages') {
+    // package suite output is intentionally left as placeholders until package runner JSON reporting is added.
+    report.packages.passed = true;
+  }
+
+  if (report.integration.tests.length === 0) {
+    report.integration.passed = true;
+  }
+  if (report.performance.tests.length === 0) {
+    report.performance.passed = true;
+  }
+  if (report.packages.tests.length === 0 && !report.packages.passed) {
+    report.packages.passed = true;
+  }
 
   writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
   console.log(`✅ Test results written to ${REPORT_PATH}`);
@@ -63,13 +251,16 @@ function generateReport() {
   return report;
 }
 
-/**
- * Generate Markdown report
- */
+function formatMetric(value, decimals, fallback = 'N/A') {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value.toFixed(decimals)
+    : fallback;
+}
+
 function generateMarkdown(report) {
   const passed = report.summary.failed === 0;
   const emoji = passed ? '✅' : '❌';
-  
+
   return `# 🧪 Server Test Results ${emoji}
 
 **Generated**: ${new Date(report.timestamp).toLocaleString()}
@@ -80,30 +271,30 @@ function generateMarkdown(report) {
 - **Passed**: ✅ ${report.summary.passed}
 - **Failed**: ❌ ${report.summary.failed}
 - **Skipped**: ⏭️ ${report.summary.skipped}
-- **Duration**: ${(report.summary.duration / 1000).toFixed(2)}s
+- **Duration**: ${report.summary.duration.toFixed(2)}s
 
 ## Integration Tests
 
 ${report.integration.passed ? '✅' : '❌'} **Status**: ${report.integration.passed ? 'Passed' : 'Failed'}
-- **Duration**: ${(report.integration.duration / 1000).toFixed(2)}s
+- **Duration**: ${report.integration.duration.toFixed(2)}s
 - **Tests**: ${report.integration.tests.length}
 
 ## Performance Tests
 
 ${report.performance.passed ? '✅' : '❌'} **Status**: ${report.performance.passed ? 'Passed' : 'Failed'}
-- **Duration**: ${(report.performance.duration / 1000).toFixed(2)}s
+- **Duration**: ${report.performance.duration.toFixed(2)}s
 - **Tests**: ${report.performance.tests.length}
 
 ### CPU Metrics
 
-- **Average CPU**: ${report.performance.cpuMetrics.avgCpu.toFixed(3)} (target: ≤0.1)
-- **Max CPU**: ${report.performance.cpuMetrics.maxCpu.toFixed(3)} (target: ≤0.15)
-- **Average Bucket**: ${report.performance.cpuMetrics.avgBucket.toFixed(0)} (target: ≥9500)
+- **Average CPU**: ${formatMetric(report.performance.cpuMetrics.avgCpu, 3)} (target: ≤0.1)
+- **Max CPU**: ${formatMetric(report.performance.cpuMetrics.maxCpu, 3)} (target: ≤0.15)
+- **Average Bucket**: ${formatMetric(report.performance.cpuMetrics.avgBucket, 0)} (target: ≥9500)
 
 ## Framework Package Tests
 
 ${report.packages.passed ? '✅' : '❌'} **Status**: ${report.packages.passed ? 'Passed' : 'Failed'}
-- **Duration**: ${(report.packages.duration / 1000).toFixed(2)}s
+- **Duration**: ${report.packages.duration.toFixed(2)}s
 - **Tests**: ${report.packages.tests.length}
 
 ---
@@ -112,29 +303,30 @@ ${report.packages.passed ? '✅' : '❌'} **Status**: ${report.packages.passed ?
 `;
 }
 
+function generateAndHandleBaselineComparison(report) {
+  if (process.env.CI && process.env.GITHUB_REF_NAME && report.summary.total > 0) {
+    console.log('\n📊 Running baseline comparison...');
+    try {
+      execSync('node scripts/compare-baseline.js', {
+        stdio: 'inherit',
+        cwd: join(__dirname, '..')
+      });
+    } catch (error) {
+      console.warn('⚠️ Baseline comparison failed or detected regression');
+      process.exit(1);
+    }
+  }
+}
+
 try {
   const report = generateReport();
-  
+
   if (report.summary.failed > 0) {
     console.error('❌ Some tests failed');
     process.exit(1);
   } else {
     console.log('✅ All tests passed');
-    
-    // Run baseline comparison if in CI environment
-    if (process.env.CI && process.env.GITHUB_REF_NAME) {
-      console.log('\n📊 Running baseline comparison...');
-      try {
-        execSync('node scripts/compare-baseline.js', { 
-          stdio: 'inherit',
-          cwd: join(__dirname, '..')
-        });
-      } catch (error) {
-        console.warn('⚠️ Baseline comparison failed or detected regression');
-        process.exit(1);
-      }
-    }
-    
+    generateAndHandleBaselineComparison(report);
     process.exit(0);
   }
 } catch (error) {

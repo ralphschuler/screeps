@@ -434,6 +434,8 @@ tests/
 
 4. Tests will run automatically and output results to the console.
 
+For this repo's private-server CI, runtime-suitable assertions should also write strict summaries through `Memory.screepsmodTesting`. Keep existing Node/unit tests; add runtime equivalents for behavior that needs real Game/Memory/server state. Scenario-backed assertions can use the configured smoke scenarios: `default-bootstrap`, `construction-economy`, `remote-mining`, `defense-hostile`, and `alliance-safety`.
+
 ## Incremental Migration
 
 You don't have to migrate all tests at once:

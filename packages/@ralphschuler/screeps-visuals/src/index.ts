@@ -12,9 +12,11 @@ export { visualizationManager, getVisualizationManager, VisualizationManager } f
 
 // Export room visualizer
 export { RoomVisualizer } from './roomVisualizer';
+export type { VisualizerConfig } from './roomVisualizer';
 
 // Export map visualizer
 export { MapVisualizer } from './mapVisualizer';
+export type { MapVisualizerConfig } from './mapVisualizer';
 
 // Export budget dashboard
 export { renderBudgetDashboard, renderCompactBudgetStatus } from './budgetDashboard';

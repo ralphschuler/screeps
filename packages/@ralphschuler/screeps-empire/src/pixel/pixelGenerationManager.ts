@@ -139,9 +139,23 @@ export class PixelGenerationManager {
   }
 
   /**
+   * Check if empire conditions allow pixel generation this tick.
+   *
+   * Framework default: always allowed. Bot integration can override this to add
+   * empire-specific safety checks (hostile pressure, spawn backlog, etc).
+   */
+  protected isGenerationAllowed(_memory: PixelGenerationMemory): boolean {
+    return true;
+  }
+
+  /**
    * Check if we should generate a pixel
    */
   private shouldGeneratePixel(memory: PixelGenerationMemory): boolean {
+    if (!this.isGenerationAllowed(memory)) {
+      return false;
+    }
+
     // Must have bucket full for required number of ticks
     if (memory.consecutiveFullTicks < this.config.fullBucketTicksRequired) {
       return false;

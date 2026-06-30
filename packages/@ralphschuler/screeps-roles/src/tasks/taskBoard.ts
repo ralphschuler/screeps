@@ -1,12 +1,16 @@
 import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { CreepAction, CreepContext } from "../behaviors/types";
+import { getTerminalEnergyExportRequest } from "./energyExport";
 import { TaskPriority, type CreepTask, type RoomTaskBoardMemory, type TaskBoardMemory, type TaskBoardStats, type TaskType, type TaskAssignmentOptions } from "./types";
 
 const DEFAULT_TASK_TTL = 50;
 const DEFAULT_RESERVATION_TTL = 15;
-const GENERATION_INTERVAL = 1;
+const GENERATION_INTERVAL = 3;
+const LOW_BUCKET_GENERATION_INTERVAL = 5;
+const TASKBOARD_LOW_BUCKET_THRESHOLD = 4000;
 const DEFAULT_STICKINESS_DELTA = 75;
 const STALE_ROOM_BOARD_TTL = 1500;
+const ASSIGNED_TASK_PREEMPTION_CHECK_INTERVAL = 3;
 
 const ENERGY_DELIVERY_ROLES = [
   "larvaWorker",
@@ -20,6 +24,11 @@ const ENERGY_DELIVERY_ROLES = [
 
 const WORKER_ROLES = ["larvaWorker", "builder", "upgrader", "engineer", "remoteWorker"];
 const MILITARY_ROLES = ["guard", "remoteGuard", "healer", "soldier", "siegeUnit", "harasser", "ranger"];
+
+function measureCpuDetail<T>(name: string, fn: () => T): T {
+  const profiler = (globalThis as unknown as { cpuProfiler?: { measure?: <R>(label: string, work: () => R) => R } }).cpuProfiler;
+  return profiler?.measure ? profiler.measure(name, fn) : fn();
+}
 
 interface MemoryWithTaskBoard extends Memory {
   creepTaskBoard?: TaskBoardMemory;
@@ -92,6 +101,7 @@ function canPerformTask(ctx: CreepContext, task: CreepTask): boolean {
     case "refillSpawn":
     case "refillExtension":
     case "refillTower":
+    case "fillTerminalEnergy":
     case "storeEnergy":
       return getCreepEnergy(ctx.creep) > 0;
     case "build":
@@ -166,10 +176,11 @@ function createRefillTask(roomName: string, type: TaskType, structure: AnyStoreS
 }
 
 function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
-  if (Game.time - board.lastGeneratedTick < GENERATION_INTERVAL) return;
+  const interval = Game.cpu.bucket < TASKBOARD_LOW_BUCKET_THRESHOLD ? LOW_BUCKET_GENERATION_INTERVAL : GENERATION_INTERVAL;
+  if (Game.time - board.lastGeneratedTick < interval) return;
   board.lastGeneratedTick = Game.time;
 
-  const myStructures = room.find(FIND_MY_STRUCTURES);
+  const myStructures = measureCpuDetail("taskBoard.findMyStructures", () => room.find(FIND_MY_STRUCTURES));
 
   for (const structure of myStructures) {
     if (structure.structureType === STRUCTURE_SPAWN) {
@@ -190,11 +201,25 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
     }
   }
 
+  const terminalEnergyExport = getTerminalEnergyExportRequest(room);
+  if (terminalEnergyExport) {
+    updateOrCreateTask(
+      board,
+      createRefillTask(
+        room.name,
+        "fillTerminalEnergy",
+        terminalEnergyExport.terminal,
+        terminalEnergyExport.amount,
+        TaskPriority.NORMAL
+      )
+    );
+  }
+
   if (room.storage && room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
     updateOrCreateTask(board, createRefillTask(room.name, "storeEnergy", room.storage, room.storage.store.getFreeCapacity(RESOURCE_ENERGY), TaskPriority.LOW));
   }
 
-  const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+  const sites = measureCpuDetail("taskBoard.findConstructionSites", () => room.find(FIND_MY_CONSTRUCTION_SITES));
   for (const site of sites.slice(0, 10)) {
     updateOrCreateTask(board, {
       id: taskId(room.name, "build", site.id),
@@ -211,9 +236,9 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
     });
   }
 
-  const repairTargets = room.find(FIND_STRUCTURES, {
+  const repairTargets = measureCpuDetail("taskBoard.findRepairTargets", () => room.find(FIND_STRUCTURES, {
     filter: s => s.hits < s.hitsMax && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
-  }).slice(0, 10);
+  })).slice(0, 10);
   for (const structure of repairTargets) {
     updateOrCreateTask(board, {
       id: taskId(room.name, "repair", structure.id),
@@ -246,7 +271,7 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
     });
   }
 
-  const hostiles = getActualHostileCreeps(room);
+  const hostiles = measureCpuDetail("taskBoard.findHostiles", () => getActualHostileCreeps(room));
   for (const hostile of hostiles.slice(0, 5)) {
     updateOrCreateTask(board, {
       id: taskId(room.name, "defend", hostile.id),
@@ -262,7 +287,7 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
     });
   }
 
-  const injuredAllies = room.find(FIND_MY_CREEPS, { filter: c => c.hits < c.hitsMax });
+  const injuredAllies = measureCpuDetail("taskBoard.findInjuredAllies", () => room.find(FIND_MY_CREEPS, { filter: c => c.hits < c.hitsMax }));
   for (const ally of injuredAllies.slice(0, 5)) {
     updateOrCreateTask(board, {
       id: taskId(room.name, "heal", ally.id),
@@ -296,6 +321,11 @@ function isTargetStillValid(task: CreepTask): boolean {
     case "refillTower":
     case "storeEnergy":
       return "store" in target && (target as AnyStoreStructure).store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+    case "fillTerminalEnergy": {
+      const room = "room" in target ? (target as StructureTerminal).room : Game.rooms[task.roomName];
+      const request = room ? getTerminalEnergyExportRequest(room) : null;
+      return Boolean(request && request.terminal.id === task.targetId);
+    }
     case "build":
       return true;
     case "repair":
@@ -314,12 +344,13 @@ function isTargetStillValid(task: CreepTask): boolean {
 function cleanupBoard(board: RoomTaskBoardMemory, force = false): void {
   if (!force && board.lastCleanedTick === Game.time) return;
   board.lastCleanedTick = Game.time;
+  let staleReservations = 0;
 
   for (const task of Object.values(board.tasks)) {
     for (const [creepName, reservation] of Object.entries(task.reservations)) {
       if (!Game.creeps[creepName] || Game.time > reservation.expiresTick) {
         delete task.reservations[creepName];
-        board.stats.staleReservations++;
+        staleReservations++;
       }
     }
 
@@ -336,6 +367,8 @@ function cleanupBoard(board: RoomTaskBoardMemory, force = false): void {
       task.status = "assigned";
     }
   }
+
+  board.stats.staleReservations = staleReservations;
 }
 
 function pruneStaleRoomBoards(activeRoomName?: string): void {
@@ -351,8 +384,22 @@ function pruneStaleRoomBoards(activeRoomName?: string): void {
   }
 }
 
-function getCurrentAssignedTask(board: RoomTaskBoardMemory, creepName: string): CreepTask | undefined {
+function getCurrentAssignedTask(board: RoomTaskBoardMemory, creepName: string, assignedTaskId?: string): CreepTask | undefined {
+  if (assignedTaskId) {
+    const assigned = board.tasks[assignedTaskId];
+    if (assigned?.reservations[creepName]) return assigned;
+  }
+
   return Object.values(board.tasks).find(task => task.reservations[creepName]);
+}
+
+function shouldCheckForPreemption(ctx: CreepContext, current: CreepTask): boolean {
+  const memory = ctx.memory as { assignedTaskPreemptCheckTick?: number };
+  const lastCheck = memory.assignedTaskPreemptCheckTick ?? 0;
+  const interval = current.priority >= TaskPriority.CRITICAL ? ASSIGNED_TASK_PREEMPTION_CHECK_INTERVAL * 2 : ASSIGNED_TASK_PREEMPTION_CHECK_INTERVAL;
+  if (Game.time - lastCheck < interval) return false;
+  memory.assignedTaskPreemptCheckTick = Game.time;
+  return true;
 }
 
 function releaseReservation(board: RoomTaskBoardMemory, task: CreepTask, creepName: string): void {
@@ -369,8 +416,12 @@ function isAllowedTaskType(task: CreepTask, options: TaskAssignmentOptions): boo
 }
 
 function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: TaskAssignmentOptions = {}): CreepTask | null {
-  const current = getCurrentAssignedTask(board, ctx.creep.name);
+  const current = getCurrentAssignedTask(board, ctx.creep.name, ctx.memory.assignedTaskId);
   if (current && isAllowedTaskType(current, options) && isTargetStillValid(current) && canPerformTask(ctx, current)) {
+    if (!shouldCheckForPreemption(ctx, current)) {
+      return current;
+    }
+
     const highest = findBestTask(board, ctx, options);
     const delta = (highest?.priority ?? 0) - current.priority;
     const stickinessDelta = options.priorityStickinessDelta ?? DEFAULT_STICKINESS_DELTA;
@@ -432,7 +483,17 @@ function getTaskDistance(creep: Creep, task: CreepTask): number {
   return 50;
 }
 
-function convertTaskToAction(task: CreepTask): CreepAction | null {
+function createDefendAction(ctx: CreepContext, target: Creep | Structure): CreepAction | null {
+  const hasMelee = ctx.creep.getActiveBodyparts(ATTACK) > 0;
+  const hasRanged = ctx.creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+
+  if (ctx.memory.role === "ranger" && hasRanged) return { type: "rangedAttack", target };
+  if (hasMelee) return { type: "attack", target };
+  if (hasRanged) return { type: "rangedAttack", target };
+  return null;
+}
+
+function convertTaskToAction(task: CreepTask, ctx: CreepContext): CreepAction | null {
   if (!task.targetId) return null;
   const target = Game.getObjectById(task.targetId);
   if (!target) return null;
@@ -441,6 +502,7 @@ function convertTaskToAction(task: CreepTask): CreepAction | null {
     case "refillSpawn":
     case "refillExtension":
     case "refillTower":
+    case "fillTerminalEnergy":
     case "storeEnergy":
       return { type: "transfer", target: target as AnyStoreStructure, resourceType: RESOURCE_ENERGY };
     case "build":
@@ -452,7 +514,7 @@ function convertTaskToAction(task: CreepTask): CreepAction | null {
     case "heal":
       return { type: "heal", target: target as Creep };
     case "defend":
-      return { type: "attack", target: target as Creep | Structure };
+      return createDefendAction(ctx, target as Creep | Structure);
     default:
       return null;
   }
@@ -470,16 +532,28 @@ export class TaskBoard {
   public getAssignedAction(ctx: CreepContext, allowedTypes?: TaskType[]): CreepAction | null {
     if (!this.isEnabled()) return null;
     const board = getRoomBoard(ctx.room.name);
-    cleanupBoard(board);
-    generateTasks(ctx.room, board);
+    measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
+    measureCpuDetail("taskBoard.generate", () => generateTasks(ctx.room, board));
 
     const task = assignTask(board, ctx, { allowedTypes });
     if (!task) return null;
-    return convertTaskToAction(task);
+    return convertTaskToAction(task, ctx);
   }
 
   public getAssignedDeliveryAction(ctx: CreepContext): CreepAction | null {
-    const action = this.getAssignedAction(ctx, ["refillSpawn", "refillExtension", "refillTower", "storeEnergy"]);
+    if (!this.isEnabled()) return null;
+    const board = getRoomBoard(ctx.room.name);
+    measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
+    measureCpuDetail("taskBoard.generate", () => generateTasks(ctx.room, board));
+
+    const task = assignTask(board, ctx, {
+      allowedTypes: ["refillSpawn", "refillExtension", "refillTower", "fillTerminalEnergy", "storeEnergy"],
+      preemptPriority: TaskPriority.NORMAL,
+      priorityStickinessDelta: 25
+    });
+    if (!task) return null;
+
+    const action = convertTaskToAction(task, ctx);
     if (action?.type === "transfer") return action;
     return null;
   }
@@ -488,8 +562,8 @@ export class TaskBoard {
     if (!this.isEnabled()) return;
     pruneStaleRoomBoards(room.name);
     const board = getRoomBoard(room.name);
-    cleanupBoard(board);
-    generateTasks(room, board);
+    measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
+    measureCpuDetail("taskBoard.generate", () => generateTasks(room, board));
   }
 
   public releaseCreep(creepName: string, roomName?: string): void {
@@ -515,8 +589,8 @@ export class TaskBoard {
     const room = Game.rooms[roomName];
     if (!room) return null;
     const board = getRoomBoard(roomName);
-    cleanupBoard(board, true);
-    generateTasks(room, board);
+    measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board, true));
+    measureCpuDetail("taskBoard.generate", () => generateTasks(room, board));
     const tasks = Object.values(board.tasks);
     return {
       roomName,

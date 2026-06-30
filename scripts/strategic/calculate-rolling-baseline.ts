@@ -9,7 +9,6 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import {
   PerformanceBaseline,
-  PerformanceSnapshot,
   PerformanceMetrics,
   RollingBaseline
 } from '../../packages/screeps-bot/test/performance/strategic-types.js';

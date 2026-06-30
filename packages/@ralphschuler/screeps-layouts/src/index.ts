@@ -9,9 +9,16 @@ export * from './types';
 
 // Extension Generation
 export {
+  CHECKERBOARD_EXTENSION_PATTERN,
+  MAX_GENERATED_EXTENSIONS,
   generateExtensions,
+  generateExtensions as generateExtensionPattern,
   isCheckerboardPosition,
-  addExtensionsToBlueprint
+  isCheckerboardPosition as isCheckerboardPatternPosition,
+  addExtensionsToBlueprint,
+  addExtensionsToBlueprint as addExtensionPatternToBlueprint,
+  hasEdgeAdjacentExtensions,
+  type ExtensionPatternPosition
 } from './extensionGenerator';
 
 // Layout Planning
@@ -21,6 +28,11 @@ export {
   getCachedTerrain,
   clearTerrainCache
 } from './layoutPlanner';
+
+export * from './layoutAnchorIntent';
+export * from './blueprintBuilders';
+export * from './linkNetworkPlanner';
+export * from './labClusterPlanner';
 
 // Blueprints
 export * from './blueprints/index';

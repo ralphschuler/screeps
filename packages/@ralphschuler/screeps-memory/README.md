@@ -54,6 +54,41 @@ Creep roles, memory structures, and squad definitions.
 ### Utility Schemas
 Visualization configuration and helper functions.
 
+## Heap Cache Contract
+
+`HeapCacheManager` is the package's write-ahead cache for values that need fast same-global reads plus optional Memory persistence after resets.
+
+- `set(key, value, ttl)` writes to heap immediately and marks the entry dirty for the next `persist()` call.
+- `ttl` is measured in game ticks; entries expire only after the full TTL has elapsed.
+- `INFINITE_TTL` entries never expire during `get()`, `rehydrateFromMemory()`, or `cleanExpired()`.
+- Keys prefixed with `memory:` are heap-only references and are intentionally not persisted back into `Memory._heapCache`.
+- `src/heap-cache/entries.ts` owns entry conversion and TTL checks so public cache operations stay small and consistent.
+
+## RawMemory Segment Store
+
+`RawSegmentStore` supports large serialized data sources outside normal `Memory` while keeping writes atomic at the source-id level.
+
+- Data sources call `enqueueWrite(sourceId, rawString)`; callers own serialization/deserialization.
+- The store splits raw strings across RawMemory segments and keeps only a compact manifest in normal Memory.
+- Each source must fit within the active segment limit (`<= 10` segments by default) so all chunks can be written in one tick.
+- Writes use copy-on-write segments and flip the manifest only after every target segment is active and written.
+- After a global reset, call `requestMissingSegments()` each tick; it loads known manifest segments in batches and `read(sourceId)` returns data only after checksum/length validation passes.
+
+```typescript
+import { RawSegmentStore, createRawSegmentStoreManifest } from "@ralphschuler/screeps-memory";
+
+Memory.rawSegments ??= createRawSegmentStoreManifest();
+const store = new RawSegmentStore({ manifest: Memory.rawSegments });
+
+store.requestMissingSegments(); // bootstrap after global reset
+store.enqueueWrite("intel:rooms", JSON.stringify(roomIntel));
+store.run();
+
+const rawIntel = store.read("intel:rooms");
+```
+
+Use this for large, similarly volatile datasets such as historical intel, market history, cached layout plans, and long-lived path/road planning artifacts.
+
 ## Design Principles
 
 Following the swarm architecture principles from ROADMAP.md:

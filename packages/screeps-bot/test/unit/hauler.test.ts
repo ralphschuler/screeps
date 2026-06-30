@@ -504,6 +504,49 @@ describe("remoteHauler behavior - delivery priority", () => {
     });
   });
 
+  describe("when collecting in the remote room", () => {
+    it("withdraws from context containers that satisfy the current carry threshold", () => {
+      const creep = createMockCreep({ freeCapacity: 100, usedCapacity: 0 });
+      const richContainer = createMockContainer(100);
+      const poorContainer = {
+        id: "poorContainerId" as Id<StructureContainer>,
+        structureType: STRUCTURE_CONTAINER,
+        store: {
+          getFreeCapacity: () => 100,
+          getUsedCapacity: () => 10
+        }
+      } as unknown as StructureContainer;
+
+      const fullMemory: SwarmCreepMemory = {
+        role: "remoteHauler",
+        family: "economy",
+        homeRoom: "E1N1",
+        targetRoom: "E2N1",
+        version: 1,
+        working: false
+      };
+
+      const remoteRoom = createMockRoom();
+      (remoteRoom as { name: string }).name = "E2N1";
+      const ctx = createMockContext(creep, {
+        isWorking: false,
+        containers: [poorContainer, richContainer],
+        droppedResources: []
+      });
+      ctx.room = remoteRoom;
+      ctx.memory = fullMemory;
+      ctx.homeRoom = "E1N1";
+      ctx.isInHomeRoom = false;
+
+      const action = remoteHauler(ctx);
+
+      assert.equal(action.type, "withdraw");
+      if (action.type === "withdraw") {
+        assert.equal(action.target, richContainer, "Remote hauler should use current context containers without extra room searches");
+      }
+    });
+  });
+
   describe("when remote hauler has no valid targetRoom", () => {
     it("should idle when targetRoom is undefined", () => {
       const creep = createMockCreep({ freeCapacity: 50, usedCapacity: 0 });

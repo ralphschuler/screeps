@@ -12,7 +12,7 @@ import {
   Regression,
   Improvement
 } from '../../packages/screeps-bot/test/performance/strategic-types.js';
-import { percentChange, isStatisticallySignificant } from './utils.js';
+import { percentChange } from './utils.js';
 
 /**
  * Detect performance regressions by comparing current snapshot to baseline

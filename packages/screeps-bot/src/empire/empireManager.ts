@@ -37,6 +37,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { isAllyPlayer } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
@@ -44,7 +45,6 @@ import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { clusterMonitor } from "./clusterMonitor";
 import { planExpansionClaimQueue } from "./expansionOpportunityModule";
-import * as ExpansionScoring from "./expansionScoring";
 import { roomIntelManager } from "./roomIntelManager";
 import { warCoordinator } from "./warCoordinator";
 
@@ -94,12 +94,28 @@ const DEFAULT_CONFIG: EmpireConfig = {
 };
 
 /**
+ * Bucket-aware execution modes for empire planning workloads.
+ *
+ * Based on docs/COMPETITIVE_STRATEGY_AND_AGENT_PROMPT:
+ * - >8000: full planning mode
+ * - 4000-8000: normal, incremental mode
+ * - 1500-4000: degraded mode
+ * - <1500: panic mode
+ */
+type BucketMode = "panic" | "degraded" | "normal" | "full";
+
+const BUCKET_MODE_BREAKPOINTS = {
+  full: 8000,
+  normal: 6000,
+  degraded: 1500
+} as const;
+
+/**
  * Empire Manager Class
  */
 @ProcessClass()
 export class EmpireManager {
   private config: EmpireConfig;
-  private lastRun = 0;
 
   public constructor(config: Partial<EmpireConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -118,20 +134,36 @@ export class EmpireManager {
   public run(): void {
     const cpuStart = Game.cpu.getUsed();
     const empire = memoryManager.getEmpire();
+    const cpuBucket = Game.cpu.bucket ?? 0;
 
-    // Update last run time
-    this.lastRun = Game.time;
+    if (cpuBucket < this.config.minBucket) {
+      if (Game.time % 100 === 0) {
+        logger.warn(`Empire manager skipped - bucket ${cpuBucket.toFixed(0)} below minimum ${this.config.minBucket}`, {
+          subsystem: "Empire"
+        });
+      }
+      return;
+    }
+
+    const bucketMode = this.getBucketMode(cpuBucket);
+    const runDegradedWork = this.shouldRunDegradedModeWork(bucketMode);
+    const runNormalWork = this.shouldRunNormalModeWork(bucketMode);
+    const runFullWork = this.shouldRunFullModeWork(bucketMode);
+
     empire.lastUpdate = Game.time;
 
-    // Run empire subsystems
-    unifiedStats.measureSubsystem("empire:expansion", () => {
-      this.updateExpansionQueue(empire);
-    });
+    // Expansion and power-bank discovery are optional while the bucket is recovering.
+    if (runNormalWork) {
+      unifiedStats.measureSubsystem("empire:expansion", () => {
+        this.updateExpansionQueue(empire);
+      });
 
-    unifiedStats.measureSubsystem("empire:powerBanks", () => {
-      this.updatePowerBanks(empire);
-    });
+      unifiedStats.measureSubsystem("empire:powerBanks", () => {
+        this.updatePowerBanks(empire);
+      });
+    }
 
+    // Critical strategic safety still runs.
     unifiedStats.measureSubsystem("empire:warTargets", () => {
       warCoordinator.updateWarTargets(empire);
     });
@@ -140,43 +172,57 @@ export class EmpireManager {
       this.updateObjectives(empire);
     });
 
-    // NEW: Automated room intel refresh
-    unifiedStats.measureSubsystem("empire:intelRefresh", () => {
-      roomIntelManager.refreshRoomIntel(empire);
-    });
-
-    // NEW: Automated nearby room discovery for expansion
-    unifiedStats.measureSubsystem("empire:roomDiscovery", () => {
-      roomIntelManager.discoverNearbyRooms(empire);
-    });
-
     // NEW: Automated GCL progress tracking
     unifiedStats.measureSubsystem("empire:gclTracking", () => {
       this.trackGCLProgress(empire);
     });
 
     // NEW: Automated expansion readiness check
-    unifiedStats.measureSubsystem("empire:expansionReadiness", () => {
-      this.checkExpansionReadiness(empire);
-    });
+    if (runNormalWork) {
+      unifiedStats.measureSubsystem("empire:expansionReadiness", () => {
+        this.checkExpansionReadiness(empire);
+      });
+    }
 
-    // NEW: Automated nuke candidate refresh
-    unifiedStats.measureSubsystem("empire:nukeCandidates", () => {
-      this.refreshNukeCandidates(empire);
-    });
+    // New: Adaptive intelligence workloads based on bucket reserve
+    if (runDegradedWork) {
+      unifiedStats.measureSubsystem("empire:intelRefresh", () => {
+        roomIntelManager.refreshRoomIntel(empire);
+      });
 
-    // NEW: Automated cluster health monitoring
-    unifiedStats.measureSubsystem("empire:clusterHealth", () => {
-      clusterMonitor.monitorClusterHealth();
-    });
+      unifiedStats.measureSubsystem("empire:roomDiscovery", () => {
+        roomIntelManager.discoverNearbyRooms(empire);
+      });
+    }
 
-    // NEW: Automated power bank profitability assessment
-    unifiedStats.measureSubsystem("empire:powerBankProfitability", () => {
-      this.assessPowerBankProfitability(empire);
-    });
+    if (runNormalWork) {
+      unifiedStats.measureSubsystem("empire:nukeCandidates", () => {
+        this.refreshNukeCandidates(empire);
+      });
+    }
+
+    if (runFullWork) {
+      // NEW: Automated cluster health monitoring
+      unifiedStats.measureSubsystem("empire:clusterHealth", () => {
+        clusterMonitor.monitorClusterHealth();
+      });
+
+      // NEW: Automated power bank profitability assessment
+      unifiedStats.measureSubsystem("empire:powerBankProfitability", () => {
+        this.assessPowerBankProfitability(empire);
+      });
+    }
 
     // Log CPU usage
     const cpuUsed = Game.cpu.getUsed() - cpuStart;
+    const cpuBudget = Game.cpu.limit * this.config.maxCpuBudget;
+    if (cpuUsed > cpuBudget) {
+      logger.warn(
+        `Empire tick used ${cpuUsed.toFixed(2)} CPU > budget ${cpuBudget.toFixed(2)} (${bucketMode}/${cpuBucket.toFixed(0)})`,
+        { subsystem: "Empire" }
+      );
+    }
+
     if (Game.time % 100 === 0) {
       logger.info(`Empire tick completed in ${cpuUsed.toFixed(2)} CPU`, { subsystem: "Empire" });
     }
@@ -263,86 +309,31 @@ export class EmpireManager {
   }
 
   /**
-   * Score an expansion candidate (multi-factor expansion scoring)
-   * Implements comprehensive scoring based on ROADMAP Section 7 & 9 requirements
+   * Convert current CPU bucket into execution mode.
    */
-  private scoreExpansionCandidate(intel: RoomIntel, ownedRooms: Room[]): number {
-    let score = 0;
-
-    // 1. Source count scoring (primary economic factor)
-    // 2 sources = +40 points, 1 source = +20 points
-    if (intel.sources === 2) {
-      score += 40;
-    } else if (intel.sources === 1) {
-      score += 20;
+  private getBucketMode(bucket: number): BucketMode {
+    if (bucket >= BUCKET_MODE_BREAKPOINTS.full) {
+      return "full";
     }
-
-    // 2. Mineral type value (rare minerals get bonus)
-    score += ExpansionScoring.getMineralBonus(intel.mineralType);
-
-    // 3. Distance penalty (linear penalty from nearest owned room)
-    const distance = this.getMinDistanceToOwned(intel.name, ownedRooms);
-    if (distance > this.config.maxExpansionDistance) {
-      return 0; // Too far
+    if (bucket >= BUCKET_MODE_BREAKPOINTS.normal) {
+      return "normal";
     }
-    score -= distance * 5;
-
-    // 4. Hostile presence penalty (check adjacent rooms for hostile players)
-    const hostilePenalty = ExpansionScoring.calculateHostilePenalty(intel.name);
-    score -= hostilePenalty;
-
-    // 5. Threat level penalty
-    score -= intel.threatLevel * 15;
-
-    // 6. Terrain analysis
-    score += ExpansionScoring.getTerrainBonus(intel.terrain);
-
-    // 7. Highway proximity bonus (strategic value)
-    if (ExpansionScoring.isNearHighway(intel.name)) {
-      score += 10;
+    if (bucket >= BUCKET_MODE_BREAKPOINTS.degraded) {
+      return "degraded";
     }
-
-    // 8. Portal proximity bonus (strategic value for cross-shard expansion)
-    const portalBonus = ExpansionScoring.getPortalProximityBonus(intel.name);
-    score += portalBonus;
-
-    // 9. Controller level bonus (faster startup if previously owned)
-    if (intel.controllerLevel > 0 && !intel.owner) {
-      // Previously owned but now abandoned - bonus for existing infrastructure
-      score += intel.controllerLevel * 2;
-    }
-
-    // 10. Cluster proximity bonus (prefer expansion near existing clusters)
-    const clusterBonus = ExpansionScoring.getClusterProximityBonus(intel.name, ownedRooms, distance);
-    score += clusterBonus;
-
-    // 11. Highway rooms are not good for expansion (cannot claim)
-    if (intel.isHighway) {
-      return 0;
-    }
-
-    // 12. SK rooms require special handling - heavily penalize for now
-    if (intel.isSK) {
-      score -= 50;
-    }
-
-    return Math.max(0, score);
+    return "panic";
   }
 
-  /**
-   * Get minimum distance from room to any owned room
-   */
-  private getMinDistanceToOwned(roomName: string, ownedRooms: Room[]): number {
-    let minDistance = Infinity;
+  private shouldRunDegradedModeWork(mode: BucketMode): boolean {
+    return mode === "normal" || mode === "full";
+  }
 
-    for (const room of ownedRooms) {
-      const distance = Game.map.getRoomLinearDistance(roomName, room.name);
-      if (distance < minDistance) {
-        minDistance = distance;
-      }
-    }
+  private shouldRunNormalModeWork(mode: BucketMode): boolean {
+    return mode === "normal" || mode === "full";
+  }
 
-    return minDistance;
+  private shouldRunFullModeWork(mode: BucketMode): boolean {
+    return mode === "full";
   }
 
   /**
@@ -392,23 +383,65 @@ export class EmpireManager {
   private updateObjectives(empire: EmpireMemory): void {
     const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
-    // Sync empire.ownedRooms — always current
+    // Sync empire.ownedRooms — always current, while preserving operator/cluster assignments.
+    const previousOwnedRooms = empire.ownedRooms;
     empire.ownedRooms = {};
     for (const room of ownedRooms) {
-      empire.ownedRooms[room.name] = {
+      const previous = previousOwnedRooms[room.name];
+      const ownedRoom = {
         name: room.name,
         rcl: room.controller?.level ?? 0,
-        energyAvailable: room.energyAvailable,
-        energyCapacityAvailable: room.energyCapacityAvailable
+        role: previous?.role ?? "core",
+        clusterId: previous?.clusterId ?? `${room.name}-cluster`
       };
+      empire.ownedRooms[room.name] = {
+        ...ownedRoom
+      };
+      (empire.ownedRooms[room.name] as { energyAvailable?: number; energyCapacityAvailable?: number }).energyAvailable = room.energyAvailable;
+      (empire.ownedRooms[room.name] as { energyCapacityAvailable?: number }).energyCapacityAvailable = room.energyCapacityAvailable;
     }
 
-    // Remove stale room entries from memory (rooms no longer owned)
+    // Remove stale allied ownership/reservation entries from memory (room not currently ours)
+    const ownedRoomNames = new Set(ownedRooms.map(room => room.name));
+
+    const recoveryRooms = empire.recoveryRooms ?? {};
+    empire.recoveryRooms = recoveryRooms;
+    for (const [roomName, previous] of Object.entries(previousOwnedRooms)) {
+      if (ownedRoomNames.has(roomName)) {
+        delete recoveryRooms[roomName];
+        continue;
+      }
+      if (!recoveryRooms[roomName]) {
+        recoveryRooms[roomName] = {
+          roomName,
+          lostAt: Game.time,
+          rcl: previous.rcl,
+          role: previous.role,
+          clusterId: previous.clusterId
+        };
+      }
+    }
+
+    for (const roomName of ownedRoomNames) {
+      delete recoveryRooms[roomName];
+    }
+
+    for (const roomName in recoveryRooms) {
+      if (Game.time - recoveryRooms[roomName].lostAt > 200000) {
+        delete recoveryRooms[roomName];
+      }
+    }
+
     for (const roomName in empire.knownRooms) {
       const intel = empire.knownRooms[roomName];
-      if (intel.owner === "TedRoastBeef" && !ownedRooms.some(r => r.name === roomName)) {
-        // Clean up stale ownership entries if room is no longer owned
+      if (!intel) continue;
+
+      if (intel.owner && isAllyPlayer(intel.owner) && !ownedRoomNames.has(roomName)) {
         delete intel.owner;
+      }
+
+      if (intel.reserver && isAllyPlayer(intel.reserver) && !ownedRoomNames.has(roomName)) {
+        delete intel.reserver;
       }
     }
 

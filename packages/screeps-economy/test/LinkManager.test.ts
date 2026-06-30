@@ -108,11 +108,29 @@ describe('LinkManager', () => {
       (spawnLink as any).room = room;
       expect(linkManager.getLinkRole(spawnLink)).to.equal('spawn');
     });
+
+    it('should prefer adjacent source classification over nearby storage classification', () => {
+      const sourceLink = link('sourceLink', 500, { source: 1, storage: 2 });
+      const room = roomWithLinks({ links: [sourceLink] });
+      (sourceLink as any).room = room;
+      expect(linkManager.getLinkRole(sourceLink)).to.equal('source');
+    });
   });
 
   describe('energy transfer logic', () => {
     it('should transfer from source link to controller link by default', () => {
       const sourceLink = link('sourceLink', 500, { source: 1 });
+      const controllerLink = link('controllerLink', 0, { controller: 1 });
+      const storageLink = link('storageLink', 500, { storage: 1 });
+      const room = roomWithLinks({ energyAvailable: 800, links: [sourceLink, controllerLink, storageLink] });
+
+      linkManager.processRoomLinks(room);
+
+      expect(sourceLink.calls).to.deep.equal([{ target: 'controllerLink', amount: 500 }]);
+    });
+
+    it('should route adjacent source links even when they are also near storage', () => {
+      const sourceLink = link('sourceLink', 500, { source: 1, storage: 2 });
       const controllerLink = link('controllerLink', 0, { controller: 1 });
       const storageLink = link('storageLink', 500, { storage: 1 });
       const room = roomWithLinks({ energyAvailable: 800, links: [sourceLink, controllerLink, storageLink] });

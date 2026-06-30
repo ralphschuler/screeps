@@ -11,6 +11,13 @@ import {
   type RemoteHaulerRequirement as EmpireRemoteHaulerRequirement,
 } from "@ralphschuler/screeps-empire";
 import type { CrossShardTransferRequest } from "@ralphschuler/screeps-intershard";
+import {
+  createDefaultEmpireMemory,
+  createDefaultSwarmState,
+  type ClusterMemory,
+  type EmpireMemory,
+  type SwarmState,
+} from "@ralphschuler/screeps-memory";
 
 export type { CrossShardTransferRequest } from "@ralphschuler/screeps-intershard";
 
@@ -58,10 +65,10 @@ export interface IKernel {
  * Memory manager interface
  */
 export interface IMemoryManager {
-  getSwarmState(roomName: string): any;
-  setSwarmState(roomName: string, state: any): void;
-  getCluster(clusterId: string): any;
-  getEmpire(): any;
+  getSwarmState(roomName: string): SwarmState;
+  setSwarmState(roomName: string, state: SwarmState): void;
+  getCluster(clusterId: string): ClusterMemory | undefined;
+  getEmpire(): EmpireMemory;
 }
 
 /**
@@ -105,10 +112,10 @@ export const kernel: IKernel = {
 };
 
 export const memoryManager: IMemoryManager = {
-  getSwarmState: () => ({}),
+  getSwarmState: () => createDefaultSwarmState(),
   setSwarmState: () => {},
-  getCluster: () => null,
-  getEmpire: () => ({ claimQueue: [] }),
+  getCluster: () => undefined,
+  getEmpire: () => createDefaultEmpireMemory(),
 };
 
 export const energyFlowPredictor: IEnergyFlowPredictor = {
@@ -180,7 +187,7 @@ export function configureSpawnIntegration(
     const source = overrides.memoryManager;
     if (source.getSwarmState) memoryManager.getSwarmState = (roomName: string) => source.getSwarmState!(roomName);
     if (source.setSwarmState) {
-      memoryManager.setSwarmState = (roomName: string, state: unknown) => source.setSwarmState!(roomName, state);
+      memoryManager.setSwarmState = (roomName: string, state: SwarmState) => source.setSwarmState!(roomName, state);
     }
     if (source.getCluster) memoryManager.getCluster = (clusterId: string) => source.getCluster!(clusterId);
     if (source.getEmpire) memoryManager.getEmpire = () => source.getEmpire!();

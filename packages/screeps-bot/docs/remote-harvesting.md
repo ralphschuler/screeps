@@ -27,14 +27,21 @@ The remote harvesting system consists of three main components:
 - Runs every 50 ticks with low CPU priority
 
 ### 3. Remote Worker Roles
-- **remoteHarvester**: Stationary miner that sits at remote sources
-  - Uses 5+ WORK parts for efficient harvesting
+- **remoteHarvester**: stationary miner assigned to one remote room
+  - Uses high-WORK bodies for efficient harvesting
   - Deposits energy into nearby containers
   - Falls back to dropping energy if no container exists
-- **remoteHauler**: Transport creep that moves energy from remote to home
+- **remoteHauler**: transport creep assigned to one remote room
   - Large CARRY capacity for bulk transport
   - Delivers to spawns/extensions/towers/storage in home room
   - Picks up from remote containers or dropped energy
+- **remoteWorker**: remote mining construction and repair owner
+  - Receives a concrete `memory.targetRoom` from the spawn compiler
+  - Builds remote mining containers first, roads second
+  - Repairs damaged remote containers/roads using remote energy
+  - Spawned only when a visible safe remote has construction or repair work
+  - Retreats home while dangerous visible hostiles are present
+  - Keeps normal `builder` creeps local-only
 
 ## Requirements
 
@@ -72,13 +79,15 @@ The expansion manager can be configured via `ExpansionManagerConfig`:
    - From home room storage/spawn to remote room center
    - From remote room center to each source
 4. Construction sites are placed gradually (rate-limited)
+5. `remoteWorker` creeps travel to the assigned remote room to build and repair mining infrastructure
 
 ### Phase 4: Harvest
 1. remoteHarvester creeps spawn with targetRoom set to remote
 2. Harvesters travel to remote room and sit at sources
 3. Harvesters continuously mine and fill adjacent containers
-4. remoteHauler creeps spawn and collect from containers
-5. Haulers transport energy back to home room
+4. remoteWorker creeps keep containers/roads built and repaired when construction or decay creates work
+5. remoteHauler creeps spawn and collect from containers
+6. Haulers transport energy back to home room
 
 ## Monitoring
 
@@ -88,8 +97,8 @@ Check remote mining status:
 // View remote assignments for a room
 Memory.rooms['E1N1'].swarm.remoteAssignments
 
-// View all creeps with remote roles
-_.filter(Game.creeps, c => c.memory.role === 'remoteHarvester' || c.memory.role === 'remoteHauler')
+// View all creeps with remote mining roles
+_.filter(Game.creeps, c => ['remoteHarvester', 'remoteHauler', 'remoteWorker'].includes(c.memory.role))
 ```
 
 ### Logs
@@ -109,6 +118,7 @@ The system logs important events:
 - Ensure you have vision of the remote room (scout needs to visit)
 - Check that room is not owned/reserved by another player
 - Verify construction site limit not exceeded (max 5 per remote room)
+- Verify `remoteWorker` creeps have `memory.targetRoom` set to the remote room
 
 ### Haulers idle or not collecting energy
 - Verify containers exist at sources in remote room
@@ -135,8 +145,9 @@ The system logs important events:
 
 ### Spawn Priorities
 Remote roles have moderate priority:
-- remoteHarvester: 75 (spawns before builders/upgraders)
-- remoteHauler: 70 (similar to builders)
+- remoteHarvester: 85 (prioritizes remote income generation after core economy roles)
+- remoteHauler: 80 (keeps remote logistics ahead of lower-priority economy work)
+- remoteWorker: 45 (remote construction/repair support after urgent economy needs)
 - Scaled by posture (higher in "expand" posture)
 
 ## Best Practices
@@ -152,8 +163,10 @@ Remote roles have moderate priority:
 
 - `src/empire/expansionManager.ts` - Remote room assignment
 - `src/empire/remoteInfrastructure.ts` - Infrastructure planning
-- `src/roles/behaviors/economy.ts` - remoteHarvester & remoteHauler logic
-- `src/layouts/roadNetworkPlanner.ts` - Road calculation
-- `src/logic/spawn.ts` - Remote role spawning logic
+- `packages/@ralphschuler/screeps-roles/src/behaviors/economy/remote.ts` - remoteHarvester & remoteHauler logic
+- `packages/@ralphschuler/screeps-roles/src/behaviors/utility/remoteWorker.ts` - remoteWorker construction/repair behavior
+- `packages/screeps-spawn/src/spawnNeedsAnalyzer.ts` - Remote worker spawn gates for visible construction/repair work
+- `packages/screeps-spawn/src/spawnIntentCompiler.ts` - Remote role spawning and `targetRoom` assignment
+- `packages/screeps-spawn/src/roleDefinitions.ts` - Remote role body/priority definitions
 - `test/unit/remoteSpawning.test.ts` - Remote spawning tests
-- `test/unit/remoteInfrastructure.test.ts` - Infrastructure tests
+- `test/unit/remoteConstructionAssignment.test.ts` - Remote construction assignment tests

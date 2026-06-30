@@ -7,7 +7,8 @@ Defense subsystem for Screeps bot - comprehensive threat assessment, tower contr
 ### Threat Assessment
 - **Composite Threat Scoring**: Analyzes hostile creeps based on body composition, boosts, and capabilities
 - **Danger Levels**: 4-tier danger scale (0-3) aligned with ROADMAP Section 12
-- **DPS Calculation**: Accurate damage estimation considering attack and ranged attack parts
+- **DPS Calculation**: Estimates attack, ranged attack, and active WORK dismantle pressure
+- **Alliance Safety Filter**: Removes TooAngel and TedRoastBeef entities before scoring per ROADMAP Section 25
 - **Role Classification**: Identifies healers, ranged attackers, melee attackers, and dismantlers
 - **Tower Effectiveness**: Calculates actual tower damage with range falloff
 - **Recommended Response**: Suggests defense strategy (monitor, defend, assist, retreat, safemode)
@@ -128,9 +129,10 @@ safeModeManager.checkSafeMode(room, swarmState);
 
 // Get current emergency state
 const emergency = emergencyResponseManager.getEmergencyState(room.name);
-if (emergency.level >= EmergencyLevel.HIGH) {
+if (emergency && emergency.level >= EmergencyLevel.HIGH) {
   console.log(`Emergency in ${room.name}!`);
-  console.log(`Assistance requests sent: ${emergency.assistanceRequestsSent}`);
+  console.log(`Assistance requested: ${emergency.assistanceRequested}`);
+  console.log(`Last escalation tick: ${emergency.lastEscalation}`);
 }
 ```
 
@@ -174,17 +176,19 @@ interface ThreatAnalysis {
 ```
 
 **Threat Score Calculation**:
-- Base score from offensive parts (attack/ranged attack): +10 per part
+- Permanent allies are filtered before scoring; allied creeps never count as hostile pressure
+- Base score from offensive parts (attack/ranged attack): +10 per active part
 - Boosted creeps: +200
 - Healers: +100 (make attacks much harder)
-- Dismantlers (5+ work parts): +150 (threaten structures)
+- Active WORK parts: `max(100, WORK * DISMANTLE_POWER * 2)` when dismantle scoring is enabled
+- Rollback: set `Memory.defenseSettings.workPartThreatScoring = false` to use the legacy 5+ WORK dismantler score (+150)
 - Nukes: +500 (always triggers danger level 3)
 
 **Danger Levels**:
-- **0 (Calm)**: No threats (score = 0)
-- **1 (Hostile Sighted)**: Minor threat (score < 300)
-- **2 (Active Attack)**: Significant threat (score < 800)
-- **3 (Siege/Nuke)**: Critical threat (score >= 800 or nuke present)
+- **0 (Calm)**: No actual hostile creeps; raw score thresholds below 100 are non-actionable
+- **1 (Hostile Sighted)**: Minor threat (100 ≤ score < 500, or any visible non-allied hostile after scoring clamp)
+- **2 (Active Attack)**: Significant threat (500 ≤ score < 1000)
+- **3 (Siege/Nuke)**: Critical threat (score ≥ 1000 or nuke present)
 
 **Tower Damage Calculation**:
 The system accurately calculates tower effectiveness with distance falloff:
@@ -212,6 +216,17 @@ The coordinator:
 4. Tracks assignments and releases creeps when threat clears
 5. Prevents helper room depletion (max 2 defenders per room)
 
+### Defender Requirements and Defense-Assist Combat Planning
+
+`@ralphschuler/screeps-defense` owns defender requirement sizing and defense-assist combat math used by spawn and cluster packages:
+
+- `analyzeDefenderNeeds()` sizes guards/rangers/healers only from visible real threats; peaceful RCL3+ rooms do not get high-priority defender requirements here.
+- `getCurrentDefenders()` counts only active, non-spawning defenders with live combat/heal parts so damaged or still-spawning creeps cannot mask emergency deficits.
+- `calculateCombatPower()` scores only active `BodyPartDefinition` entries (`hits > 0`) while treating body constants as generated active bodies.
+- `buildDefenseAssistBody()` selects guard/ranger/healer bodies that outclass visible attackers when affordable.
+- `calculateAggregateDefenseResponsePlan()` sizes multi-creep friendly power, including healer coverage, above visible hostile power.
+- Permanent allies are still filtered through `getActualHostileCreeps()` before threat profiles are built.
+
 ### Emergency Response
 
 5-tier emergency escalation system:
@@ -229,6 +244,9 @@ enum EmergencyLevel {
 Emergency manager:
 - Monitors threat levels continuously
 - Escalates defense based on danger
+- Records `lastEscalation` only when an existing emergency increases in severity
+- Uses per-role positive defender deficits so surplus guards do not hide missing rangers or healers
+- Ignores destroyed boosted parts when deciding whether boosted attackers require high response
 - Triggers emergency defender spawning
 - Requests cluster assistance
 - Activates safe mode for critical threats
@@ -236,17 +254,17 @@ Emergency manager:
 
 ## Dependencies
 
-This package has tight coupling to the bot's core infrastructure and **cannot be used standalone**. It requires:
+This package is a framework package in the screeps monorepo. It should not depend on `packages/screeps-bot` implementation details.
 
-1. **Bot Core Systems** (via TypeScript path mapping `@bot/*`):
-   - `@bot/core/*` - Kernel, logger, process decorators
-   - `@bot/memory/*` - Memory manager and schemas
-   - `@bot/spawning/*` - Defender spawning and role definitions
-   - `@bot/utils/*` - Utility functions
+Current direct workspace dependencies:
 
-2. **Peer Dependencies**:
-   - The bot package must be present at `../screeps-bot` for compilation
-   - This package is designed exclusively for use within the ralphschuler/screeps bot project
+- `@ralphschuler/screeps-core` — logging and shared primitives
+- `@ralphschuler/screeps-kernel` — process infrastructure where needed
+- `@ralphschuler/screeps-layouts` — defense placement helpers
+- `@ralphschuler/screeps-memory` — typed swarm state interfaces
+- `@ralphschuler/screeps-stats` — telemetry integration
+
+The bot consumes this package as a public defense API and should remain a thin runtime composition layer.
 
 ## Development
 

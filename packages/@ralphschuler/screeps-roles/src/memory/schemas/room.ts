@@ -107,6 +107,8 @@ export interface SwarmState {
   };
   /** Last full update tick */
   lastUpdate: number;
+  /** Tick when hostiles were most recently observed in this room. */
+  lastHostileTick?: number;
   /** Index signature for compatibility with visualization packages */
   [key: string]: unknown;
 }
@@ -215,6 +217,7 @@ export function createDefaultSwarmState(): SwarmState {
       energyCapacity: 0,
       energyNeed: 0
     },
-    lastUpdate: 0
+    lastUpdate: 0,
+    lastHostileTick: 0
   };
 }

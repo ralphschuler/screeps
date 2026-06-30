@@ -1,0 +1,345 @@
+{
+  "at": "2026-06-22T23:59:19.823Z",
+  "shardsInfo": {
+    "ok": 1,
+    "shards": [
+      {
+        "name": "shard0",
+        "lastTicks": [
+          3827,
+          4062,
+          4089,
+          3894,
+          4055,
+          4155,
+          3999,
+          4181,
+          3985,
+          4011,
+          3953,
+          4747,
+          3956,
+          3898,
+          4060,
+          3914,
+          4140,
+          4176,
+          4195,
+          4365,
+          4274,
+          4136,
+          3915,
+          3942,
+          3820,
+          3967,
+          3999,
+          3866,
+          4250,
+          3989
+        ],
+        "cpuLimit": 0,
+        "rooms": 7049,
+        "users": 225,
+        "tick": 4060.131079616837
+      },
+      {
+        "name": "shard1",
+        "lastTicks": [
+          4053,
+          4073,
+          4125,
+          3920,
+          4071,
+          4060,
+          3558,
+          3822,
+          3876,
+          3842,
+          3788,
+          4142,
+          3918,
+          3901,
+          3868,
+          3941,
+          3853,
+          3947,
+          3841,
+          4020,
+          3905,
+          3913,
+          4016,
+          4040,
+          3873,
+          3990,
+          3791,
+          4072,
+          3965,
+          3730
+        ],
+        "cpuLimit": 0,
+        "rooms": 10512,
+        "users": 242,
+        "tick": 3935.9029871601033
+      },
+      {
+        "name": "shard2",
+        "lastTicks": [
+          3721,
+          3836,
+          3867,
+          4077,
+          3562,
+          3709,
+          3589,
+          3735,
+          3673,
+          3619,
+          3891,
+          3910,
+          3957,
+          3694,
+          3825,
+          3930,
+          3947,
+          3765,
+          3985,
+          4006,
+          3620,
+          4140,
+          3854,
+          4063,
+          3849,
+          3780,
+          3825,
+          3863,
+          3836,
+          4018
+        ],
+        "cpuLimit": 0,
+        "rooms": 10512,
+        "users": 265,
+        "tick": 3816.684045663488
+      },
+      {
+        "name": "shard3",
+        "lastTicks": [
+          3632,
+          3714,
+          3643,
+          4125,
+          3966,
+          3895,
+          3730,
+          4044,
+          3864,
+          4040,
+          4111,
+          4267,
+          4434,
+          4048,
+          3709,
+          4218,
+          4228,
+          3739,
+          3902,
+          3723,
+          3804,
+          3809,
+          3803,
+          3856,
+          4065,
+          3707,
+          3754,
+          3737,
+          3745,
+          4031
+        ],
+        "cpuLimit": 20,
+        "rooms": 10374,
+        "users": 1060,
+        "tick": 3925.1229738368133
+      },
+      {
+        "name": "shardX",
+        "lastTicks": [
+          2572,
+          2716,
+          2533,
+          2476,
+          2458,
+          2667,
+          2576,
+          2509,
+          2548,
+          2388,
+          2568,
+          2662,
+          2536,
+          2434,
+          2477,
+          2544,
+          2810,
+          2357,
+          2496,
+          2399,
+          2732,
+          2578,
+          2529,
+          2838,
+          2495,
+          2390,
+          2609,
+          2332,
+          2399,
+          2566
+        ],
+        "rooms": 5256,
+        "users": 110,
+        "tick": 2535.7839578427356
+      }
+    ]
+  },
+  "shards": {
+    "shard0": {
+      "memory": {
+        "stats": {
+          "cpu": {
+            "usage": {
+              "W9N1": {
+                "init": 0.04045
+              }
+            },
+            "limit": 20,
+            "bucket": 906,
+            "getUsed": 2.9502
+          }
+        },
+        "rooms": [
+          "W9N1"
+        ],
+        "creeps": {}
+      }
+    },
+    "shard1": {
+      "memory": {
+        "interShardOperation": {
+          "enabled": true,
+          "targetShards": [
+            "shard0",
+            "shard1",
+            "shard2",
+            "shard3",
+            "shardX"
+          ],
+          "launchedAt": 71855433,
+          "cpuFloors": {
+            "shard0": 5,
+            "shard1": 20,
+            "shard2": 5,
+            "shard3": 10,
+            "shardX": 5
+          },
+          "lastRun": 71855444
+        },
+        "stats": {
+          "cpu": {
+            "used": 21.898013799999944,
+            "limit": 50,
+            "bucket": 9887,
+            "percent": 43.79717159999973,
+            "heap_mb": 89.82464599609375
+          },
+          "empire": {
+            "rooms": 4,
+            "creeps": 61,
+            "power_creeps": {
+              "total": 0,
+              "spawned": 0,
+              "eco": 0,
+              "combat": 0
+            },
+            "energy": {
+              "storage": 628292,
+              "terminal": 0,
+              "available": 1720,
+              "capacity": 4850
+            },
+            "credits": 5218.225,
+            "skipped_processes": 29
+          }
+        },
+        "rooms": [
+          "W17S29",
+          "W18S29",
+          "W18S28",
+          "W19S26"
+        ],
+        "creeps": {
+          "interShardScout_71855433_psm982i0a": {
+            "role": "interShardScout",
+            "homeRoom": "W18S28",
+            "targetRoom": "W18S28"
+          },
+          "interShardPioneer_71855433_mhepr7x9o": {
+            "role": "interShardPioneer",
+            "homeRoom": "W18S29"
+          },
+          "interShardPioneer_71855433_99davw5v3": {
+            "role": "interShardPioneer",
+            "homeRoom": "W19S26"
+          }
+        }
+      }
+    },
+    "shard2": {
+      "memory": {
+        "stats": {},
+        "rooms": [],
+        "creeps": {}
+      }
+    },
+    "shard3": {
+      "memory": {
+        "stats": {
+          "cpu": {
+            "used": 5.358311199997843,
+            "limit": 20,
+            "bucket": 7985,
+            "percent": 26.794585000006922,
+            "heap_mb": 83.01220703125
+          },
+          "empire": {
+            "rooms": 1,
+            "creeps": 15,
+            "power_creeps": {
+              "total": 0,
+              "spawned": 0,
+              "eco": 0,
+              "combat": 0
+            },
+            "energy": {
+              "storage": 0,
+              "terminal": 0,
+              "available": 950,
+              "capacity": 950
+            },
+            "credits": 11980.286,
+            "skipped_processes": 21
+          }
+        },
+        "rooms": [
+          "W16S52",
+          "W12S8"
+        ],
+        "creeps": {}
+      }
+    },
+    "shardX": {
+      "memory": {
+        "stats": {},
+        "rooms": [],
+        "creeps": {}
+      }
+    }
+  }
+}

@@ -4,7 +4,7 @@
   "description": "Strategic performance analysis with 7-day rolling baseline comparison",
   "type": "module",
   "scripts": {
-    "test": "mocha __tests__/**/*.test.ts",
+    "test": "node --import ../../node_modules/tsx/dist/loader.mjs ../../node_modules/mocha/bin/mocha.js __tests__/**/*.test.ts",
     "analyze": "node integrate-rolling-baseline.mjs"
   },
   "keywords": [

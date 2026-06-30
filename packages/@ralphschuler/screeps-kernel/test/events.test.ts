@@ -593,5 +593,68 @@ describe("EventBus", () => {
       // Verify processing order: HIGH (75) -> NORMAL (50) -> LOW (25) -> BACKGROUND (10)
       expect(processedEvents).to.deep.equal(["high", "normal", "low", "background"]);
     });
+
+    it("should coalesce identical queued events emitted in the same tick", () => {
+      const processedEvents: string[] = [];
+
+      eventBus.on("pheromone.update", (event) => {
+        processedEvents.push(`${event.roomName}-${event.pheromoneType}-${event.newValue}`);
+      });
+
+      Game.cpu.bucket = 1500;
+
+      const payload = {
+        roomName: "W1N1",
+        pheromoneType: "harvest",
+        oldValue: 10,
+        newValue: 20
+      };
+
+      eventBus.emit("pheromone.update", payload);
+      eventBus.emit("pheromone.update", payload);
+
+      expect(eventBus.getStats().queueSize).to.equal(1);
+      expect(eventBus.getStats().eventsCoalesced).to.equal(1);
+
+      Game.cpu.bucket = 5000;
+      eventBus.processQueue();
+
+      expect(processedEvents).to.deep.equal(["W1N1-harvest-20"]);
+      expect(eventBus.getStats().eventsProcessed).to.equal(1);
+    });
+
+    it("should not coalesce identical events across ticks when same payload repeats", () => {
+      const processedEvents: string[] = [];
+
+      eventBus.on("pheromone.update", () => {
+        processedEvents.push("tick");
+      });
+
+      Game.cpu.bucket = 1500;
+      Game.time = 1000;
+      eventBus.emit("pheromone.update", {
+        roomName: "W1N1",
+        pheromoneType: "harvest",
+        oldValue: 10,
+        newValue: 20
+      });
+
+      Game.time = 1001;
+      eventBus.emit("pheromone.update", {
+        roomName: "W1N1",
+        pheromoneType: "harvest",
+        oldValue: 10,
+        newValue: 20
+      });
+
+      expect(eventBus.getStats().queueSize).to.equal(2);
+      expect(eventBus.getStats().eventsCoalesced).to.equal(0);
+
+      Game.cpu.bucket = 5000;
+      eventBus.processQueue();
+
+      expect(processedEvents).to.deep.equal(["tick", "tick"]);
+      expect(eventBus.getStats().eventsProcessed).to.equal(2);
+    });
   });
 });

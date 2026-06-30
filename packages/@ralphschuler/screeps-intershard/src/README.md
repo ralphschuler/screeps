@@ -15,7 +15,16 @@ The intershard module provides:
 
 ```
 intershard/
-├── schema.ts                        # Data structures and serialization
+├── schema.ts                        # Public data structures and serializer facade
+├── schema/                          # Internal compact wire codec helpers
+│   ├── checksum.ts                  # Stable checksum used for corruption detection
+│   ├── codecMaps.ts                 # Human-readable enum ↔ compact token maps
+│   ├── compactDecoding.ts           # Compact payload → public schema expansion
+│   ├── compactEncoding.ts           # Public schema → compact payload conversion
+│   ├── compactSerialization.ts      # Internal codec facade used by schema.ts
+│   ├── compactTypes.ts              # Compact InterShardMemory wire types
+│   ├── numberFormatting.ts          # Legacy-compatible rounding helpers
+│   └── positionCodec.ts             # Legacy-compatible compact position parsing
 ├── shardManager.ts                  # Main shard coordination
 ├── resourceTransferCoordinator.ts   # Cross-shard resource transfers
 └── README.md                        # This file
@@ -37,6 +46,7 @@ Defines data structures for inter-shard memory:
 - Compact serialization (saves ~60% memory)
 - Checksum validation
 - Version management for migrations
+- Readable facade: callers use the public schema while `schema/` owns the compact wire details
 
 ### 2. Shard Manager (`shardManager.ts`)
 

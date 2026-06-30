@@ -5,10 +5,13 @@
  * EmpireManager and ExpansionManager to maintain consistency and avoid duplication.
  */
 
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { isAllyPlayer } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { calculateRemoteHaulerRequirement } from "./remoteHaulerDimensioning";
+import { parseRoomName } from "./roomGeometry";
+
+export { parseRoomName } from "./roomGeometry";
 
 /**
  * Remote mining configuration constants
@@ -26,6 +29,22 @@ const REMOTE_MINING_CONSTANTS = {
   CREEP_LIFETIME: 1500,
   /** Estimated ticks per room of linear distance for path calculation */
   TICKS_PER_ROOM_DISTANCE: 50
+} as const;
+
+/**
+ * Portal proximity scoring constants
+ */
+const PORTAL_PROXIMITY_BONUS = {
+  /** Candidate room directly contains a portal */
+  sameRoom: 20,
+  /** Portal in adjacent room */
+  adjacent: 10,
+  /** Portal at distance 2 */
+  nearTwoRooms: 6,
+  /** Portal at distance 3 */
+  nearThreeRooms: 3,
+  /** Maximum distance (in rooms) to consider for portal influence */
+  maxDistance: 3
 } as const;
 
 /**
@@ -115,20 +134,69 @@ export function isNearHighway(roomName: string): boolean {
  */
 export function getPortalProximityBonus(roomName: string): number {
   const empire = memoryManager.getEmpire();
-  // Check if any adjacent rooms have portals
-  const adjacentRooms = getAdjacentRoomNames(roomName);
+  const target = empire.knownRooms[roomName];
 
-  for (const adjRoom of adjacentRooms) {
-    const intel = empire.knownRooms[adjRoom];
-    if (!intel) continue;
+  // Candidate room may already contain a portal.
+  if (target?.hasPortal) {
+    return PORTAL_PROXIMITY_BONUS.sameRoom;
+  }
 
-    // Check for actual portal presence
-    if (intel.hasPortal) {
-      return 10; // Moderate bonus for confirmed portal proximity
+  const nearestPortalDistance = getNearestPortalDistance(roomName, empire.knownRooms);
+  if (nearestPortalDistance === null) {
+    return 0;
+  }
+
+  if (nearestPortalDistance <= 1) return PORTAL_PROXIMITY_BONUS.adjacent;
+  if (nearestPortalDistance <= 2) return PORTAL_PROXIMITY_BONUS.nearTwoRooms;
+  if (nearestPortalDistance <= 3) return PORTAL_PROXIMITY_BONUS.nearThreeRooms;
+
+  return 0;
+}
+
+/**
+ * Find nearest known room with a portal and return linear distance.
+ */
+function getNearestPortalDistance(roomName: string, knownRooms: Record<string, RoomIntel>): number | null {
+  // Invalid room names can silently return no bonus.
+  if (!parseRoomName(roomName)) {
+    return null;
+  }
+
+  let bestDistance: number | null = null;
+
+  for (const candidateRoomName in knownRooms) {
+    const intel = knownRooms[candidateRoomName];
+    if (!intel?.hasPortal) continue;
+
+    const distance = Game.map.getRoomLinearDistance(roomName, candidateRoomName);
+    if (!Number.isFinite(distance)) continue;
+
+    if (bestDistance === null || distance < bestDistance) {
+      bestDistance = distance;
+    }
+
+    if (bestDistance <= 1) {
+      // 1 is the highest possible portal proximity after same-room check.
+      break;
     }
   }
 
-  return 0;
+  if (bestDistance === null || bestDistance > PORTAL_PROXIMITY_BONUS.maxDistance) {
+    return null;
+  }
+
+  return bestDistance;
+}
+
+/**
+ * Format signed room coordinates back to Screeps room name.
+ */
+function formatRoomName(x: number, y: number): string {
+  const xDir = x < 0 ? "W" : "E";
+  const yDir = y < 0 ? "N" : "S";
+  const xIndex = Math.abs(x) - (x < 0 ? 1 : 0);
+  const yIndex = Math.abs(y) - (y < 0 ? 1 : 0);
+  return `${xDir}${xIndex}${yDir}${yIndex}`;
 }
 
 /**
@@ -157,52 +225,18 @@ export function getAdjacentRoomNames(roomName: string): string[] {
   const parsed = parseRoomName(roomName);
   if (!parsed) return [];
 
-  const { x, y, xDir, yDir } = parsed;
+  const { x, y } = parsed;
   const adjacent: string[] = [];
 
   // Generate all 8 adjacent rooms
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
       if (dx === 0 && dy === 0) continue; // Skip the room itself
-
-      const newX = x + dx;
-      const newY = y + dy;
-
-      // Handle coordinate wrapping and direction
-      let adjXDir = xDir;
-      let adjYDir = yDir;
-      let adjX = newX;
-      let adjY = newY;
-
-      if (newX < 0) {
-        adjXDir = xDir === "E" ? "W" : "E";
-        adjX = Math.abs(newX) - 1;
-      }
-      if (newY < 0) {
-        adjYDir = yDir === "N" ? "S" : "N";
-        adjY = Math.abs(newY) - 1;
-      }
-
-      adjacent.push(`${adjXDir}${adjX}${adjYDir}${adjY}`);
+      adjacent.push(formatRoomName(x + dx, y + dy));
     }
   }
 
   return adjacent;
-}
-
-/**
- * Parse room name into coordinates
- */
-export function parseRoomName(roomName: string): { x: number; y: number; xDir: string; yDir: string } | null {
-  const match = roomName.match(/^([WE])(\d+)([NS])(\d+)$/);
-  if (!match) return null;
-
-  return {
-    xDir: match[1],
-    x: parseInt(match[2], 10),
-    yDir: match[3],
-    y: parseInt(match[4], 10)
-  };
 }
 
 /**
@@ -223,30 +257,12 @@ export function getRoomsInRange(roomName: string, range: number): string[] {
   const parsed = parseRoomName(roomName);
   if (!parsed) return [];
 
-  const { x, y, xDir, yDir } = parsed;
+  const { x, y } = parsed;
 
   for (let dx = -range; dx <= range; dx++) {
     for (let dy = -range; dy <= range; dy++) {
       if (dx === 0 && dy === 0) continue;
-
-      const newX = x + dx;
-      const newY = y + dy;
-
-      let adjXDir = xDir;
-      let adjYDir = yDir;
-      let adjX = newX;
-      let adjY = newY;
-
-      if (newX < 0) {
-        adjXDir = xDir === "E" ? "W" : "E";
-        adjX = Math.abs(newX) - 1;
-      }
-      if (newY < 0) {
-        adjYDir = yDir === "N" ? "S" : "N";
-        adjY = Math.abs(newY) - 1;
-      }
-
-      rooms.push(`${adjXDir}${adjX}${adjYDir}${adjY}`);
+      rooms.push(formatRoomName(x + dx, y + dy));
     }
   }
 

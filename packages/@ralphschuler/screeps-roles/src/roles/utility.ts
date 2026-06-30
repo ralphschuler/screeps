@@ -10,7 +10,7 @@
  * - TerminalManager
  */
 
-import { createContext, evaluateUtilityBehavior, executeAction } from "../behaviors";
+import { createContext, evaluateUtilityBehavior, executeAction, getUtilityStateInterrupt } from "../behaviors";
 import { evaluateWithStateMachine } from "../behaviors/stateMachine";
 
 /**
@@ -19,6 +19,6 @@ import { evaluateWithStateMachine } from "../behaviors/stateMachine";
  */
 export function runUtilityRole(creep: Creep): void {
   const ctx = createContext(creep);
-  const action = evaluateWithStateMachine(ctx, evaluateUtilityBehavior);
+  const action = evaluateWithStateMachine(ctx, evaluateUtilityBehavior, { interrupt: getUtilityStateInterrupt });
   executeAction(creep, action, ctx);
 }

@@ -3,6 +3,7 @@ import { heapCache } from "@ralphschuler/screeps-memory";
 import { ROLE_DEFINITIONS } from "@ralphschuler/screeps-spawn";
 import {
   countRemoteCreepsByTargetRoom,
+  createSpawnPlan,
   getRemoteRoomNeedingWorkers,
   needsRole
 } from "@ralphschuler/screeps-spawn";
@@ -63,6 +64,65 @@ function createMockSwarmState(remoteAssignments: string[] = []): SwarmState {
   };
 }
 
+function createHomeRoom(name = "E1N1"): Room {
+  return {
+    name,
+    controller: { my: true, level: 3 },
+    energyAvailable: 800,
+    energyCapacityAvailable: 800,
+    find: () => []
+  } as unknown as Room;
+}
+
+function createRemoteRoom(
+  name: string,
+  opts: {
+    owner?: string;
+    reserver?: string;
+    reservationTicks?: number;
+    dangerousHostiles?: number;
+    sites?: ConstructionSite[];
+    structures?: Structure[];
+  } = {}
+): Room {
+  const controller = {
+    owner: opts.owner ? { username: opts.owner } : undefined,
+    reservation: opts.reserver
+      ? { username: opts.reserver, ticksToEnd: opts.reservationTicks ?? 1000 }
+      : undefined
+  };
+  const hostile = {
+    owner: { username: "Enemy" },
+    body: [{ type: ATTACK, hits: 100 }]
+  } as unknown as Creep;
+  return {
+    name,
+    controller,
+    find: (type: FindConstant) => {
+      if (type === FIND_SOURCES) return [{ id: `${name}-source1` }, { id: `${name}-source2` }];
+      if (type === FIND_HOSTILE_CREEPS) return Array(opts.dangerousHostiles ?? 0).fill(hostile);
+      if (type === FIND_MY_CONSTRUCTION_SITES) return opts.sites ?? [];
+      if (type === FIND_STRUCTURES) return opts.structures ?? [];
+      return [];
+    }
+  } as unknown as Room;
+}
+
+function knownRoomIntel(roomName: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    name: roomName,
+    lastSeen: 1000,
+    sources: 2,
+    controllerLevel: 0,
+    threatLevel: 0,
+    scouted: true,
+    terrain: "mixed",
+    isHighway: false,
+    isSK: false,
+    ...overrides
+  };
+}
+
 describe("remote worker spawning", () => {
   beforeEach(() => {
     // Reset the global Game object before each test
@@ -76,7 +136,11 @@ describe("remote worker spawning", () => {
           if ((room1 === "E1N1" && room2 === "E2N1") || (room1 === "E2N1" && room2 === "E1N1")) return 1;
           return 3;
         }
-      }
+      },
+      spawns: {
+        Spawn1: { owner: { username: "MyPlayer" } }
+      },
+      gcl: { level: 1 }
     } as unknown as typeof Game;
     global.Memory = {
       creeps: {},
@@ -231,6 +295,30 @@ describe("remote worker spawning", () => {
       const result = getRemoteRoomNeedingWorkers("E1N1", "remoteHarvester", swarm);
       assert.isNull(result);
     });
+
+    it("should skip visible remotes reserved by another player for economic workers", () => {
+      global.Game.creeps = {};
+      global.Game.rooms = {
+        E1N1: createHomeRoom(),
+        E2N1: createRemoteRoom("E2N1", { reserver: "Enemy" }),
+        E3N1: createRemoteRoom("E3N1")
+      };
+
+      const swarm = createMockSwarmState(["E2N1", "E3N1"]);
+      const result = getRemoteRoomNeedingWorkers("E1N1", "remoteHarvester", swarm);
+      assert.equal(result, "E3N1");
+    });
+
+    it("should skip no-vision remotes marked unsafe by known room intel", () => {
+      global.Game.creeps = {};
+      global.Game.rooms = { E1N1: createHomeRoom() };
+      (global.Memory as unknown as { empire: { knownRooms: Record<string, unknown> } }).empire.knownRooms.E2N1 =
+        knownRoomIntel("E2N1", { reserver: "Enemy" });
+
+      const swarm = createMockSwarmState(["E2N1"]);
+      const result = getRemoteRoomNeedingWorkers("E1N1", "remoteHarvester", swarm);
+      assert.isNull(result);
+    });
   });
 
   describe("needsRole for remote roles", () => {
@@ -248,12 +336,39 @@ describe("remote worker spawning", () => {
       };
 
       global.Game.rooms = {
-        E1N1: { name: "E1N1", controller: { my: true, level: 3 } } as unknown as Room
+        E1N1: { name: "E1N1", controller: { my: true, level: 3 }, find: () => [] } as unknown as Room
       };
 
       const swarm = createMockSwarmState([]);
       const result = needsRole("E1N1", "scout", swarm);
       assert.isTrue(result, "nearby stub intel should trigger one scout to unlock remote assignment");
+    });
+
+    it("should not crash scout checks when Game.map distance lookup is unavailable", () => {
+      (global.Memory as unknown as { empire: { knownRooms: Record<string, unknown> } }).empire.knownRooms.E2N1 = {
+        name: "E2N1",
+        lastSeen: 0,
+        sources: 0,
+        controllerLevel: 0,
+        threatLevel: 0,
+        scouted: false,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false
+      };
+
+      global.Game.map = {
+        getRoomLinearDistance: () => {
+          throw new Error("WorldMapGrid unavailable");
+        }
+      } as unknown as typeof Game.map;
+      global.Game.rooms = {
+        E1N1: { name: "E1N1", controller: { my: true, level: 3 }, find: () => [] } as unknown as Room
+      };
+
+      const swarm = createMockSwarmState([]);
+      assert.doesNotThrow(() => needsRole("E1N1", "scout", swarm));
+      assert.isFalse(needsRole("E1N1", "scout", swarm));
     });
 
     it("should return true when remote room needs workers", () => {
@@ -285,6 +400,60 @@ describe("remote worker spawning", () => {
       const swarm = createMockSwarmState([]);
       const result = needsRole("E1N1", "remoteHarvester", swarm);
       assert.isFalse(result);
+    });
+
+    it("creates remoteWorker spawn requests with a concrete target room", () => {
+      global.Game.creeps = {
+        harvester1: { memory: { role: "harvester", homeRoom: "E1N1" }, spawning: false } as Creep,
+        hauler1: { memory: { role: "hauler", homeRoom: "E1N1" }, spawning: false } as Creep,
+        upgrader1: { memory: { role: "upgrader", homeRoom: "E1N1" }, spawning: false } as Creep
+      };
+      const remoteSite = { id: "remote-site" as Id<ConstructionSite>, structureType: STRUCTURE_CONTAINER } as ConstructionSite;
+      const homeRoom = createHomeRoom();
+      global.Game.rooms = { E1N1: homeRoom, E2N1: createRemoteRoom("E2N1", { sites: [remoteSite] }) };
+      const swarm = createMockSwarmState(["E2N1"]);
+
+      const plan = createSpawnPlan(homeRoom, swarm);
+      const request = plan.requests.find(req => req.role === "remoteWorker");
+
+      assert.isDefined(request, "remoteWorker should be requested when assigned remotes need workers");
+      assert.equal(request!.targetRoom, "E2N1");
+    });
+
+    it("does not create remoteWorker spawn requests without visible remote construction or repair", () => {
+      global.Game.creeps = {
+        harvester1: { memory: { role: "harvester", homeRoom: "E1N1" }, spawning: false } as Creep,
+        hauler1: { memory: { role: "hauler", homeRoom: "E1N1" }, spawning: false } as Creep,
+        upgrader1: { memory: { role: "upgrader", homeRoom: "E1N1" }, spawning: false } as Creep
+      };
+      const homeRoom = createHomeRoom();
+      global.Game.rooms = { E1N1: homeRoom, E2N1: createRemoteRoom("E2N1") };
+      const swarm = createMockSwarmState(["E2N1"]);
+
+      const plan = createSpawnPlan(homeRoom, swarm);
+
+      assert.isUndefined(plan.requests.find(req => req.role === "remoteWorker"));
+    });
+
+    it("should not spawn a reserver for a visible remote reserved by another player", () => {
+      global.Game.creeps = {};
+      global.Game.rooms = {
+        E1N1: createHomeRoom(),
+        E2N1: createRemoteRoom("E2N1", { reserver: "Enemy" })
+      };
+
+      const swarm = createMockSwarmState(["E2N1"]);
+      assert.isFalse(needsRole("E1N1", "claimer", swarm));
+    });
+
+    it("should not spawn a reserver for no-vision remote intel reserved by another player", () => {
+      global.Game.creeps = {};
+      global.Game.rooms = { E1N1: createHomeRoom() };
+      (global.Memory as unknown as { empire: { knownRooms: Record<string, unknown> } }).empire.knownRooms.E2N1 =
+        knownRoomIntel("E2N1", { reserver: "Enemy" });
+
+      const swarm = createMockSwarmState(["E2N1"]);
+      assert.isFalse(needsRole("E1N1", "claimer", swarm));
     });
   });
 });

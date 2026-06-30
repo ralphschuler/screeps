@@ -54,7 +54,7 @@ The framework consists of **16 specialized packages** organized by function:
 
 ### Roles & Behavior
 - **[@ralphschuler/screeps-roles](../../packages/@ralphschuler/screeps-roles)** - Complete creep role implementations with behavior trees
-- **[screeps-tasks](../../packages/screeps-tasks)** - Task management and assignment system
+- **[screeps-roles](../../packages/@ralphschuler/screeps-roles)** - Task management and assignment system
 
 ### Architecture & Coordination
 - **[@ralphschuler/screeps-empire](../../packages/@ralphschuler/screeps-empire)** - Empire-level coordination across shards
@@ -252,15 +252,14 @@ kernel.registerProcess({
 });
 ```
 
-### Pattern 3: Event-Driven
-React to game events using task queues:
+### Pattern 3: Task-board driven
+Use the roles task board for persistent creep assignments:
 
 ```typescript
-import { TaskQueue } from 'screeps-tasks';
+import { taskBoard } from '@ralphschuler/screeps-roles';
 
-const queue = new TaskQueue();
-queue.add(new HarvestTask(creep, source));
-queue.processTasks();
+taskBoard.refreshRoom(room);
+const action = taskBoard.getAssignedAction(creepContext);
 ```
 
 ---

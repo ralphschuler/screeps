@@ -16,8 +16,11 @@
  * Current implementation only handles >= and <= operators
  */
 
+import { execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 const { engines } = require('../package.json');
-const { execSync } = require('child_process');
 
 // Color codes for terminal output
 const colors = {

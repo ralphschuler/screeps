@@ -190,17 +190,17 @@ src/
 └── visuals/        # Debug visualizations
 ```
 
-### Task System (Optional)
+### Task board
 
-The repository includes an optional **task-based architecture** for creep management in `packages/screeps-tasks`:
+Reusable creep task assignment lives in `packages/@ralphschuler/screeps-roles`:
 
-- **Action-based composition**: Build creep behaviors from atomic actions (Harvest, Transfer, Build, etc.)
-- **TaskManager**: Create, execute, and manage task lifecycles
-- **Task queues and priorities**: Advanced task scheduling and prioritization
-- **Memory persistence**: Tasks persist across ticks
-- **Extensible**: Create custom actions for specific behaviors
+- **Action-based output**: task reservations become role executor actions.
+- **TaskBoard**: generates room-local refill, build, repair, upgrade, pickup, and storage work.
+- **Priorities and preemption**: critical delivery work can preempt lower-priority assignments.
+- **Memory persistence**: reservations survive ticks through `Memory.creepTaskBoard`.
+- **Diagnostics**: task-board stats and assignment descriptions support console/debug tooling.
 
-**Note**: The main bot currently uses a **behavior-based approach** via kernel processes. The task system is available as an alternative architecture pattern but is not currently integrated into the main bot implementation. See `packages/screeps-tasks/README.md` for usage examples.
+`packages/screeps-bot` only wires this framework behavior into runtime processes and commands.
 
 ## Testing
 

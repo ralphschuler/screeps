@@ -4,7 +4,7 @@
 
 import { expect } from "chai";
 import { PathCacheEventManager } from "../src/cache/pathCacheEvents";
-import type { ILogger, IEventBus, IPathCache, IRemoteMining } from "../src/types";
+import type { ILogger, IEventBus, IPathCache, IRemoteMining, PathCacheEventHandler, PathCacheEventMap, PathCacheEventName } from "../src/types";
 
 // Test fixtures
 class MockLogger implements ILogger {
@@ -32,24 +32,21 @@ class MockLogger implements ILogger {
 }
 
 class MockEventBus implements IEventBus {
-  private handlers = new Map<string, Array<(event: any) => void>>();
+  private handlers: { [K in PathCacheEventName]?: Array<PathCacheEventHandler<K>> } = {};
 
-  on(eventName: string, handler: (event: any) => void): void {
-    if (!this.handlers.has(eventName)) {
-      this.handlers.set(eventName, []);
-    }
-    this.handlers.get(eventName)!.push(handler);
+  on<T extends PathCacheEventName>(eventName: T, handler: PathCacheEventHandler<T>): void {
+    const handlers = this.handlers[eventName] ?? [];
+    handlers.push(handler);
+    this.handlers[eventName] = handlers;
   }
 
-  emit(eventName: string, event: any): void {
-    const handlers = this.handlers.get(eventName);
-    if (handlers) {
-      handlers.forEach(handler => handler(event));
-    }
+  emit<T extends PathCacheEventName>(eventName: T, event: PathCacheEventMap[T]): void {
+    const handlers = this.handlers[eventName] ?? [];
+    handlers.forEach(handler => handler(event));
   }
 
   clear(): void {
-    this.handlers.clear();
+    this.handlers = {};
   }
 }
 

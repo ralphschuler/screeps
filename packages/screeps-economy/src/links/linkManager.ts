@@ -137,49 +137,11 @@ export class LinkManager {
     const spawns = room.find(FIND_MY_SPAWNS);
 
     return links.map(link => {
-      // Check if near controller (within range 2)
-      if (controller && link.pos.getRangeTo(controller) <= 2) {
-        return {
-          link,
-          role: LinkRole.CONTROLLER,
-          priority: 100 // Highest priority - upgraders need energy
-        };
-      }
-
-      // Check if near storage (within range 2)
-      if (storage && link.pos.getRangeTo(storage) <= 2) {
-        return {
-          link,
-          role: LinkRole.STORAGE,
-          priority: 50 // Medium priority - general distribution
-        };
-      }
-
-      // Check if near spawn core (within range 2)
-      if (spawns.some(spawn => link.pos.getRangeTo(spawn) <= 2)) {
-        return {
-          link,
-          role: LinkRole.SPAWN,
-          priority: 75 // High priority only when spawn refill is urgent
-        };
-      }
-
-      // Check if near any source (within range 2)
-      for (const source of sources) {
-        if (link.pos.getRangeTo(source) <= 2) {
-          return {
-            link,
-            role: LinkRole.SOURCE,
-            priority: 10 // Low priority - these are senders, not receivers
-          };
-        }
-      }
-
-      // Unknown role - might be a transfer link or unused
+      const role = this.classifyLinkRole(link, controller, storage, sources, spawns);
       return {
         link,
-        role: LinkRole.UNKNOWN,
-        priority: 25
+        role,
+        priority: this.getRolePriority(role)
       };
     });
   }
@@ -342,25 +304,39 @@ export class LinkManager {
     const sources = room.find(FIND_SOURCES);
     const spawns = room.find(FIND_MY_SPAWNS);
 
-    if (controller && link.pos.getRangeTo(controller) <= 2) {
-      return LinkRole.CONTROLLER;
-    }
+    return this.classifyLinkRole(link, controller, storage, sources, spawns);
+  }
 
-    if (storage && link.pos.getRangeTo(storage) <= 2) {
-      return LinkRole.STORAGE;
-    }
-
-    if (spawns.some(spawn => link.pos.getRangeTo(spawn) <= 2)) {
-      return LinkRole.SPAWN;
-    }
-
-    for (const source of sources) {
-      if (link.pos.getRangeTo(source) <= 2) {
-        return LinkRole.SOURCE;
-      }
-    }
-
+  private classifyLinkRole(
+    link: StructureLink,
+    controller: StructureController | undefined,
+    storage: StructureStorage | undefined,
+    sources: Source[],
+    spawns: StructureSpawn[]
+  ): LinkRole {
+    // Receiver links first when adjacent to high-value fixed structures. Then
+    // source-adjacent links become senders even if storage/spawn is also nearby.
+    if (controller && link.pos.getRangeTo(controller) <= 2) return LinkRole.CONTROLLER;
+    if (sources.some(source => link.pos.getRangeTo(source) <= 1)) return LinkRole.SOURCE;
+    if (storage && link.pos.getRangeTo(storage) <= 2) return LinkRole.STORAGE;
+    if (spawns.some(spawn => link.pos.getRangeTo(spawn) <= 2)) return LinkRole.SPAWN;
+    if (sources.some(source => link.pos.getRangeTo(source) <= 2)) return LinkRole.SOURCE;
     return LinkRole.UNKNOWN;
+  }
+
+  private getRolePriority(role: LinkRole): number {
+    switch (role) {
+      case LinkRole.CONTROLLER:
+        return 100;
+      case LinkRole.SPAWN:
+        return 75;
+      case LinkRole.STORAGE:
+        return 50;
+      case LinkRole.SOURCE:
+        return 10;
+      default:
+        return 25;
+    }
   }
 
   /**

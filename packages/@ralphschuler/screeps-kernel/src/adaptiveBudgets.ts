@@ -1,10 +1,10 @@
 /**
  * Adaptive CPU Budget System
  *
- * Dynamically adjusts CPU budgets based on empire size and bucket status:
- * - Logarithmic scaling with room count (efficient 1-100+ room growth)
- * - Bucket-aware multipliers (conserve at low bucket, boost at high bucket)
- * - Process-type specific scaling (eco rooms, war rooms, global processes)
+ * Dynamically adjusts CPU budgets based on:
+ * - Empire size (logarithmic room-scaling)
+ * - Bucket status (conserve at low bucket, boost at high bucket)
+ * - Process performance feedback (reduce when near overload, increase when underutilized)
  *
  * Design from ROADMAP.md Section 18:
  * - Base budgets: Eco rooms ≤ 0.1 CPU, War rooms ≤ 0.25 CPU, Global overmind ≤ 1 CPU
@@ -43,6 +43,17 @@ export interface AdaptiveBudgetConfig {
     /** Multiplier when bucket < criticalThreshold */
     criticalMultiplier: number;
   };
+  /** Performance tuning for adaptive feedback */
+  performance: {
+    /** Target average frequency utilization (0..1, where 1 == budget slice fully used) */
+    targetUtilization: number;
+    /** Max multiplier when a frequency is underutilized */
+    maxPerformanceBoost: number;
+    /** Min multiplier when a frequency is overutilized */
+    minPerformanceBoost: number;
+    /** Smoothing strength per tick (0..1) */
+    responsiveness: number;
+  };
 }
 
 /**
@@ -70,6 +81,12 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveBudgetConfig = {
     highMultiplier: 1.2,     // 20% boost when bucket is high (was 1.5)
     lowMultiplier: 0.6,      // 40% reduction when bucket is low (was 0.5)
     criticalMultiplier: 0.3  // 70% reduction in critical bucket (was 0.25)
+  },
+  performance: {
+    targetUtilization: 0.75,
+    maxPerformanceBoost: 1.15,
+    minPerformanceBoost: 0.85,
+    responsiveness: 0.30
   }
 };
 
@@ -139,28 +156,63 @@ export function calculateBucketMultiplier(
 }
 
 /**
+ * Frequency utilization snapshot used for performance-aware budget tuning
+ *
+ * Value is process frequency utilization ratio from previous run:
+ * - 0.75 = at target workload
+ * - >0.75 = overutilized
+ * - <0.75 = underutilized
+ */
+export type FrequencyUtilizationSnapshot = Partial<Record<ProcessFrequency, number>>;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function calculatePerformanceMultiplier(
+  frequencyUtilization: number | undefined,
+  config: AdaptiveBudgetConfig
+): number {
+  if (frequencyUtilization === undefined) {
+    return 1;
+  }
+
+  const target = config.performance.targetUtilization;
+  const delta = target - frequencyUtilization;
+
+  const raw = 1 + delta * config.performance.responsiveness;
+  return clamp(raw, config.performance.minPerformanceBoost, config.performance.maxPerformanceBoost);
+}
+
+/**
  * Calculate adaptive CPU budget for a process frequency
  *
- * Combines base budget, room scaling, and bucket multiplier:
- * adaptiveBudget = baseBudget * roomMultiplier * bucketMultiplier
+ * Combines base budget, room scaling, bucket multiplier and performance feedback:
+ * adaptiveBudget = baseBudget * roomMultiplier * bucketMultiplier * performanceMultiplier
  *
  * @param frequency - Process frequency (high/medium/low)
  * @param roomCount - Number of controlled rooms
  * @param bucket - Current CPU bucket level
  * @param config - Budget configuration
+ * @param frequencyUtilization - Optional historical frequency utilization (0..1+)
  * @returns Adaptive CPU budget (percentage of CPU limit, 0-1)
  */
 export function calculateAdaptiveBudget(
   frequency: ProcessFrequency,
   roomCount: number,
   bucket: number,
-  config: AdaptiveBudgetConfig = DEFAULT_ADAPTIVE_CONFIG
+  config: AdaptiveBudgetConfig = DEFAULT_ADAPTIVE_CONFIG,
+  frequencyUtilization: FrequencyUtilizationSnapshot = {}
 ): number {
   const baseBudget = config.baseFrequencyBudgets[frequency];
   const roomMultiplier = calculateRoomScalingMultiplier(roomCount, config);
   const bucketMultiplier = calculateBucketMultiplier(bucket, config);
+  const performanceMultiplier = calculatePerformanceMultiplier(
+    frequencyUtilization[frequency],
+    config
+  );
 
-  const adaptiveBudget = baseBudget * roomMultiplier * bucketMultiplier;
+  const adaptiveBudget = baseBudget * roomMultiplier * bucketMultiplier * performanceMultiplier;
 
   // Ensure budget stays within reasonable bounds
   // Cap at 1.0 (100% of CPU limit) per process frequency
@@ -175,17 +227,19 @@ export function calculateAdaptiveBudget(
  * @param roomCount - Number of controlled rooms
  * @param bucket - Current CPU bucket level
  * @param config - Budget configuration
+ * @param frequencyUtilization - Optional frequency utilization snapshot from previous tick
  * @returns Budgets for each frequency
  */
 export function calculateAdaptiveBudgets(
   roomCount: number,
   bucket: number,
-  config: AdaptiveBudgetConfig = DEFAULT_ADAPTIVE_CONFIG
+  config: AdaptiveBudgetConfig = DEFAULT_ADAPTIVE_CONFIG,
+  frequencyUtilization: FrequencyUtilizationSnapshot = {}
 ): Record<ProcessFrequency, number> {
   return {
-    high: calculateAdaptiveBudget("high", roomCount, bucket, config),
-    medium: calculateAdaptiveBudget("medium", roomCount, bucket, config),
-    low: calculateAdaptiveBudget("low", roomCount, bucket, config)
+    high: calculateAdaptiveBudget("high", roomCount, bucket, config, frequencyUtilization),
+    medium: calculateAdaptiveBudget("medium", roomCount, bucket, config, frequencyUtilization),
+    low: calculateAdaptiveBudget("low", roomCount, bucket, config, frequencyUtilization)
   };
 }
 
@@ -218,14 +272,16 @@ export function getCurrentBucket(): number {
  * Convenience function that reads from Game object and calculates budgets
  *
  * @param config - Optional budget configuration (uses default if not provided)
+ * @param frequencyUtilization - Optional frequency utilization snapshot to tune budgets
  * @returns Adaptive budgets for all frequencies
  */
 export function getAdaptiveBudgets(
-  config: AdaptiveBudgetConfig = DEFAULT_ADAPTIVE_CONFIG
+  config: AdaptiveBudgetConfig = DEFAULT_ADAPTIVE_CONFIG,
+  frequencyUtilization: FrequencyUtilizationSnapshot = {}
 ): Record<ProcessFrequency, number> {
   const roomCount = getCurrentRoomCount();
   const bucket = getCurrentBucket();
-  return calculateAdaptiveBudgets(roomCount, bucket, config);
+  return calculateAdaptiveBudgets(roomCount, bucket, config, frequencyUtilization);
 }
 
 /**

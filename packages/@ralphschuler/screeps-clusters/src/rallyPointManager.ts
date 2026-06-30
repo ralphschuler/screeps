@@ -148,7 +148,7 @@ function findOffenseRallyPoint(room: Room): RallyPoint | null {
   let bestGroup: RoomPosition[] = [];
   let minDist = Infinity;
 
-  for (const [dir, group] of Object.entries(exitGroups)) {
+  for (const group of Object.values(exitGroups)) {
     if (group.length === 0) continue;
     const dist = group[0].getRangeTo(25, 25);
     if (dist < minDist) {

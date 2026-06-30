@@ -72,8 +72,8 @@ function executeCliOverSocket({ apiHost, cliPort }, command, timeoutMs = 30000) 
   });
 }
 
-function terrainSetupCommand({ shardName, tickRate }) {
-  return `Promise.resolve().then(async () => { await storage.env.set('shardName', ${JSON.stringify(shardName)}); await storage.env.set(storage.env.keys.MAIN_LOOP_MIN_DURATION, ${JSON.stringify(tickRate)}); await storage.env.set('tickRate', ${JSON.stringify(tickRate)}); if (storage.pubsub) storage.pubsub.publish('setTickRate', ${JSON.stringify(tickRate)}); await map.updateTerrainData(); }).then(() => print('__PI_CLI_DONE_OK__')).catch(error => print('__PI_CLI_DONE_ERR__', error.stack || error.message || String(error)))`;
+export function buildTerrainSetupCommand({ shardName, tickRate }) {
+  return `Promise.resolve().then(async () => { await storage.env.set('shardName', ${JSON.stringify(shardName)}); await storage.env.set(storage.env.keys.MAIN_LOOP_MIN_DURATION, ${JSON.stringify(tickRate)}); await storage.env.set('tickRate', ${JSON.stringify(tickRate)}); if (storage.pubsub) storage.pubsub.publish('setTickRate', ${JSON.stringify(tickRate)}); const plainTerrain='0'.repeat(2500); const toArray=async(result)=>Array.isArray(result)?result:(result&&result.toArray?await result.toArray():[]); const hasUsableTerrain=terrain=>typeof terrain==='string'&&terrain.length===2500; const ensureNormalRoomTerrainData=async()=>{ const rooms=await toArray(await storage.db.rooms.find({status:'normal'})); const activeRooms=storage.env&&storage.env.smembers&&storage.env.keys&&storage.env.keys.ACTIVE_ROOMS?await toArray(await storage.env.smembers(storage.env.keys.ACTIVE_ROOMS)):[]; const roomNames=new Set(); for (const room of rooms) { if(room&&room._id) roomNames.add(room._id); } for (const activeRoomName of activeRooms) { if(typeof activeRoomName==='string'&&/^[WE]\\d+[NS]\\d+$/.test(activeRoomName)) roomNames.add(activeRoomName); } for (const roomName of roomNames) { const room=await storage.db.rooms.findOne({_id:roomName}); if(!room){ await storage.db.rooms.insert({_id:roomName,status:'normal',sourceKeepers:false}); } else if(room.status!=='normal'){ await storage.db.rooms.update({_id:roomName},{$set:{status:'normal'}}); } const terrainRecord=await storage.db['rooms.terrain'].findOne({room:roomName}); if(!terrainRecord){ await storage.db['rooms.terrain'].insert({room:roomName,terrain:plainTerrain}); } else if(!hasUsableTerrain(terrainRecord.terrain)){ await storage.db['rooms.terrain'].update({room:roomName},{$set:{terrain:plainTerrain}}); } } if(storage.env&&storage.env.keys&&storage.env.keys.ACCESSIBLE_ROOMS){ await storage.env.set(storage.env.keys.ACCESSIBLE_ROOMS,JSON.stringify(Array.from(roomNames))); } }; await ensureNormalRoomTerrainData(); await map.updateTerrainData(); }).then(() => print('__PI_CLI_DONE_OK__')).catch(error => print('__PI_CLI_DONE_ERR__', error.stack || error.message || String(error)))`;
 }
 
 export function createServerControlPlane(options) {
@@ -104,7 +104,7 @@ export function createServerControlPlane(options) {
     },
 
     async ensureTerrainData() {
-      const output = await cliTransport(terrainSetupCommand({ shardName, tickRate }), 60000);
+      const output = await cliTransport(buildTerrainSetupCommand({ shardName, tickRate }), 60000);
       if (!output.includes('__PI_CLI_DONE_OK__') || output.includes('__PI_CLI_DONE_ERR__')) {
         throw new Error(`Failed to ensure world terrain cache. CLI output:\n${output}`);
       }

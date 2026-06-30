@@ -1,8 +1,62 @@
 import { expect } from "chai";
 
+type PositionLike = { x: number; y: number; roomName: string; getRangeTo: (other: { x: number; y: number }) => number };
+
+function position(x: number, y: number): PositionLike {
+  return {
+    x,
+    y,
+    roomName: "W0N0",
+    getRangeTo: (other: { x: number; y: number }) => Math.abs(x - other.x) + Math.abs(y - other.y)
+  };
+}
+
+function createMostlyWalledRoom(options: {
+  controllerX: number;
+  controllerY: number;
+  sourceA: [number, number];
+  sourceB: [number, number];
+  openRadius: number;
+  fallbackRadius?: number;
+}): Room {
+  const { controllerX, controllerY, sourceA, sourceB, openRadius } = options;
+  const open: Set<string> = new Set<string>();
+
+  for (let x = controllerX - openRadius; x <= controllerX + openRadius; x++) {
+    for (let y = controllerY - openRadius; y <= controllerY + openRadius; y++) {
+      if (x >= 1 && x <= 48 && y >= 1 && y <= 48) {
+        open.add(`${x},${y}`);
+      }
+    }
+  }
+
+  const terrain = {
+    get: (x: number, y: number) => (open.has(`${x},${y}`) ? 0 : 1)
+  };
+
+  return {
+    name: "W0N0",
+    controller: {
+      pos: position(controllerX, controllerY)
+    } as unknown as StructureController,
+    find: (type: number) => {
+      if (type === FIND_SOURCES) {
+        return [
+          { pos: position(sourceA[0], sourceA[1]) },
+          { pos: position(sourceB[0], sourceB[1]) }
+        ] as unknown as Source[];
+      }
+      return [];
+    },
+    getTerrain: () => terrain
+  } as Room;
+}
+
 describe("Blueprint selector", () => {
   before(() => {
     Object.assign(globalThis, {
+      FIND_SOURCES: 105,
+      TERRAIN_MASK_WALL: 1,
       STRUCTURE_EXTENSION: "extension",
       STRUCTURE_SPAWN: "spawn",
       STRUCTURE_ROAD: "road",

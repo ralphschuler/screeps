@@ -113,7 +113,7 @@ The framework consists of several specialized packages:
   - State management
   - Hierarchical process trees
 
-- **[@ralphschuler/screeps-tasks](packages/screeps-tasks)** - Task management system
+- **[@ralphschuler/screeps-roles](packages/@ralphschuler/screeps-roles)** - Task management system
   - Task queue with priorities
   - Task assignment to creeps
   - Task lifecycle tracking
@@ -325,7 +325,7 @@ Each package has comprehensive API documentation in its README:
 - [Chemistry API](packages/screeps-chemistry/README.md)
 - [Defense API](packages/screeps-defense/README.md)
 - [Utils API](packages/screeps-utils/README.md)
-- [Tasks API](packages/screeps-tasks/README.md)
+- [Tasks API](packages/@ralphschuler/screeps-roles/README.md)
 - [POSIS API](packages/screeps-posis/README.md)
 - [Roles API](packages/@ralphschuler/screeps-roles/README.md)
 - [Standards API](packages/@ralphschuler/screeps-standards/README.md) ✨ **NEW**
@@ -402,7 +402,7 @@ See [PUBLISHING.md](PUBLISHING.md) for complete publishing guide and workflow do
 | @ralphschuler/screeps-defense | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 | @ralphschuler/screeps-economy | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 | @ralphschuler/screeps-utils | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
-| @ralphschuler/screeps-tasks | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
+| @ralphschuler/screeps-roles | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 | @ralphschuler/screeps-posis | 0.1.0 | ⏳ Ready | ✅ Pass | ✅ Pass | 📝 In Progress | ✅ Unlicense |
 
 *Build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
@@ -446,7 +446,7 @@ Current target: **v1.0.0** for all packages
 
 | Package | Min Screeps | TypeScript | Node.js |
 |---------|-------------|------------|---------|
-| All packages | Any | >=4.0 | >=16.x |
+| All packages | Any | >=4.0 | >=24 <25 |
 
 ## Troubleshooting
 

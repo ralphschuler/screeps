@@ -2,7 +2,7 @@
 
 > Automated room layout planning and blueprint system for optimal base construction
 
-**Part of the [Screeps Framework](../../FRAMEWORK.md)** - Build powerful Screeps bots using modular, tested packages.
+**Part of the [Screeps Framework](../../../FRAMEWORK.md)** - Build powerful Screeps bots using modular, tested packages.
 
 ## Table of Contents
 
@@ -43,7 +43,7 @@ The layouts package provides a comprehensive system for automated base construct
 - **Zero Manual Planning**: Fully automated from RCL 1 to RCL 8
 - **Terrain-Aware**: Validates blueprints against terrain and auto-selects best fit
 - **Performance Optimized**: Cached calculations, minimal CPU overhead (~0.1 CPU/room/tick)
-- **Battle-Tested**: Proven layouts from production bot with 50+ rooms
+- **Tested**: Package-level unit tests cover blueprint selection, stamp fallback, roads, labs, and links
 
 ## Installation
 
@@ -66,7 +66,7 @@ export function manageConstruction(room: Room) {
   const selection = selectBestBlueprint(room, rcl);
   if (selection) {
     const { blueprint, anchor } = selection;
-    placeConstructionSites(room, anchor, blueprint, 5); // Place up to 5 sites
+    placeConstructionSites(room, anchor, blueprint); // Places a small prioritized batch
   }
 }
 ```
@@ -98,13 +98,13 @@ export function automatedBaseConstruction(room: Room) {
   const { blueprint, anchor } = selection;
   
   // 2. Place blueprint structures
-  const sitesPlaced = placeConstructionSites(room, anchor, blueprint, 5);
+  const sitesPlaced = placeConstructionSites(room, anchor, blueprint);
   
   // 3. Calculate and place road network
   const roadNetwork = calculateRoadNetwork(room, anchor);
-  const roadsPlaced = placeRoadConstructionSites(room, anchor, roadNetwork, 3);
+  const roadsPlaced = placeRoadConstructionSites(room, anchor, 3);
   
-  console.log(`${room.name}: Placed ${sitesPlaced} structures, ${roadsPlaced} roads`);
+  console.log(`${room.name}: Planned ${roadNetwork.positions.size} road tiles, placed ${sitesPlaced} structures, ${roadsPlaced} roads`);
 }
 ```
 
@@ -126,7 +126,7 @@ import { COMPACT_BUNKER_BLUEPRINT, WAR_READY_BLUEPRINT } from '@ralphschuler/scr
 // Access blueprint details
 console.log(COMPACT_BUNKER_BLUEPRINT.name); // "Compact Bunker"
 console.log(COMPACT_BUNKER_BLUEPRINT.rcl);  // 8
-console.log(COMPACT_BUNKER_BLUEPRINT.structures.spawn.length); // 3 spawns
+console.log(COMPACT_BUNKER_BLUEPRINT.structures.filter(s => s.structureType === STRUCTURE_SPAWN).length); // 3 spawns
 ```
 
 ### Feature 2: Dynamic Terrain Adaptation
@@ -147,28 +147,22 @@ const selection = selectBestBlueprint(room, 8);
 // Fallback chain: Compact Bunker → War Ready → Economic Maturity → Core Colony
 ```
 
-### Feature 3: Road-Aware Defense System
+### Feature 3: Stamp fallback and road-aware cleanup
 
-Walls and ramparts that don't block your infrastructure:
+Preferred stamps are not all-or-nothing. Failed members become explicit unplaced demand, then the fallback resolver places missing structures on valid terrain and adds road/rampart support when needed.
 
 **Benefits:**
-- Creeps can always reach sources and controller
-- Ramparts at road crossings allow friendly passage
-- Automatic wall removal if blocking roads
+- RCL structure targets are not silently underbuilt when terrain blocks a stamp
+- Existing structures and construction sites count toward demand
+- Critical fallback structures receive rampart overlays and road access
 
 **Example:**
 ```typescript
-import { placeRoadAwarePerimeterDefense } from '@ralphschuler/screeps-layouts';
+import { createBlueprintFactsFromRoom, planRoomBlueprint } from '@ralphschuler/screeps-layouts';
 
-const result = placeRoadAwarePerimeterDefense(
-  room,
-  anchor,
-  blueprint.roads,
-  rcl,
-  5, // max sites
-  ['W1N2'] // remote rooms
-);
-console.log(`Placed ${result.sitesPlaced} defenses, removed ${result.wallsRemoved} blocking walls`);
+const facts = createBlueprintFactsFromRoom(room);
+const plan = planRoomBlueprint(facts, room.controller?.level ?? 1);
+console.log(plan.errors, plan.unplaced);
 ```
 
 ### Feature 4: Intelligent Placement Algorithm
@@ -295,7 +289,7 @@ if (!validation.fits) {
 
 ### Construction
 
-#### `placeConstructionSites(room: Room, anchor: RoomPosition, blueprint: Blueprint, maxSites: number): number`
+#### `placeConstructionSites(room: Room, anchor: RoomPosition, blueprint: Blueprint): number`
 
 Places construction sites from a blueprint.
 
@@ -303,47 +297,63 @@ Places construction sites from a blueprint.
 - `room`: Room to build in
 - `anchor`: Anchor position for blueprint
 - `blueprint`: Blueprint to build
-- `maxSites`: Maximum construction sites to place
 
 **Returns:** Number of sites placed
 
 **Example:**
 ```typescript
-const count = placeConstructionSites(room, anchor, blueprint, 5);
+const count = placeConstructionSites(room, anchor, blueprint);
 console.log(`Placed ${count} construction sites`);
 ```
 
 ### Road Networks
 
-#### `calculateRoadNetwork(room: Room, anchor: RoomPosition): RoomPosition[]`
+Road planning is split into small internal modules:
+- `infrastructure`: hub-to-source/controller/mineral roads
+- `exitRoads`: permanent hub-to-exit roads and live near-exit fallback protection
+- `remoteRoads`: remote-mining path protection grouped by room
+- `validRoads`: blueprint cleanup allow-list assembly
+- `construction`: rate-limited local road construction-site placement
 
-Calculates optimal road positions connecting infrastructure.
+#### `calculateRoadNetwork(room: Room, anchor: RoomPosition): RoomRoadNetwork`
+
+Calculates local infrastructure road positions for sources, controller, and RCL6+ mineral.
 
 **Parameters:**
 - `room`: Room to calculate for
-- `anchor`: Base anchor position
+- `anchor`: Base anchor position used before storage exists
 
-**Returns:** Array of road positions
+**Returns:** `RoomRoadNetwork` with compact `"x,y"` position keys.
 
 **Example:**
 ```typescript
-const roads = calculateRoadNetwork(room, anchor);
-console.log(`Road network: ${roads.length} tiles`);
+const network = calculateRoadNetwork(room, anchor);
+console.log(`Road network: ${network.positions.size} tiles`);
 ```
 
-#### `calculateRemoteRoads(homeRoom: Room, remoteRooms: string[]): RoomPosition[]`
+#### `placeRoadConstructionSites(room: Room, anchor: RoomPosition, maxSites?: number): number`
 
-Calculates roads to remote mining rooms.
+Places a limited batch of local infrastructure road construction sites. Remote-road maps are not passed here; they are used for road protection/validation.
+
+**Example:**
+```typescript
+const placed = placeRoadConstructionSites(room, anchor, 3);
+```
+
+#### `calculateRemoteRoads(homeRoom: Room, remoteRooms: string[]): Map<string, Set<string>>`
+
+Calculates protected road positions to remote-mining rooms and groups them by room name. Directly adjacent remotes get an extra explicit exit-approach path; distance-2+ remotes still get full PathFinder route protection.
 
 **Parameters:**
 - `homeRoom`: Your main room
-- `remoteRooms`: Names of remote rooms
+- `remoteRooms`: Names of assigned remote rooms
 
-**Returns:** Array of road positions spanning multiple rooms
+**Returns:** `Map<roomName, Set<"x,y">>` for cleanup protection or caller-specific construction logic.
 
 **Example:**
 ```typescript
 const remoteRoads = calculateRemoteRoads(room, ['W1N2', 'W2N1']);
+const homeRoomRemoteRoads = remoteRoads.get(room.name) ?? new Set<string>();
 ```
 
 ### Anchor Finding
@@ -439,7 +449,7 @@ export function autoConstruct(room: Room) {
   const selection = selectBestBlueprint(room, rcl);
   
   if (selection) {
-    placeConstructionSites(room, selection.anchor, selection.blueprint, 5 - sites.length);
+    placeConstructionSites(room, selection.anchor, selection.blueprint);
   }
 }
 ```
@@ -452,40 +462,40 @@ export function autoConstruct(room: Room) {
 
 ### Example 2: Remote Mining Road Network
 
-**Scenario:** Calculate roads to remote mining rooms
+**Scenario:** Protect roads that connect a room to assigned remotes.
 
 **Code:**
 ```typescript
-import { calculateRemoteRoads, placeRoadConstructionSites } from '@ralphschuler/screeps-layouts';
+import { calculateRemoteRoads, getValidRoadPositions, placeRoadConstructionSites } from '@ralphschuler/screeps-layouts';
 
-export function buildRemoteRoads(homeRoom: Room) {
-  // Get remote mining rooms from memory
+export function protectRemoteRoads(homeRoom: Room) {
   const remoteRooms = Memory.rooms[homeRoom.name]?.remotes || [];
-  
-  if (remoteRooms.length === 0) return;
-  
-  // Calculate optimal road network
-  const roads = calculateRemoteRoads(homeRoom, remoteRooms);
-  
-  // Place road sites (limit to 3 per tick to manage construction)
   const anchor = Memory.rooms[homeRoom.name]?.anchor;
-  if (anchor) {
-    const count = placeRoadConstructionSites(
-      homeRoom,
-      new RoomPosition(anchor.x, anchor.y, homeRoom.name),
-      roads,
-      3
-    );
-    console.log(`${homeRoom.name}: Placed ${count} remote road sites`);
-  }
+  if (!anchor) return;
+
+  const anchorPos = new RoomPosition(anchor.x, anchor.y, homeRoom.name);
+
+  // Calculate remote-road protection grouped by room for visuals or custom build logic.
+  const roadsByRoom = calculateRemoteRoads(homeRoom, remoteRooms);
+  const homeRoomRemoteRoads = roadsByRoom.get(homeRoom.name) ?? new Set<string>();
+
+  // Use the public validator to include blueprint roads, local infrastructure roads,
+  // permanent exit roads, remote roads, and live near-exit fallback protection.
+  const protectedRoads = getValidRoadPositions(homeRoom, anchorPos, [], remoteRooms);
+
+  // Local infrastructure roads can still be placed incrementally.
+  const placed = placeRoadConstructionSites(homeRoom, anchorPos, 3);
+  console.log(
+    `${homeRoom.name}: ${homeRoomRemoteRoads.size} home-room remote road tiles, ${protectedRoads.size} protected road tiles, ${placed} local road sites placed`
+  );
 }
 ```
 
 **Explanation:**
 1. Retrieve remote mining room list from memory
-2. Calculate complete road network across multiple rooms
-3. Place construction sites incrementally (3 per tick)
-4. System handles pathfinding and multi-room coordination
+2. Calculate remote road positions grouped by room
+3. Build a cleanup-safe road allow-list with `getValidRoadPositions`
+4. Place local road construction sites incrementally
 
 ### Example 3: Blueprint Comparison
 
@@ -602,7 +612,7 @@ const ROAD_CACHE_TTL = 1000;
    // Only place sites when below limit
    const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
    if (sites.length < 5) {
-     placeConstructionSites(room, anchor, blueprint, 5 - sites.length);
+     placeConstructionSites(room, anchor, blueprint);
    }
    ```
 
@@ -610,7 +620,7 @@ const ROAD_CACHE_TTL = 1000;
    ```typescript
    // Place roads every 10 ticks instead of every tick
    if (Game.time % 10 === 0) {
-     placeRoadConstructionSites(room, anchor, roads, 3);
+     placeRoadConstructionSites(room, anchor, 3);
    }
    ```
 
@@ -652,39 +662,19 @@ Structures are placed in this order:
 5. Roads (for efficiency)
 6. Ramparts and walls (for defense)
 
-## Road-Aware Defense
+## Road-aware fallback and ramparts
 
-### How It Works
+The planner keeps ramparts as an overlay instead of a primary structure layer. Critical structures from hub, lab, defense, and fallback placement receive rampart overlays while roads remain separate.
 
-The defense system ensures walls don't block infrastructure:
-
-1. **Calculate Roads First**: Complete road network (sources, controller, mineral, remotes)
-2. **Identify Crossings**: Find where roads intersect the perimeter
-3. **Use Ramparts**: Place ramparts (not walls) at road crossings
-4. **Remove Blockers**: Destroy existing walls blocking roads
-
-### Benefits
-
-- Friendly creeps always have clear paths
-- Remote miners can reach exits
-- Ramparts block enemies but allow friendly passage
-- Automatic adaptation as roads expand
-
-### Integration Example
+Construction cleanup uses valid road-position helpers to avoid classifying source/controller/mineral/remote roads as misplaced structures:
 
 ```typescript
-import { placeRoadAwarePerimeterDefense } from '@ralphschuler/screeps-layouts';
+import { findMisplacedStructures, getValidRoadPositions } from '@ralphschuler/screeps-layouts';
 
-const result = placeRoadAwarePerimeterDefense(
-  room,
-  anchor,
-  blueprint.roads,
-  room.controller.level,
-  5,  // max construction sites
-  Memory.rooms[room.name].remotes || []
-);
-
-console.log(`Defense: ${result.sitesPlaced} sites, ${result.wallsRemoved} walls removed`);
+const remotes = Memory.rooms[room.name]?.remotes ?? [];
+const validRoads = getValidRoadPositions(room, anchor, blueprint.roads, remotes);
+const misplaced = findMisplacedStructures(room, anchor, blueprint, remotes);
+console.log(`${validRoads.size} protected roads, ${misplaced.length} misplaced structures`);
 ```
 
 ## Development

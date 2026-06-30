@@ -4,6 +4,7 @@ export type TaskType =
   | "refillSpawn"
   | "refillExtension"
   | "refillTower"
+  | "fillTerminalEnergy"
   | "storeEnergy"
   | "build"
   | "repair"

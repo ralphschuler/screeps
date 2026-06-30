@@ -41,7 +41,7 @@ The performance testing infrastructure includes:
 
 ### Prerequisites
 
-- Node.js 16+ (as specified in `.nvmrc`)
+- Node.js 24.x (as specified in `.nvmrc`)
 - Docker Desktop (for screeps-performance-server)
 - npm dependencies installed
 

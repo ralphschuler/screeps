@@ -1,0 +1,830 @@
+{
+  "generatedAt": "2026-06-16T18:18:33.215Z",
+  "hostname": "screeps.com",
+  "shard": "shard1",
+  "roomName": "W19S26",
+  "consoleCheck": {
+    "called": false,
+    "reason": "Read-only roomObjects/memory endpoints only; no /api/user/console."
+  },
+  "samples": [
+    {
+      "time": 71718037,
+      "controller": {
+        "id": "5982fd30b097071b4adbedd6",
+        "x": 40,
+        "y": 38,
+        "level": 2,
+        "owner": "TedRoastBeef",
+        "my": false,
+        "progress": 29507,
+        "progressTotal": 0,
+        "safeMode": null
+      },
+      "creeps": {
+        "mine": 8,
+        "hostiles": 0,
+        "byRole": {
+          "unknown": 8
+        }
+      },
+      "upgraders": [],
+      "structures": [
+        {
+          "id": "6a30a8956724f16c8639abb5",
+          "type": "container",
+          "x": 40,
+          "y": 37,
+          "hits": 85000,
+          "hitsMax": 250000,
+          "store": {
+            "energy": 524
+          }
+        },
+        {
+          "id": "6a30712565599203bb5cd1d2",
+          "type": "spawn",
+          "x": 31,
+          "y": 25,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "store": {
+            "energy": 300
+          },
+          "spawning": null
+        }
+      ],
+      "sites": [
+        {
+          "id": "6a30f41498db429de6ddd1d9",
+          "type": "constructedWall",
+          "x": 30,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 1,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42c046ddd1da",
+          "type": "constructedWall",
+          "x": 38,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 1,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db4247ffddd1db",
+          "type": "container",
+          "x": 33,
+          "y": 9,
+          "progress": 0,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42d5e8ddd1dc",
+          "type": "container",
+          "x": 21,
+          "y": 31,
+          "progress": 1404,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42e165ddd1dd",
+          "type": "container",
+          "x": 41,
+          "y": 37,
+          "progress": 0,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42dc23ddd1de",
+          "type": "road",
+          "x": 32,
+          "y": 24,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db421e7addd1df",
+          "type": "road",
+          "x": 33,
+          "y": 23,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db4279bfddd1e0",
+          "type": "rampart",
+          "x": 31,
+          "y": 25,
+          "progress": 0,
+          "progressTotal": 1,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de51ef3efecc3b",
+          "type": "container",
+          "x": 34,
+          "y": 9,
+          "progress": 450,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de511594fecc3c",
+          "type": "extension",
+          "x": 24,
+          "y": 23,
+          "progress": 0,
+          "progressTotal": 3000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de51bee3fecc3e",
+          "type": "road",
+          "x": 34,
+          "y": 22,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de51176ffecc3f",
+          "type": "road",
+          "x": 34,
+          "y": 21,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        }
+      ],
+      "memory": {
+        "room": {
+          "swarm": {
+            "colonyLevel": "seedNest",
+            "posture": "eco",
+            "danger": 0,
+            "pheromones": {
+              "expand": 3.123847167061307e-14,
+              "harvest": 91.52219747812772,
+              "build": 100,
+              "upgrade": 1.3438292198781644e-101,
+              "defense": 0.0025282231793384356,
+              "war": 3.1906961376133436e-20,
+              "siege": 1.2876876215935631e-9,
+              "logistics": 2.5e-323,
+              "nukeTarget": 0
+            },
+            "nextUpdateTick": 71717886,
+            "eventLog": [
+              {
+                "type": "hostileDetected",
+                "time": 71666275,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "structureDestroyed",
+                "time": 71667270,
+                "details": "1 misplaced structure destroyed for blueprint compliance"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71675167,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71677294,
+                "details": "2 hostiles, danger=1, score=220"
+              },
+              {
+                "type": "rampartPlaced",
+                "time": 71677360,
+                "details": "1 rampart(s) placed on critical structures"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71681239,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "rampartPlaced",
+                "time": 71681240,
+                "details": "1 rampart(s) placed on critical structures"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71681342,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71681382,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71684196,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71688559,
+                "details": "1 hostiles, danger=1, score=120"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71690926,
+                "details": "1 hostiles, danger=3, score=2140"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71690972,
+                "details": "1 hostiles, danger=3, score=2140"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71693902,
+                "details": "2 hostiles, danger=2, score=600"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71695146,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71705773,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71707089,
+                "details": "1 hostiles, danger=1, score=120"
+              },
+              {
+                "type": "rampartPlaced",
+                "time": 71707125,
+                "details": "1 rampart(s) placed on critical structures"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71713194,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71714741,
+                "details": "1 hostiles, danger=1, score=0"
+              }
+            ],
+            "missingStructures": {
+              "spawn": false,
+              "storage": false,
+              "terminal": false,
+              "labs": false,
+              "nuker": false,
+              "factory": false,
+              "extractor": false,
+              "powerSpawn": false,
+              "observer": false
+            },
+            "role": "secondaryCore",
+            "remoteAssignments": [],
+            "metrics": {
+              "energyHarvested": 228,
+              "energySpawning": 0,
+              "energyConstruction": 0,
+              "energyRepair": 0,
+              "energyTower": 0,
+              "controllerProgress": 27684,
+              "hostileCount": 0,
+              "damageReceived": 0,
+              "constructionSites": 12,
+              "energyAvailable": 0,
+              "energyCapacity": 0,
+              "energyNeed": 0
+            },
+            "lastUpdate": 71717881,
+            "lastHostileTick": 71714741,
+            "nukeDetected": false,
+            "layoutAnchor": {
+              "x": 31,
+              "y": 25,
+              "blueprintName": "seedNest",
+              "rclSelectedAt": 2,
+              "selectedAt": 71649855
+            }
+          }
+        },
+        "statsRoom": {
+          "rcl": 2,
+          "energy": {
+            "available": 300,
+            "capacity": 300,
+            "storage": 0,
+            "terminal": 0
+          },
+          "controller": {
+            "progress": 29507,
+            "progress_total": 45000,
+            "progress_percent": 65.57111111111111,
+            "ticks_to_downgrade": 9848,
+            "downgrade_risk": false
+          },
+          "creeps": 8,
+          "hostiles": 0,
+          "brain": {
+            "danger": 0,
+            "posture_code": 0,
+            "colony_level_code": 1
+          },
+          "pheromones": {
+            "expand": 3.123847167061307e-14,
+            "harvest": 91.52219747812772,
+            "build": 100,
+            "upgrade": 1.3438292198781644e-101,
+            "defense": 0.0025282231793384356,
+            "war": 3.1906961376133436e-20,
+            "siege": 1.2876876215935631e-9,
+            "logistics": 2.5e-323,
+            "nukeTarget": 0
+          },
+          "metrics": {
+            "energy": {
+              "harvested": 228,
+              "spawning": 0,
+              "construction": 0,
+              "repair": 0,
+              "tower": 0,
+              "available_for_sharing": 0,
+              "capacity_total": 0,
+              "need": 0
+            },
+            "controller_progress": 27684,
+            "hostile_count": 0,
+            "damage_received": 0,
+            "construction_sites": 12
+          },
+          "taskBoard": {
+            "tasks": 21,
+            "open_tasks": 21,
+            "assigned_tasks": 0,
+            "reservations": 0,
+            "stale_reservations": 0,
+            "blocked_reservations": 0
+          },
+          "spawn_queue": {
+            "total": 3,
+            "emergency": 0,
+            "high": 0,
+            "normal": 0,
+            "low": 3,
+            "in_progress": 0,
+            "spawned_last_tick": 0,
+            "total_spawns": 1,
+            "idle_spawns": 1,
+            "busy_spawns": 0,
+            "idle_spawn_ticks": 2220
+          },
+          "remote": {
+            "assigned": 0,
+            "visible": 0,
+            "reserved_by_me": 0,
+            "reserved_by_other": 0,
+            "min_reservation_ticks": 0,
+            "known_unsafe": 0
+          },
+          "defense": {
+            "towers": 0,
+            "tower_energy": 0,
+            "tower_energy_capacity": 0,
+            "tower_energy_percent": 0,
+            "tower_reserve_energy": 0,
+            "tower_reserve_deficit": 0
+          },
+          "profiler": {
+            "avg_cpu": 0.036999272242125375,
+            "peak_cpu": 42.11184639998828,
+            "samples": 22700
+          }
+        }
+      }
+    },
+    {
+      "time": 71718041,
+      "controller": {
+        "id": "5982fd30b097071b4adbedd6",
+        "x": 40,
+        "y": 38,
+        "level": 2,
+        "owner": "TedRoastBeef",
+        "my": false,
+        "progress": 29507,
+        "progressTotal": 0,
+        "safeMode": null
+      },
+      "creeps": {
+        "mine": 8,
+        "hostiles": 0,
+        "byRole": {
+          "unknown": 8
+        }
+      },
+      "upgraders": [],
+      "structures": [
+        {
+          "id": "6a30a8956724f16c8639abb5",
+          "type": "container",
+          "x": 40,
+          "y": 37,
+          "hits": 85000,
+          "hitsMax": 250000,
+          "store": {
+            "energy": 624
+          }
+        },
+        {
+          "id": "6a30712565599203bb5cd1d2",
+          "type": "spawn",
+          "x": 31,
+          "y": 25,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "store": {
+            "energy": 300
+          },
+          "spawning": null
+        }
+      ],
+      "sites": [
+        {
+          "id": "6a30f41498db429de6ddd1d9",
+          "type": "constructedWall",
+          "x": 30,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 1,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42c046ddd1da",
+          "type": "constructedWall",
+          "x": 38,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 1,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db4247ffddd1db",
+          "type": "container",
+          "x": 33,
+          "y": 9,
+          "progress": 0,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42d5e8ddd1dc",
+          "type": "container",
+          "x": 21,
+          "y": 31,
+          "progress": 1404,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42e165ddd1dd",
+          "type": "container",
+          "x": 41,
+          "y": 37,
+          "progress": 0,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db42dc23ddd1de",
+          "type": "road",
+          "x": 32,
+          "y": 24,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db421e7addd1df",
+          "type": "road",
+          "x": 33,
+          "y": 23,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f41498db4279bfddd1e0",
+          "type": "rampart",
+          "x": 31,
+          "y": 25,
+          "progress": 0,
+          "progressTotal": 1,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de51ef3efecc3b",
+          "type": "container",
+          "x": 34,
+          "y": 9,
+          "progress": 450,
+          "progressTotal": 5000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de511594fecc3c",
+          "type": "extension",
+          "x": 24,
+          "y": 23,
+          "progress": 0,
+          "progressTotal": 3000,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de51bee3fecc3e",
+          "type": "road",
+          "x": 34,
+          "y": 22,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        },
+        {
+          "id": "6a30f42772de51176ffecc3f",
+          "type": "road",
+          "x": 34,
+          "y": 21,
+          "progress": 0,
+          "progressTotal": 300,
+          "owner": "TedRoastBeef"
+        }
+      ],
+      "memory": {
+        "room": {
+          "swarm": {
+            "colonyLevel": "seedNest",
+            "posture": "eco",
+            "danger": 0,
+            "pheromones": {
+              "expand": 3.123847167061307e-14,
+              "harvest": 91.52219747812772,
+              "build": 100,
+              "upgrade": 1.3438292198781644e-101,
+              "defense": 0.0025282231793384356,
+              "war": 3.1906961376133436e-20,
+              "siege": 1.2876876215935631e-9,
+              "logistics": 2.5e-323,
+              "nukeTarget": 0
+            },
+            "nextUpdateTick": 71717886,
+            "eventLog": [
+              {
+                "type": "hostileDetected",
+                "time": 71666275,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "structureDestroyed",
+                "time": 71667270,
+                "details": "1 misplaced structure destroyed for blueprint compliance"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71675167,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71677294,
+                "details": "2 hostiles, danger=1, score=220"
+              },
+              {
+                "type": "rampartPlaced",
+                "time": 71677360,
+                "details": "1 rampart(s) placed on critical structures"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71681239,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "rampartPlaced",
+                "time": 71681240,
+                "details": "1 rampart(s) placed on critical structures"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71681342,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71681382,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71684196,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71688559,
+                "details": "1 hostiles, danger=1, score=120"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71690926,
+                "details": "1 hostiles, danger=3, score=2140"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71690972,
+                "details": "1 hostiles, danger=3, score=2140"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71693902,
+                "details": "2 hostiles, danger=2, score=600"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71695146,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71705773,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71707089,
+                "details": "1 hostiles, danger=1, score=120"
+              },
+              {
+                "type": "rampartPlaced",
+                "time": 71707125,
+                "details": "1 rampart(s) placed on critical structures"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71713194,
+                "details": "1 hostiles, danger=1, score=0"
+              },
+              {
+                "type": "hostileDetected",
+                "time": 71714741,
+                "details": "1 hostiles, danger=1, score=0"
+              }
+            ],
+            "missingStructures": {
+              "spawn": false,
+              "storage": false,
+              "terminal": false,
+              "labs": false,
+              "nuker": false,
+              "factory": false,
+              "extractor": false,
+              "powerSpawn": false,
+              "observer": false
+            },
+            "role": "secondaryCore",
+            "remoteAssignments": [],
+            "metrics": {
+              "energyHarvested": 228,
+              "energySpawning": 0,
+              "energyConstruction": 0,
+              "energyRepair": 0,
+              "energyTower": 0,
+              "controllerProgress": 27684,
+              "hostileCount": 0,
+              "damageReceived": 0,
+              "constructionSites": 12,
+              "energyAvailable": 0,
+              "energyCapacity": 0,
+              "energyNeed": 0
+            },
+            "lastUpdate": 71717881,
+            "lastHostileTick": 71714741,
+            "nukeDetected": false,
+            "layoutAnchor": {
+              "x": 31,
+              "y": 25,
+              "blueprintName": "seedNest",
+              "rclSelectedAt": 2,
+              "selectedAt": 71649855
+            }
+          }
+        },
+        "statsRoom": {
+          "rcl": 2,
+          "energy": {
+            "available": 300,
+            "capacity": 300,
+            "storage": 0,
+            "terminal": 0
+          },
+          "controller": {
+            "progress": 29507,
+            "progress_total": 45000,
+            "progress_percent": 65.57111111111111,
+            "ticks_to_downgrade": 9848,
+            "downgrade_risk": false
+          },
+          "creeps": 8,
+          "hostiles": 0,
+          "brain": {
+            "danger": 0,
+            "posture_code": 0,
+            "colony_level_code": 1
+          },
+          "pheromones": {
+            "expand": 3.123847167061307e-14,
+            "harvest": 91.52219747812772,
+            "build": 100,
+            "upgrade": 1.3438292198781644e-101,
+            "defense": 0.0025282231793384356,
+            "war": 3.1906961376133436e-20,
+            "siege": 1.2876876215935631e-9,
+            "logistics": 2.5e-323,
+            "nukeTarget": 0
+          },
+          "metrics": {
+            "energy": {
+              "harvested": 228,
+              "spawning": 0,
+              "construction": 0,
+              "repair": 0,
+              "tower": 0,
+              "available_for_sharing": 0,
+              "capacity_total": 0,
+              "need": 0
+            },
+            "controller_progress": 27684,
+            "hostile_count": 0,
+            "damage_received": 0,
+            "construction_sites": 12
+          },
+          "taskBoard": {
+            "tasks": 21,
+            "open_tasks": 21,
+            "assigned_tasks": 0,
+            "reservations": 0,
+            "stale_reservations": 0,
+            "blocked_reservations": 0
+          },
+          "spawn_queue": {
+            "total": 3,
+            "emergency": 0,
+            "high": 0,
+            "normal": 0,
+            "low": 3,
+            "in_progress": 0,
+            "spawned_last_tick": 0,
+            "total_spawns": 1,
+            "idle_spawns": 1,
+            "busy_spawns": 0,
+            "idle_spawn_ticks": 2224
+          },
+          "remote": {
+            "assigned": 0,
+            "visible": 0,
+            "reserved_by_me": 0,
+            "reserved_by_other": 0,
+            "min_reservation_ticks": 0,
+            "known_unsafe": 0
+          },
+          "defense": {
+            "towers": 0,
+            "tower_energy": 0,
+            "tower_energy_capacity": 0,
+            "tower_energy_percent": 0,
+            "tower_reserve_energy": 0,
+            "tower_reserve_deficit": 0
+          },
+          "profiler": {
+            "avg_cpu": 0.036999272242125375,
+            "peak_cpu": 42.11184639998828,
+            "samples": 22700
+          }
+        }
+      }
+    }
+  ]
+}

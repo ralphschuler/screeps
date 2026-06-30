@@ -11,6 +11,16 @@ Self-contained visualization system for Screeps with optional theming and perfor
 - **Multiple Visualizers**: Room, map, and budget dashboards
 - **Extensible**: Custom RoomVisual extensions
 
+## Module structure
+
+The package keeps public APIs small (`RoomVisualizer`, `MapVisualizer`, budget dashboards) and hides drawing policy in internal rule modules:
+
+- `room-visualizer/pheromoneRules.ts` maps ROADMAP-style swarm pheromone values to bar colors, fill widths, and the dominant room overlay.
+- `room-visualizer/renderRules.ts` scores hostile creep threat and assigns combat/structure visual styles. It is visualization-only; defense targeting remains in defense packages.
+- `room-visualizer/resourceFlowRules.ts` selects compact resource badges and computes animated flow-dot positions.
+
+This keeps `roomVisualizer.ts` focused on orchestration: read room/swarm state, check enabled layers, call `RoomVisual`, and report per-layer CPU cost.
+
 ## Installation
 
 ```bash

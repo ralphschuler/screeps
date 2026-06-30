@@ -33,18 +33,58 @@ describe("Military resource logistics allocation Module", () => {
     });
   });
 
-  it("chooses the source room with the highest excess energy and falls back to hauler without terminal pairing", () => {
+  it("prefers nearer sources for emergency energy routing", () => {
     const intent = planEmergencyEnergyRoute({
       targetRoom: "W1N1",
       amount: 10000,
       targetHasTerminal: true,
+      distance: (fromRoom, _toRoom) => {
+        return fromRoom === "W3N3" ? 1 : 5;
+      },
       sources: [
-        { roomName: "W2N2", availableEnergy: 50000, reservedEnergy: 15000, hasTerminal: true },
-        { roomName: "W3N3", availableEnergy: 40000, reservedEnergy: 0, hasTerminal: false }
+        {
+          roomName: "W2N2",
+          availableEnergy: 50000,
+          reservedEnergy: 15000,
+          hasTerminal: true,
+          terminalEnergy: 50000
+        },
+        {
+          roomName: "W3N3",
+          availableEnergy: 40000,
+          reservedEnergy: 0,
+          hasTerminal: false,
+          terminalEnergy: 0
+        }
       ]
     });
 
     expect(intent).to.deep.equal({ success: true, sourceRoom: "W3N3", delivery: "hauler", excessEnergy: 40000 });
+  });
+
+  it("chooses terminal delivery only when terminal energy covers transfer cost", () => {
+    const intent = planEmergencyEnergyRoute({
+      targetRoom: "W1N1",
+      amount: 5000,
+      targetHasTerminal: true,
+      distance: () => 3,
+      sources: [
+        {
+          roomName: "W2N2",
+          availableEnergy: 12000,
+          reservedEnergy: 0,
+          hasTerminal: true,
+          terminalEnergy: 5000
+        }
+      ]
+    });
+
+    expect(intent).to.deep.equal({
+      success: true,
+      sourceRoom: "W2N2",
+      delivery: "hauler",
+      excessEnergy: 12000
+    });
   });
 
   it("reports no-source when no room has enough unreserved energy", () => {
@@ -52,9 +92,43 @@ describe("Military resource logistics allocation Module", () => {
       targetRoom: "W1N1",
       amount: 10000,
       targetHasTerminal: true,
-      sources: [{ roomName: "W2N2", availableEnergy: 12000, reservedEnergy: 5000, hasTerminal: true }]
+      distance: () => 1,
+      sources: [
+        {
+          roomName: "W2N2",
+          availableEnergy: 12000,
+          reservedEnergy: 5000,
+          hasTerminal: true,
+          terminalEnergy: 12000
+        }
+      ]
     });
 
     expect(intent).to.deep.equal({ success: false, reason: "no-source" });
+  });
+
+  it("allows routing when source has exactly the requested excess energy", () => {
+    const intent = planEmergencyEnergyRoute({
+      targetRoom: "W1N1",
+      amount: 10000,
+      targetHasTerminal: false,
+      distance: () => 1,
+      sources: [
+        {
+          roomName: "W2N2",
+          availableEnergy: 15000,
+          reservedEnergy: 5000,
+          hasTerminal: false,
+          terminalEnergy: 0
+        }
+      ]
+    });
+
+    expect(intent).to.deep.equal({
+      success: true,
+      sourceRoom: "W2N2",
+      delivery: "hauler",
+      excessEnergy: 10000
+    });
   });
 });

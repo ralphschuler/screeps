@@ -48,7 +48,7 @@ This document summarizes the implementation of comprehensive framework documenta
      - @ralphschuler/screeps-defense
      - @ralphschuler/screeps-economy
      - @ralphschuler/screeps-utils
-     - @ralphschuler/screeps-tasks
+     - @ralphschuler/screeps-roles
      - @ralphschuler/screeps-posis
    
    - **4 packages** already configured as publishable:
@@ -88,7 +88,7 @@ This document summarizes the implementation of comprehensive framework documenta
 | @ralphschuler/screeps-defense | 0.1.0 | false ✅ | ✅ | Ready |
 | @ralphschuler/screeps-economy | 0.1.0 | false ✅ | ✅ | Ready |
 | @ralphschuler/screeps-utils | 0.1.0 | false ✅ | ✅ | Ready |
-| @ralphschuler/screeps-tasks | 0.1.0 | false ✅ | ✅ | Ready |
+| @ralphschuler/screeps-roles | 0.1.0 | false ✅ | ✅ | Ready |
 | @ralphschuler/screeps-posis | 1.0.0 | false ✅ | ✅ | Ready |
 | @ralphschuler/screeps-roles | 0.1.0 | false ✅ | ✅ | Ready |
 

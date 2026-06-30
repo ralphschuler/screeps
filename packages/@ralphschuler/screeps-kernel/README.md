@@ -199,6 +199,13 @@ kernel.emit('hostile.detected', {
 });
 ```
 
+The event system keeps a stable public facade in `src/events.ts` while the deeper
+modules under `src/events/` separate concerns:
+
+- `types.ts` documents event payload contracts and the `EventMap`.
+- `priorities.ts` documents default event priorities used for bucket-aware scheduling.
+- `config.ts` documents queue, age, coalescing, and bucket thresholds.
+
 ### Adaptive CPU Budgets
 
 ```typescript

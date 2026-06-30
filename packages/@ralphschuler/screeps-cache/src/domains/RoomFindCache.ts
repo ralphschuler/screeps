@@ -4,6 +4,7 @@
  * Caches room.find() results with automatic TTL.
  */
 
+import { filterAllyCreeps } from "@ralphschuler/screeps-core";
 import { globalCache } from "../CacheManager";
 
 const NAMESPACE = "roomFind";
@@ -120,7 +121,7 @@ export function cachedFindSources(room: Room): Source[] {
 }
 
 export function cachedFindHostileCreeps(room: Room): Creep[] {
-  return cachedRoomFind(room, FIND_HOSTILE_CREEPS);
+  return filterAllyCreeps(cachedRoomFind<Creep>(room, FIND_HOSTILE_CREEPS));
 }
 
 export function cachedFindStructures(

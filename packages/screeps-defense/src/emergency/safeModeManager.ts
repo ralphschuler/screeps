@@ -13,7 +13,39 @@
 
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "@ralphschuler/screeps-core";
-import { filterAllyCreeps } from "../alliance/nonAggressionPact";
+import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+
+interface DefenseSettingsMemory {
+  defenseSettings?: {
+    /** Set false to roll back dangerous-hostile gating for safe mode activation. */
+    safeModeDangerousHostilesOnly?: boolean;
+  };
+}
+
+function isSafeModeDangerousHostilesOnlyEnabled(): boolean {
+  const mem = Memory as unknown as DefenseSettingsMemory;
+  return mem.defenseSettings?.safeModeDangerousHostilesOnly !== false;
+}
+
+function hasActiveDangerousBodyPart(creep: Creep): boolean {
+  return creep.body.some(part =>
+    part.hits > 0 &&
+    (part.type === ATTACK ||
+      part.type === RANGED_ATTACK ||
+      part.type === HEAL ||
+      part.type === WORK ||
+      part.type === CLAIM)
+  );
+}
+
+function countActiveParts(creep: Creep, bodyPart: BodyPartConstant): number {
+  return creep.body.filter(part => part.hits > 0 && part.type === bodyPart).length;
+}
+
+function isHighImpactSiegeHostile(creep: Creep): boolean {
+  if (creep.body.some(part => part.hits > 0 && part.boost)) return true;
+  return countActiveParts(creep, WORK) >= 5 || countActiveParts(creep, HEAL) >= 3;
+}
 
 /**
  * Safe Mode Manager Class
@@ -59,6 +91,15 @@ export class SafeModeManager {
       return false;
     }
 
+    // Safe mode is expensive and should not be spent on scouts/haulers or stale danger state.
+    const hostiles = getActualHostileCreeps(room);
+    const dangerousHostiles = hostiles.filter(hasActiveDangerousBodyPart);
+    const dangerousHostilesOnly = isSafeModeDangerousHostilesOnlyEnabled();
+    const safeModeHostiles = dangerousHostilesOnly ? dangerousHostiles : hostiles;
+    if (dangerousHostilesOnly && dangerousHostiles.length === 0) {
+      return false;
+    }
+
     // Check spawn health
     const spawns = room.find(FIND_MY_SPAWNS);
     for (const spawn of spawns) {
@@ -81,9 +122,6 @@ export class SafeModeManager {
     }
 
     // Check if we have enough defenders
-    // Filter allied entities - non-aggression pact (ROADMAP Section 25)
-    const allHostiles = room.find(FIND_HOSTILE_CREEPS);
-    const hostiles = filterAllyCreeps(allHostiles);
     const defenders = room.find(FIND_MY_CREEPS, {
       filter: c => {
         const memory = c.memory as unknown as { role?: string };
@@ -93,17 +131,17 @@ export class SafeModeManager {
     });
 
     // Trigger if overwhelmed (3:1 ratio)
-    if (hostiles.length > defenders.length * 3) {
-      logger.warn(`Overwhelmed: ${hostiles.length} hostiles vs ${defenders.length} defenders`, {
+    if (safeModeHostiles.length > defenders.length * 3) {
+      logger.warn(`Overwhelmed: ${safeModeHostiles.length} safe-mode-relevant hostiles vs ${defenders.length} defenders`, {
         subsystem: "Defense"
       });
       return true;
     }
 
-    // Check if hostiles are boosted
-    const boostedHostiles = hostiles.filter(h => h.body.some(p => p.boost));
-    if (boostedHostiles.length > 0 && defenders.length < boostedHostiles.length * 2) {
-      logger.warn(`Boosted hostiles detected: ${boostedHostiles.length}`, { subsystem: "Defense" });
+    // Check if hostiles are boosted or carry enough active WORK/HEAL to quickly dismantle or sustain a siege.
+    const highImpactHostiles = safeModeHostiles.filter(isHighImpactSiegeHostile);
+    if (highImpactHostiles.length > 0 && defenders.length < highImpactHostiles.length * 2) {
+      logger.warn(`High-impact siege hostiles detected: ${highImpactHostiles.length}`, { subsystem: "Defense" });
       return true;
     }
 

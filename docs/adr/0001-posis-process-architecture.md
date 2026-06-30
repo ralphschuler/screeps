@@ -150,7 +150,7 @@ class HarvesterProcess extends BaseProcess {
   - Less suitable for periodic processes (statistics, scanning)
   - Limited CPU budget controls
   - Different abstraction level (task vs process)
-- **Why rejected**: Actor model is complementary but not a replacement for process-based organization; we actually use screeps-tasks alongside POSIS
+- **Why rejected**: Actor model is complementary but not a replacement for process-based organization; we actually use screeps-roles alongside POSIS
 
 ## Performance Impact
 

@@ -52,11 +52,42 @@ describe("Role Definitions", () => {
       }
     });
 
+    it("should give harvesters carry capacity for source link fill handoff", () => {
+      for (const body of ROLE_DEFINITIONS.harvester.bodies) {
+        expect(body.parts).to.include(CARRY);
+      }
+    });
+
+    it("should preserve power harvester body ordering and costs", () => {
+      const [lowerCost, higherCost] = ROLE_DEFINITIONS.powerHarvester.bodies;
+
+      expect(lowerCost.parts).to.deep.equal([
+        ...Array(10).fill(TOUGH),
+        ...Array(20).fill(ATTACK),
+        ...Array(20).fill(MOVE)
+      ]);
+      expect(lowerCost.cost).to.equal(2700);
+      expect(lowerCost.minCapacity).to.equal(3000);
+
+      expect(higherCost.parts).to.deep.equal([
+        ...Array(5).fill(TOUGH),
+        ...Array(20).fill(ATTACK),
+        ...Array(25).fill(MOVE)
+      ]);
+      expect(higherCost.cost).to.equal(2900);
+      expect(higherCost.minCapacity).to.equal(2300);
+    });
+
     it("should have valid priorities", () => {
       for (const [role, def] of Object.entries(ROLE_DEFINITIONS)) {
         expect(def.priority).to.be.a("number", `${role} priority not a number`);
         expect(def.priority).to.be.greaterThan(0, `${role} priority not positive`);
       }
+    });
+
+    it("treats built RCL6 economy operators as normal-priority work", () => {
+      expect(ROLE_DEFINITIONS.mineralHarvester.priority).to.be.at.least(60);
+      expect(ROLE_DEFINITIONS.labTech.priority).to.be.at.least(60);
     });
 
     it("should have valid maxPerRoom", () => {

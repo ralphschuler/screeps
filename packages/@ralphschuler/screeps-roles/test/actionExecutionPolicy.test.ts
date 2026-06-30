@@ -14,6 +14,7 @@ describe("Action Execution Policy", () => {
     );
     expect(shouldClearStateForActionResult(ERR_INVALID_TARGET)).to.equal(true);
     expect(shouldClearStateForActionResult(ERR_NO_BODYPART)).to.equal(true);
+    expect(shouldClearStateForActionResult(ERR_ACCESS_DENIED)).to.equal(true);
   });
 
   it("should retain state for successful and retryable action results", () => {

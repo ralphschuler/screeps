@@ -20,7 +20,12 @@ describe("remote hauler dimensioning", () => {
 
     it("should calculate distance across quadrants", () => {
       const distance = calculatePathDistance("W1N1", "E1N1");
-      assert.equal(distance, 2, "Rooms across W/E should have correct distance");
+      assert.equal(distance, 3, "Rooms across W/E should have correct distance");
+    });
+
+    it("should count rooms across zero boundaries", () => {
+      assert.equal(calculatePathDistance("W0N0", "E0N0"), 1, "W0 and E0 are adjacent");
+      assert.equal(calculatePathDistance("E0N0", "E0S0"), 1, "N0 and S0 are adjacent");
     });
 
     it("should handle same room", () => {

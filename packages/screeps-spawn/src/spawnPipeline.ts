@@ -1,13 +1,56 @@
 import { logger } from "@ralphschuler/screeps-core";
+import {
+  addCombatPower,
+  analyzeDefenseAssistThreat,
+  buildDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
+  calculateCombatPower,
+  getActualHostileCreeps,
+  type DefenseAssistRole,
+  type ExistingDefensePower
+} from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { energyFlowPredictor } from "./botIntegration";
-import { powerBankHarvestingManager } from "./botIntegration";
+import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
+import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 import { executeSpawnRequest } from "./spawnRequestExecution";
+
+const PREEMPTABLE_QUEUED_ROLES = new Set<SpawnRequest["role"]>([
+  "pioneer",
+  "remoteHarvester",
+  "remoteHauler",
+  "scout"
+]);
+const PREEMPTIVE_REPLAN_INTERVAL = 5;
+
+interface SpawnPipelineCpuMemory {
+  spawnPipeline?: {
+    lastPreemptiveReplanTickByRoom?: Record<string, number>;
+  };
+}
+
+function getLastPreemptiveReplanTicks(): Record<string, number> {
+  const memory = Memory as unknown as SpawnPipelineCpuMemory;
+  memory.spawnPipeline ??= {};
+  memory.spawnPipeline.lastPreemptiveReplanTickByRoom ??= {};
+  return memory.spawnPipeline.lastPreemptiveReplanTickByRoom;
+}
+
+interface SpawnPipelineSettingsMemory {
+  spawnSettings?: {
+    /** Set false to roll back claimer preemption while existing low-priority queues drain. */
+    claimerPreemption?: boolean;
+  };
+}
+
+function isClaimerPreemptionEnabled(): boolean {
+  const mem = Memory as unknown as SpawnPipelineSettingsMemory;
+  return mem.spawnSettings?.claimerPreemption !== false;
+}
 
 export interface SpawnPipelineResult {
   roomName: string;
@@ -25,13 +68,15 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
   const queueSize = spawnQueue.getQueueSize(room.name);
   const bootstrapMode = isBootstrapMode(room.name, room);
   const emergencyRecoveryNeeded = isEmergencySpawnState(room.name) && !spawnQueue.hasEmergencySpawns(room.name);
-  if (queueSize > 0 && !emergencyRecoveryNeeded && !bootstrapMode) {
-    return;
-  }
+  const defenderNeeds = analyzeDefenderNeeds(room);
+  const currentDefenders = getCurrentDefenders(room);
 
   if (bootstrapMode) {
     if (queueSize > 0) {
       spawnQueue.clearQueue(room.name);
+    }
+    if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
+      addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
     }
     for (const request of createSpawnPlan(room, swarm).requests) {
       spawnQueue.addRequest(request);
@@ -39,11 +84,13 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     return;
   }
 
-  const defenderNeeds = analyzeDefenderNeeds(room);
-  const currentDefenders = getCurrentDefenders(room);
-
   if (defenderNeeds.guards > 0 || defenderNeeds.rangers > 0 || defenderNeeds.healers > 0) {
-    addDefenderRequests(room, defenderNeeds, currentDefenders);
+    addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
+  }
+
+  if (queueSize > 0 && !emergencyRecoveryNeeded) {
+    addPreemptiveRequestsWhenMissing(room, swarm);
+    return;
   }
 
   addPowerBankRequests(room);
@@ -71,14 +118,15 @@ export function processSpawnQueue(room: Room): number {
   }
 
   let spawnsInitiated = 0;
+  let availableEnergy = getEffectiveRoomEnergyAvailable(room);
 
   for (const spawn of availableSpawns) {
-    const request = spawnQueue.getNextRequest(room.name, room.energyAvailable);
+    const request = spawnQueue.getNextRequest(room.name, availableEnergy);
     if (!request) {
       break;
     }
 
-    if (shouldDelaySpawn(room, request)) {
+    if (shouldDelaySpawn(room, request, availableEnergy)) {
       logger.debug(
         `Delaying spawn of ${request.role} (priority: ${request.priority}) - waiting for better energy availability`,
         { subsystem: "SpawnPipeline" }
@@ -90,6 +138,7 @@ export function processSpawnQueue(room: Room): number {
 
     if (result === OK) {
       spawnsInitiated++;
+      availableEnergy -= request.body.cost;
       spawnQueue.markInProgress(room.name, request.id, spawn.id);
       spawnQueue.removeRequest(room.name, request.id);
 
@@ -132,49 +181,124 @@ export function runSpawnPipeline(room: Room, swarm: SwarmState): SpawnPipelineRe
   };
 }
 
+function addPreemptiveRequestsWhenMissing(room: Room, swarm: SwarmState): void {
+  const lastReplanTicks = getLastPreemptiveReplanTicks();
+  const lastReplanTick = lastReplanTicks[room.name] ?? -Infinity;
+  if (Game.time - lastReplanTick < PREEMPTIVE_REPLAN_INTERVAL) return;
+  lastReplanTicks[room.name] = Game.time;
+
+  const queuedRequestKeys = new Set(spawnQueue.getPendingRequests(room.name).map(getSpawnRequestDedupeKey));
+
+  for (const request of createSpawnPlan(room, swarm).requests) {
+    const isPriorityUpgrader = request.role === "upgrader" && request.priority >= SpawnPriority.HIGH;
+    const isClaimerPreemption = request.role === "claimer" && isClaimerPreemptionEnabled();
+    const isDefenseAssistPreemption = isDefenseAssistRequest(request);
+    if (
+      !PREEMPTABLE_QUEUED_ROLES.has(request.role) &&
+      !isPriorityUpgrader &&
+      !isClaimerPreemption &&
+      !isDefenseAssistPreemption
+    ) continue;
+
+    const requestKey = getSpawnRequestDedupeKey(request);
+    if (queuedRequestKeys.has(requestKey)) continue;
+
+    spawnQueue.addRequest(request);
+    queuedRequestKeys.add(requestKey);
+  }
+}
+
+function getSpawnRequestDedupeKey(request: SpawnRequest): string {
+  const task = (request.additionalMemory as { task?: string } | undefined)?.task ?? "";
+  return `${request.role}:${request.targetRoom ?? ""}:${task}`;
+}
+
+function isDefenseAssistRequest(request: SpawnRequest): boolean {
+  return (
+    request.priority >= SpawnPriority.HIGH &&
+    (request.additionalMemory as { task?: string; assistTarget?: string } | undefined)?.task === "defenseAssist"
+  );
+}
+
+function isHardDefenseThreat(threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>): boolean {
+  const strongest = threatProfile?.strongest;
+  return Boolean(strongest && (strongest.partCount >= 25 || strongest.score >= 250));
+}
+
 function addDefenderRequests(
   room: Room,
+  swarm: SwarmState,
   needs: ReturnType<typeof analyzeDefenderNeeds>,
   current: ReturnType<typeof getCurrentDefenders>
 ): void {
   const maxEnergy = room.energyCapacityAvailable;
-  const emergencyEnergy = room.energyAvailable;
-  const priority = needs.urgency >= 2.0 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
+  const emergencyEnergy = getEffectiveRoomEnergyAvailable(room);
+  const priority = needs.urgency >= 2.0 || swarm.danger >= 3 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
 
-  const guardsNeeded = Math.max(0, needs.guards - current.guards);
-  for (let i = 0; i < guardsNeeded; i++) {
-    addOptimizedRequest(
-      room,
-      "guard",
-      "military",
-      priority,
-      priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy,
-      `guard_defense_${Game.time}_${i}`
-    );
+  const threatProfile = analyzeDefenseAssistThreat(getActualHostileCreeps(room));
+  const defenderEnergy = isHardDefenseThreat(threatProfile)
+    ? maxEnergy
+    : priority === SpawnPriority.EMERGENCY
+      ? emergencyEnergy
+      : maxEnergy;
+  const pendingDefenders = getPendingDefenderPower(room.name, maxEnergy);
+  const activeDefenderPower = getActiveDefenderPower(room);
+  const existingPower = mergeDefensePower(activeDefenderPower, pendingDefenders.power);
+  const plan = calculateAggregateDefenseResponsePlan(
+    defenderEnergy,
+    threatProfile,
+    {
+      guard: Math.max(0, needs.guards - current.guards - pendingDefenders.counts.guards),
+      ranger: Math.max(0, needs.rangers - current.rangers - pendingDefenders.counts.rangers),
+      healer: Math.max(0, needs.healers - current.healers - pendingDefenders.counts.healers)
+    },
+    existingPower
+  );
+
+  const guardsNeeded = plan.counts.guard;
+  const guardBody = plan.bodies.guard ?? getThreatParityDefenderBody("guard", defenderEnergy, threatProfile);
+  if (guardsNeeded > 0 && guardBody) {
+    for (let i = 0; i < guardsNeeded; i++) {
+      addOptimizedRequest(
+        room,
+        "guard",
+        "military",
+        priority,
+        defenderEnergy,
+        `guard_defense_${Game.time}_${i}`,
+        guardBody
+      );
+    }
   }
 
-  const rangersNeeded = Math.max(0, needs.rangers - current.rangers);
-  for (let i = 0; i < rangersNeeded; i++) {
-    addOptimizedRequest(
-      room,
-      "ranger",
-      "military",
-      priority,
-      priority === SpawnPriority.EMERGENCY ? emergencyEnergy : maxEnergy,
-      `ranger_defense_${Game.time}_${i}`
-    );
+  const rangersNeeded = plan.counts.ranger;
+  const rangerBody = plan.bodies.ranger ?? getThreatParityDefenderBody("ranger", defenderEnergy, threatProfile);
+  if (rangersNeeded > 0 && rangerBody) {
+    for (let i = 0; i < rangersNeeded; i++) {
+      addOptimizedRequest(
+        room,
+        "ranger",
+        "military",
+        priority,
+        defenderEnergy,
+        `ranger_defense_${Game.time}_${i}`,
+        rangerBody
+      );
+    }
   }
 
-  const healersNeeded = Math.max(0, needs.healers - current.healers);
-  if (healersNeeded > 0 && needs.urgency >= 1.5) {
+  const healersNeeded = plan.counts.healer;
+  const healerBody = plan.bodies.healer ?? getThreatParityDefenderBody("healer", defenderEnergy, threatProfile);
+  if (healersNeeded > 0 && healerBody && (needs.urgency >= 1.5 || plan.healerFloor > 0)) {
     for (let i = 0; i < healersNeeded; i++) {
       addOptimizedRequest(
         room,
         "healer",
         "military",
         SpawnPriority.HIGH,
-        maxEnergy,
-        `healer_defense_${Game.time}_${i}`
+        defenderEnergy,
+        `healer_defense_${Game.time}_${i}`,
+        healerBody
       );
     }
   }
@@ -185,6 +309,67 @@ function addDefenderRequests(
       { subsystem: "SpawnPipeline" }
     );
   }
+}
+
+function getThreatParityDefenderBody(
+  role: DefenseAssistRole,
+  energyCapacity: number,
+  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
+): ReturnType<typeof buildDefenseAssistBody> {
+  if (!threatProfile) return null;
+  return buildDefenseAssistBody(role, energyCapacity, threatProfile);
+}
+
+function addRolePower(power: ExistingDefensePower, role: DefenseAssistRole, parts: Array<BodyPartConstant | BodyPartDefinition>): void {
+  const bodyPower = calculateCombatPower(parts);
+  power[role] = power[role] ? addCombatPower(power[role]!, bodyPower) : bodyPower;
+}
+
+function mergeDefensePower(a: ExistingDefensePower, b: ExistingDefensePower): ExistingDefensePower {
+  const merged: ExistingDefensePower = { ...a };
+  for (const role of ["guard", "ranger", "healer"] as const) {
+    const power = b[role];
+    if (power) merged[role] = merged[role] ? addCombatPower(merged[role]!, power) : power;
+  }
+  return merged;
+}
+
+function getActiveDefenderPower(room: Room): ExistingDefensePower {
+  const power: ExistingDefensePower = {};
+  for (const creep of room.find(FIND_MY_CREEPS)) {
+    if ((creep as { spawning?: boolean }).spawning) continue;
+    const role = (creep.memory as { role?: string }).role;
+    if (role !== "guard" && role !== "ranger" && role !== "healer") continue;
+    const activeBody = (creep.body ?? []).filter(part => part.hits > 0);
+    if (activeBody.length === 0) continue;
+    addRolePower(power, role, activeBody);
+  }
+  return power;
+}
+
+function getPendingDefenderPower(
+  roomName: string,
+  energyCapacity: number
+): { counts: { guards: number; rangers: number; healers: number }; power: ExistingDefensePower } {
+  const counts = { guards: 0, rangers: 0, healers: 0 };
+  const power: ExistingDefensePower = {};
+  for (const request of spawnQueue.getPendingRequests(roomName)) {
+    if (Game.time - request.createdAt > 1500) continue;
+    if (request.body.cost > energyCapacity) continue;
+    if (request.role === "guard") {
+      counts.guards++;
+      addRolePower(power, "guard", request.body.parts);
+    }
+    if (request.role === "ranger") {
+      counts.rangers++;
+      addRolePower(power, "ranger", request.body.parts);
+    }
+    if (request.role === "healer") {
+      counts.healers++;
+      addRolePower(power, "healer", request.body.parts);
+    }
+  }
+  return { counts, power };
 }
 
 function addPowerBankRequests(room: Room): void {
@@ -221,10 +406,17 @@ function addOptimizedRequest(
   family: SpawnRequest["family"],
   priority: SpawnPriority,
   maxEnergy: number,
-  id: string
+  id: string,
+  bodyOverride: SpawnRequest["body"] | null = null
 ): void {
   try {
-    const body = optimizeBody({ maxEnergy, role });
+    const body = bodyOverride ?? optimizeBody({ maxEnergy, role });
+    if (body.cost > maxEnergy) {
+      logger.warn(`Skipping unspawnable ${role} request in ${room.name}: body cost ${body.cost} exceeds ${maxEnergy}`, {
+        subsystem: "SpawnPipeline"
+      });
+      return;
+    }
     spawnQueue.addRequest({
       id,
       roomName: room.name,
@@ -241,15 +433,19 @@ function addOptimizedRequest(
   }
 }
 
-function shouldDelaySpawn(room: Room, request: SpawnRequest): boolean {
+function shouldDelaySpawn(room: Room, request: SpawnRequest, availableEnergy = room.energyAvailable): boolean {
   if (request.priority >= SpawnPriority.HIGH) {
     return false;
   }
 
-  const currentEnergy = room.energyAvailable;
+  const currentEnergy = availableEnergy;
   const bodyCost = request.body.cost;
 
   if (currentEnergy < bodyCost) {
+    return false;
+  }
+
+  if (request.role === "scout") {
     return false;
   }
 

@@ -146,6 +146,122 @@ describe("Room defense posture Module", () => {
     assert.deepEqual(planTowerDefenseIntent({ towers: [] }), []);
   });
 
+  it("honors the global tower wounded-target rollback flag", () => {
+    const previousMemory = (global as typeof globalThis & { Memory?: unknown }).Memory;
+    (global as typeof globalThis & { Memory?: unknown }).Memory = {
+      defenseSettings: { towerPreferWoundedTargets: false }
+    };
+
+    try {
+      const fullRanger = {
+        id: "full-ranger",
+        hits: 500,
+        hitsMax: 500,
+        body: [{ type: RANGED_ATTACK }],
+        getActiveBodyparts: (part: BodyPartConstant) => (part === RANGED_ATTACK ? 1 : 0)
+      } as unknown as Creep;
+      const woundedRanger = {
+        id: "wounded-ranger",
+        hits: 125,
+        hitsMax: 500,
+        body: [{ type: RANGED_ATTACK }],
+        getActiveBodyparts: (part: BodyPartConstant) => (part === RANGED_ATTACK ? 1 : 0)
+      } as unknown as Creep;
+      const tower = {
+        store: { getUsedCapacity: () => 100 }
+      } as unknown as StructureTower;
+
+      const actions = planTowerDefenseIntent({
+        towers: [tower],
+        hostiles: [fullRanger, woundedRanger],
+        posture: "eco",
+        rcl: 6,
+        danger: 2,
+        isCombatPosture: false,
+        wallRepairTarget: 10000
+      });
+
+      assert.equal(actions[0]?.target, fullRanger);
+    } finally {
+      (global as typeof globalThis & { Memory?: unknown }).Memory = previousMemory;
+    }
+  });
+
+  it("honors the global tower siege-healing rollback flag", () => {
+    const previousMemory = (global as typeof globalThis & { Memory?: unknown }).Memory;
+    (global as typeof globalThis & { Memory?: unknown }).Memory = {
+      defenseSettings: { towerHealInSiege: false }
+    };
+
+    try {
+      const damagedCreep = { hits: 50, hitsMax: 100 } as Creep;
+      const tower = {
+        store: { getUsedCapacity: () => 100 },
+        pos: { findClosestByRange: (type: FindConstant) => (type === FIND_MY_CREEPS ? damagedCreep : null) }
+      } as unknown as StructureTower;
+
+      const actions = planTowerDefenseIntent({
+        towers: [tower],
+        hostiles: [],
+        posture: "siege",
+        rcl: 6,
+        danger: 3,
+        isCombatPosture: true,
+        wallRepairTarget: 10000
+      });
+
+      assert.deepEqual(actions, []);
+    } finally {
+      (global as typeof globalThis & { Memory?: unknown }).Memory = previousMemory;
+    }
+  });
+
+  it("defers tower maintenance actions when bucket is in survival mode", () => {
+    const tower = {
+      store: { getUsedCapacity: () => 1000 },
+      pos: {
+        findClosestByRange: () => ({ hits: 100, hitsMax: 200, id: "damaged" })
+      }
+    } as unknown as StructureTower;
+
+    const actions = planTowerDefenseIntent({
+      towers: [tower],
+      hostiles: [],
+      posture: "eco",
+      rcl: 6,
+      danger: 1,
+      isCombatPosture: false,
+      wallRepairTarget: 10000,
+      bucket: 1000
+    });
+
+    assert.deepEqual(actions, []);
+  });
+
+  it("allows tower maintenance actions with healthy bucket", () => {
+    const tower = {
+      store: { getUsedCapacity: () => 1000 },
+      pos: {
+        findClosestByRange: () => ({ hits: 100, hitsMax: 200, id: "damaged" })
+      }
+    } as unknown as StructureTower;
+
+    const actions = planTowerDefenseIntent({
+      towers: [tower],
+      hostiles: [],
+      posture: "eco",
+      rcl: 6,
+      danger: 1,
+      isCombatPosture: false,
+      wallRepairTarget: 10000,
+      bucket: 2000
+    });
+
+    assert.lengthOf(actions, 1);
+    assert.equal(actions[0]?.type, "heal");
+    assert.equal(actions[0]?.target.id, "damaged");
+  });
+
   it("plans tower attack actions without executing tower side effects", () => {
     const attacked: Creep[] = [];
     const hostile = {
@@ -175,4 +291,5 @@ describe("Room defense posture Module", () => {
     assert.equal(actions[0]?.target, hostile);
     assert.deepEqual(attacked, []);
   });
+
 });

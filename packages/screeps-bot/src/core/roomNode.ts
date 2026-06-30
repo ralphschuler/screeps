@@ -111,10 +111,13 @@ export class RoomNode {
       return;
     }
 
+    const lowBucket = Game.cpu.bucket < 6000;
+
     // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
-    // This saves CPU when multiple creeps access the same objects (storage, sources, etc.)
-    // With 50+ creeps per room, this can save 1-2 CPU per tick.
-    prefetchRoomObjects(room);
+    // Skip under bucket pressure; direct reads are cheaper than warming broad caches for small active rooms.
+    if (!lowBucket) {
+      prefetchRoomObjects(room);
+    }
 
     // Get or initialize swarm state
     const swarm = memoryManager.getOrInitSwarmState(this.roomName);
@@ -123,8 +126,8 @@ export class RoomNode {
     const cache = getStructureCache(room);
 
     // Update metrics (only every 5 ticks to match pheromone update interval)
-    // This avoids expensive room.find() calls every tick
-    if (this.config.enablePheromones && Game.time % 5 === 0) {
+    // This avoids expensive room.find() calls every tick; defer signal-only metrics while bucket recovers.
+    if (this.config.enablePheromones && !lowBucket && Game.time % 5 === 0) {
       pheromoneManager.updateMetrics(room, swarm);
     }
 
@@ -137,17 +140,19 @@ export class RoomNode {
     // Check safe mode trigger
     safeModeManager.checkSafeMode(room, swarm);
 
-    // Update evolution stage
+    // Update evolution stage. Missing-structure scans are planning work; skip during recovery.
     if (this.config.enableEvolution) {
       evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
-      evolutionManager.updateMissingStructures(swarm, room);
+      if (!lowBucket) {
+        evolutionManager.updateMissingStructures(swarm, room);
+      }
     }
 
     // Update posture
     postureManager.updatePosture(swarm);
 
-    // Update pheromones
-    if (this.config.enablePheromones) {
+    // Update pheromones. These are strategic signals, not survival work, under bucket pressure.
+    if (this.config.enablePheromones && !lowBucket) {
       pheromoneManager.updatePheromones(swarm, room);
     }
 
@@ -159,17 +164,21 @@ export class RoomNode {
     // Run construction
     // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
     // Regular construction runs at standard interval to balance CPU usage
-    if (this.config.enableConstruction && postureManager.allowsBuilding(swarm.posture)) {
+    if (this.config.enableConstruction && !lowBucket) {
       const rcl = room.controller?.level ?? 1;
       const constructionInterval = roomConstructionManager.getConstructionInterval(rcl);
+      const allowFullConstruction = postureManager.allowsBuilding(swarm.posture);
+      const allowCriticalDefenseConstruction = !allowFullConstruction && swarm.danger >= 2;
 
-      if (Game.time % constructionInterval === 0) {
-        roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns);
+      if (Game.time % constructionInterval === 0 && (allowFullConstruction || allowCriticalDefenseConstruction)) {
+        roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns, {
+          criticalOnly: allowCriticalDefenseConstruction
+        });
       }
     }
 
     // Run resource processing (every 5 ticks)
-    if (this.config.enableProcessing && Game.time % 5 === 0) {
+    if (this.config.enableProcessing && !lowBucket && Game.time % 5 === 0) {
       roomEconomyManager.runResourceProcessing(room, swarm, {
         factory: cache.factory,
         powerSpawn: cache.powerSpawn,

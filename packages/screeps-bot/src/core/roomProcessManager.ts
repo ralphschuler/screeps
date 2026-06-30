@@ -14,7 +14,8 @@
  * - Frequency tiers: Critical (every tick), Economic (every 5 ticks distributed)
  */
 
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+import { getConfig } from "../config";
 import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
 import { roomManager } from "./roomNode";
@@ -34,6 +35,15 @@ const ROOM_DISTRIBUTION_CONFIG = {
 /**
  * Get process priority for a room based on its state
  */
+function getMyUsername(): string {
+  const spawns = Game.spawns ?? {};
+  const firstSpawn = Object.values(spawns)[0] as StructureSpawn | undefined;
+  return firstSpawn?.owner?.username ?? "";
+}
+
+/**
+ * Get room process priority based on threat and strategic value.
+ */
 function getRoomProcessPriority(room: Room): ProcessPriority {
   // Rooms under attack get critical priority
   const hostiles = getActualHostileCreeps(room);
@@ -47,7 +57,8 @@ function getRoomProcessPriority(room: Room): ProcessPriority {
   }
 
   // Reserved rooms get medium priority
-  if (room.controller?.reservation?.username === "ralphschuler") {
+  const myUsername = getMyUsername();
+  if (myUsername && room.controller?.reservation?.username === myUsername) {
     return ProcessPriority.MEDIUM;
   }
 
@@ -300,14 +311,21 @@ export class RoomProcessManager {
   }
 
   /**
-   * Get minimum bucket requirement based on priority
+   * Get minimum bucket requirement based on priority.
    *
-   * REMOVED: All bucket requirements - user regularly depletes bucket and doesn't
-   * want minBucket limitations blocking processes. Returns 0 for all priorities.
-   * Bucket mode in kernel still provides priority-based filtering during low bucket.
+   * Competitive strategy: keep critical room coordination and owned-room control
+   * running, but defer peripheral/strategic room work when bucket drops.
    */
-  private getMinBucketForPriority(_priority: ProcessPriority): number {
-    return 0; // No bucket requirements - processes run regardless of bucket level
+  private getMinBucketForPriority(priority: ProcessPriority): number {
+    const { lowMode } = getConfig().cpu.bucketThresholds;
+
+    // Owned-room control and emergency logic should keep running.
+    if (priority >= ProcessPriority.HIGH) {
+      return 0;
+    }
+
+    // Other room work is optional under pressure.
+    return lowMode;
   }
 
   /**

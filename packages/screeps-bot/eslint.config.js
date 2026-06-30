@@ -25,6 +25,8 @@ export default [
         PathFinder: "readonly",
         RawMemory: "readonly",
         InterShardMemory: "readonly",
+        CONTROLLER_STRUCTURES: "readonly",
+        MAX_CONSTRUCTION_SITES: "readonly",
         
         // Screeps constants - Error codes
         OK: "readonly",

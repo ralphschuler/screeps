@@ -3,7 +3,7 @@ import { Game as MockGame, Memory as MockMemory } from "./mock";
 import * as loggerModule from "../../src/core/logger";
 import { Kernel } from "../../src/core/kernel";
 
-// Use global sinon from test setup (setup-mocha.js)
+// Use global sinon from test setup (setup-mocha.mjs)
 declare const sinon: typeof import("sinon");
 
 async function reloadSwarmBot() {

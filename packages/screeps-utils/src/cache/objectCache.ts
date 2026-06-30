@@ -188,6 +188,20 @@ function evictLRU(cache: ObjectCacheStore): void {
   console.log(`[ObjectCache] WARN: Cache LRU eviction: removed ${entriesToRemove} entries, size: ${cache.objects.size}, threshold: ${EVICTION_THRESHOLD}`);
 }
 
+/**
+ * Store an object in the cache without recording lookup statistics.
+ * Used by warming/prefetch paths that already hold object references.
+ */
+function setCachedObject(cache: ObjectCacheStore, obj: _HasId | null | undefined, ttl: number, currentTick: number): void {
+  if (!obj) return;
+
+  cache.objects.set(obj.id, {
+    value: obj,
+    expiresAt: currentTick + ttl,
+    lastAccessed: currentTick
+  });
+}
+
 // =============================================================================
 // Public API
 // =============================================================================
@@ -286,35 +300,19 @@ export function prefetchRoomObjects(room: Room): void {
   const cache = getCacheStore();
   const currentTick = Game.time;
   
-  // Helper to add to cache with proper TTL
-  const addToCache = (obj: any, ttl: number) => {
-    if (!obj?.id) return;
-    cache.objects.set(obj.id, {
-      value: obj,
-      expiresAt: currentTick + ttl,
-      lastAccessed: currentTick
-    });
-  };
-  
   // Prefetch storage (structure - 10 tick TTL)
-  if (room.storage) {
-    addToCache(room.storage, STRUCTURE_TTL);
-  }
+  setCachedObject(cache, room.storage, STRUCTURE_TTL, currentTick);
   
   // Prefetch terminal (structure - 10 tick TTL)
-  if (room.terminal) {
-    addToCache(room.terminal, STRUCTURE_TTL);
-  }
+  setCachedObject(cache, room.terminal, STRUCTURE_TTL, currentTick);
   
   // Prefetch controller (structure - 10 tick TTL)
-  if (room.controller) {
-    addToCache(room.controller, STRUCTURE_TTL);
-  }
+  setCachedObject(cache, room.controller, STRUCTURE_TTL, currentTick);
   
   // Prefetch sources (resource - 5 tick TTL)
   const sources = room.find(FIND_SOURCES);
   for (const source of sources) {
-    addToCache(source, RESOURCE_TTL);
+    setCachedObject(cache, source, RESOURCE_TTL, currentTick);
   }
 }
 
@@ -409,19 +407,11 @@ export function warmCache(): void {
       const currentTick = Game.time;
       
       for (const spawn of spawns) {
-        cache.objects.set(spawn.id, {
-          value: spawn,
-          expiresAt: currentTick + STRUCTURE_TTL,
-          lastAccessed: currentTick
-        });
+        setCachedObject(cache, spawn, STRUCTURE_TTL, currentTick);
       }
       
       for (const tower of towers) {
-        cache.objects.set(tower.id, {
-          value: tower,
-          expiresAt: currentTick + STRUCTURE_TTL,
-          lastAccessed: currentTick
-        });
+        setCachedObject(cache, tower, STRUCTURE_TTL, currentTick);
       }
     }
   }
@@ -446,7 +436,7 @@ export function clearObjectCache(): void {
  * Useful for benchmarking specific operations.
  */
 export function resetCacheStats(): void {
-  const g = global as any;
+  const g = global as GlobalWithObjectCache;
   if (g._objectCache) {
     g._objectCache.stats = { hits: 0, misses: 0 };
   }

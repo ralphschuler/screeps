@@ -6,7 +6,7 @@
 
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
-import { findCachedClosest , cachedRoomFind, cachedFindSources, cachedFindDroppedResources } from "../../cache";
+import { findCachedClosest, cachedFindSources } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 
 /**
@@ -299,40 +299,30 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     // Remote hauling has travel costs, so we want to maximize energy per trip
     const minEnergyThreshold = ctx.creep.store.getCapacity(RESOURCE_ENERGY) * REMOTE_HAULER_ENERGY_THRESHOLD;
 
-    // In remote room - collect from containers or ground
-    const containers = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
-      filter: (s: Structure) => 
-        s.structureType === STRUCTURE_CONTAINER && 
-        (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold,
-      filterKey: 'remoteContainers'
-    }) as StructureContainer[];
+    // In remote room - use the per-tick context caches instead of repeating room.find/cache lookups per hauler.
+    // Capacity checks stay fresh because the dynamic threshold depends on this creep's carry capacity.
+    const containers = ctx.containers.filter(
+      c => c.store.getUsedCapacity(RESOURCE_ENERGY) >= minEnergyThreshold
+    );
 
     if (containers.length > 0) {
       const closest = findCachedClosest(ctx.creep, containers, "remoteHauler_remoteCont", 10);
       if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
     }
 
-    // Check for dropped energy (cache 3 ticks - they disappear quickly)
-    // For dropped resources, collect even smaller amounts to prevent decay
-    const dropped = cachedFindDroppedResources(ctx.room, RESOURCE_ENERGY).filter(r => r.amount > 50);
+    // Dropped resources are already collected into the behavior context once per creep tick.
+    const dropped = ctx.droppedResources.filter(r => r.resourceType === RESOURCE_ENERGY && r.amount > 50);
 
     if (dropped.length > 0) {
       const closest = findCachedClosest(ctx.creep, dropped, "remoteHauler_remoteDrop", 3);
       if (closest) return { type: "pickup", target: closest };
     }
 
-    // If no energy meets threshold, wait near a container for it to fill
-    if (containers.length === 0) {
-      const anyContainer = cachedRoomFind(ctx.room, FIND_STRUCTURES, {
-        filter: (s: Structure) => s.structureType === STRUCTURE_CONTAINER,
-        filterKey: 'containers'
-      }) as StructureContainer[];
-      
-      if (anyContainer.length > 0) {
-        const closest = findCachedClosest(ctx.creep, anyContainer, "remoteHauler_waitCont", 20);
-        if (closest && ctx.creep.pos.getRangeTo(closest) > 2) {
-          return { type: "remoteMoveTo", target: closest, routeType: "hauler" };
-        }
+    // If no energy meets threshold, wait near a container for it to fill.
+    if (containers.length === 0 && ctx.containers.length > 0) {
+      const closest = findCachedClosest(ctx.creep, ctx.containers, "remoteHauler_waitCont", 20);
+      if (closest && ctx.creep.pos.getRangeTo(closest) > 2) {
+        return { type: "remoteMoveTo", target: closest, routeType: "hauler" };
       }
     }
 

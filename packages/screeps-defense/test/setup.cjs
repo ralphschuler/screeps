@@ -129,12 +129,6 @@ const stubs = {
     fulfillDefenseRequest: () => ({})
   },
   
-  '@bot/layouts/roadNetworkPlanner': {
-    getRoadNetwork: () => ({}),
-    planRoadNetwork: () => ({}),
-    buildRoadNetwork: () => ({})
-  },
-  
   '@bot/memory/schemas': {
     SwarmCreepMemory: {},
     RoomMemory: {},
@@ -511,6 +505,7 @@ global.WALL_HITS = 1;
 global.WALL_HITS_MAX = 300000000;
 global.REPAIR_COST = 0.01;
 global.REPAIR_POWER = 100;
+global.DISMANTLE_POWER = 50;
 
 // Energy and source constants
 global.ENERGY_REGEN_TIME = 300;

@@ -28,8 +28,8 @@ The Screeps Framework follows these core principles:
 
 ### Prerequisites
 
-- Node.js 16.x - 20.x (18.x recommended)
-- npm >= 8.0.0
+- Node.js 24.x (`>=24 <25`)
+- npm >= 10.0.0
 - TypeScript knowledge
 - Screeps game knowledge
 

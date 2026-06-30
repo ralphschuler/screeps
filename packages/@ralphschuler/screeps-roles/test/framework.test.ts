@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from "mocha";
 import { expect } from "chai";
 import { createContext, clearRoomCaches } from "../src/framework/BehaviorContext";
+import { memoryManager } from "../src/memory/manager";
 import { createMockCreep, createMockRoom, resetMockGame } from "./setup";
 
 describe("@ralphschuler/screeps-roles", () => {
@@ -78,5 +79,15 @@ describe("@ralphschuler/screeps-roles", () => {
     // The cache is internal, so we can't directly verify it's cleared,
     // but we can verify the function is callable and doesn't throw
     expect(clearRoomCaches).to.be.a("function");
+  });
+
+  it("initializes swarm state with roadmap lifecycle defaults", () => {
+    const swarm = memoryManager.getOrInitSwarmState("W1N1");
+
+    expect(swarm.colonyLevel).to.equal("seedNest");
+    expect(swarm.posture).to.equal("eco");
+    expect(swarm.role).to.equal("capital");
+    expect(swarm.metrics.energyNeed).to.equal(0);
+    expect((global as any).Memory.rooms.W1N1.swarm).to.equal(swarm);
   });
 });

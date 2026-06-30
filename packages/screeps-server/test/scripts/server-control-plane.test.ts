@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import {
+  buildTerrainSetupCommand,
   createServerControlPlane,
   isLoopbackHost,
   parseTickRate,
@@ -19,6 +20,22 @@ describe('server-control-plane module', () => {
     })).to.throw('Refusing to bind');
   });
 
+  it('builds terrain setup that repairs missing normal-room terrain before refreshing map caches', () => {
+    const command = buildTerrainSetupCommand({ shardName: 'shard0', tickRate: 10 });
+
+    expect(command).to.contain("storage.env.set('shardName'");
+    expect(command).to.contain('MAIN_LOOP_MIN_DURATION');
+    expect(command).to.contain('setTickRate');
+    expect(command).to.contain("storage.db.rooms.find({status:'normal'})");
+    expect(command).to.contain('storage.env.smembers(storage.env.keys.ACTIVE_ROOMS)');
+    expect(command).to.contain("storage.db.rooms.insert({_id:roomName,status:'normal',sourceKeepers:false})");
+    expect(command).to.contain("storage.db['rooms.terrain'].insert({room:roomName,terrain:plainTerrain})");
+    expect(command).to.contain("storage.env.set(storage.env.keys.ACCESSIBLE_ROOMS,JSON.stringify(Array.from(roomNames)))");
+    expect(command.indexOf('ensureNormalRoomTerrainData()')).to.be.lessThan(
+      command.indexOf('map.updateTerrainData()'),
+    );
+  });
+
   it('executes terrain setup through an injected CLI transport', async () => {
     const commands: string[] = [];
     const plane = createServerControlPlane({
@@ -36,9 +53,7 @@ describe('server-control-plane module', () => {
     await plane.ensureTerrainData();
 
     expect(commands).to.have.length(1);
-    expect(commands[0]).to.contain("storage.env.set('shardName'");
-    expect(commands[0]).to.contain('MAIN_LOOP_MIN_DURATION');
-    expect(commands[0]).to.contain('setTickRate');
+    expect(commands[0]).to.equal(buildTerrainSetupCommand({ shardName: 'shard0', tickRate: 10 }));
   });
 
   it('fails terrain setup when CLI reports an error', async () => {

@@ -176,6 +176,54 @@ describe("Kernel Process Scheduling", () => {
 
       expect(executionOrder).to.deep.equal(["critical", "medium", "low"]);
     });
+
+    it("should execute explicit dependency parent before child even if child has higher priority", () => {
+      const executionOrder: string[] = [];
+
+      kernel.registerProcess({
+        id: "parent",
+        name: "Parent Process",
+        priority: ProcessPriority.MEDIUM,
+        topology: { group: "room", layer: "room" },
+        execute: () => { executionOrder.push("parent"); }
+      });
+
+      kernel.registerProcess({
+        id: "child",
+        name: "Child Process",
+        priority: ProcessPriority.CRITICAL,
+        topology: { parentId: "parent", group: "child", layer: "child" },
+        execute: () => { executionOrder.push("child"); }
+      });
+
+      kernel.run();
+
+      expect(executionOrder).to.deep.equal(["parent", "child"]);
+    });
+
+    it("should keep processes runnable when dependency graph is cyclic", () => {
+      const executionOrder: string[] = [];
+
+      kernel.registerProcess({
+        id: "cycle-a",
+        name: "Cycle A",
+        priority: ProcessPriority.LOW,
+        topology: { parentId: "cycle-b", group: "cycle" },
+        execute: () => { executionOrder.push("cycle-a"); }
+      });
+
+      kernel.registerProcess({
+        id: "cycle-b",
+        name: "Cycle B",
+        priority: ProcessPriority.HIGH,
+        topology: { parentId: "cycle-a", group: "cycle" },
+        execute: () => { executionOrder.push("cycle-b"); }
+      });
+
+      kernel.run();
+
+      expect(executionOrder).to.deep.equal(["cycle-b", "cycle-a"]);
+    });
   });
 
   describe("Wrap-Around Queue Behavior", () => {
@@ -354,6 +402,72 @@ describe("Kernel Process Scheduling", () => {
 
       expect(kernel.hasCpuBudget()).to.be.false;
     });
+
+    it("should adapt high-frequency budget downward after heavy utilization", () => {
+      const originalGetUsed = Game.cpu.getUsed;
+      let used = 0;
+      Game.cpu.getUsed = () => used;
+      Game.cpu.limit = 100;
+
+      kernel.registerProcess({
+        id: "heavy-proc",
+        name: "Heavy",
+        frequency: "high",
+        interval: 1,
+        execute: () => {
+          used += 70;
+        }
+      });
+
+      try {
+        used = 0;
+        kernel.run();
+        const preAdaptBudget = kernel.getConfig().frequencyCpuBudgets.high;
+        Game.time++;
+
+        used = 0;
+        kernel.run();
+
+        const adaptedBudget = kernel.getConfig().frequencyCpuBudgets.high;
+
+        expect(adaptedBudget).to.be.lessThan(preAdaptBudget);
+      } finally {
+        Game.cpu.getUsed = originalGetUsed;
+      }
+    });
+
+    it("should adapt high-frequency budget upward after low utilization", () => {
+      const originalGetUsed = Game.cpu.getUsed;
+      let used = 0;
+      Game.cpu.getUsed = () => used;
+      Game.cpu.limit = 100;
+
+      kernel.registerProcess({
+        id: "idle-proc",
+        name: "Idle",
+        frequency: "high",
+        interval: 1,
+        execute: () => {
+          // no CPU work
+        }
+      });
+
+      try {
+        used = 0;
+        kernel.run();
+        const preAdaptBudget = kernel.getConfig().frequencyCpuBudgets.high;
+        Game.time++;
+
+        used = 0;
+        kernel.run();
+
+        const adaptedBudget = kernel.getConfig().frequencyCpuBudgets.high;
+
+        expect(adaptedBudget).to.be.greaterThan(preAdaptBudget);
+      } finally {
+        Game.cpu.getUsed = originalGetUsed;
+      }
+    });
   });
 
   describe("Process Interval Timing", () => {
@@ -408,6 +522,54 @@ describe("Kernel Process Scheduling", () => {
 
       // Should be 2 now
       expect(executionCount).to.equal(2);
+    });
+
+    it("should stagger repeated runs for same-interval processes", () => {
+      const executionLog = new Map<string, number[]>();
+
+      const register = (id: string, interval: number): void => {
+        kernel.registerProcess({
+          id,
+          name: id,
+          interval,
+          execute: () => {
+            const times = executionLog.get(id) ?? [];
+            times.push(Game.time);
+            executionLog.set(id, times);
+          }
+        });
+      };
+
+      register("jitter-alpha", 20);
+      register("jitter-bravo", 20);
+      register("jitter-charlie", 20);
+
+      for (let i = 0; i < 90; i++) {
+        kernel.run();
+        Game.time++;
+      }
+
+      const alpha = executionLog.get("jitter-alpha")!;
+      const bravo = executionLog.get("jitter-bravo")!;
+      const charlie = executionLog.get("jitter-charlie")!;
+
+      expect(alpha).to.have.length.greaterThanOrEqual(3);
+      expect(bravo).to.have.length.greaterThanOrEqual(3);
+      expect(charlie).to.have.length.greaterThanOrEqual(3);
+
+      // Initial tick is still co-located by design (run once),
+      // but jitter should separate subsequent repeats.
+      expect(alpha[1]).to.not.equal(bravo[1]);
+      expect(alpha[1]).to.not.equal(charlie[1]);
+      expect(bravo[1]).to.not.equal(charlie[1]);
+
+      // All should keep steady spacing, with deterministic jitter-adjusted interval.
+      for (const runs of [alpha, bravo, charlie]) {
+        for (let i = 1; i < runs.length; i++) {
+          expect(runs[i] - runs[i - 1]).to.be.at.least(18);
+          expect(runs[i] - runs[i - 1]).to.be.at.most(22);
+        }
+      }
     });
 
     it("should run high frequency processes every tick", () => {

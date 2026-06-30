@@ -72,27 +72,26 @@ const target = getCachedObjectById(targetId);
 const sources = cachedRoomFind(room, FIND_SOURCES);
 
 // Structure caching
-const towers = getRoomTowers('W1N1');
+const room = Game.rooms['W1N1'];
+const towers = room ? getRoomTowers(room) : [];
 ```
 
 ### Cache Coherence
 
 ```typescript
-import { cacheCoherence, CacheLayer } from '@ralphschuler/screeps-cache';
+import { cacheCoherence, CacheLayer, globalCache } from '@ralphschuler/screeps-cache';
 
-// Register a cache
-cacheCoherence.registerCache('myCache', {
-  name: 'myCache',
-  layer: CacheLayer.L1,
-  invalidate: (scope) => {
-    if (scope.room === 'W1N1') {
-      // Invalidate cache
-    }
-  }
+// Register a namespace managed by a CacheManager instance
+cacheCoherence.registerCache('path', globalCache, CacheLayer.L2, {
+  priority: 50
 });
 
-// Trigger invalidation
-cacheCoherence.invalidate({ room: 'W1N1', reason: 'structure.destroyed' });
+// Trigger room-scoped invalidation for colon-delimited path keys
+cacheCoherence.invalidate({
+  type: 'room',
+  roomName: 'W1N1',
+  namespaces: ['path']
+});
 ```
 
 ### Cache Statistics
@@ -114,9 +113,9 @@ console.log(summary);
 ### Cache Manager
 
 - `globalCache.get(key, options)` - Get or compute cached value
-- `globalCache.set(key, value, ttl?)` - Set cached value
-- `globalCache.delete(key)` - Remove cached value
-- `globalCache.clear()` - Clear all cached values
+- `globalCache.set(key, value, options?)` - Set cached value with namespace/TTL options
+- `globalCache.invalidate(key, namespace?)` - Remove cached value
+- `globalCache.clear(namespace?)` - Clear one namespace or all cached values
 
 ### Cache Options
 
@@ -173,6 +172,8 @@ CacheManager (Core)
 ├── HeapStore (L1 - Global object)
 ├── MemoryStore (L2 - Memory)
 └── CacheCoherence (Invalidation protocol)
+    ├── cache-coherence/invalidationPatterns.ts  # escaped, cached regex keys
+    ├── cache-coherence/memoryBudgetPolicy.ts    # priority-based eviction policy
     └── Domain Wrappers
         ├── BodyPartCache
         ├── ObjectCache
@@ -183,6 +184,11 @@ CacheManager (Core)
         ├── GameObjectCache
         └── StructureCache
 ```
+
+`CacheCoherenceManager` stays as the public facade. The internal helpers keep the
+hot-path orchestration shallow: invalidation pattern construction is isolated from
+memory-budget enforcement, and eviction policy can be tested without changing the
+public API.
 
 ## Integration with Core
 

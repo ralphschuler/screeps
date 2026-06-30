@@ -11,6 +11,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { getTooAngelMemory } from "./memoryInit";
+import { normalizeJsonObjectMessage } from "./messageParsing";
 import { getNPCRooms } from "./npcDetector";
 import type { TooAngelQuest, TooAngelQuestMemory, TooAngelQuestType } from "./types";
 
@@ -32,8 +33,11 @@ const QUEST_CONFIG = {
  * Parse quest message from terminal transaction
  */
 export function parseQuestMessage(description: string): TooAngelQuest | null {
+  const json = normalizeJsonObjectMessage(description);
+  if (!json) return null;
+
   try {
-    const parsed = JSON.parse(description);
+    const parsed = JSON.parse(json);
 
     if (parsed.type === "quest" && parsed.id && parsed.room && parsed.quest && typeof parsed.end === "number") {
       // Validate deadline is in the future (if not a completion message)
@@ -189,52 +193,56 @@ export function processQuestMessages(): void {
   const memory = getTooAngelMemory();
 
   for (const transaction of Game.market.incomingTransactions) {
-    if (transaction.time <= memory.lastProcessedTick) {
-      continue;
-    }
-
-    // Skip market orders
-    if (transaction.order) {
-      continue;
-    }
-
-    if (!transaction.description) {
-      continue;
-    }
-
-    const quest = parseQuestMessage(transaction.description);
-
-    if (quest) {
-      logger.info(`Received quest ${quest.id}: ${quest.quest} in ${quest.room} (deadline: ${quest.end})`, {
-        subsystem: "TooAngel"
-      });
-
-      // Check if this is a quest completion confirmation
-      if (quest.result) {
-        handleQuestCompletion(quest);
+    try {
+      if (transaction.time <= memory.lastProcessedTick) {
         continue;
       }
 
-      // Store quest in memory
-      const existing = memory.activeQuests![quest.id];
-
-      memory.activeQuests![quest.id] = {
-        id: quest.id,
-        type: quest.quest,
-        status: existing?.status === "completed" || existing?.status === "failed" ? existing.status : "active",
-        targetRoom: quest.room,
-        originRoom: quest.origin || transaction.from,
-        deadline: quest.end,
-        appliedAt: existing?.appliedAt,
-        receivedAt: Game.time,
-        assignedCreeps: []
-      };
-
-      // Check if we support this quest type
-      if (!isSupportedQuestType(quest.quest)) {
-        logger.warn(`Received unsupported quest type: ${quest.quest}`, { subsystem: "TooAngel" });
-        memory.activeQuests![quest.id].status = "failed";
+      // Skip market orders
+      if (transaction.order) {
+        continue;
       }
+
+      if (!transaction.description) {
+        continue;
+      }
+
+      const quest = parseQuestMessage(transaction.description);
+
+      if (quest) {
+        logger.info(`Received quest ${quest.id}: ${quest.quest} in ${quest.room} (deadline: ${quest.end})`, {
+          subsystem: "TooAngel"
+        });
+
+        // Check if this is a quest completion confirmation
+        if (quest.result) {
+          handleQuestCompletion(quest);
+          continue;
+        }
+
+        // Store quest in memory
+        const existing = memory.activeQuests![quest.id];
+
+        memory.activeQuests![quest.id] = {
+          id: quest.id,
+          type: quest.quest,
+          status: existing?.status === "completed" || existing?.status === "failed" ? existing.status : "active",
+          targetRoom: quest.room,
+          originRoom: quest.origin || transaction.from,
+          deadline: quest.end,
+          appliedAt: existing?.appliedAt,
+          receivedAt: Game.time,
+          assignedCreeps: []
+        };
+
+        // Check if we support this quest type
+        if (!isSupportedQuestType(quest.quest)) {
+          logger.warn(`Received unsupported quest type: ${quest.quest}`, { subsystem: "TooAngel" });
+          memory.activeQuests![quest.id].status = "failed";
+        }
+      }
+    } catch (error) {
+      logger.warn(`Skipping malformed TooAngel quest transaction: ${error}`, { subsystem: "TooAngel" });
     }
   }
 

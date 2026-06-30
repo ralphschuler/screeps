@@ -21,13 +21,21 @@
  * Addresses Issue: #34
  */
 
+import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+import {
+  getDominantPheromone,
+  getPheromoneBarFillWidth,
+  getPheromoneColor
+} from "./room-visualizer/pheromoneRules";
+import {
+  calculateCreepThreat,
+  getStructureDepthOpacity,
+  getThreatVisualStyle
+} from "./room-visualizer/renderRules";
+import { getFlowPoint, getTopStoredResources } from "./room-visualizer/resourceFlowRules";
 import type { PheromoneState, SwarmState, MemoryManager } from "./types";
 import { VisualizationLayer } from "./types";
-import { createLogger } from "./logger";
 import { visualizationManager } from "./visualizationManager";
-
-// Logger is available for future use if needed
-const _logger = createLogger("RoomVisualizer");
 
 /**
  * Visualization configuration
@@ -60,21 +68,6 @@ const DEFAULT_CONFIG: VisualizerConfig = {
   showRoomStats: true,
   showStructures: false,
   opacity: 0.5
-};
-
-/**
- * Color schemes for pheromones
- */
-const PHEROMONE_COLORS: Record<keyof PheromoneState, string> = {
-  expand: "#00ff00", // Green
-  harvest: "#ffff00", // Yellow
-  build: "#ff8800", // Orange
-  upgrade: "#0088ff", // Blue
-  defense: "#ff0000", // Red
-  war: "#ff00ff", // Magenta
-  siege: "#880000", // Dark red
-  logistics: "#00ffff", // Cyan
-  nukeTarget: "#ff0088" // Pink
 };
 
 /**
@@ -181,7 +174,7 @@ export class RoomVisualizer {
     // Room name and RCL
     const rcl = room.controller?.level ?? 0;
     const progress = room.controller
-      ? `${Math.round((room.controller.progress / room.controller.progressTotal) * 100)}%`
+      ? `${room.controller.progressTotal > 0 ? Math.round((room.controller.progress / room.controller.progressTotal) * 100) : 0}%`
       : "N/A";
     visual.text(`${room.name} | RCL ${rcl} (${progress})`, x, y, {
       align: "left",
@@ -232,7 +225,7 @@ export class RoomVisualizer {
 
     // Creep count
     const creeps = room.find(FIND_MY_CREEPS).length;
-    const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+    const hostiles = getActualHostileCreeps(room).length;
     visual.text(`Creeps: ${creeps} | Hostiles: ${hostiles}`, x, y, {
       align: "left",
       font: "0.4 monospace",
@@ -274,13 +267,11 @@ export class RoomVisualizer {
     });
     y += 0.6;
 
-    const maxValue = 100;
-
     if (!swarm.pheromones) return;
 
     for (const [key, value] of Object.entries(swarm.pheromones) as [keyof PheromoneState, number][]) {
-      const color = PHEROMONE_COLORS[key] ?? "#888888";
-      const fillWidth = Math.min(1, value / maxValue) * barWidth;
+      const color = getPheromoneColor(key);
+      const fillWidth = getPheromoneBarFillWidth(value, barWidth);
 
       // Background bar
       visual.rect(x, y, barWidth, barHeight, {
@@ -308,47 +299,27 @@ export class RoomVisualizer {
   }
 
   /**
-   * Minimum pheromone value to display in heatmap
-   */
-  private static readonly HEATMAP_MIN_THRESHOLD = 10;
-
-  /**
    * Draw pheromone heatmap overlay
    */
   private drawPheromoneHeatmap(visual: RoomVisual, swarm: SwarmState): void {
     if (!swarm.pheromones) return;
 
-    // Find dominant pheromone (highest value)
-    let maxPheromone: keyof PheromoneState | null = null;
-    let maxValue = RoomVisualizer.HEATMAP_MIN_THRESHOLD;
-
-    for (const [key, value] of Object.entries(swarm.pheromones) as [keyof PheromoneState, number][]) {
-      if (value > maxValue) {
-        maxValue = value;
-        maxPheromone = key;
-      }
-    }
-
-    // Only draw if there's a significant dominant pheromone
-    if (!maxPheromone || maxValue < RoomVisualizer.HEATMAP_MIN_THRESHOLD) return;
-
-    // TypeScript now knows maxPheromone is not null here
-    const color = PHEROMONE_COLORS[maxPheromone] ?? "#888888";
-    const intensity = Math.min(1, maxValue / 100) * 0.15; // Scale opacity
+    const dominant = getDominantPheromone(swarm.pheromones);
+    if (!dominant) return;
 
     // Draw room-wide overlay in top-right corner
     visual.rect(40, 10, 8, 5, {
-      fill: color,
-      opacity: intensity
+      fill: dominant.color,
+      opacity: dominant.opacity
     });
 
-    visual.text(`Dominant: ${maxPheromone}`, 44, 12.5, {
+    visual.text(`Dominant: ${dominant.name}`, 44, 12.5, {
       align: "center",
       font: "0.5 monospace",
-      color
+      color: dominant.color
     });
 
-    visual.text(`Intensity: ${Math.round(maxValue)}`, 44, 13.5, {
+    visual.text(`Intensity: ${Math.round(dominant.value)}`, 44, 13.5, {
       align: "center",
       font: "0.4 monospace",
       color: "#ffffff"
@@ -359,34 +330,30 @@ export class RoomVisualizer {
    * Draw combat information with animated markers and 3D depth effects
    */
   private drawCombatInfo(visual: RoomVisual, room: Room): void {
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
 
     // Draw circles around hostiles with threat level
     for (const hostile of hostiles) {
-      const threat = this.calculateCreepThreat(hostile);
-      const color = threat > 30 ? "#ff0000" : threat > 10 ? "#ff8800" : "#ffff00";
-
-      // 3D effect: Size variation based on threat level
-      const radius = 0.4 + (threat / 100);
-      const opacity = 0.2 + (threat / 100) * 0.3; // Higher threat = more visible
+      const threat = calculateCreepThreat(hostile);
+      const style = getThreatVisualStyle(threat);
 
       visual.circle(hostile.pos, {
-        radius,
-        fill: color,
-        opacity,
-        stroke: color,
+        radius: style.radius,
+        fill: style.color,
+        opacity: style.opacity,
+        stroke: style.color,
         strokeWidth: 0.1
       });
 
       visual.text(`T:${threat}`, hostile.pos.x, hostile.pos.y - 0.8, {
         font: "0.4 monospace",
-        color
+        color: style.color
       });
 
       // Animated pulsing effect for high-threat hostiles
-      if (threat > 20) {
+      if (style.animated) {
         visual.animatedPosition(hostile.pos.x, hostile.pos.y, {
-          color,
+          color: style.color,
           opacity: 0.8,
           radius: 1.0,
           frames: 8
@@ -421,34 +388,6 @@ export class RoomVisualizer {
         });
       }
     }
-  }
-
-  /**
-   * Calculate threat level of a creep
-   */
-  private calculateCreepThreat(creep: Creep): number {
-    let threat = 0;
-    for (const part of creep.body) {
-      if (!part.hits) continue;
-      switch (part.type) {
-        case ATTACK:
-          threat += 5 * (part.boost ? 4 : 1);
-          break;
-        case RANGED_ATTACK:
-          threat += 4 * (part.boost ? 4 : 1);
-          break;
-        case HEAL:
-          threat += 6 * (part.boost ? 4 : 1);
-          break;
-        case TOUGH:
-          threat += 1 * (part.boost ? 4 : 1);
-          break;
-        case WORK:
-          threat += 2 * (part.boost ? 4 : 1);
-          break;
-      }
-    }
-    return threat;
   }
 
   /**
@@ -537,14 +476,7 @@ export class RoomVisualizer {
       let offsetX = 0.8;
       const offsetY = -0.8;
       
-      // Show top 3 resources by quantity
-      const resources = Object.keys(storage.store) as ResourceConstant[];
-      const sorted = resources
-        .filter(r => storage.store[r] > 1000)
-        .sort((a, b) => storage.store[b] - storage.store[a])
-        .slice(0, 3);
-      
-      for (const resource of sorted) {
+      for (const resource of getTopStoredResources(storage.store)) {
         visual.resource(resource, storage.pos.x + offsetX, storage.pos.y + offsetY, 0.3);
         offsetX += 0.6;
       }
@@ -556,14 +488,7 @@ export class RoomVisualizer {
       let offsetX = 0.8;
       const offsetY = -0.8;
       
-      // Show top 3 resources by quantity
-      const resources = Object.keys(terminal.store) as ResourceConstant[];
-      const sorted = resources
-        .filter(r => terminal.store[r] > 1000)
-        .sort((a, b) => terminal.store[b] - terminal.store[a])
-        .slice(0, 3);
-      
-      for (const resource of sorted) {
+      for (const resource of getTopStoredResources(terminal.store)) {
         visual.resource(resource, terminal.pos.x + offsetX, terminal.pos.y + offsetY, 0.3);
         offsetX += 0.6;
       }
@@ -589,12 +514,9 @@ export class RoomVisualizer {
     });
 
     // Animated flow indicator (moves along the line)
-    const frame = Game.time % 20;
-    const progress = frame / 20;
-    const flowX = from.x + (to.x - from.x) * progress;
-    const flowY = from.y + (to.y - from.y) * progress;
+    const flow = getFlowPoint(from, to, Game.time);
 
-    visual.circle(flowX, flowY, {
+    visual.circle(flow.x, flow.y, {
       radius: 0.15,
       fill: color,
       opacity: opacity
@@ -630,7 +552,7 @@ export class RoomVisualizer {
     if (cached) {
       // Draw from cache
       for (const struct of cached) {
-        const opacity = this.getStructureDepthOpacity(struct.type);
+        const opacity = getStructureDepthOpacity(struct.type);
         visual.structure(struct.x, struct.y, struct.type, { opacity });
       }
     } else {
@@ -639,7 +561,7 @@ export class RoomVisualizer {
       const structureData: Array<{ x: number; y: number; type: StructureConstant }> = [];
       
       for (const structure of structures) {
-        const opacity = this.getStructureDepthOpacity(structure.structureType);
+        const opacity = getStructureDepthOpacity(structure.structureType);
         visual.structure(structure.pos.x, structure.pos.y, structure.structureType, { opacity });
         structureData.push({
           x: structure.pos.x,
@@ -658,29 +580,6 @@ export class RoomVisualizer {
       visual.structure(site.pos.x, site.pos.y, site.structureType, {
         opacity: 0.3 // Ground level blueprint
       });
-    }
-  }
-
-  /**
-   * Get 3D depth opacity for structure types
-   */
-  private getStructureDepthOpacity(type: StructureConstant): number {
-    // 3D depth effect: Opacity indicates elevation
-    switch (type) {
-      case STRUCTURE_RAMPART:
-        return 0.8; // Elevated defensive structure
-      case STRUCTURE_TOWER:
-        return 0.9; // Tall structure
-      case STRUCTURE_SPAWN:
-      case STRUCTURE_STORAGE:
-      case STRUCTURE_TERMINAL:
-        return 0.85; // Important/large structures
-      case STRUCTURE_ROAD:
-        return 0.3; // Ground level
-      case STRUCTURE_WALL:
-        return 0.9; // Tall barrier
-      default:
-        return 0.7; // Default elevation
     }
   }
 

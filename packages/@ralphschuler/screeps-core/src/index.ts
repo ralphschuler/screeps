@@ -50,3 +50,21 @@ export {
   type CpuBudgetConfig,
   type SubsystemType
 } from "./cpuBudgetManager";
+
+// Alliance safety
+export {
+  NON_AGGRESSION_PACT_PLAYERS,
+  isAllyPlayer,
+  isAllyOwned,
+  isAllyCreep,
+  isAllyPowerCreep,
+  isAllyStructure,
+  filterAllyCreeps,
+  filterAllyPowerCreeps,
+  filterAllyStructures,
+  getActualHostileCreeps,
+  getActualHostilePowerCreeps,
+  getActualHostileStructures,
+  hasActualHostiles,
+  type AlliedPlayer
+} from "./alliance";

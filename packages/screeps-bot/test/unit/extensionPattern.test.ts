@@ -4,7 +4,7 @@ import {
   generateExtensionPattern,
   hasEdgeAdjacentExtensions,
   isCheckerboardPatternPosition
-} from "../../src/layouts/extensionPattern";
+} from "@ralphschuler/screeps-layouts";
 
 describe("Extension layout pattern Module", () => {
   it("generates deterministic checkerboard extension positions", () => {

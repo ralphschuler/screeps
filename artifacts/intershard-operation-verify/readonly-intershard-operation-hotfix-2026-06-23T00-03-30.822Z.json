@@ -1,0 +1,177 @@
+{
+  "at": "2026-06-23T00:03:29.892Z",
+  "shards": {
+    "shard0": {
+      "cpu": {
+        "usage": {
+          "W9N1": {
+            "init": 0.04045
+          }
+        },
+        "limit": 20,
+        "bucket": 906,
+        "getUsed": 2.9502
+      },
+      "rooms": [
+        "W9N1"
+      ],
+      "interShardCreeps": {}
+    },
+    "shard1": {
+      "op": {
+        "enabled": true,
+        "targetShards": [
+          "shard0",
+          "shard1",
+          "shard2",
+          "shard3",
+          "shardX"
+        ],
+        "launchedAt": 71855433,
+        "cpuFloors": {
+          "shard0": 5,
+          "shard1": 20,
+          "shard2": 5,
+          "shard3": 10,
+          "shardX": 5
+        },
+        "lastRun": 71855509
+      },
+      "cpu": {
+        "used": 40.95456150000018,
+        "limit": 50,
+        "bucket": 9894,
+        "percent": 81.91035800000054,
+        "heap_mb": 78.2037124633789
+      },
+      "empire": {
+        "rooms": 4,
+        "creeps": 69,
+        "power_creeps": {
+          "total": 0,
+          "spawned": 0,
+          "eco": 0,
+          "combat": 0
+        },
+        "energy": {
+          "storage": 626756,
+          "terminal": 0,
+          "available": 1763,
+          "capacity": 4850
+        },
+        "credits": 5218.225,
+        "skipped_processes": 28
+      },
+      "rooms": [
+        "W17S29",
+        "W18S29",
+        "W18S28",
+        "W19S26"
+      ],
+      "interShardCreeps": {
+        "interShardScout_71855433_psm982i0a": {
+          "role": "interShardScout",
+          "homeRoom": "W18S28",
+          "targetRoom": "W18S28"
+        },
+        "interShardPioneer_71855433_mhepr7x9o": {
+          "role": "interShardPioneer",
+          "homeRoom": "W18S29",
+          "targetRoom": "W18S29"
+        },
+        "interShardPioneer_71855433_99davw5v3": {
+          "role": "interShardPioneer",
+          "homeRoom": "W19S26",
+          "targetRoom": "W19S26"
+        },
+        "interShardScout_71855445_q7dh5ga8z": {
+          "role": "interShardScout",
+          "homeRoom": "W19S26",
+          "targetRoom": "W19S26"
+        },
+        "interShardScout_71855446_ntq3oicpv": {
+          "role": "interShardScout",
+          "homeRoom": "W17S29",
+          "targetRoom": "W17S29"
+        },
+        "interShardScout_71855449_b8bmuwiqm": {
+          "role": "interShardScout",
+          "homeRoom": "W17S29",
+          "targetShard": "shard0",
+          "targetRoom": "W20S20",
+          "portalRoom": "W20S20",
+          "task": "interShardFootprint",
+          "workflowState": "movingToPortal"
+        },
+        "interShardScout_71855452_450w2ubu5": {
+          "role": "interShardScout",
+          "homeRoom": "W17S29",
+          "targetShard": "shard2",
+          "targetRoom": "W20S20",
+          "portalRoom": "W20S20",
+          "task": "interShardFootprint",
+          "workflowState": "movingToPortal"
+        },
+        "interShardScout_71855455_ukeexmb0o": {
+          "role": "interShardScout",
+          "homeRoom": "W17S29",
+          "targetShard": "shardX",
+          "targetRoom": "W20S20",
+          "portalRoom": "W20S20",
+          "task": "interShardFootprint",
+          "workflowState": "movingToPortal"
+        },
+        "interShardPioneer_71855465_gilcuk2jr": {
+          "role": "interShardPioneer",
+          "homeRoom": "W17S29",
+          "targetRoom": "W17S29"
+        },
+        "interShardClaimer_71855489_dp7rhesvg": {
+          "role": "interShardClaimer",
+          "homeRoom": "W17S29",
+          "targetRoom": "W17S29"
+        }
+      }
+    },
+    "shard2": {
+      "rooms": [],
+      "interShardCreeps": {}
+    },
+    "shard3": {
+      "cpu": {
+        "used": 5.358311199997843,
+        "limit": 20,
+        "bucket": 7985,
+        "percent": 26.794585000006922,
+        "heap_mb": 83.01220703125
+      },
+      "empire": {
+        "rooms": 1,
+        "creeps": 15,
+        "power_creeps": {
+          "total": 0,
+          "spawned": 0,
+          "eco": 0,
+          "combat": 0
+        },
+        "energy": {
+          "storage": 0,
+          "terminal": 0,
+          "available": 950,
+          "capacity": 950
+        },
+        "credits": 11980.286,
+        "skipped_processes": 21
+      },
+      "rooms": [
+        "W16S52",
+        "W12S8"
+      ],
+      "interShardCreeps": {}
+    },
+    "shardX": {
+      "rooms": [],
+      "interShardCreeps": {}
+    }
+  }
+}

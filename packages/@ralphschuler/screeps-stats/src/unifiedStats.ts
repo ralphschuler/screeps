@@ -22,28 +22,20 @@
  * - stats.pathfinding.* - Pathfinding performance metrics
  */
 
-import { logger, memoryManager, EvolutionStage, RoomPosture, shardManager, getRoomFindCacheStats, getBodyPartCacheStats, getObjectCacheStats, getPathCacheStats, getRoleCacheStats, globalCache } from "./interfaces";
+import { logger, memoryManager, EvolutionStage, RoomPosture, shardManager, getRoomFindCacheStats, getBodyPartCacheStats, getObjectCacheStats, getPathCacheStats, getRoleCacheStats, globalCache, getActualHostileCreeps } from "./interfaces";
 import { calculateRoomScalingMultiplier, calculateBucketMultiplier, type AdaptiveBudgetConfig } from "./adaptiveBudgets";
 import { pathfindingMetrics } from "./pathfindingMetrics";
+import { formatAnomalyDetails, formatBudgetAlertDetails } from "./unified-stats/alertFormatting";
 import type {
   UnifiedStatsConfig,
-  CpuStats,
-  KernelBudgetStats,
-  ProgressionStats,
   EmpireStats,
   RoomStatsEntry,
-  SubsystemStatsEntry,
-  RoleStatsEntry,
   NativeCallStats,
-  CacheStats,
-  ProcessStatsEntry,
-  CreepStatsEntry,
-  CPUBudgetAlert,
   CPUAnomaly,
   CPUBudgetReport,
-  CreepMetrics,
   StatsSnapshot,
-  ProfilerMemory
+  ProfilerMemory,
+  CpuDetailStatsEntry
 } from "./statsTypes";
 
 // ============================================================================
@@ -75,6 +67,24 @@ const DEFAULT_CONFIG: UnifiedStatsConfig = {
 };
 
 const BUDGET_THRESHOLD_EPSILON = 1e-9;
+const CONTROLLER_DOWNGRADE_RISK_TICKS = 5000;
+const CPU_ALERT_LOG_INTERVAL = 50;
+const DEFAULT_CPU_DETAIL_TTL = 500;
+const DEFAULT_CPU_DETAIL_SAMPLE_RATE = 1;
+
+type CpuDetailsConfig = {
+  enabled?: boolean;
+  expiresTick?: number;
+  sampleRate?: number;
+  labels?: string[];
+};
+
+type CpuProfilerGlobal = {
+  measure: <T>(name: string, fn: () => T) => T;
+  enable: (ttl?: number, sampleRate?: number, labels?: string[]) => CpuDetailsConfig;
+  disable: () => CpuDetailsConfig;
+  status: () => CpuDetailsConfig;
+};
 
 // ============================================================================
 // Unified Stats Manager
@@ -85,10 +95,14 @@ export class UnifiedStatsManager {
   private currentSnapshot: StatsSnapshot;
   private nativeCallsThisTick: NativeCallStats;
   private subsystemMeasurements: Map<string, number[]> = new Map();
+  private cpuDetailMeasurements: Map<string, number[]> = new Map();
   private roomMeasurements: Map<string, number> = new Map();
   private lastSegmentUpdate = 0;
+  private lastBudgetAlertLogTick = -Infinity;
+  private lastAnomalyLogTick = -Infinity;
   private segmentRequested = false;
   private skippedProcessesThisTick = 0;
+  private spawnIdleTickState: Map<string, { lastRecordedTick: number; idleSpawnTicks: number }> = new Map();
 
   public constructor(config: Partial<UnifiedStatsConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -105,6 +119,7 @@ export class UnifiedStatsManager {
       RawMemory.setActiveSegments([this.config.segmentId]);
       this.segmentRequested = true;
     }
+    this.installCpuProfilerGlobal();
     logger.info("Unified stats system initialized", { subsystem: "Stats" });
   }
 
@@ -145,9 +160,9 @@ export class UnifiedStatsManager {
     RawMemory.setActiveSegments([this.config.segmentId]);
     this.segmentRequested = true;
 
-    // BUGFIX: Preserve room stats across ticks for distributed room execution
-    // Room processes run every 5 ticks (eco rooms) but stats export every tick
-    // Solution: Keep previous room stats, update only when rooms execute
+    // Preserve room stats across ticks for distributed room execution.
+    // Room processes can run every 5 ticks while stats export every tick, so
+    // keep previous room stats and update each room only when its process runs.
     const previousRoomStats = this.preserveRoomStats();
     
     this.currentSnapshot = this.createEmptySnapshot();
@@ -155,9 +170,17 @@ export class UnifiedStatsManager {
     
     this.nativeCallsThisTick = this.createEmptyNativeCalls();
     this.subsystemMeasurements.clear();
+    this.cpuDetailMeasurements.clear();
     this.roomMeasurements.clear();
     this.skippedProcessesThisTick = 0;
     
+    // Drop idle-time counters for rooms no longer visible/owned in Game.rooms.
+    for (const roomName of this.spawnIdleTickState.keys()) {
+      if (!Game.rooms[roomName]?.controller?.my) {
+        this.spawnIdleTickState.delete(roomName);
+      }
+    }
+
     // Reset pathfinding metrics for new tick
     pathfindingMetrics.reset();
   }
@@ -201,6 +224,9 @@ export class UnifiedStatsManager {
     // Finalize subsystem stats
     this.finalizeSubsystemStats();
 
+    // Finalize short-lived gated CPU drilldown stats
+    this.finalizeCpuDetailStats();
+
     // Finalize cache stats
     this.finalizeCacheStats();
 
@@ -221,22 +247,15 @@ export class UnifiedStatsManager {
     const budgetReport = this.validateBudgets();
     const anomalies = this.detectAnomalies();
 
-    // Log critical budget violations
-    if (budgetReport.alerts.length > 0) {
+    // Log critical budget violations, but throttle repeated alerts so live console
+    // remains usable when the same rooms stay over budget for many consecutive ticks.
+    if (budgetReport.alerts.length > 0 && this.shouldLogCpuAlert(this.lastBudgetAlertLogTick)) {
       const criticalAlerts = budgetReport.alerts.filter(a => a.severity === "critical");
       const warningAlerts = budgetReport.alerts.filter(a => a.severity === "warning");
       
       if (criticalAlerts.length > 0) {
-        // Enhanced logging with distribution info
-        const violationDetails = criticalAlerts.map(a => {
-          const processId = `room:${a.target}`;
-          const process = this.currentSnapshot.processes[processId];
-          const modulo = process?.tickModulo ?? 1;
-          const moduloInfo = modulo > 1 ? ` [runs every ${modulo} ticks]` : '';
-          return `${a.target}: ${(a.percentUsed * 100).toFixed(1)}% (${a.cpuUsed.toFixed(3)}/${a.budgetLimit.toFixed(3)} CPU)${moduloInfo}`;
-        }).join(', ');
         logger.error(
-          `CPU Budget: ${criticalAlerts.length} critical violations detected - ${violationDetails}`,
+          `CPU Budget: ${criticalAlerts.length} critical violations detected - ${formatBudgetAlertDetails(criticalAlerts, { processes: this.currentSnapshot.processes })}`,
           {
             subsystem: "CPUBudget"
           }
@@ -244,33 +263,28 @@ export class UnifiedStatsManager {
       }
       
       if (warningAlerts.length > 0) {
-        const warningDetails = warningAlerts.map(a => {
-          const processId = `room:${a.target}`;
-          const process = this.currentSnapshot.processes[processId];
-          const modulo = process?.tickModulo ?? 1;
-          const moduloInfo = modulo > 1 ? ` [runs every ${modulo} ticks]` : '';
-          return `${a.target}: ${(a.percentUsed * 100).toFixed(1)}%${moduloInfo}`;
-        }).join(', ');
         logger.warn(
-          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit) - ${warningDetails}`,
+          `CPU Budget: ${warningAlerts.length} warnings (≥80% of limit) - ${formatBudgetAlertDetails(warningAlerts, { includeCpuUsage: false, processes: this.currentSnapshot.processes })}`,
           {
             subsystem: "CPUBudget"
           }
         );
       }
+
+      this.lastBudgetAlertLogTick = Game.time;
     }
 
-    // Log CPU anomalies
-    if (anomalies.length > 0) {
-      const anomalyDetails = anomalies.map(a => 
-        `${a.target} (${a.type}): ${a.current.toFixed(3)} CPU (${a.multiplier.toFixed(1)}x baseline)${a.context ? ` - ${a.context}` : ""}`
-      ).join(', ');
+    // Log CPU anomalies, capped and throttled. A single tick can detect hundreds
+    // of anomalies after a live CPU spike; logging all of them every tick becomes
+    // its own CPU/console problem and obscures the highest-value diagnostics.
+    if (anomalies.length > 0 && this.shouldLogCpuAlert(this.lastAnomalyLogTick)) {
       logger.warn(
-        `CPU Anomalies: ${anomalies.length} detected - ${anomalyDetails}`,
+        `CPU Anomalies: ${anomalies.length} detected - ${formatAnomalyDetails(anomalies)}`,
         {
           subsystem: "CPUProfiler"
         }
       );
+      this.lastAnomalyLogTick = Game.time;
     }
 
     // Publish to Memory.stats first (console output reads from this)
@@ -332,6 +346,79 @@ export class UnifiedStatsManager {
     return result;
   }
 
+  /**
+   * Measure a fine-grained CPU detail slice only while the temporary profiler is enabled.
+   * Disabled path avoids Game.cpu.getUsed() calls and only executes the callback.
+   */
+  public measureCpuDetail<T>(name: string, fn: () => T): T {
+    if (!this.config.enabled || !this.shouldMeasureCpuDetail(name)) {
+      return fn();
+    }
+
+    const startCpu = Game.cpu.getUsed();
+    const result = fn();
+    const cpuUsed = Game.cpu.getUsed() - startCpu;
+
+    const existing = this.cpuDetailMeasurements.get(name) ?? [];
+    existing.push(cpuUsed);
+    this.cpuDetailMeasurements.set(name, existing);
+
+    return result;
+  }
+
+  public enableCpuDetails(ttl = DEFAULT_CPU_DETAIL_TTL, sampleRate = DEFAULT_CPU_DETAIL_SAMPLE_RATE, labels?: string[]): CpuDetailsConfig {
+    const mem = Memory as unknown as { cpuProfiler?: CpuDetailsConfig };
+    const normalizedTtl = Math.max(1, Math.floor(ttl));
+    const normalizedSampleRate = Math.max(1, Math.floor(sampleRate));
+    mem.cpuProfiler = {
+      enabled: true,
+      expiresTick: Game.time + normalizedTtl,
+      sampleRate: normalizedSampleRate,
+      labels: labels?.filter(label => label.length > 0)
+    };
+    return mem.cpuProfiler;
+  }
+
+  public disableCpuDetails(): CpuDetailsConfig {
+    const mem = Memory as unknown as { cpuProfiler?: CpuDetailsConfig };
+    mem.cpuProfiler = { enabled: false };
+    return mem.cpuProfiler;
+  }
+
+  public getCpuDetailsStatus(): CpuDetailsConfig {
+    return this.getCpuDetailsConfig();
+  }
+
+  private getCpuDetailsConfig(): CpuDetailsConfig {
+    return ((Memory as unknown as { cpuProfiler?: CpuDetailsConfig }).cpuProfiler ?? { enabled: false });
+  }
+
+  private shouldMeasureCpuDetail(name: string): boolean {
+    const config = this.getCpuDetailsConfig();
+    if (!config.enabled) return false;
+
+    if (typeof config.expiresTick === "number" && Game.time >= config.expiresTick) {
+      this.disableCpuDetails();
+      return false;
+    }
+
+    const sampleRate = Math.max(1, Math.floor(config.sampleRate ?? DEFAULT_CPU_DETAIL_SAMPLE_RATE));
+    if (Game.time % sampleRate !== 0) return false;
+
+    const labels = config.labels?.filter(Boolean) ?? [];
+    if (labels.length === 0) return true;
+    return labels.some(label => name === label || name.startsWith(`${label}.`));
+  }
+
+  private installCpuProfilerGlobal(): void {
+    (globalThis as unknown as { cpuProfiler?: CpuProfilerGlobal }).cpuProfiler = {
+      measure: <T>(name: string, fn: () => T) => this.measureCpuDetail(name, fn),
+      enable: (ttl?: number, sampleRate?: number, labels?: string[]) => this.enableCpuDetails(ttl, sampleRate, labels),
+      disable: () => this.disableCpuDetails(),
+      status: () => this.getCpuDetailsStatus()
+    };
+  }
+
   private getRoomTaskBoardStats(roomName: string): RoomStatsEntry["taskBoard"] {
     const memory = Memory as unknown as {
       creepTaskBoard?: {
@@ -354,6 +441,108 @@ export class UnifiedStatsManager {
       reservations: tasks.reduce((total, task) => total + Object.keys(task.reservations ?? {}).length, 0),
       staleReservations: board.stats?.staleReservations ?? 0,
       blockedReservations: board.stats?.blockedReservations ?? 0
+    };
+  }
+
+  private getMyUsername(): string {
+    return Object.values(Game.spawns ?? {})[0]?.owner?.username ?? "";
+  }
+
+  private getRemoteStats(_roomName: string, swarm: unknown): NonNullable<RoomStatsEntry["remote"]> {
+    const assignments = (swarm as { remoteAssignments?: unknown } | undefined)?.remoteAssignments;
+    const remoteAssignments = Array.isArray(assignments)
+      ? assignments.filter((value): value is string => typeof value === "string")
+      : [];
+    const myUsername = this.getMyUsername();
+    const knownRooms = (Memory as unknown as {
+      empire?: {
+        knownRooms?: Record<string, { owner?: string; reserver?: string; threatLevel?: number }>;
+      };
+    }).empire?.knownRooms ?? {};
+
+    let visible = 0;
+    let reservedByMe = 0;
+    let reservedByOther = 0;
+    let minReservationTicks = Infinity;
+    let knownUnsafe = 0;
+
+    for (const remoteName of remoteAssignments) {
+      const remoteRoom = Game.rooms[remoteName];
+      const intel = knownRooms[remoteName];
+      if (remoteRoom) visible++;
+
+      const ownerUsername = remoteRoom?.controller?.owner?.username ?? intel?.owner;
+      const reservationUsername = remoteRoom?.controller?.reservation?.username ?? intel?.reserver;
+      const reservationTicks = remoteRoom?.controller?.reservation?.ticksToEnd;
+
+      if (reservationUsername === myUsername) {
+        reservedByMe++;
+        if (typeof reservationTicks === "number") {
+          minReservationTicks = Math.min(minReservationTicks, reservationTicks);
+        }
+      } else if (reservationUsername) {
+        reservedByOther++;
+      }
+
+      if (
+        (ownerUsername && ownerUsername !== myUsername) ||
+        (reservationUsername && reservationUsername !== myUsername) ||
+        (intel?.threatLevel ?? 0) >= 2
+      ) {
+        knownUnsafe++;
+      }
+    }
+
+    return {
+      assigned: remoteAssignments.length,
+      visible,
+      reservedByMe,
+      reservedByOther,
+      minReservationTicks: Number.isFinite(minReservationTicks) ? minReservationTicks : 0,
+      knownUnsafe
+    };
+  }
+
+  private getDefenseStats(
+    room: Room,
+    hostiles: Creep[],
+    swarm: unknown
+  ): NonNullable<RoomStatsEntry["defense"]> {
+    const towers = room.find(FIND_MY_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_TOWER
+    }) as StructureTower[];
+    const swarmState = swarm as { danger?: number; posture?: string } | undefined;
+    const isCombatPosture =
+      swarmState?.posture === "defensive" ||
+      swarmState?.posture === "war" ||
+      swarmState?.posture === "siege" ||
+      (swarmState?.danger ?? 0) > 0 ||
+      hostiles.length > 0;
+    const reservePerTower = Math.floor(TOWER_CAPACITY * (isCombatPosture ? 0.75 : 0.5));
+    let towerEnergy = 0;
+    let towerEnergyCapacity = 0;
+
+    for (const tower of towers) {
+      towerEnergy += tower.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+      towerEnergyCapacity += tower.store.getCapacity(RESOURCE_ENERGY) ?? TOWER_CAPACITY;
+    }
+
+    const towerReserveEnergy = towers.length * reservePerTower;
+    return {
+      towers: towers.length,
+      towerEnergy,
+      towerEnergyCapacity,
+      towerEnergyPercent: towerEnergyCapacity > 0 ? (towerEnergy / towerEnergyCapacity) * 100 : 0,
+      towerReserveEnergy,
+      towerReserveDeficit: Math.max(0, towerReserveEnergy - towerEnergy)
+    };
+  }
+
+  private getControllerDowngradeStats(room: Room): Pick<RoomStatsEntry["controller"], "ticksToDowngrade" | "downgradeRisk"> {
+    const ticksToDowngrade = room.controller?.ticksToDowngrade ?? 0;
+    return {
+      ticksToDowngrade,
+      downgradeRisk: ticksToDowngrade > 0 && ticksToDowngrade <= CONTROLLER_DOWNGRADE_RISK_TICKS
     };
   }
 
@@ -541,6 +730,69 @@ export class UnifiedStatsManager {
     };
   }
 
+  private getSpawnUsageStats(roomName: string): {
+    totalSpawns: number;
+    idleSpawns: number;
+    busySpawns: number;
+    idleSpawnTicks: number;
+  } {
+    const room = Game.rooms[roomName];
+    const spawns = room?.find(FIND_MY_SPAWNS) as StructureSpawn[] | undefined;
+    const totalSpawns = spawns?.length ?? 0;
+    const busySpawns = spawns?.filter(spawn => spawn.spawning).length ?? 0;
+    const idleSpawns = Math.max(0, totalSpawns - busySpawns);
+    const previous = this.spawnIdleTickState.get(roomName) ?? { lastRecordedTick: -1, idleSpawnTicks: 0 };
+    const idleSpawnTicks = previous.lastRecordedTick === Game.time
+      ? previous.idleSpawnTicks
+      : previous.idleSpawnTicks + idleSpawns;
+
+    this.spawnIdleTickState.set(roomName, { lastRecordedTick: Game.time, idleSpawnTicks });
+
+    return {
+      totalSpawns,
+      idleSpawns,
+      busySpawns,
+      idleSpawnTicks
+    };
+  }
+
+  /**
+   * Record room spawn queue statistics after the spawn pipeline runs.
+   */
+  public recordSpawnQueue(
+    roomName: string,
+    stats: {
+      total: number;
+      emergency: number;
+      high: number;
+      normal: number;
+      low: number;
+      inProgress: number;
+    },
+    spawnedLastTick: number
+  ): void {
+    if (!this.config.enabled) return;
+
+    const roomStats = this.currentSnapshot.rooms[roomName];
+    if (!roomStats) return;
+
+    const spawnUsage = this.getSpawnUsageStats(roomName);
+
+    roomStats.spawnQueue = {
+      total: stats.total,
+      emergency: stats.emergency,
+      high: stats.high,
+      normal: stats.normal,
+      low: stats.low,
+      inProgress: stats.inProgress,
+      spawnedLastTick,
+      totalSpawns: spawnUsage.totalSpawns,
+      idleSpawns: spawnUsage.idleSpawns,
+      busySpawns: spawnUsage.busySpawns,
+      idleSpawnTicks: spawnUsage.idleSpawnTicks
+    };
+  }
+
   /**
    * Record room statistics (call at end of room processing)
    */
@@ -549,8 +801,11 @@ export class UnifiedStatsManager {
 
     const swarm = memoryManager.getSwarmState(room.name);
     const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === room.name).length;
-    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(room);
     const taskBoardStats = this.getRoomTaskBoardStats(room.name);
+    const remoteStats = this.getRemoteStats(room.name, swarm);
+    const defenseStats = this.getDefenseStats(room, hostiles, swarm);
+    const controllerDowngradeStats = this.getControllerDowngradeStats(room);
 
     // Get or create room stats entry
     let roomStats = this.currentSnapshot.rooms[room.name];
@@ -567,7 +822,9 @@ export class UnifiedStatsManager {
         controller: {
           progress: room.controller?.progress ?? 0,
           progressTotal: room.controller?.progressTotal ?? 1,
-          progressPercent: 0
+          progressPercent: 0,
+          ticksToDowngrade: controllerDowngradeStats.ticksToDowngrade,
+          downgradeRisk: controllerDowngradeStats.downgradeRisk
         },
         creeps: creepsInRoom,
         hostiles: hostiles.length,
@@ -592,6 +849,8 @@ export class UnifiedStatsManager {
           constructionSites: 0
         },
         taskBoard: taskBoardStats,
+        remote: remoteStats,
+        defense: defenseStats,
         profiler: {
           avgCpu: cpuUsed,
           peakCpu: cpuUsed,
@@ -607,6 +866,8 @@ export class UnifiedStatsManager {
     const currentStorageEnergy = room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
 
     roomStats.taskBoard = taskBoardStats;
+    roomStats.remote = remoteStats;
+    roomStats.defense = defenseStats;
     roomStats.rcl = room.controller?.level ?? 0;
     roomStats.energy.available = room.energyAvailable;
     roomStats.energy.capacity = room.energyCapacityAvailable;
@@ -614,6 +875,8 @@ export class UnifiedStatsManager {
     roomStats.energy.terminal = room.terminal?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
     roomStats.controller.progress = currentControllerProgress;
     roomStats.controller.progressTotal = room.controller?.progressTotal ?? 1;
+    roomStats.controller.ticksToDowngrade = controllerDowngradeStats.ticksToDowngrade;
+    roomStats.controller.downgradeRisk = controllerDowngradeStats.downgradeRisk;
     roomStats.creeps = creepsInRoom;
     roomStats.hostiles = hostiles.length;
 
@@ -692,7 +955,7 @@ export class UnifiedStatsManager {
    * Validate CPU budgets for all rooms and generate alerts
    * Returns a report with budget status and any violations
    * 
-   * BUGFIX: Accounts for distributed execution (tickModulo) when validating budgets.
+   * Accounts for distributed execution (`tickModulo`) when validating budgets.
    * Rooms that run every N ticks should use ≤ (budget * N) CPU per execution.
    * For example: eco room with tickModulo=5 can use up to 0.1 * 5 = 0.5 CPU per execution.
    */
@@ -714,8 +977,8 @@ export class UnifiedStatsManager {
       const isWarRoom = this.isWarRoom(roomName);
       const baseBudgetLimit = isWarRoom ? this.config.budgetLimits.warRoom : this.config.budgetLimits.ecoRoom;
       
-      // BUGFIX: Adjust budget for distributed execution
-      // Room processes are registered as "room:ROOMNAME" in the kernel
+      // Adjust budget for distributed execution.
+      // Room processes are registered as "room:ROOMNAME" in the kernel.
       const processId = `room:${roomName}`;
       const roomProcess = this.currentSnapshot.processes[processId];
       
@@ -869,6 +1132,11 @@ export class UnifiedStatsManager {
   // Private Helper Methods
   // ============================================================================
 
+  private shouldLogCpuAlert(lastLogTick: number): boolean {
+    return !Number.isFinite(lastLogTick) || Game.time - lastLogTick >= CPU_ALERT_LOG_INTERVAL;
+  }
+
+
   private createEmptySnapshot(): StatsSnapshot {
     return {
       tick: Game.time,
@@ -914,6 +1182,7 @@ export class UnifiedStatsManager {
       },
       rooms: {},
       subsystems: {},
+      cpuDetails: {},
       roles: {},
       native: this.createEmptyNativeCalls(),
       processes: {},
@@ -1039,7 +1308,7 @@ export class UnifiedStatsManager {
           activeTasksCount: shardState.activeTasks.length
         };
       }
-    } catch (err) {
+    } catch (_err) {
       // ShardManager not available or failed to load
     }
 
@@ -1110,7 +1379,7 @@ export class UnifiedStatsManager {
           }
         }
 
-        // BUGFIX: Calculate per-creep average CPU, not total CPU for all creeps
+        // Calculate per-creep average CPU, not total CPU for all creeps.
         // measurements.length = number of creeps that executed this tick
         // totalCpu = sum of CPU used by all creeps that executed
         // avgCpuPerCreep = average CPU per creep that executed
@@ -1168,6 +1437,20 @@ export class UnifiedStatsManager {
           callsThisTick: measurements.length
         };
       }
+    }
+  }
+
+  private finalizeCpuDetailStats(): void {
+    for (const [name, measurements] of this.cpuDetailMeasurements) {
+      const totalCpu = measurements.reduce((sum, value) => sum + value, 0);
+      const maxCpu = measurements.reduce((max, value) => Math.max(max, value), 0);
+      this.currentSnapshot.cpuDetails[name] = {
+        name,
+        totalCpu,
+        avgCpu: measurements.length > 0 ? totalCpu / measurements.length : 0,
+        maxCpu,
+        calls: measurements.length
+      };
     }
   }
 
@@ -1237,13 +1520,34 @@ export class UnifiedStatsManager {
     this.currentSnapshot.pathfinding = pathfindingMetrics.getMetrics();
   }
 
+  private formatCpuDetailsForMemory(): Record<string, unknown> {
+    const config = this.getCpuDetailsConfig();
+    const entries: Record<string, CpuDetailStatsEntry & { total_cpu: number; avg_cpu: number; max_cpu: number }> = {};
+
+    for (const [name, detail] of Object.entries(this.currentSnapshot.cpuDetails)) {
+      entries[name] = {
+        ...detail,
+        total_cpu: detail.totalCpu,
+        avg_cpu: detail.avgCpu,
+        max_cpu: detail.maxCpu
+      };
+    }
+
+    return {
+      enabled: Boolean(config.enabled),
+      expires_tick: config.expiresTick,
+      sample_rate: config.sampleRate ?? DEFAULT_CPU_DETAIL_SAMPLE_RATE,
+      labels: config.labels ?? [],
+      entries
+    };
+  }
+
   /**
    * Output stats to console in JSON format for graphite exporter
    * Outputs the entire Memory.stats object as a single JSON object
    */
   private publishToConsole(): void {
     // Get the Memory.stats object that was just created by publishToMemory()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mem = Memory as unknown as Record<string, any>;
     
     if (mem.stats && typeof mem.stats === "object") {
@@ -1262,11 +1566,11 @@ export class UnifiedStatsManager {
    * The graphite exporter will handle flattening for Grafana
    */
   private publishToMemory(): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mem = Memory as unknown as Record<string, any>;
     const snap = this.currentSnapshot;
+    const profilerMemory = this.getProfilerMemory();
 
-    // Create nested stats structure
+    // Create nested stats structure while preserving profiler EMA state across ticks.
     mem.stats = {
       tick: snap.tick,
       timestamp: snap.timestamp,
@@ -1334,6 +1638,7 @@ export class UnifiedStatsManager {
       rooms: {} as Record<string, any>,
       subsystems: {} as Record<string, any>,
       roles: {} as Record<string, any>,
+      cpu_details: this.formatCpuDetailsForMemory(),
       native: {
         pathfinder_search: snap.native.pathfinderSearch,
         move_to: snap.native.moveTo,
@@ -1350,7 +1655,8 @@ export class UnifiedStatsManager {
         dismantle: snap.native.dismantle,
         say: snap.native.say,
         total: snap.native.total
-      }
+      },
+      profiler: profilerMemory
     };
 
     // Room stats with nested structure
@@ -1366,7 +1672,9 @@ export class UnifiedStatsManager {
         controller: {
           progress: room.controller.progress,
           progress_total: room.controller.progressTotal,
-          progress_percent: room.controller.progressPercent
+          progress_percent: room.controller.progressPercent,
+          ticks_to_downgrade: room.controller.ticksToDowngrade,
+          downgrade_risk: room.controller.downgradeRisk
         },
         creeps: room.creeps,
         hostiles: room.hostiles,
@@ -1399,6 +1707,35 @@ export class UnifiedStatsManager {
           reservations: room.taskBoard.reservations,
           stale_reservations: room.taskBoard.staleReservations,
           blocked_reservations: room.taskBoard.blockedReservations
+        } : undefined,
+        spawn_queue: room.spawnQueue ? {
+          total: room.spawnQueue.total,
+          emergency: room.spawnQueue.emergency,
+          high: room.spawnQueue.high,
+          normal: room.spawnQueue.normal,
+          low: room.spawnQueue.low,
+          in_progress: room.spawnQueue.inProgress,
+          spawned_last_tick: room.spawnQueue.spawnedLastTick,
+          total_spawns: room.spawnQueue.totalSpawns,
+          idle_spawns: room.spawnQueue.idleSpawns,
+          busy_spawns: room.spawnQueue.busySpawns,
+          idle_spawn_ticks: room.spawnQueue.idleSpawnTicks
+        } : undefined,
+        remote: room.remote ? {
+          assigned: room.remote.assigned,
+          visible: room.remote.visible,
+          reserved_by_me: room.remote.reservedByMe,
+          reserved_by_other: room.remote.reservedByOther,
+          min_reservation_ticks: room.remote.minReservationTicks,
+          known_unsafe: room.remote.knownUnsafe
+        } : undefined,
+        defense: room.defense ? {
+          towers: room.defense.towers,
+          tower_energy: room.defense.towerEnergy,
+          tower_energy_capacity: room.defense.towerEnergyCapacity,
+          tower_energy_percent: room.defense.towerEnergyPercent,
+          tower_reserve_energy: room.defense.towerReserveEnergy,
+          tower_reserve_deficit: room.defense.towerReserveDeficit
         } : undefined,
         profiler: {
           avg_cpu: room.profiler.avgCpu,
@@ -1711,6 +2048,8 @@ export class UnifiedStatsManager {
    */
   public reset(): void {
     this.currentSnapshot = this.createEmptySnapshot();
+    this.lastBudgetAlertLogTick = -Infinity;
+    this.lastAnomalyLogTick = -Infinity;
     const mem = Memory as unknown as Record<string, any>;
     if (mem.stats?.profiler) {
       mem.stats.profiler = {

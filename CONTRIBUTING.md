@@ -169,7 +169,7 @@ dist/
 
 ### Test Environment
 
-Tests run using mocha with `setup-mocha.cjs` which provides stub implementations for `@bot/*` imports. This allows packages using Pattern 2 to be tested without requiring the full bot codebase.
+Tests run using Mocha with the bot package's `.mocharc.json`, which loads `test/setup-mocha.mjs` for Screeps globals and package stubs. This allows packages using Pattern 2 to be tested without requiring a live Screeps runtime.
 
 ## Adding New Packages
 
@@ -185,7 +185,7 @@ All framework packages with names starting with `@ralphschuler/screeps-*` share 
 - Framework packages under `packages/screeps-*/` with `@ralphschuler/screeps-*` names (e.g., `screeps-spawn`, `screeps-chemistry`, `screeps-defense`, `screeps-economy`, `screeps-utils`)
 
 **Excluded packages** (managed separately):
-- Server/tooling packages (`@ralphschuler/screeps-server`, `@ralphschuler/screeps-tasks`, `@ralphschuler/screeps-posis`) - have different dependency requirements
+- Server/tooling packages (`@ralphschuler/screeps-server`, `@ralphschuler/screeps-roles`, `@ralphschuler/screeps-posis`) - have different dependency requirements
 
 ### How It Works
 
@@ -271,8 +271,8 @@ The `main` and `types` fields in `package.json` correctly point to these files.
 
 ### System Requirements
 
-- **Node.js**: v18.20.5 or higher (v20.19.0+ recommended for latest dependencies)
-- **npm**: 8.0.0 or higher
+- **Node.js**: 24.x (`>=24 <25`)
+- **npm**: 10.0.0 or higher
 - **Python**: Not required (native modules have been removed/updated)
 
 ### Initial Setup
@@ -345,16 +345,17 @@ export interface MyInterface {
 
 **Symptom:**
 ```
-npm warn EBADENGINE Unsupported engine { required: { node: '>=20.19.0' } }
+npm warn EBADENGINE Unsupported engine { required: { node: '>=24 <25' } }
 ```
 
 **Solution:**
-These are warnings, not errors. The build will work with Node 18.20.5+, but some packages prefer newer versions. Upgrade to Node 20.19.0+ to eliminate warnings:
+Use the repository-supported runtime: Node.js 24.x with npm 10+.
 
 ```bash
 # Using nvm
-nvm install 20.19.0
-nvm use 20.19.0
+nvm install 24
+nvm use 24
+npm run check-versions
 ```
 
 #### Issue: Rollup cache causing stale type errors
@@ -379,8 +380,9 @@ If you encounter build failures:
 
 1. **Check Node/npm versions:**
    ```bash
-   node --version  # Should be >= 18.20.5
-   npm --version   # Should be >= 8.0.0
+   node --version  # Should be >=24 <25
+   npm --version   # Should be >=10.0.0
+   npm run check-versions
    ```
 
 2. **Clean install:**
@@ -763,9 +765,8 @@ Before committing code:
 
 - [Framework Maturity Roadmap](FRAMEWORK_MATURITY_ROADMAP.md) - Framework adoption strategy
 - [ROADMAP.md](ROADMAP.md) - Bot architecture and design principles
-- [Workflows Documentation](WORKFLOWS.md) - CI/CD pipeline details
-- [Quality Gates](QUALITY_GATES.md) - Code quality requirements
-- [Quality Metrics](QUALITY_METRICS.md) - Measurement and tracking
+- [GitHub workflows](.github/workflows/) - CI/CD pipeline definitions
+- [Quality Developer Guide](QUALITY_DEVELOPER_GUIDE.md) - Quality gates, checks, and metrics
 - [Testing Guide](TEST_INFRASTRUCTURE_SUMMARY.md) - Test infrastructure overview
 - [Package Publishing](PUBLISHING.md) - Framework package publishing guide
 

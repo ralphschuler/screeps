@@ -28,6 +28,7 @@ export interface PlayerPostureMemory {
 
 export const PLAYER_ATTACK_THRESHOLD = 3;
 export const PLAYER_ATTACK_WINDOW_TICKS = 20_000;
+export const PLAYER_ATTACK_MAX_STORED_INCIDENTS = 10;
 
 function getPostureMemory(empire: EmpireMemory): PlayerPostureMemory {
   const mutableEmpire = empire as EmpireMemory & { playerPostures?: PlayerPostureMemory };
@@ -82,15 +83,21 @@ export function recordPlayerAttack(
 
   entry.incidents = entry.incidents.filter(incident => incident.tick >= cutoff);
 
+  let attackCount = Math.min(entry.incidents.length, PLAYER_ATTACK_MAX_STORED_INCIDENTS);
   const duplicateThisTick = entry.incidents.some(
     incident => incident.tick === Game.time && incident.roomName === roomName && incident.severity === severity
   );
   if (!duplicateThisTick) {
     entry.incidents.push({ tick: Game.time, roomName, severity });
+    attackCount += 1;
+  }
+
+  if (entry.incidents.length > PLAYER_ATTACK_MAX_STORED_INCIDENTS) {
+    entry.incidents = entry.incidents.slice(-PLAYER_ATTACK_MAX_STORED_INCIDENTS);
   }
 
   entry.lastIncidentTick = Game.time;
-  entry.attackCount = entry.incidents.length;
+  entry.attackCount = Math.min(attackCount, PLAYER_ATTACK_MAX_STORED_INCIDENTS);
 
   if (entry.attackCount >= posture.threshold && entry.state !== "war") {
     entry.state = "war";

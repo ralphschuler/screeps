@@ -9,6 +9,7 @@ export interface LocalRoomIntelSnapshot {
 
 export interface CrossShardEnemyMergeInput {
   existingEnemies: SharedEnemyIntel[];
+  // warTargets can include usernames and room names; room entries are resolved via known room owner.
   warTargets: string[];
   knownRooms: LocalRoomIntelSnapshot[];
   now: number;
@@ -21,10 +22,50 @@ export interface CrossShardEnemyMergeIntent {
   skippedSourceKeepers: string[];
 }
 
+const ROOM_NAME_RE = /^([WE])(\d+)([NS])(\d+)$/;
+
+function isRoomName(value: string): boolean {
+  return ROOM_NAME_RE.test(value);
+}
+
 export function mergeCrossShardEnemyIntel(input: CrossShardEnemyMergeInput): CrossShardEnemyMergeIntent {
   const enemyMap = new Map<string, SharedEnemyIntel>();
   const skippedAllies = new Set<string>();
   const skippedSourceKeepers = new Set<string>();
+
+  const roomOwnerByName = new Map<string, string>();
+  for (const room of input.knownRooms) {
+    if (room.owner) {
+      roomOwnerByName.set(room.roomName, room.owner);
+    }
+  }
+
+  const ensureEnemy = (
+    username: string,
+    roomName?: string,
+    threatLevel: 0 | 1 | 2 | 3 = 1
+  ): SharedEnemyIntel => {
+    const existing = enemyMap.get(username);
+    if (existing) {
+      if (roomName && !existing.rooms.includes(roomName)) {
+        existing.rooms.push(roomName);
+      }
+      existing.rooms.sort();
+      existing.lastSeen = Math.max(existing.lastSeen, input.now);
+      existing.threatLevel = Math.max(existing.threatLevel, threatLevel) as 0 | 1 | 2 | 3;
+      return existing;
+    }
+
+    const enemy: SharedEnemyIntel = {
+      username,
+      rooms: roomName ? [roomName] : [],
+      threatLevel,
+      lastSeen: input.now,
+      isAlly: false
+    };
+    enemyMap.set(username, enemy);
+    return enemy;
+  };
 
   for (const enemy of input.existingEnemies) {
     if (input.isAlly(enemy.username) || enemy.isAlly) {
@@ -39,13 +80,28 @@ export function mergeCrossShardEnemyIntel(input: CrossShardEnemyMergeInput): Cro
       skippedAllies.add(target);
       continue;
     }
-    const existing = enemyMap.get(target);
-    if (existing) {
-      existing.lastSeen = Math.max(existing.lastSeen, input.now);
-      existing.threatLevel = Math.max(existing.threatLevel, 1) as 0 | 1 | 2 | 3;
-    } else {
-      enemyMap.set(target, { username: target, rooms: [], threatLevel: 1, lastSeen: input.now, isAlly: false });
+
+    if (isRoomName(target)) {
+      const owner = roomOwnerByName.get(target);
+      if (!owner) {
+        continue;
+      }
+
+      if (owner.includes("Source Keeper") || input.isAlly(owner)) {
+        if (owner.includes("Source Keeper")) {
+          skippedSourceKeepers.add(owner);
+        }
+        if (input.isAlly(owner)) {
+          skippedAllies.add(owner);
+        }
+        continue;
+      }
+
+      ensureEnemy(owner, target, 1);
+      continue;
     }
+
+    ensureEnemy(target);
   }
 
   for (const room of input.knownRooms) {
@@ -59,21 +115,14 @@ export function mergeCrossShardEnemyIntel(input: CrossShardEnemyMergeInput): Cro
       continue;
     }
 
-    const existing = enemyMap.get(room.owner);
-    if (existing) {
-      if (!existing.rooms.includes(room.roomName)) existing.rooms.push(room.roomName);
-      existing.rooms.sort();
-      existing.lastSeen = Math.max(existing.lastSeen, room.lastSeen);
-      existing.threatLevel = Math.max(existing.threatLevel, room.threatLevel) as 0 | 1 | 2 | 3;
-    } else {
-      enemyMap.set(room.owner, {
-        username: room.owner,
-        rooms: [room.roomName],
-        threatLevel: room.threatLevel,
-        lastSeen: room.lastSeen,
-        isAlly: false
-      });
+    const enemy = ensureEnemy(room.owner);
+    if (!enemy.rooms.includes(room.roomName)) {
+      enemy.rooms.push(room.roomName);
+      enemy.rooms.sort();
     }
+
+    enemy.lastSeen = Math.max(enemy.lastSeen, room.lastSeen);
+    enemy.threatLevel = Math.max(enemy.threatLevel, room.threatLevel) as 0 | 1 | 2 | 3;
   }
 
   return {

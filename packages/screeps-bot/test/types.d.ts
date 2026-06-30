@@ -16,7 +16,7 @@ declare global {
     _heapCache?: {
       version: number;
       lastSync: number;
-      data: Record<string, { value: any; lastModified: number; ttl?: number }>;
+      data: Record<string, { value: unknown; lastModified: number; ttl?: number }>;
     };
     /** SS2 Terminal Communications multi-packet queue */
     ss2PacketQueue?: Record<

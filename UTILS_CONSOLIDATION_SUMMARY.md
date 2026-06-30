@@ -85,7 +85,7 @@ Legacy utilities reviewed:
 | `screeps-posis` | ✅ `@ralphschuler/screeps-posis` | Already correct |
 | `screeps-economy` | ✅ `@ralphschuler/screeps-economy` | Already correct |
 | `screeps-defense` | ✅ `@ralphschuler/screeps-defense` | Already correct |
-| `screeps-tasks` | ✅ `@ralphschuler/screeps-tasks` | Already correct |
+| `screeps-roles` | ✅ `@ralphschuler/screeps-roles` | Already correct |
 | `screeps-spawn` | ✅ `@ralphschuler/screeps-spawn` | Already correct |
 | `screeps-chemistry` | ✅ `@ralphschuler/screeps-chemistry` | Already correct |
 | `screeps-utils` | ✅ `@ralphschuler/screeps-utils` | Already correct |

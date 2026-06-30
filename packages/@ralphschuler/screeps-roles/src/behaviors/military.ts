@@ -7,12 +7,18 @@
 
 import type { SquadMemory, SwarmCreepMemory } from "../memory/schemas";
 import {
+  calculateCombatPower,
   checkAndExecuteRetreat,
   getActualHostileCreeps,
   getActualHostileStructures,
-  isAllyPlayer
+  getVisibleDefenseAssistThreatProfile,
+  isAllyPlayer,
+  isDefenseAssistThreatProfileHard,
+  type CombatPower,
+  type DefenseAssistThreatProfile
 } from "@ralphschuler/screeps-defense";
-import { findCachedClosest , globalCache } from "../cache";
+import { findCachedClosest } from "../cache";
+import { getNextPatrolWaypoint, getPatrolWaypoints } from "./military/patrolWaypoints";
 import { registerMilitaryCacheClear } from "./context";
 import type { CreepAction, CreepContext } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
@@ -21,6 +27,241 @@ import { taskBoard } from "../tasks";
 
 const logger = createLogger("MilitaryBehaviors");
 
+const DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT = 250;
+const DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT = 750;
+const DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM = 5;
+const DEFENSE_ASSIST_TASK = "defenseAssist";
+
+type DefenseAssistRole = "guard" | "ranger" | "healer";
+
+interface DefenseAssistRequestMemory {
+  roomName: string;
+  guardsNeeded?: number;
+  rangersNeeded?: number;
+  healersNeeded?: number;
+  urgency?: number;
+  createdAt?: number;
+}
+
+interface MemoryWithDefenseRequests {
+  defenseRequests?: DefenseAssistRequestMemory[] | Record<string, DefenseAssistRequestMemory>;
+}
+
+function getDefenseAssistTargetRoom(mem: Partial<SwarmCreepMemory>): string | undefined {
+  return mem.assistTarget ?? (mem.task === DEFENSE_ASSIST_TASK ? mem.targetRoom : undefined);
+}
+
+function clearDefenseAssistAssignment(mem: SwarmCreepMemory): void {
+  delete mem.assistTarget;
+  delete mem.defenseSquadId;
+  delete mem.defenseSquadSize;
+  delete mem.defenseSquadCreatedAt;
+  if (mem.task === DEFENSE_ASSIST_TASK) {
+    delete mem.task;
+    delete mem.targetRoom;
+  }
+}
+
+function isDefenseAssistSquadConfigured(mem: SwarmCreepMemory): boolean {
+  return Boolean(getDefenseAssistTargetRoom(mem) && mem.defenseSquadId && mem.defenseSquadSize && mem.defenseSquadSize > 0);
+}
+
+function isDefenseAssistSquadStagingExpired(mem: SwarmCreepMemory, hardThreat: boolean): boolean {
+  if (mem.defenseSquadCreatedAt === undefined) return true;
+  const timeout = hardThreat ? DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT : DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT;
+  return Game.time - mem.defenseSquadCreatedAt >= timeout;
+}
+
+function emptyCombatPower(): CombatPower {
+  return { partCount: 0, attack: 0, ranged: 0, heal: 0, dismantle: 0, score: 0 };
+}
+
+function addCombatPower(a: CombatPower, b: CombatPower): CombatPower {
+  return {
+    partCount: a.partCount + b.partCount,
+    attack: a.attack + b.attack,
+    ranged: a.ranged + b.ranged,
+    heal: a.heal + b.heal,
+    dismantle: a.dismantle + b.dismantle,
+    score: a.score + b.score
+  };
+}
+
+function hasVisibleHardDefenseAssistThreat(targetRoom: string): boolean {
+  return isDefenseAssistThreatProfileHard(getVisibleDefenseAssistThreatProfile(targetRoom));
+}
+
+function getDefenseAssistSquadReleaseQuorum(mem: SwarmCreepMemory, hardThreat: boolean): number {
+  return hardThreat ? DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM : (mem.defenseSquadSize ?? 1);
+}
+
+function hasHomeRoomDefenseThreat(ctx: CreepContext): boolean {
+  return ctx.creep.room.name === ctx.homeRoom && getActualHostileCreeps(ctx.room).length > 0;
+}
+
+function isDefenseAssistRole(role: string | undefined): role is DefenseAssistRole {
+  return role === "guard" || role === "ranger" || role === "healer";
+}
+
+function isDefenseAssistRequest(value: unknown): value is DefenseAssistRequestMemory {
+  return Boolean(value && typeof value === "object" && typeof (value as DefenseAssistRequestMemory).roomName === "string");
+}
+
+function getActiveDefenseAssistRequests(): DefenseAssistRequestMemory[] {
+  const requests = (Memory as unknown as MemoryWithDefenseRequests).defenseRequests;
+  const values = Array.isArray(requests) ? requests : Object.values(requests ?? {});
+  return values
+    .filter(isDefenseAssistRequest)
+    .sort((a, b) => {
+      const urgencyDelta = (b.urgency ?? 0) - (a.urgency ?? 0);
+      if (urgencyDelta !== 0) return urgencyDelta;
+      return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+    });
+}
+
+function getDefenseAssistRequestNeed(request: DefenseAssistRequestMemory, role: DefenseAssistRole): number {
+  if (role === "guard") return Math.max(0, request.guardsNeeded ?? 0);
+  if (role === "ranger") return Math.max(0, request.rangersNeeded ?? 0);
+  return Math.max(0, request.healersNeeded ?? 0);
+}
+
+function getTotalDefenseAssistRequestNeed(request: DefenseAssistRequestMemory): number {
+  return getDefenseAssistRequestNeed(request, "guard") +
+    getDefenseAssistRequestNeed(request, "ranger") +
+    getDefenseAssistRequestNeed(request, "healer");
+}
+
+function countDefenseAssistMembersForRole(targetRoom: string, role: DefenseAssistRole): number {
+  return Object.values(Game.creeps).filter(creep => {
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    return !creep.spawning && memory.role === role && getDefenseAssistTargetRoom(memory) === targetRoom;
+  }).length;
+}
+
+function isReadyDefenseAssistTargetMember(creep: Creep, assistTarget: string, homeRoom: string): boolean {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  return (
+    getDefenseAssistTargetRoom(memory) === assistTarget &&
+    memory.homeRoom === homeRoom &&
+    creep.room.name === homeRoom &&
+    !creep.spawning
+  );
+}
+
+function countReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: string): number {
+  return Object.values(Game.creeps).filter(creep =>
+    isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom)
+  ).length;
+}
+
+function calculateReadyDefenseAssistTargetPower(assistTarget: string, homeRoom: string): CombatPower {
+  return Object.values(Game.creeps)
+    .filter(creep => isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom))
+    .reduce((total, creep) => {
+      const activeBody = creep.body.filter(part => part.hits > 0);
+      return addCombatPower(total, calculateCombatPower(activeBody));
+    }, emptyCombatPower());
+}
+
+function hasReadyDefenseAssistParity(
+  assistTarget: string,
+  homeRoom: string,
+  threatProfile: DefenseAssistThreatProfile
+): boolean {
+  const readyPower = calculateReadyDefenseAssistTargetPower(assistTarget, homeRoom);
+  const hasDamage = readyPower.attack + readyPower.ranged + readyPower.dismantle > 0;
+  return hasDamage && readyPower.score >= threatProfile.total.score && readyPower.partCount >= threatProfile.total.partCount;
+}
+
+function getActiveDefenseAssistSquadId(homeRoom: string, targetRoom: string): string {
+  return `defenseAssist:${homeRoom}:${targetRoom}:active`;
+}
+
+function shouldAcquireDefenseAssistRequest(
+  request: DefenseAssistRequestMemory,
+  role: DefenseAssistRole,
+  homeRoom: string
+): boolean {
+  const requestedRoleNeed = getDefenseAssistRequestNeed(request, role);
+  if (requestedRoleNeed > countDefenseAssistMembersForRole(request.roomName, role)) return true;
+
+  return (
+    getTotalDefenseAssistRequestNeed(request) > 0 &&
+    hasVisibleHardDefenseAssistThreat(request.roomName) &&
+    countReadyDefenseAssistTargetMembers(request.roomName, homeRoom) < DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM
+  );
+}
+
+function tryAcquireDefenseAssistAssignment(ctx: CreepContext, mem: SwarmCreepMemory): string | null {
+  if (!isDefenseAssistRole(mem.role)) return null;
+  if (ctx.creep.spawning || ctx.creep.room.name !== ctx.homeRoom) return null;
+  if (mem.squadId || mem.targetRoom || mem.assistTarget || mem.assignedTaskId) return null;
+  if (mem.task && mem.task !== DEFENSE_ASSIST_TASK) return null;
+  if (hasHomeRoomDefenseThreat(ctx)) return null;
+
+  for (const request of getActiveDefenseAssistRequests()) {
+    const targetRoom = Game.rooms[request.roomName];
+    if (!targetRoom || getActualHostileCreeps(targetRoom).length === 0) continue;
+    if (!shouldAcquireDefenseAssistRequest(request, mem.role, ctx.homeRoom)) continue;
+
+    mem.task = DEFENSE_ASSIST_TASK;
+    mem.targetRoom = request.roomName;
+    mem.assistTarget = request.roomName;
+    mem.defenseSquadId = getActiveDefenseAssistSquadId(ctx.homeRoom, request.roomName);
+    mem.defenseSquadSize = hasVisibleHardDefenseAssistThreat(request.roomName)
+      ? Math.max(DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM, getTotalDefenseAssistRequestNeed(request))
+      : Math.max(1, getTotalDefenseAssistRequestNeed(request));
+    mem.defenseSquadCreatedAt = Game.time;
+
+    return request.roomName;
+  }
+
+  return null;
+}
+
+function isReadyDefenseAssistSquadMember(
+  creep: Creep,
+  squadId: string,
+  assistTarget: string,
+  homeRoom: string
+): boolean {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  return memory.defenseSquadId === squadId && isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom);
+}
+
+function countReadyDefenseAssistSquadMembers(mem: SwarmCreepMemory, homeRoom: string): number {
+  const assistTarget = getDefenseAssistTargetRoom(mem);
+  if (!mem.defenseSquadId || !assistTarget) return 0;
+  return Object.values(Game.creeps).filter(creep =>
+    isReadyDefenseAssistSquadMember(creep, mem.defenseSquadId!, assistTarget, homeRoom)
+  ).length;
+}
+
+function getDefenseAssistSquadStagingAction(ctx: CreepContext, mem: SwarmCreepMemory): CreepAction | null {
+  if (!isDefenseAssistSquadConfigured(mem)) return null;
+  if (ctx.creep.room.name !== ctx.homeRoom) return null;
+
+  const assistTarget = getDefenseAssistTargetRoom(mem);
+  if (!assistTarget) return null;
+
+  const threatProfile = getVisibleDefenseAssistThreatProfile(assistTarget);
+  const hardThreat = isDefenseAssistThreatProfileHard(threatProfile);
+  const readyMembers = hardThreat
+    ? countReadyDefenseAssistTargetMembers(assistTarget, ctx.homeRoom)
+    : countReadyDefenseAssistSquadMembers(mem, ctx.homeRoom);
+
+  if (threatProfile) {
+    if (hasReadyDefenseAssistParity(assistTarget, ctx.homeRoom, threatProfile)) return null;
+  } else {
+    if (readyMembers >= getDefenseAssistSquadReleaseQuorum(mem, hardThreat)) return null;
+    if (!hardThreat && isDefenseAssistSquadStagingExpired(mem, false)) return null;
+    if (hardThreat && isDefenseAssistSquadStagingExpired(mem, true)) return null;
+  }
+
+  const collectionPoint = getCollectionPoint(ctx.room.name);
+  return { type: "wait", position: collectionPoint ?? ctx.creep.pos };
+}
+
 function isAllyControlledRoom(room: Room): boolean {
   const controllerOwner = room.controller?.owner?.username;
   const controllerReserver = room.controller?.reservation?.username;
@@ -28,149 +269,6 @@ function isAllyControlledRoom(room: Room): boolean {
     (controllerOwner && isAllyPlayer(controllerOwner)) ||
       (controllerReserver && isAllyPlayer(controllerReserver))
   );
-}
-
-// =============================================================================
-// Patrol System
-// =============================================================================
-
-/** Cache namespace for patrol waypoints */
-const PATROL_CACHE_NAMESPACE = "patrol";
-
-/** TTL for patrol waypoints (1000 ticks - waypoints rarely change) */
-const PATROL_WAYPOINT_TTL = 1000;
-
-/**
- * Patrol waypoint cache metadata
- */
-interface PatrolWaypointMetadata {
-  spawnCount: number;
-}
-
-/**
- * Cached patrol waypoint data
- * 
- * Note: Waypoints are stored as plain objects instead of RoomPosition to avoid
- * serialization issues and ensure efficient caching. RoomPosition objects are
- * reconstructed on retrieval from the x, y, roomName properties.
- */
-interface CachedPatrolWaypoints {
-  waypoints: { x: number; y: number; roomName: string }[];
-  metadata: PatrolWaypointMetadata;
-}
-
-/**
- * Get patrol waypoints for a room covering exits and spawn areas.
- * OPTIMIZATION: Cache waypoints per room and only regenerate if spawns change.
- * This saves CPU by avoiding repeated room.find() and terrain checks.
- * 
- * ENHANCEMENT: Expanded patrol coverage to ensure guards encounter threats faster.
- * Added corner waypoints and mid-room positions for better threat detection.
- */
-function getPatrolWaypoints(room: Room): RoomPosition[] {
-  const spawns = room.find(FIND_MY_SPAWNS);
-  const spawnCount = spawns.length;
-  
-  // Try to get cached waypoints with metadata
-  const cacheKey = room.name;
-  const cached = globalCache.get<CachedPatrolWaypoints>(
-    cacheKey, 
-    { namespace: PATROL_CACHE_NAMESPACE }
-  );
-  
-  // Check if cached data is valid (same spawn count)
-  if (cached && cached.metadata.spawnCount === spawnCount) {
-    return cached.waypoints.map(w => new RoomPosition(w.x, w.y, w.roomName));
-  }
-
-  const roomName = room.name;
-
-  // Generate patrol points covering key defensive positions
-  const waypoints: RoomPosition[] = [];
-
-  // Add spawn area positions (offset from spawns)
-  for (const spawn of spawns) {
-    waypoints.push(new RoomPosition(spawn.pos.x + 3, spawn.pos.y + 3, roomName));
-    waypoints.push(new RoomPosition(spawn.pos.x - 3, spawn.pos.y - 3, roomName));
-  }
-
-  // Add exit patrol positions (center and corners of each exit side)
-  // Top exit (center and corners)
-  waypoints.push(new RoomPosition(10, 5, roomName));
-  waypoints.push(new RoomPosition(25, 5, roomName));
-  waypoints.push(new RoomPosition(39, 5, roomName));
-  // Bottom exit (center and corners)
-  waypoints.push(new RoomPosition(10, 44, roomName));
-  waypoints.push(new RoomPosition(25, 44, roomName));
-  waypoints.push(new RoomPosition(39, 44, roomName));
-  // Left exit (center and mid-points)
-  waypoints.push(new RoomPosition(5, 10, roomName));
-  waypoints.push(new RoomPosition(5, 25, roomName));
-  waypoints.push(new RoomPosition(5, 39, roomName));
-  // Right exit (center and mid-points)
-  waypoints.push(new RoomPosition(44, 10, roomName));
-  waypoints.push(new RoomPosition(44, 25, roomName));
-  waypoints.push(new RoomPosition(44, 39, roomName));
-
-  // Add room corners for complete coverage
-  waypoints.push(new RoomPosition(10, 10, roomName));
-  waypoints.push(new RoomPosition(39, 10, roomName));
-  waypoints.push(new RoomPosition(10, 39, roomName));
-  waypoints.push(new RoomPosition(39, 39, roomName));
-
-  // Add central waypoint for room center coverage
-  waypoints.push(new RoomPosition(25, 25, roomName));
-
-  // Clamp positions to valid room bounds and filter out walls
-  const filtered = waypoints
-    .map(pos => {
-      const x = Math.max(2, Math.min(47, pos.x));
-      const y = Math.max(2, Math.min(47, pos.y));
-      return { x, y, roomName };
-    })
-    .filter(pos => {
-      const terrain = room.getTerrain().get(pos.x, pos.y);
-      return terrain !== TERRAIN_MASK_WALL;
-    })
-    .map(pos => new RoomPosition(pos.x, pos.y, pos.roomName));
-
-  // Cache with spawn count in metadata for invalidation
-  const cacheData: CachedPatrolWaypoints = {
-    waypoints: filtered.map(p => ({ x: p.x, y: p.y, roomName: p.roomName })),
-    metadata: { spawnCount }
-  };
-  
-  globalCache.set(cacheKey, cacheData, {
-    namespace: PATROL_CACHE_NAMESPACE,
-    ttl: PATROL_WAYPOINT_TTL
-  });
-  
-  return filtered;
-}
-
-/**
- * Get the next patrol waypoint for a creep.
- * Cycles through waypoints in order.
- */
-function getNextPatrolWaypoint(creep: Creep, waypoints: RoomPosition[]): RoomPosition | null {
-  if (waypoints.length === 0) return null;
-
-  const mem = creep.memory as unknown as SwarmCreepMemory;
-
-  // Initialize patrol index if not set
-  if (mem.patrolIndex === undefined) {
-    mem.patrolIndex = 0;
-  }
-
-  const currentWaypoint = waypoints[mem.patrolIndex % waypoints.length];
-
-  // Check if we've reached the current waypoint (within 2 tiles using Chebyshev distance)
-  if (currentWaypoint && creep.pos.getRangeTo(currentWaypoint) <= 2) {
-    // Move to next waypoint
-    mem.patrolIndex = (mem.patrolIndex + 1) % waypoints.length;
-  }
-
-  return waypoints[mem.patrolIndex % waypoints.length] ?? null;
 }
 
 // =============================================================================
@@ -228,6 +326,12 @@ function findPriorityTarget(ctx: CreepContext): Creep | null {
   return scored[0]?.hostile ?? null;
 }
 
+function findAssistHostileStructure(ctx: CreepContext): Structure | null {
+  const structures = getActualHostileStructures(ctx.room).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+  if (structures.length === 0) return null;
+  return ctx.creep.pos.findClosestByRange(structures) ?? structures[0] ?? null;
+}
+
 /**
  * Check if creep has a specific body part.
  */
@@ -259,12 +363,115 @@ function moveToCollectionPoint(ctx: CreepContext, debugLabel: string): CreepActi
   return null;
 }
 
+function isHealerCombatSupportTarget(creep: Creep, assistTarget?: string): boolean {
+  const memory = creep.memory as unknown as SwarmCreepMemory;
+  if (memory.role === "healer") return false;
+  if (memory.family !== "military") return false;
+  if (!assistTarget) return true;
+  return getDefenseAssistTargetRoom(memory) === assistTarget;
+}
+
+function findWoundedCombatAlly(ctx: CreepContext, assistTarget?: string): Creep | null {
+  const wounded = ctx.room.find(FIND_MY_CREEPS, {
+    filter: creep => creep.hits < creep.hitsMax && isHealerCombatSupportTarget(creep, assistTarget)
+  });
+  if (wounded.length === 0) return null;
+  return wounded.sort((a, b) => {
+    const ratioA = a.hitsMax > 0 ? a.hits / a.hitsMax : 1;
+    const ratioB = b.hitsMax > 0 ? b.hits / b.hitsMax : 1;
+    if (ratioA !== ratioB) return ratioA - ratioB;
+    return ctx.creep.pos.getRangeTo(a) - ctx.creep.pos.getRangeTo(b);
+  })[0] ?? null;
+}
+
 /**
  * Get squad memory by ID.
  */
 function getSquadMemory(squadId: string): SquadMemory | undefined {
-  const mem = Memory as unknown as Record<string, Record<string, SquadMemory>>;
-  return mem.squads?.[squadId];
+  const memory = Memory as unknown as { clusters?: Record<string, { squads?: SquadMemory[] }> };
+  for (const cluster of Object.values(memory.clusters ?? {})) {
+    const squad = cluster.squads?.find(candidate => candidate.id === squadId);
+    if (!squad) continue;
+    squad.members = squad.members.filter(name => Boolean(Game.creeps[name]));
+    return squad;
+  }
+  return undefined;
+}
+
+function getSquadMembers(squad: SquadMemory): Creep[] {
+  return squad.members.map(name => Game.creeps[name]).filter((creep): creep is Creep => Boolean(creep));
+}
+
+function getSquadTargetSize(squad: SquadMemory): number {
+  const composition = squad.targetComposition ?? {};
+  const total = (Object.values(composition) as number[]).reduce((sum, value) => sum + (value ?? 0), 0);
+  return total > 0 ? total : squad.members.length;
+}
+
+function isSquadFullAtRally(squad: SquadMemory): boolean {
+  const composition = squad.targetComposition ?? {};
+  const roleCounts: Record<string, number> = {};
+  for (const creep of getSquadMembers(squad)) {
+    if (creep.room.name !== squad.rallyRoom || creep.spawning) continue;
+    const role = (creep.memory as unknown as SwarmCreepMemory).role;
+    roleCounts[role] = (roleCounts[role] ?? 0) + 1;
+  }
+  return Object.entries(composition).every(([role, needed]) => (roleCounts[role] ?? 0) >= (needed ?? 0));
+}
+
+function hasSafePartialRallyQuorum(squad: SquadMemory): boolean {
+  const rallyMembers = getSquadMembers(squad).filter(creep => creep.room.name === squad.rallyRoom && !creep.spawning);
+  const targetSize = getSquadTargetSize(squad);
+  if (rallyMembers.length < Math.max(2, Math.ceil(targetSize * 0.6))) return false;
+
+  const roles = new Set<string>(rallyMembers.map(creep => (creep.memory as unknown as SwarmCreepMemory).role));
+  const hasCombat = ["guard", "soldier", "ranger", "harasser", "siegeUnit"].some(role => roles.has(role));
+  if (!hasCombat) return false;
+  if ((squad.targetComposition?.healer ?? 0) > 0 && !roles.has("healer")) return false;
+  if (squad.type === "siege" && !roles.has("siegeUnit")) return false;
+  return true;
+}
+
+function canLocalSquadDepart(squad: SquadMemory): boolean {
+  if (isSquadFullAtRally(squad)) return true;
+  return Boolean(squad.stagingTimeoutAt && Game.time >= squad.stagingTimeoutAt && hasSafePartialRallyQuorum(squad));
+}
+
+function getSquadRallyPosition(squad: SquadMemory): RoomPosition {
+  const flag = squad.rallyFlag ? Game.flags?.[squad.rallyFlag] : undefined;
+  return flag?.pos ?? new RoomPosition(25, 25, squad.rallyRoom);
+}
+
+function getPrimarySquadAttacker(squad: SquadMemory): Creep | null {
+  return getSquadMembers(squad).find(creep => (creep.memory as unknown as SwarmCreepMemory).role !== "healer") ?? null;
+}
+
+function shouldWaitForCohesion(ctx: CreepContext, squad: SquadMemory): boolean {
+  const members = getSquadMembers(squad).filter(creep => creep.room.name === ctx.room.name && !creep.spawning);
+  if (members.length <= 1) return false;
+  const closest = members.reduce((best, creep) => Math.min(best, ctx.creep.pos.getRangeTo(creep)), Infinity);
+  return closest > 6;
+}
+
+function getSiegeFormationPosition(ctx: CreepContext, squad: SquadMemory): RoomPosition | null {
+  if (squad.type !== "siege") return null;
+  const members = getSquadMembers(squad).sort((a, b) => a.name.localeCompare(b.name));
+  const index = members.findIndex(creep => creep.name === ctx.creep.name);
+  if (index < 0 || index > 3) return null;
+  const anchor = members[0]?.pos;
+  if (!anchor || anchor.roomName !== ctx.room.name) return null;
+  const offsets = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 }
+  ];
+  const offset = offsets[index]!;
+  const x = Math.max(1, Math.min(48, anchor.x + offset.x));
+  const y = Math.max(1, Math.min(48, anchor.y + offset.y));
+  const terrain = ctx.room.getTerrain?.().get(x, y);
+  if (terrain === TERRAIN_MASK_WALL) return null;
+  return new RoomPosition(x, y, ctx.room.name);
 }
 
 // =============================================================================
@@ -284,17 +491,28 @@ export function guard(ctx: CreepContext): CreepAction {
     return { type: "idle" }; // Retreat logic handles movement
   }
 
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
+  }
+
   // Check if assigned to assist another room
-  if (mem.assistTarget) {
+  const guardAssistTarget = tryAcquireDefenseAssistAssignment(ctx, mem) ?? getDefenseAssistTargetRoom(mem);
+  if (guardAssistTarget && !hasHomeRoomDefenseThreat(ctx)) {
+    const stagingAction = getDefenseAssistSquadStagingAction(ctx, mem);
+    if (stagingAction) return stagingAction;
+
     // Move to assist room if not there yet
-    if (ctx.creep.room.name !== mem.assistTarget) {
-      return { type: "moveToRoom", roomName: mem.assistTarget };
+    if (ctx.creep.room.name !== guardAssistTarget) {
+      return { type: "moveToRoom", roomName: guardAssistTarget };
     }
 
+    const hostileStructure = findAssistHostileStructure(ctx);
+
     // In assist room - check if threat is resolved using pre-computed hostiles from context
-    if (ctx.hostiles.length === 0) {
+    if (ctx.hostiles.length === 0 && !hostileStructure) {
       // Threat resolved, clear assignment and return home
-      delete mem.assistTarget;
+      clearDefenseAssistAssignment(mem);
       if (ctx.creep.room.name !== ctx.homeRoom) {
         return { type: "moveToRoom", roomName: ctx.homeRoom };
       }
@@ -309,6 +527,16 @@ export function guard(ctx: CreepContext): CreepAction {
         if (hasRanged && range <= 3) return { type: "rangedAttack", target: assistTarget };
         if (hasMelee && range <= 1) return { type: "attack", target: assistTarget };
         return { type: "moveTo", target: assistTarget };
+      }
+
+      if (hostileStructure) {
+        const range = ctx.creep.pos.getRangeTo(hostileStructure);
+        const hasRanged = hasBodyPart(ctx.creep, RANGED_ATTACK);
+        const hasMelee = hasBodyPart(ctx.creep, ATTACK);
+
+        if (hasRanged && range <= 3) return { type: "rangedAttack", target: hostileStructure };
+        if (hasMelee && range <= 1) return { type: "attack", target: hostileStructure };
+        return { type: "moveTo", target: hostileStructure };
       }
     }
   }
@@ -462,8 +690,38 @@ export function healer(ctx: CreepContext): CreepAction {
     return { type: "heal", target: ctx.creep };
   }
 
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
+  }
+
+  // Check if assigned to assist another room
+  const healerAssistTarget = tryAcquireDefenseAssistAssignment(ctx, mem) ?? getDefenseAssistTargetRoom(mem);
+  if (healerAssistTarget && !hasHomeRoomDefenseThreat(ctx)) {
+    const stagingAction = getDefenseAssistSquadStagingAction(ctx, mem);
+    if (stagingAction) return stagingAction;
+
+    const assistRoom = Game.rooms[healerAssistTarget];
+    if (assistRoom) {
+      const hostiles = getActualHostileCreeps(assistRoom);
+      if (hostiles.length === 0) {
+        // Threat resolved, clear assignment
+        clearDefenseAssistAssignment(mem);
+        return { type: "idle" };
+      }
+
+      // Move to assist room if not there yet
+      if (ctx.creep.room.name !== healerAssistTarget) {
+        return { type: "moveToRoom", roomName: healerAssistTarget };
+      }
+    } else {
+      // Can't see assist room - move towards it
+      return { type: "moveToRoom", roomName: healerAssistTarget };
+    }
+  }
+
   // Check if assigned to power bank operation
-  if (mem.targetRoom) {
+  if (mem.targetRoom && mem.task !== DEFENSE_ASSIST_TASK && !mem.assistTarget) {
     // Move to target room (power bank location)
     if (ctx.room.name !== mem.targetRoom) {
       return { type: "moveToRoom", roomName: mem.targetRoom };
@@ -516,27 +774,6 @@ export function healer(ctx: CreepContext): CreepAction {
     }
   }
 
-  // Check if assigned to assist another room
-  if (mem.assistTarget) {
-    const assistRoom = Game.rooms[mem.assistTarget];
-    if (assistRoom) {
-      const hostiles = getActualHostileCreeps(assistRoom);
-      if (hostiles.length === 0) {
-        // Threat resolved, clear assignment
-        delete mem.assistTarget;
-        return { type: "idle" };
-      }
-
-      // Move to assist room if not there yet
-      if (ctx.creep.room.name !== mem.assistTarget) {
-        return { type: "moveToRoom", roomName: mem.assistTarget };
-      }
-    } else {
-      // Can't see assist room - move towards it
-      return { type: "moveToRoom", roomName: mem.assistTarget };
-    }
-  }
-
   // Heal nearby damaged allies
   const damagedNearby = ctx.creep.pos.findInRange(FIND_MY_CREEPS, 3, {
     filter: c => c.hits < c.hitsMax
@@ -554,6 +791,9 @@ export function healer(ctx: CreepContext): CreepAction {
     if (range <= 1) return { type: "heal", target };
     return { type: "rangedHeal", target };
   }
+
+  const woundedCombatAlly = findWoundedCombatAlly(ctx, healerAssistTarget);
+  if (woundedCombatAlly) return { type: "moveTo", target: woundedCombatAlly };
 
   // Follow military creeps (cache for 5 ticks)
   const militaryCreeps = ctx.room.find(FIND_MY_CREEPS, {
@@ -753,6 +993,11 @@ export function siege(ctx: CreepContext): CreepAction {
 export function harasser(ctx: CreepContext): CreepAction {
   const targetRoom = ctx.memory.targetRoom;
 
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
+  }
+
   // TACTICAL RETREAT: If critically damaged (below 40% HP), return home
   // Harassers should retreat earlier than heavy units since they're meant for hit-and-run
   const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
@@ -843,13 +1088,18 @@ export function ranger(ctx: CreepContext): CreepAction {
     return { type: "idle" }; // Retreat logic handles movement
   }
 
+  if (ctx.memory.squadId) {
+    const squad = getSquadMemory(ctx.memory.squadId);
+    if (squad) return squadBehavior(ctx, squad);
+  }
+
   // TACTICAL RETREAT: If critically damaged (below 30% HP), retreat to home room
   // Rangers are valuable ranged attackers, often boosted for maximum effectiveness
   const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
   if (hpPercent < 0.3) {
     // Clear assist target when retreating
-    if (mem.assistTarget) {
-      delete mem.assistTarget;
+    if (getDefenseAssistTargetRoom(mem)) {
+      clearDefenseAssistAssignment(mem);
     }
     if (ctx.room.name !== ctx.homeRoom) {
       return { type: "moveToRoom", roomName: ctx.homeRoom };
@@ -863,19 +1113,24 @@ export function ranger(ctx: CreepContext): CreepAction {
   }
 
   // Check if assigned to assist another room
-  if (mem.assistTarget) {
-    const assistRoom = Game.rooms[mem.assistTarget];
+  const rangerAssistTarget = tryAcquireDefenseAssistAssignment(ctx, mem) ?? getDefenseAssistTargetRoom(mem);
+  if (rangerAssistTarget && !hasHomeRoomDefenseThreat(ctx)) {
+    const stagingAction = getDefenseAssistSquadStagingAction(ctx, mem);
+    if (stagingAction) return stagingAction;
+
+    const assistRoom = Game.rooms[rangerAssistTarget];
     if (assistRoom) {
       const hostiles = getActualHostileCreeps(assistRoom);
-      if (hostiles.length === 0) {
+      const hostileStructures = getActualHostileStructures(assistRoom).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+      if (hostiles.length === 0 && hostileStructures.length === 0) {
         // Threat resolved, clear assignment
-        delete mem.assistTarget;
+        clearDefenseAssistAssignment(mem);
         return { type: "idle" };
       }
 
       // Move to assist room if not there yet
-      if (ctx.creep.room.name !== mem.assistTarget) {
-        return { type: "moveToRoom", roomName: mem.assistTarget };
+      if (ctx.creep.room.name !== rangerAssistTarget) {
+        return { type: "moveToRoom", roomName: rangerAssistTarget };
       }
 
       // In assist room - engage hostiles
@@ -886,9 +1141,16 @@ export function ranger(ctx: CreepContext): CreepAction {
         if (range <= 3) return { type: "rangedAttack", target: assistTarget };
         return { type: "moveTo", target: assistTarget };
       }
+
+      const hostileStructure = ctx.creep.pos.findClosestByRange(hostileStructures) ?? hostileStructures[0];
+      if (hostileStructure) {
+        const range = ctx.creep.pos.getRangeTo(hostileStructure);
+        if (range <= 3) return { type: "rangedAttack", target: hostileStructure };
+        return { type: "moveTo", target: hostileStructure };
+      }
     } else {
       // Can't see assist room - move towards it
-      return { type: "moveToRoom", roomName: mem.assistTarget };
+      return { type: "moveToRoom", roomName: rangerAssistTarget };
     }
   }
 
@@ -940,89 +1202,86 @@ export function ranger(ctx: CreepContext): CreepAction {
  * Squad members stay together and coordinate movements.
  */
 function squadBehavior(ctx: CreepContext, squad: SquadMemory): CreepAction {
-  // SQUAD COORDINATION: Check if we should wait for other squad members
-  const shouldWaitForSquad = (state: string): boolean => {
-    if (state !== "gathering" && state !== "moving") return false;
-    
-    // Count squad members in current room
-    const membersInRoom = squad.members.filter(name => {
-      const creep = Game.creeps[name];
-      return creep && creep.room.name === ctx.room.name;
-    }).length;
-    
-    // Wait if less than 50% of squad is present (minimum 2 members)
-    const totalMembers = squad.members.length;
-    return membersInRoom < Math.max(2, totalMembers * 0.5);
-  };
+  if (!squad.members.includes(ctx.creep.name)) {
+    squad.members.push(ctx.creep.name);
+  }
 
   switch (squad.state) {
     case "gathering": {
-      // Move to rally point
-      if (ctx.room.name !== squad.rallyRoom) {
-        return { type: "moveToRoom", roomName: squad.rallyRoom };
-      }
-      
-      // Wait at rally point for other squad members
-      const rallyPos = new RoomPosition(25, 25, squad.rallyRoom);
-      if (ctx.creep.pos.getRangeTo(rallyPos) > 3) {
-        return { type: "moveTo", target: rallyPos };
-      }
-      
+      if (ctx.room.name !== squad.rallyRoom) return { type: "moveToRoom", roomName: squad.rallyRoom };
+      const rallyPos = getSquadRallyPosition(squad);
+      if (ctx.creep.pos.getRangeTo(rallyPos) > 3) return { type: "moveTo", target: rallyPos };
+      if (!canLocalSquadDepart(squad)) return { type: "wait", position: rallyPos };
       return { type: "idle" };
     }
 
     case "moving": {
       const targetRoom = squad.targetRooms[0];
       if (!targetRoom) return { type: "idle" };
-      
       if (ctx.room.name !== targetRoom) {
-        // COORDINATION: Wait for squad if we're ahead
-        if (shouldWaitForSquad("moving")) {
-          return { type: "idle" };
-        }
+        if (shouldWaitForCohesion(ctx, squad)) return { type: "wait", position: ctx.creep.pos };
         return { type: "moveToRoom", roomName: targetRoom };
       }
+      const formationPos = getSiegeFormationPosition(ctx, squad);
+      if (formationPos && ctx.creep.pos.getRangeTo(formationPos) > 0) return { type: "moveTo", target: formationPos };
       return { type: "idle" };
     }
 
     case "attacking": {
-      // RETREAT CHECK: Squad members should retreat if HP is too low
-      // Default to 30% if retreatThreshold is not set
       const hpPercent = ctx.creep.hits / ctx.creep.hitsMax;
       const retreatThreshold = squad.retreatThreshold ?? 0.3;
-      if (hpPercent < retreatThreshold) {
-        // Individual retreat to rally room
-        if (ctx.room.name !== squad.rallyRoom) {
-          return { type: "moveToRoom", roomName: squad.rallyRoom };
+      if (hpPercent < retreatThreshold && ctx.room.name !== squad.rallyRoom) return { type: "moveToRoom", roomName: squad.rallyRoom };
+
+      const role = ctx.memory.role;
+      if (role === "healer") {
+        const wounded = getSquadMembers(squad)
+          .filter(creep => creep.hits < creep.hitsMax)
+          .sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax)[0];
+        if (wounded) {
+          const range = ctx.creep.pos.getRangeTo(wounded);
+          if (range <= 1) return { type: "heal", target: wounded };
+          if (range <= 3) return { type: "rangedHeal", target: wounded };
+          return { type: "moveTo", target: wounded };
         }
+        const attacker = getPrimarySquadAttacker(squad);
+        if (attacker && ctx.creep.pos.getRangeTo(attacker) > 2) return { type: "moveTo", target: attacker };
+        return { type: "idle" };
       }
-      
-      // Execute role-specific attack behavior
-      switch (ctx.memory.role) {
-        case "soldier":
-        case "guard":
-          return soldier(ctx);
-        case "healer":
-          return healer(ctx);
-        case "siegeUnit":
-          return siege(ctx);
-        case "ranger":
-          return ranger(ctx);
-        default:
-          return soldier(ctx);
+
+      const target = findPriorityTarget(ctx);
+      if (target) {
+        const range = ctx.creep.pos.getRangeTo(target);
+        if (role === "ranger") {
+          if (range < 3) return { type: "flee", from: [target.pos] };
+          if (range <= 3) return { type: "rangedAttack", target };
+          return { type: "moveTo", target };
+        }
+        if (hasBodyPart(ctx.creep, RANGED_ATTACK) && range <= 3) return { type: "rangedAttack", target };
+        if (hasBodyPart(ctx.creep, ATTACK) && range <= 1) return { type: "attack", target };
+        return { type: "moveTo", target };
       }
+
+      const hostileStructures = getActualHostileStructures(ctx.room).filter(s => s.structureType !== STRUCTURE_CONTROLLER);
+      const priorityStructure = ctx.creep.pos.findClosestByRange(
+        hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER || s.structureType === STRUCTURE_SPAWN)
+      ) ?? ctx.creep.pos.findClosestByRange(hostileStructures);
+      if (priorityStructure) {
+        const range = ctx.creep.pos.getRangeTo(priorityStructure);
+        if (role === "siegeUnit" && range <= 1) return { type: "dismantle", target: priorityStructure };
+        if (hasBodyPart(ctx.creep, RANGED_ATTACK) && range <= 3) return { type: "rangedAttack", target: priorityStructure };
+        if (hasBodyPart(ctx.creep, ATTACK) && range <= 1) return { type: "attack", target: priorityStructure };
+        return { type: "moveTo", target: priorityStructure };
+      }
+
+      return { type: "idle" };
     }
 
     case "retreating":
-      if (ctx.room.name !== squad.rallyRoom) {
-        return { type: "moveToRoom", roomName: squad.rallyRoom };
-      }
-      return { type: "moveTo", target: new RoomPosition(25, 25, squad.rallyRoom) };
+      if (ctx.room.name !== squad.rallyRoom) return { type: "moveToRoom", roomName: squad.rallyRoom };
+      return { type: "moveTo", target: getSquadRallyPosition(squad) };
 
     case "dissolving":
-      if (ctx.room.name !== ctx.homeRoom) {
-        return { type: "moveToRoom", roomName: ctx.homeRoom };
-      }
+      if (ctx.room.name !== ctx.homeRoom) return { type: "moveToRoom", roomName: ctx.homeRoom };
       delete ctx.memory.squadId;
       return { type: "idle" };
 

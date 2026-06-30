@@ -41,7 +41,7 @@ A full-featured bot using all major framework packages:
 
 ### Prerequisites
 
-- Node.js 16+
+- Node.js 24.x
 - TypeScript 4.0+
 - Screeps account
 
@@ -257,7 +257,7 @@ npm install
 - **[Framework Documentation](../docs/framework/)** - Learn more about the framework
 - **[Developer Guides](../docs/guides/)** - Deep dives into systems
 - **[Migration Guide](../docs/framework/migration.md)** - Migrate from other frameworks
-- **[API Reference](../docs/api/)** - Complete API documentation
+- **API Reference** - generate locally with `npm run docs` into `docs/api/`
 
 ## Support
 

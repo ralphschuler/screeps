@@ -64,15 +64,20 @@ import { throttle, scheduleTask, TaskPriority } from "@ralphschuler/screeps-util
 // Execute expensive operations periodically
 throttle(() => analyzeMarket(), 100);
 
-// Schedule tasks based on CPU bucket
+// Schedule tasks based on CPU bucket and per-tick CPU budget
 scheduleTask(
   "market-analysis",
   100,  // interval
   () => analyzeMarket(),
   TaskPriority.MEDIUM,  // only runs when bucket > 5000
-  2.0  // max CPU budget
+  2.0  // declared max CPU cost for scheduler budgeting
 );
 ```
+
+The computation scheduler keeps its public API small while hiding policy details
+(interval due checks, bucket thresholds, CPU-budget deferral, and priority counts)
+behind pure internal helpers. This makes ROADMAP-aligned CPU behavior easier to
+read and test without changing bot callers.
 
 ### Error Handling
 
@@ -191,6 +196,7 @@ The package includes comprehensive tests covering:
 - **Cache Helpers**: Tests for structure, creep, and source caching
 - **Cache Management**: Tests for warming and clearing cache
 - **ErrorMapper**: Placeholder tests (requires source map in production)
+- **Optimization**: Tests for CPU throttling and computation scheduler policy behavior
 - **Weighted Selection**: Tests for random weighted selection utilities
 
 **Test Coverage**: >85% (target in progress)
@@ -202,6 +208,9 @@ test/
   ├── setup.ts                  # Test environment setup
   ├── objectCache.test.ts       # Object caching tests
   ├── ErrorMapper.test.ts       # Error mapping tests
+  ├── optimization/             # CPU throttling and scheduler tests
+  │   ├── computationScheduler.test.ts
+  │   └── cpuEfficiency.test.ts
   └── selection/                # Weighted selection tests
       ├── random.test.ts
       └── weightedSelection.test.ts
@@ -218,7 +227,7 @@ test/
 - ✅ Hit rate calculation
 - ✅ CPU savings estimation
 - 📝 CPU efficiency monitoring (planned)
-- 📝 Computation scheduler (planned)
+- ✅ Computation scheduler priority, interval, bucket, CPU-budget, and global helper behavior
 
 ## Design Principles
 
@@ -239,7 +248,7 @@ Contributions welcome! This package is extracted from a production Screeps bot a
 
 ## Related Packages
 
-- `@ralphschuler/screeps-tasks` - Minimal task system for creeps
+- `@ralphschuler/screeps-roles` - Minimal task system for creeps
 - `@ralphschuler/screeps-chemistry` - Chemistry and lab management
 - `@ralphschuler/screeps-posis` - Process-oriented system integration
 

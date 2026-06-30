@@ -1,5 +1,7 @@
 import { assert } from "chai";
-import { processQuestMessages } from "../../src/empire/tooangel/questManager";
+import { parseQuestSign } from "../../src/empire/tooangel/npcDetector";
+import { parseQuestMessage, processQuestMessages } from "../../src/empire/tooangel/questManager";
+import { parseReputationResponse, processReputationUpdates } from "../../src/empire/tooangel/reputationManager";
 
 const previousGame = (global as any).Game;
 const previousMemory = (global as any).Memory;
@@ -16,6 +18,51 @@ describe("TooAngel quest manager", () => {
   afterEach(() => {
     (global as any).Game = previousGame;
     (global as any).Memory = previousMemory;
+  });
+
+  it("skips literal undefined messages before JSON parsing", () => {
+    const originalParse = JSON.parse;
+    let undefinedParseAttempts = 0;
+    JSON.parse = ((text: string, reviver?: (this: any, key: string, value: any) => any) => {
+      if (text === "undefined") undefinedParseAttempts++;
+      return originalParse(text, reviver);
+    }) as typeof JSON.parse;
+
+    try {
+      assert.isNull(parseQuestMessage("undefined"));
+      assert.isNull(parseReputationResponse("undefined"));
+      assert.isNull(parseQuestSign("undefined"));
+      assert.equal(undefinedParseAttempts, 0, "known non-JSON marker should be rejected before JSON.parse");
+    } finally {
+      JSON.parse = originalParse;
+    }
+  });
+
+  it("continues quest processing after malformed transaction descriptions", () => {
+    const validQuest = JSON.stringify({ type: "quest", id: "valid", room: "W2N2", quest: "buildcs", end: 3000 });
+
+    setupGame(2000, [
+      { transactionId: "bad", time: 1999, from: "W0N0", to: "W1N1", description: "undefined" },
+      { transactionId: "valid", time: 2000, from: "W0N0", to: "W1N1", description: validQuest }
+    ]);
+
+    assert.doesNotThrow(() => processQuestMessages());
+
+    const quests = (global as any).Memory.tooangel.activeQuests;
+    assert.property(quests, "valid", "valid quest after malformed transaction should still be handled");
+    assert.equal((global as any).Memory.tooangel.lastProcessedTick, 2000);
+  });
+
+  it("continues reputation processing after malformed transaction descriptions", () => {
+    const validReputation = JSON.stringify({ type: "reputation", reputation: 42 });
+
+    setupGame(2000, [
+      { transactionId: "bad", time: 1999, from: "W0N0", to: "W1N1", description: "undefined" },
+      { transactionId: "valid", time: 2000, from: "W0N0", to: "W1N1", description: validReputation }
+    ]);
+
+    assert.doesNotThrow(() => processReputationUpdates());
+    assert.equal((global as any).Memory.tooangel.reputation.value, 42);
   });
 
   it("skips terminal transactions already processed in previous ticks", () => {

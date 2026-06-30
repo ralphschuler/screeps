@@ -17,8 +17,10 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
+import { getConfig } from "../config";
 import { ProcessPriority, kernel } from "../core/kernel";
 import { MediumFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import * as ExpansionScoring from "./expansionScoring";
@@ -32,6 +34,18 @@ interface ClaimerMemory {
   task?: string;
   homeRoom?: string;
   family?: string;
+}
+
+interface SpawnSettingsMemory {
+  spawnSettings?: {
+    /** Set false to roll back lost-room recovery claiming. */
+    roomRecoveryReclaim?: boolean;
+  };
+}
+
+function isRoomRecoveryReclaimEnabled(): boolean {
+  const mem = Memory as unknown as SpawnSettingsMemory;
+  return mem.spawnSettings?.roomRecoveryReclaim !== false;
 }
 
 /**
@@ -77,9 +91,11 @@ function getRemoteRoomCapacityForSourceTarget(rcl: number, maxRemoteRooms: numbe
   return Math.min(Math.ceil(targetSources / expectedSourcesPerRemoteRoom), maxRemoteRooms);
 }
 
+const EXPANSION_MANAGER_MIN_BUCKET = getConfig().cpu.bucketThresholds.highMode + 1000;
+
 const DEFAULT_CONFIG: ExpansionManagerConfig = {
-  updateInterval: 20,
-  minBucket: 2000,
+  updateInterval: 500,
+  minBucket: EXPANSION_MANAGER_MIN_BUCKET,
   maxRemoteDistance: 2,
   maxRemotesPerRoom: 5, // Supports up to ~9 remote sources in mature rooms
   minRemoteSources: 1,
@@ -110,8 +126,8 @@ export class ExpansionManager {
    */
   @MediumFrequencyProcess("expansion:manager", "Expansion Manager", {
     priority: ProcessPriority.LOW,
-    interval: 20,
-    minBucket: 2000,
+    interval: 500,
+    minBucket: EXPANSION_MANAGER_MIN_BUCKET,
     cpuBudget: 0.02
   })
   public run(): void {
@@ -125,6 +141,9 @@ export class ExpansionManager {
 
     // Update remote room assignments for all owned rooms
     this.updateRemoteAssignments(empire);
+
+    // === RECOVERY: reclaim rooms we recently owned before normal expansion ===
+    this.assignRecoveryClaimers(empire);
 
     // === CONQUEST: assign claimers for freshly conquered rooms FIRST ===
     // These are high-priority targets added by offensiveOperations.ts after
@@ -442,6 +461,62 @@ export class ExpansionManager {
     }
 
     return false;
+  }
+
+  private isRecoverableClaimTarget(roomName: string, empire: EmpireMemory): boolean {
+    const room = Game.rooms[roomName];
+    if (room) {
+      const controller = room.controller;
+      if (!controller) return false;
+      if (controller.my) return false;
+      if (controller.owner || controller.reservation) return false;
+      if (getActualHostileCreeps(room).length > 0) return false;
+      return true;
+    }
+
+    const intel = empire.knownRooms[roomName];
+    const myUsername = this.getMyUsername();
+    if (!intel) return true;
+    if (intel.owner && intel.owner !== myUsername) return false;
+    if (intel.reserver && intel.reserver !== myUsername) return false;
+    return intel.threatLevel <= 0;
+  }
+
+  private getNextRecoveryTarget(empire: EmpireMemory): string | null {
+    const recoveryRooms = empire.recoveryRooms ?? {};
+    const candidates = Object.values(recoveryRooms)
+      .filter(entry => this.isRecoverableClaimTarget(entry.roomName, empire))
+      .filter(entry => !Object.values(Game.creeps).some(creep => {
+        const memory = creep.memory as ClaimerMemory;
+        return memory.role === "claimer" && memory.targetRoom === entry.roomName && memory.task === "claim";
+      }))
+      .sort((a, b) => a.lostAt - b.lostAt || a.roomName.localeCompare(b.roomName));
+
+    return candidates[0]?.roomName ?? null;
+  }
+
+  /**
+   * Assign claimers for recently lost owned rooms before normal expansion.
+   */
+  private assignRecoveryClaimers(empire: EmpireMemory): void {
+    if (!isRoomRecoveryReclaimEnabled()) return;
+
+    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    if (ownedRooms.length >= (Game.gcl?.level ?? 1)) return;
+
+    const targetRoom = this.getNextRecoveryTarget(empire);
+    if (!targetRoom) return;
+
+    for (const creep of Object.values(Game.creeps)) {
+      const memory = creep.memory as ClaimerMemory;
+      if (memory.role !== "claimer" || memory.targetRoom) continue;
+      memory.targetRoom = targetRoom;
+      memory.task = "claim";
+      logger.info(`Assigned recovery claimer to ${targetRoom}`, { subsystem: "Expansion" });
+      return;
+    }
+
+    this.requestClaimerSpawn(targetRoom, empire);
   }
 
   /**

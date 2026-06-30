@@ -117,6 +117,21 @@ describe("Multi-Factor Expansion Scoring", () => {
     });
   });
 
+  describe("Room coordinate parsing", () => {
+    it("maps W/N axis zero rooms to negative signed coordinates", () => {
+      expect(ExpansionScoring.parseRoomName("E1N1")).to.deep.equal({ xDir: "E", x: 1, yDir: "N", y: -2 });
+      expect(ExpansionScoring.parseRoomName("W0N0")).to.deep.equal({ xDir: "W", x: -1, yDir: "N", y: -1 });
+      expect(ExpansionScoring.parseRoomName("W1S3")).to.deep.equal({ xDir: "W", x: -2, yDir: "S", y: 3 });
+    });
+
+    it("returns adjacent rooms correctly across zero-boundary transitions", () => {
+      const adjacent = ExpansionScoring.getAdjacentRoomNames("W0N0").sort();
+      const expected = ["E0N1", "E0N0", "E0S0", "W1N1", "W1N0", "W1S0", "W0N1", "W0S0"].sort();
+
+      expect(adjacent).to.deep.equal(expected);
+    });
+  });
+
   describe("Distance Penalty", () => {
     it("should penalize distant rooms more heavily", () => {
       const distance1 = 1;
@@ -365,14 +380,9 @@ describe("Multi-Factor Expansion Scoring", () => {
   });
 
   describe("Portal Proximity Bonus", () => {
-    it("should give bonus for adjacent rooms with portals", () => {
-      // Set up mock empire with room intel
-      const mockOvermind = {
-        roomIntel: {
-          E2N1: createMockRoomIntel("E2N1", { hasPortal: true }),
-          E1N2: createMockRoomIntel("E1N2", { hasPortal: false })
-        },
-        roomsSeen: {},
+    function seedEmpire(rooms: Record<string, RoomIntel>): void {
+      (global as any).Memory.empire = {
+        knownRooms: rooms,
         claimQueue: [],
         warTargets: [],
         nukeCandidates: [],
@@ -385,43 +395,50 @@ describe("Multi-Factor Expansion Scoring", () => {
         },
         lastRun: 0
       };
+      heapCache.clear();
+    }
 
-      // Mock memoryManager
-      const memoryManager = {
-        getOvermind: () => mockOvermind
-      };
+    it("should reward the candidate room if it contains a portal", () => {
+      seedEmpire({
+        E1N1: createMockRoomIntel("E1N1", { hasPortal: true, isHighway: false, isSK: false }),
+        E2N1: createMockRoomIntel("E2N1", { hasPortal: false, isHighway: false, isSK: false })
+      });
 
-      // Inject the mock (this is simplified - in practice you'd use proper dependency injection)
-      const bonus = ExpansionScoring.getPortalProximityBonus("E1N1");
-
-      // Since E1N1 is adjacent to E2N1 which has a portal, it should get a bonus
-      // Note: This test assumes the function works, actual value depends on implementation
-      expect(bonus).to.be.a("number");
+      expect(ExpansionScoring.getPortalProximityBonus("E1N1")).to.equal(20);
     });
 
-    it("should return 0 for rooms without adjacent portals", () => {
-      // Set up mock empire with no portal rooms
-      const mockOvermind = {
-        roomIntel: {
-          E2N1: createMockRoomIntel("E2N1", { hasPortal: false }),
-          E1N2: createMockRoomIntel("E1N2", { hasPortal: false })
-        },
-        roomsSeen: {},
-        claimQueue: [],
-        warTargets: [],
-        nukeCandidates: [],
-        powerBanks: [],
-        objectives: {
-          targetPowerLevel: 0,
-          targetRoomCount: 1,
-          warMode: false,
-          expansionPaused: false
-        },
-        lastRun: 0
-      };
+    it("should reward rooms next to a portal room", () => {
+      seedEmpire({
+        E1N1: createMockRoomIntel("E1N1", { hasPortal: false, isHighway: false, isSK: false }),
+        E2N1: createMockRoomIntel("E2N1", { hasPortal: true, isHighway: false, isSK: false })
+      });
 
-      const bonus = ExpansionScoring.getPortalProximityBonus("E1N1");
-      expect(bonus).to.be.a("number");
+      expect(ExpansionScoring.getPortalProximityBonus("E1N1")).to.equal(10);
+    });
+
+    it("should provide reduced bonus for portal distance 2 or 3", () => {
+      seedEmpire({
+        E1N1: createMockRoomIntel("E1N1", { hasPortal: false, isHighway: false, isSK: false }),
+        E3N1: createMockRoomIntel("E3N1", { hasPortal: true, isHighway: false, isSK: false })
+      });
+
+      expect(ExpansionScoring.getPortalProximityBonus("E1N1")).to.equal(6);
+
+      seedEmpire({
+        E1N1: createMockRoomIntel("E1N1", { hasPortal: false, isHighway: false, isSK: false }),
+        E4N1: createMockRoomIntel("E4N1", { hasPortal: true, isHighway: false, isSK: false })
+      });
+
+      expect(ExpansionScoring.getPortalProximityBonus("E1N1")).to.equal(3);
+    });
+
+    it("should return 0 when no portals are in range", () => {
+      seedEmpire({
+        E1N1: createMockRoomIntel("E1N1", { hasPortal: false, isHighway: false, isSK: false }),
+        E2N1: createMockRoomIntel("E2N1", { hasPortal: false, isHighway: false, isSK: false })
+      });
+
+      expect(ExpansionScoring.getPortalProximityBonus("E1N1")).to.equal(0);
     });
   });
 });

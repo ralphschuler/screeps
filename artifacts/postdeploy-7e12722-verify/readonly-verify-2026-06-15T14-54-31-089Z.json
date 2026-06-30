@@ -1,0 +1,605 @@
+{
+  "generatedAt": "2026-06-15T14:54:31.036Z",
+  "hostname": "screeps.com",
+  "verification": {
+    "wantedCommit": "7e12722",
+    "localHead": "7e12722",
+    "branch": "main"
+  },
+  "user": {
+    "id": "5dc0453f9b78abbd4ca04b05",
+    "username": "TedRoastBeef"
+  },
+  "worldStatus": {
+    "ok": 1,
+    "status": "normal"
+  },
+  "code": {
+    "branch": "main",
+    "remoteMainSha256": "38c05effa10ca0c362dacb745e61eab0e4ab8f1f291195e7eea28ee874c2c0e9",
+    "localDistSha256": "38c05effa10ca0c362dacb745e61eab0e4ab8f1f291195e7eea28ee874c2c0e9",
+    "matchesLocalDist": true
+  },
+  "rooms": {
+    "ok": 1,
+    "shards": {
+      "shard0": [],
+      "shard1": [
+        "W17S29",
+        "W18S28",
+        "W18S29",
+        "W19S26"
+      ],
+      "shard2": [],
+      "shard3": [],
+      "shardX": []
+    },
+    "reservations": {
+      "shard0": [],
+      "shard1": [],
+      "shard2": [],
+      "shard3": [],
+      "shardX": []
+    }
+  },
+  "overview": {
+    "ok": 1,
+    "statsMax": 171600,
+    "totals": {
+      "creepsLost": 657,
+      "energyConstruction": 9387,
+      "energyHarvested": 66766,
+      "energyControl": 3013,
+      "energyCreeps": 43650,
+      "creepsProduced": 653
+    },
+    "shards": {
+      "shard0": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          75764102,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard1": {
+        "rooms": [
+          "W17S29",
+          "W18S28",
+          "W18S29",
+          "W19S26"
+        ],
+        "stats": {
+          "W17S29": [
+            {
+              "value": 3392,
+              "endTime": 3711525
+            },
+            {
+              "value": 1600,
+              "endTime": 3711526
+            },
+            {
+              "value": 3392,
+              "endTime": 3711527
+            },
+            {
+              "value": 1240,
+              "endTime": 3711528
+            },
+            {
+              "value": 1712,
+              "endTime": 3711529
+            },
+            {
+              "value": 3016,
+              "endTime": 3711530
+            },
+            {
+              "value": 2328,
+              "endTime": 3711531
+            },
+            {
+              "value": 2080,
+              "endTime": 3711532
+            }
+          ],
+          "W18S28": [
+            {
+              "value": 1992,
+              "endTime": 3711525
+            },
+            {
+              "value": 2654,
+              "endTime": 3711526
+            },
+            {
+              "value": 1080,
+              "endTime": 3711527
+            },
+            {
+              "value": 1536,
+              "endTime": 3711528
+            },
+            {
+              "value": 1040,
+              "endTime": 3711529
+            },
+            {
+              "value": 0,
+              "endTime": 3711530
+            },
+            {
+              "value": 0,
+              "endTime": 3711531
+            },
+            {
+              "value": 0,
+              "endTime": 3711532
+            }
+          ],
+          "W18S29": [
+            {
+              "value": 2880,
+              "endTime": 3711525
+            },
+            {
+              "value": 2488,
+              "endTime": 3711526
+            },
+            {
+              "value": 2456,
+              "endTime": 3711527
+            },
+            {
+              "value": 2488,
+              "endTime": 3711528
+            },
+            {
+              "value": 2328,
+              "endTime": 3711529
+            },
+            {
+              "value": 3080,
+              "endTime": 3711530
+            },
+            {
+              "value": 2328,
+              "endTime": 3711531
+            },
+            {
+              "value": 1264,
+              "endTime": 3711532
+            }
+          ],
+          "W19S26": [
+            {
+              "value": 1448,
+              "endTime": 3711525
+            },
+            {
+              "value": 1680,
+              "endTime": 3711526
+            },
+            {
+              "value": 1784,
+              "endTime": 3711527
+            },
+            {
+              "value": 1704,
+              "endTime": 3711528
+            },
+            {
+              "value": 1840,
+              "endTime": 3711529
+            },
+            {
+              "value": 1704,
+              "endTime": 3711530
+            },
+            {
+              "value": 1816,
+              "endTime": 3711531
+            },
+            {
+              "value": 1376,
+              "endTime": 3711532
+            }
+          ]
+        },
+        "gametimes": [
+          71691539,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard2": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          75201836,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard3": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          80878899,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shardX": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          2215539,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "shards": {
+    "shard0": {
+      "shard": "shard0",
+      "time": 75764102,
+      "memoryStats": {
+        "statsPresent": true,
+        "cpu": {
+          "usage": {
+            "W9N1": {
+              "init": 0.04045
+            }
+          },
+          "limit": 20,
+          "bucket": 906,
+          "getUsed": 2.9502
+        },
+        "rooms": {},
+        "topErrorProcesses": []
+      },
+      "ownedRooms": [],
+      "roomObjects": {}
+    },
+    "shard1": {
+      "shard": "shard1",
+      "time": 71691539,
+      "memoryStats": {
+        "statsPresent": true,
+        "tick": 71691539,
+        "cpu": {
+          "used": 14.727322400000048,
+          "limit": 50,
+          "bucket": 7728,
+          "percent": 29.45587980000346,
+          "heap_mb": 101.44522857666016
+        },
+        "empire": {
+          "rooms": 4,
+          "creeps": 36,
+          "power_creeps": {
+            "total": 0,
+            "spawned": 0,
+            "eco": 0,
+            "combat": 0
+          },
+          "energy": {
+            "storage": 1606371,
+            "terminal": 228801,
+            "available": 1818,
+            "capacity": 4450
+          },
+          "credits": 5237.551,
+          "skipped_processes": 26
+        },
+        "rooms": {
+          "W18S28": {
+            "rcl": 5,
+            "creeps": 1,
+            "cpuAvg": 0.2553987809502746,
+            "cpuPeak": 26.979372299974784,
+            "constructionSites": 6
+          },
+          "W19S26": {
+            "rcl": 2,
+            "creeps": 7,
+            "cpuAvg": 0.19572270004772704,
+            "cpuPeak": 42.11184639998828,
+            "constructionSites": 12
+          },
+          "W18S29": {
+            "rcl": 5,
+            "creeps": 12,
+            "cpuAvg": 0.9322904012060106,
+            "cpuPeak": 37.44734409998637,
+            "constructionSites": 12
+          },
+          "W17S29": {
+            "rcl": 6,
+            "creeps": 15,
+            "cpuAvg": 4.753469794837625,
+            "cpuPeak": 71.40210819999993,
+            "constructionSites": 1
+          }
+        },
+        "topErrorProcesses": []
+      },
+      "ownedRooms": [
+        "W17S29",
+        "W18S28",
+        "W18S29",
+        "W19S26"
+      ],
+      "roomObjects": {
+        "W17S29": {
+          "objectCount": 217,
+          "myCreeps": 15,
+          "nonOwnCreepsByOwner": {},
+          "constructionSites": 1,
+          "structures": 198,
+          "typeCounts": {
+            "source": 2,
+            "mineral": 1,
+            "constructedWall": 23,
+            "road": 107,
+            "container": 5,
+            "controller": 1,
+            "spawn": 1,
+            "extension": 40,
+            "rampart": 9,
+            "storage": 1,
+            "terminal": 1,
+            "extractor": 1,
+            "tower": 2,
+            "lab": 3,
+            "link": 3,
+            "creep": 15,
+            "constructionSite": 1,
+            "tombstone": 1
+          },
+          "actionAttacks": []
+        },
+        "W18S28": {
+          "objectCount": 271,
+          "myCreeps": 1,
+          "nonOwnCreepsByOwner": {
+            "Tigga": 5
+          },
+          "constructionSites": 2,
+          "structures": 260,
+          "typeCounts": {
+            "source": 2,
+            "mineral": 1,
+            "constructedWall": 33,
+            "road": 63,
+            "container": 5,
+            "energy": 24,
+            "ruin": 131,
+            "creep": 6,
+            "controller": 1,
+            "storage": 1,
+            "rampart": 1,
+            "constructionSite": 2,
+            "tombstone": 1
+          },
+          "actionAttacks": [
+            {
+              "creep": "r2309_6000",
+              "owner": "Tigga",
+              "action": "rangedMassAttack",
+              "target": {}
+            },
+            {
+              "creep": "r2309_6001",
+              "owner": "Tigga",
+              "action": "rangedAttack",
+              "target": {
+                "x": 30,
+                "y": 22
+              }
+            },
+            {
+              "creep": "r2309_6002",
+              "owner": "Tigga",
+              "action": "rangedAttack",
+              "target": {
+                "x": 27,
+                "y": 21
+              }
+            },
+            {
+              "creep": "d2309_6003",
+              "owner": "Tigga",
+              "action": "attack",
+              "target": {
+                "x": 27,
+                "y": 21
+              }
+            },
+            {
+              "creep": "d2309_6003",
+              "owner": "Tigga",
+              "action": "rangedMassAttack",
+              "target": {}
+            },
+            {
+              "creep": "d2309_6004",
+              "owner": "Tigga",
+              "action": "rangedAttack",
+              "target": {
+                "x": 2,
+                "y": 3
+              }
+            }
+          ]
+        },
+        "W18S29": {
+          "objectCount": 243,
+          "myCreeps": 12,
+          "nonOwnCreepsByOwner": {},
+          "constructionSites": 5,
+          "structures": 223,
+          "typeCounts": {
+            "source": 2,
+            "mineral": 1,
+            "constructedWall": 65,
+            "road": 110,
+            "container": 5,
+            "energy": 1,
+            "controller": 1,
+            "spawn": 1,
+            "extension": 30,
+            "tower": 2,
+            "storage": 1,
+            "rampart": 4,
+            "link": 2,
+            "constructionSite": 5,
+            "creep": 12,
+            "tombstone": 1
+          },
+          "actionAttacks": []
+        },
+        "W19S26": {
+          "objectCount": 66,
+          "myCreeps": 7,
+          "nonOwnCreepsByOwner": {
+            "admon": 2
+          },
+          "constructionSites": 3,
+          "structures": 51,
+          "typeCounts": {
+            "source": 2,
+            "mineral": 1,
+            "constructedWall": 3,
+            "road": 27,
+            "container": 2,
+            "energy": 4,
+            "ruin": 11,
+            "creep": 9,
+            "controller": 1,
+            "spawn": 1,
+            "constructionSite": 3,
+            "extension": 1,
+            "tombstone": 1
+          },
+          "actionAttacks": [
+            {
+              "creep": "k_3_f5ab",
+              "owner": "admon",
+              "action": "rangedAttack",
+              "target": {
+                "x": 26,
+                "y": 24
+              }
+            },
+            {
+              "creep": "k_3_5f00",
+              "owner": "admon",
+              "action": "rangedAttack",
+              "target": {
+                "x": 26,
+                "y": 24
+              }
+            }
+          ]
+        }
+      }
+    },
+    "shard2": {
+      "shard": "shard2",
+      "time": 75201836,
+      "memoryStats": {
+        "statsPresent": false
+      },
+      "ownedRooms": [],
+      "roomObjects": {}
+    },
+    "shard3": {
+      "shard": "shard3",
+      "time": 80878899,
+      "memoryStats": {
+        "statsPresent": true,
+        "tick": 79383724,
+        "cpu": {
+          "used": 5.358311199997843,
+          "limit": 20,
+          "bucket": 7985,
+          "percent": 26.794585000006922,
+          "heap_mb": 83.01220703125
+        },
+        "empire": {
+          "rooms": 1,
+          "creeps": 15,
+          "power_creeps": {
+            "total": 0,
+            "spawned": 0,
+            "eco": 0,
+            "combat": 0
+          },
+          "energy": {
+            "storage": 0,
+            "terminal": 0,
+            "available": 950,
+            "capacity": 950
+          },
+          "credits": 11980.286,
+          "skipped_processes": 21
+        },
+        "rooms": {
+          "W12S8": {
+            "rcl": 4,
+            "creeps": 12,
+            "cpuAvg": 2.6879361000000017,
+            "cpuPeak": 2.6879361000000017,
+            "constructionSites": 0
+          }
+        },
+        "topErrorProcesses": []
+      },
+      "ownedRooms": [],
+      "roomObjects": {}
+    }
+  },
+  "console": {
+    "ok": true,
+    "ms": 15000,
+    "eventCount": 0,
+    "errorCount": 0,
+    "events": [],
+    "errors": []
+  }
+}

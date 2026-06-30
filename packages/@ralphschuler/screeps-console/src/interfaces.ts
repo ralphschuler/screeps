@@ -41,7 +41,7 @@ export function createLogger(category: string): Logger {
 
 export const logger: Logger = createLogger('console');
 
-export function configureLogger(config: Partial<LoggerConfig>): void {
+export function configureLogger(_config: Partial<LoggerConfig>): void {
   // Stub implementation
 }
 
@@ -64,7 +64,7 @@ export function getConfig(): Config {
   return {};
 }
 
-export function updateConfig(updates: Partial<Config>): void {
+export function updateConfig(_updates: Partial<Config>): void {
   // Stub implementation
 }
 
@@ -109,9 +109,9 @@ export interface Kernel {
 
 export const kernel: Kernel = {
   getProcesses: () => [],
-  suspendProcess: (id: string) => true,
-  resumeProcess: (id: string) => true,
-  killProcess: (id: string) => {},
+  suspendProcess: (_id: string) => true,
+  resumeProcess: (_id: string) => true,
+  killProcess: (_id: string) => {},
   getProcessStats: () => ({}),
   getStatsSummary: () => ({}),
   getConfig: () => ({}),
@@ -133,7 +133,7 @@ export interface MemorySegmentStats {
 
 export const memorySegmentStats: MemorySegmentStats = {
   run: () => {},
-  getMetricSeries: (name: string) => null,
+  getMetricSeries: (_name: string) => null,
   getLatestStats: () => ({})
 };
 
@@ -150,11 +150,11 @@ export interface UnifiedStats {
 export const unifiedStats: UnifiedStats = {
   getSnapshot: () => ({}),
   getBudgetReport: () => ({}),
-  setEnabled: (enabled: boolean) => {},
+  setEnabled: (_enabled: boolean) => {},
   validateBudgets: () => ({}),
   detectAnomalies: () => ({}),
   getCurrentSnapshot: () => ({}),
-  postureCodeToName: (code: number) => 'unknown'
+  postureCodeToName: (_code: number) => 'unknown'
 };
 
 // ============================================================================
@@ -170,11 +170,11 @@ export interface RoomVisualizer {
 }
 
 export const roomVisualizer: RoomVisualizer = {
-  setEnabled: (enabled: boolean) => {},
+  setEnabled: (_enabled: boolean) => {},
   isEnabled: () => false,
-  toggleLayer: (layer: string) => {},
+  toggleLayer: (_layer: string) => {},
   getConfig: () => ({}),
-  toggle: (key: string) => {}
+  toggle: (_key: string) => {}
 };
 
 export interface MapVisualizer {
@@ -185,10 +185,10 @@ export interface MapVisualizer {
 }
 
 export const mapVisualizer: MapVisualizer = {
-  setEnabled: (enabled: boolean) => {},
+  setEnabled: (_enabled: boolean) => {},
   isEnabled: () => false,
   getConfig: () => ({}),
-  toggle: (key: string) => {}
+  toggle: (_key: string) => {}
 };
 
 // ============================================================================
@@ -202,13 +202,13 @@ export interface ProcessManager {
 }
 
 export const creepProcessManager: ProcessManager = {
-  getProcessInfo: (id: string) => null,
+  getProcessInfo: (_id: string) => null,
   listProcesses: () => [],
   getStats: () => ({})
 };
 
 export const roomProcessManager: ProcessManager = {
-  getProcessInfo: (id: string) => null,
+  getProcessInfo: (_id: string) => null,
   listProcesses: () => [],
   getStats: () => ({})
 };

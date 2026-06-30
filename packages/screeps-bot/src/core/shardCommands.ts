@@ -9,6 +9,7 @@
 
 import type { ShardRole } from "@ralphschuler/screeps-intershard";
 import { INTERSHARD_MEMORY_LIMIT, resourceTransferCoordinator } from "@ralphschuler/screeps-intershard";
+import { getInterShardFootprintStatus } from "../intershard/footprintOperation";
 import { shardManager } from "../intershard/shardManager";
 import { Command } from "./commandRegistry";
 
@@ -378,6 +379,17 @@ export class ShardCommands {
   public forceSync(): string {
     shardManager.forceSync();
     return "InterShardMemory sync forced. Check logs for results.";
+  }
+
+  @Command({
+    name: "shard.footprint",
+    description: "Display peaceful all-shard footprint/colonization operation status",
+    usage: "shard.footprint()",
+    examples: ["shard.footprint()"],
+    category: "Shard"
+  })
+  public footprint(): string {
+    return getInterShardFootprintStatus();
   }
 }
 

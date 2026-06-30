@@ -35,7 +35,7 @@ The Screeps Framework is built on these core principles:
 | `@ralphschuler/screeps-economy` | Resource flow | Link networks, terminal routing, factory management, market trading |
 | `@ralphschuler/screeps-chemistry` | Lab automation | Reaction chains, boost production, just-in-time stockpiling |
 | `@ralphschuler/screeps-defense` | Combat systems | Threat detection, tower coordination, rampart management |
-| `@ralphschuler/screeps-tasks` | Task coordination | Task assignment, priority systems, creep behaviors |
+| `@ralphschuler/screeps-roles` | Task coordination | Task assignment, priority systems, creep behaviors |
 | `@ralphschuler/screeps-utils` | Utilities | Caching, logging, common helpers |
 
 ### Migration Strategy
@@ -375,27 +375,18 @@ export function loop() {
 }
 ```
 
-**OR use Framework tasks (optional):**
+**OR use the roles task board (optional):**
 ```typescript
-import { TaskManager, Task } from '@ralphschuler/screeps-tasks';
+import { taskBoard } from '@ralphschuler/screeps-roles';
 
-const taskManager = new TaskManager();
-
-// Define task
-const harvestTask: Task = {
-  type: 'harvest',
-  priority: 100,
-  targetId: source.id,
-  creepName: creep.name
-};
-
-taskManager.assignTask(creep, harvestTask);
-
-// In creep logic
 export function loop() {
-  for (const name in Game.creeps) {
-    const creep = Game.creeps[name];
-    taskManager.runCreepTask(creep);
+  for (const room of Object.values(Game.rooms)) {
+    if (room.controller?.my) taskBoard.refreshRoom(room);
+  }
+
+  for (const creep of Object.values(Game.creeps)) {
+    const action = taskBoard.getAssignedAction(createCreepContext(creep));
+    if (action) executeAction(creep, action);
   }
 }
 ```
@@ -924,8 +915,8 @@ Most Screeps frameworks share common concepts. Here's a general mapping:
 | Link network | `LinkManager` | `screeps-economy` |
 | Lab manager | `ChemistryManager` + `LabConfigManager` | `screeps-chemistry` |
 | Terminal logistics | `TerminalManager` | `screeps-economy` |
-| Task system | `TaskManager` | `screeps-tasks` |
-| Creep roles | Custom or framework roles | Your code or `screeps-tasks` |
+| Task system | `taskBoard` / `TaskBoard` | `screeps-roles` |
+| Creep roles | Custom or framework roles | Your code or `screeps-roles` |
 | Room planner | Custom implementation | Not provided |
 | Defense | `DefenseCoordinator` | `screeps-defense` |
 
@@ -938,7 +929,7 @@ Bonzai uses a room-centric architecture with offices and franchises.
 - `Franchise` → Remote mining logic (custom)
 - `Minion` → Creep with role (custom or framework)
 - `Analyst` → Resource planning (custom + framework economy)
-- `Supervisor` → Task assignment (framework `TaskManager`)
+- `Supervisor` → Task assignment (framework `taskBoard`)
 
 **Migration approach:**
 1. Keep room/office structure
@@ -953,7 +944,7 @@ ScreepsBot uses a process-based architecture.
 **Concept mapping:**
 - `Process` → Framework doesn't require processes, but you can keep them
 - `Kernel` → Optional (framework packages work standalone)
-- `CreepProcess` → Role functions or `TaskManager`
+- `CreepProcess` → Role functions or `taskBoard`
 - `SpawnProcess` → `SpawnManager`
 
 **Migration approach:**

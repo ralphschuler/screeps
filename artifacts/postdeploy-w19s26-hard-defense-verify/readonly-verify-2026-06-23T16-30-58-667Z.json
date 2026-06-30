@@ -1,0 +1,575 @@
+{
+  "generatedAt": "2026-06-23T16:30:58.667Z",
+  "hostname": "screeps.com",
+  "shard": "shard1",
+  "authenticatedUser": {
+    "id": "5dc0453f9b78abbd4ca04b05",
+    "username": "TedRoastBeef"
+  },
+  "time": 71870584,
+  "rooms": {
+    "W19S26": {
+      "objectCount": 17,
+      "controller": {
+        "level": 3,
+        "my": false,
+        "owner": "TedRoastBeef",
+        "safeMode": 71863477
+      },
+      "creeps": {
+        "my": 0,
+        "actualHostile": 1,
+        "allied": 0
+      },
+      "hostiles": [
+        {
+          "name": "r_3_2ac9",
+          "owner": "admon",
+          "x": 37,
+          "y": 42,
+          "hits": 5000,
+          "body": {
+            "tough": 5,
+            "ranged_attack": 25,
+            "move": 10,
+            "heal": 10
+          }
+        }
+      ],
+      "myMilitary": [],
+      "structures": {
+        "spawns": [],
+        "towers": [],
+        "ramparts": 0
+      }
+    },
+    "W17S29": {
+      "objectCount": 215,
+      "controller": {
+        "level": 6,
+        "my": false,
+        "owner": "TedRoastBeef",
+        "safeMode": 70230536
+      },
+      "creeps": {
+        "my": 12,
+        "actualHostile": 0,
+        "allied": 12
+      },
+      "hostiles": [],
+      "myMilitary": [],
+      "structures": {
+        "spawns": [
+          {
+            "id": "69dcd3157f2eaa001200ba22",
+            "name": "Spawn1",
+            "spawning": {
+              "name": "healer_71870538_5pst6dukn",
+              "needTime": 54,
+              "spawnTime": 71870592
+            }
+          }
+        ],
+        "towers": [
+          {
+            "id": "6a19facdf4fb902ad00dc315",
+            "hits": 3000
+          },
+          {
+            "id": "6a1a144bba9c0f64c10ed635",
+            "hits": 3000
+          }
+        ],
+        "ramparts": 0
+      }
+    },
+    "W18S28": {
+      "objectCount": 45,
+      "controller": {
+        "level": 5,
+        "my": false,
+        "owner": "TedRoastBeef",
+        "safeMode": 71734821
+      },
+      "creeps": {
+        "my": 12,
+        "actualHostile": 0,
+        "allied": 12
+      },
+      "hostiles": [],
+      "myMilitary": [],
+      "structures": {
+        "spawns": [
+          {
+            "id": "6a35f7a58edafbc97456c859",
+            "name": "Spawn2",
+            "spawning": null
+          }
+        ],
+        "towers": [
+          {
+            "id": "6a3855b292314415df7ea8e4",
+            "hits": 2600
+          }
+        ],
+        "ramparts": 0
+      }
+    },
+    "W18S29": {
+      "objectCount": 287,
+      "controller": {
+        "level": 6,
+        "my": false,
+        "owner": "TedRoastBeef",
+        "safeMode": 71884244
+      },
+      "creeps": {
+        "my": 9,
+        "actualHostile": 0,
+        "allied": 9
+      },
+      "hostiles": [],
+      "myMilitary": [],
+      "structures": {
+        "spawns": [
+          {
+            "id": "6a16ee1dc928de7d8d47d4c3",
+            "name": "Spawn3",
+            "spawning": {
+              "name": "builder_71870531_6kwklth1n",
+              "needTime": 66,
+              "spawnTime": 71870597
+            }
+          }
+        ],
+        "towers": [
+          {
+            "id": "6a18899b30408b48074b7561",
+            "hits": 3000
+          },
+          {
+            "id": "6a267fc868274c316e92b489",
+            "hits": 3000
+          }
+        ],
+        "ramparts": 0
+      }
+    },
+    "W19S25": {
+      "objectCount": 4,
+      "controller": {
+        "level": 0,
+        "my": false,
+        "owner": "unknown",
+        "safeMode": null
+      },
+      "creeps": {
+        "my": 0,
+        "actualHostile": 0,
+        "allied": 0
+      },
+      "hostiles": [],
+      "myMilitary": [],
+      "structures": {
+        "spawns": [],
+        "towers": [],
+        "ramparts": 0
+      }
+    },
+    "W19S27": {
+      "objectCount": 5,
+      "controller": {
+        "level": 0,
+        "my": false,
+        "owner": "unknown",
+        "safeMode": null
+      },
+      "creeps": {
+        "my": 2,
+        "actualHostile": 0,
+        "allied": 2
+      },
+      "hostiles": [],
+      "myMilitary": [],
+      "structures": {
+        "spawns": [],
+        "towers": [],
+        "ramparts": 0
+      }
+    }
+  },
+  "memory": {
+    "stats": {
+      "tick": 71870584,
+      "cpu": {
+        "used": 33.891436599999906,
+        "limit": 50,
+        "bucket": 9844,
+        "percent": 67.7841497999998,
+        "heap_mb": 67.20083618164062
+      },
+      "w19s26": {
+        "rcl": 3,
+        "energy": {
+          "available": 0,
+          "capacity": 0,
+          "storage": 0,
+          "terminal": 0
+        },
+        "controller": {
+          "progress": 40032,
+          "progress_total": 135000,
+          "progress_percent": 29.653333333333332,
+          "ticks_to_downgrade": 13777,
+          "downgrade_risk": false
+        },
+        "creeps": 0,
+        "hostiles": 1,
+        "brain": {
+          "danger": 2,
+          "posture_code": 3,
+          "colony_level_code": 2
+        },
+        "pheromones": {
+          "expand": 2.9408803958402666e-16,
+          "harvest": 99.99990881257384,
+          "build": 100,
+          "upgrade": 100,
+          "defense": 100,
+          "war": 100,
+          "siege": 0.11092431169972897,
+          "logistics": 2.5e-323,
+          "nukeTarget": 0
+        },
+        "metrics": {
+          "energy": {
+            "harvested": 0,
+            "spawning": 0,
+            "construction": 0,
+            "repair": 0,
+            "tower": 0,
+            "available_for_sharing": 0,
+            "capacity_total": 0,
+            "need": 0
+          },
+          "controller_progress": 40032,
+          "hostile_count": 1,
+          "damage_received": 250,
+          "construction_sites": 11
+        },
+        "taskBoard": {
+          "tasks": 8,
+          "open_tasks": 8,
+          "assigned_tasks": 0,
+          "reservations": 0,
+          "stale_reservations": 0,
+          "blocked_reservations": 0
+        },
+        "spawn_queue": {
+          "total": 0,
+          "emergency": 0,
+          "high": 0,
+          "normal": 0,
+          "low": 0,
+          "in_progress": 0,
+          "spawned_last_tick": 0,
+          "total_spawns": 0,
+          "idle_spawns": 0,
+          "busy_spawns": 0,
+          "idle_spawn_ticks": 0
+        },
+        "remote": {
+          "assigned": 0,
+          "visible": 0,
+          "reserved_by_me": 0,
+          "reserved_by_other": 0,
+          "min_reservation_ticks": 0,
+          "known_unsafe": 0
+        },
+        "defense": {
+          "towers": 0,
+          "tower_energy": 0,
+          "tower_energy_capacity": 0,
+          "tower_energy_percent": 0,
+          "tower_reserve_energy": 0,
+          "tower_reserve_deficit": 0
+        },
+        "profiler": {
+          "avg_cpu": 0.31685124325749187,
+          "peak_cpu": 42.11184639998828,
+          "samples": 64428
+        }
+      }
+    },
+    "defenseRequests": [
+      {
+        "roomName": "W19S26",
+        "guardsNeeded": 2,
+        "rangersNeeded": 8,
+        "healersNeeded": 3,
+        "urgency": 2,
+        "createdAt": 71870566,
+        "threat": "Baseline defense force for RCL 3; 25 ranged parts detected; 10 heal parts detected; 1 boosted enemies (high threat)"
+      }
+    ],
+    "assignedDefenders": [
+      {
+        "name": "guard_71869405_x8xc7rk2l",
+        "role": "guard",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870579,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S29:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "guard_71869461_xibnel5q8",
+        "role": "guard",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveTo",
+          "startTick": 71870564,
+          "timeout": 25,
+          "targetPos": {
+            "x": 25,
+            "y": 5,
+            "roomName": "W18S28"
+          }
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71869516_smdxnkz5m",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870576,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71869577_c4gwoxzaf",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveTo",
+          "startTick": 71870562,
+          "timeout": 25,
+          "targetPos": {
+            "x": 39,
+            "y": 5,
+            "roomName": "W18S27"
+          }
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71869589_8cycfk5ga",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870575,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S29:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71869630_g7ztcvmf1",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870570,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71869801_n2629l9r9",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870575,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S29:W19S26:71868855",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "pioneer_71869811_2e0tuxwgv",
+        "role": "pioneer",
+        "task": "bootstrapSpawn",
+        "targetRoom": "W19S26",
+        "state": {
+          "action": "remoteMoveToRoom",
+          "startTick": 71870578,
+          "timeout": 25,
+          "targetRoom": "W19S26",
+          "data": {
+            "routeType": "hauler"
+          }
+        }
+      },
+      {
+        "name": "healer_71870347_fzmfn3yrf",
+        "role": "healer",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870583,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W17S29:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "guard_71870401_1k2awyodj",
+        "role": "guard",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870583,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S29:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "guard_71870408_aln4fx2bz",
+        "role": "guard",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870582,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "guard_71870436_ejjqg4l11",
+        "role": "guard",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870564,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W17S29:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71870446_30jmz70c2",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870559,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "healer_71870479_ikz9a2ipd",
+        "role": "healer",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870569,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S29:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71870487_av5u34rdm",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870574,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "ranger_71870521_db162cib6",
+        "role": "ranger",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "state": {
+          "action": "moveToRoom",
+          "startTick": 71870582,
+          "timeout": 25,
+          "targetRoom": "W19S26"
+        },
+        "defenseSquadId": "defenseAssist:W18S28:W19S26:71869857",
+        "defenseSquadSize": 13
+      },
+      {
+        "name": "healer_71870538_5pst6dukn",
+        "role": "healer",
+        "task": "defenseAssist",
+        "targetRoom": "W19S26",
+        "assistTarget": "W19S26",
+        "defenseSquadId": "defenseAssist:W17S29:W19S26:71869857",
+        "defenseSquadSize": 13
+      }
+    ],
+    "defenseSquads": {}
+  },
+  "safety": {
+    "allyTargetViolations": [],
+    "rangedAttackRegressions": [],
+    "consoleCalled": false,
+    "memoryWritten": false
+  }
+}

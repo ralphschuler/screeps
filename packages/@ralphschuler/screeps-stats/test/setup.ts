@@ -33,7 +33,8 @@
 (global as any).RawMemory = {
   segments: {},
   get: () => '',
-  set: () => {}
+  set: () => {},
+  setActiveSegments: () => {}
 };
 
 // Mock InterShardMemory

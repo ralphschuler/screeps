@@ -18,6 +18,24 @@ Unified statistics collection and export system for Screeps bots. Provides compr
 npm install @ralphschuler/screeps-stats
 ```
 
+## Runtime Contract
+
+`UnifiedStatsManager` follows one tick-local lifecycle:
+
+1. `initialize()` once after global reset to request the configured memory segment and install console CPU-detail helpers.
+2. `startTick()` at the beginning of each game tick to reset transient measurements while preserving room stats for distributed room processes.
+3. `record*` / `start*Measurement()` / `end*Measurement()` calls during bot execution to collect subsystem, room, role, process, native-call, and cache data.
+4. `finalizeTick()` at the end of the tick to publish `Memory.stats`, optionally update the memory segment, and emit throttled CPU budget/anomaly alerts.
+
+The package keeps its public API in `src/index.ts`. Implementation modules under `src/unified-stats/` are internal helpers used to keep `unifiedStats.ts` readable without expanding the public package surface.
+
+### Important Memory Shapes
+
+- `Memory.stats` is overwritten each tick with the latest exported snapshot.
+- `Memory.stats.profiler` is preserved when publishing so legacy profiler consumers keep their rolling samples.
+- `Memory.stats.cpu_details` is short-lived, opt-in drilldown data controlled by `enableCpuDetails()` / `disableCpuDetails()`.
+- `RawMemory.segments[segmentId]` stores historical snapshots only on the configured segment update interval.
+
 ## Usage
 
 ### Basic Stats Collection

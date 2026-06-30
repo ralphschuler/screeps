@@ -110,6 +110,7 @@ interface IScheduler {
 ├── analysis/           # Remote room analysis
 │   └── remoteRoomUtils    - Room scanning, callbacks
 ├── paths/              # Path management
+│   ├── remotePathSearch   - Internal shared PathFinder policy for remote routes
 │   ├── remotePathCache    - Path caching with TTL
 │   └── remotePathScheduler - Scheduled precaching
 └── movement/           # Movement optimization
@@ -240,6 +241,17 @@ const path = PathFinder.search(from, to, {
 });
 ```
 
+## Path Search Policy
+
+All remote route calculations use one shared PathFinder policy:
+
+- range `1` goals for sources, containers, and storage handoff points
+- plain cost `2`, swamp cost `10`
+- `maxRooms: 16` to match Screeps' PathFinder room-search cap
+- `getRemoteMiningRoomCallback` for road preference, creep avoidance, and hostile-structure room avoidance
+
+Keeping this policy in one module prevents scheduled precaching and on-demand cache misses from producing subtly different routes.
+
 ## Performance
 
 Expected CPU savings with remote mining optimization:
@@ -308,7 +320,8 @@ class RemoteHarvesterBehavior {
 3. **Shared Paths**: Multiple creeps reuse the same cached paths
 4. **Dependency Injection**: Decoupled from specific bot implementations
 5. **Type-Safe**: Full TypeScript support with strict types
-6. **Performance-First**: Every feature designed to minimize CPU usage
+6. **Shared Search Policy**: Scheduled and on-demand path calculations use the same route costs
+7. **Performance-First**: Every feature designed to minimize CPU usage
 
 ## Testing
 

@@ -19,4 +19,13 @@ export { PathCacheEventManager } from "./cache/pathCacheEvents";
 export type { ConstructionCompleteEvent, StructureDestroyedEvent } from "./cache/pathCacheEvents";
 
 // Dependency interfaces - consumers must provide implementations
-export type { ICache, ILogger, IEventBus, IPathCache, IRemoteMining } from "./types";
+export type {
+  ICache,
+  ILogger,
+  IEventBus,
+  IPathCache,
+  IRemoteMining,
+  PathCacheEventHandler,
+  PathCacheEventMap,
+  PathCacheEventName
+} from "./types";

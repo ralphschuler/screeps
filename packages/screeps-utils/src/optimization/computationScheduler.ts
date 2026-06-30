@@ -24,6 +24,15 @@
  * - Statistics aggregation
  */
 
+import {
+  compareTaskPriority,
+  countTasksByPriority,
+  createPriorityCounts,
+  isTaskDue,
+  shouldDeferForBudget,
+  shouldSkipForBucket
+} from "./schedulerPolicy";
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -41,6 +50,13 @@ export enum TaskPriority {
   /** Low priority tasks (run when bucket > 8000) */
   LOW = 3
 }
+
+const TASK_PRIORITIES: readonly TaskPriority[] = [
+  TaskPriority.CRITICAL,
+  TaskPriority.HIGH,
+  TaskPriority.MEDIUM,
+  TaskPriority.LOW
+];
 
 /**
  * Scheduled task definition
@@ -119,12 +135,7 @@ export class ComputationScheduler {
   private config: SchedulerConfig;
   private stats: SchedulerStats = {
     totalTasks: 0,
-    tasksByPriority: {
-      [TaskPriority.CRITICAL]: 0,
-      [TaskPriority.HIGH]: 0,
-      [TaskPriority.MEDIUM]: 0,
-      [TaskPriority.LOW]: 0
-    },
+    tasksByPriority: createPriorityCounts(TASK_PRIORITIES),
     executedThisTick: 0,
     skippedThisTick: 0,
     deferredThisTick: 0,
@@ -189,28 +200,25 @@ export class ComputationScheduler {
     this.stats.deferredThisTick = 0;
 
     // Get tasks sorted by priority (critical first)
-    const tasks = Array.from(this.tasks.values()).sort((a, b) => a.priority - b.priority);
+    const tasks = Array.from(this.tasks.values()).sort(compareTaskPriority);
 
     let cpuUsed = 0;
 
     for (const task of tasks) {
       // Check if task is due
-      if (Game.time - task.lastRun < task.interval) {
+      if (!isTaskDue(Game.time, task.lastRun, task.interval)) {
         continue;
       }
 
       // Check bucket threshold for non-critical tasks
-      if (task.priority !== TaskPriority.CRITICAL) {
-        const threshold = this.config.bucketThresholds[task.priority];
-        if (bucket < threshold) {
-          this.stats.skippedThisTick++;
-          continue;
-        }
+      if (shouldSkipForBucket(task.priority, bucket, this.config.bucketThresholds, TaskPriority.CRITICAL)) {
+        this.stats.skippedThisTick++;
+        continue;
       }
 
       // Check CPU budget
       const taskMaxCpu = task.maxCpu ?? this.config.defaultMaxCpu;
-      if (cpuUsed + taskMaxCpu > cpuBudget && task.skippable) {
+      if (shouldDeferForBudget(cpuUsed, taskMaxCpu, cpuBudget, task.skippable)) {
         this.stats.deferredThisTick++;
         continue;
       }
@@ -318,16 +326,7 @@ export class ComputationScheduler {
    */
   private updateStats(): void {
     this.stats.totalTasks = this.tasks.size;
-    this.stats.tasksByPriority = {
-      [TaskPriority.CRITICAL]: 0,
-      [TaskPriority.HIGH]: 0,
-      [TaskPriority.MEDIUM]: 0,
-      [TaskPriority.LOW]: 0
-    };
-
-    for (const task of this.tasks.values()) {
-      this.stats.tasksByPriority[task.priority]++;
-    }
+    this.stats.tasksByPriority = countTasksByPriority(this.tasks.values(), TASK_PRIORITIES);
   }
 }
 

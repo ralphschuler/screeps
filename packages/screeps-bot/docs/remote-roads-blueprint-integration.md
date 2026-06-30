@@ -217,15 +217,15 @@ Comprehensive tests verify:
 5. Edge cases are handled gracefully
 
 See:
-- `test/unit/blueprintRemoteRoads.test.ts` - Core functionality tests
-- `test/unit/blueprintRemoteRoadsIntegration.test.ts` - Integration scenarios
+- `../@ralphschuler/screeps-layouts/test/roadNetworkPlanner.test.ts` - Remote/exit road validity behavior
+- `../@ralphschuler/screeps-layouts/test/blueprintPlacementResilience.test.ts` - Blueprint cleanup resilience
 - `test/unit/remoteInfrastructure.test.ts` - Remote infrastructure tests
 
 ## Key Files
 
 - `src/empire/remoteInfrastructure.ts` - Places remote roads
-- `src/layouts/roadNetworkPlanner.ts` - Calculates remote roads
-- `src/layouts/blueprints.ts` - Validates roads against blueprint
+- `@ralphschuler/screeps-layouts/src/roadNetworkPlanner.ts` - Calculates remote roads
+- `@ralphschuler/screeps-layouts/src/blueprints/` - Validates roads against blueprint
 - `src/core/roomNode.ts` - Calls validation with remote assignments
 
 ## Summary

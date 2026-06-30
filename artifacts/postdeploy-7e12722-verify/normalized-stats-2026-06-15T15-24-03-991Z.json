@@ -1,0 +1,219 @@
+{
+  "generatedAt": "2026-06-15T15:24:03.992Z",
+  "tick": 71692020,
+  "cpu": {
+    "used": 28.22066730000006,
+    "limit": 50,
+    "bucket": 10000,
+    "percent": 56.442538399999655,
+    "heap_mb": 91.14778137207031
+  },
+  "empire": {
+    "rooms": 4,
+    "creeps": 29,
+    "power_creeps": {
+      "total": 0,
+      "spawned": 0,
+      "eco": 0,
+      "combat": 0
+    },
+    "energy": {
+      "storage": 1344475,
+      "terminal": 225883,
+      "available": 3908,
+      "capacity": 4450
+    },
+    "credits": 5545.287,
+    "skipped_processes": 23
+  },
+  "rooms": {
+    "W18S28": {
+      "rcl": 5,
+      "energy": {
+        "available": 0,
+        "capacity": 0,
+        "storage": 0,
+        "terminal": 0
+      },
+      "creeps": 0,
+      "hostiles": 8,
+      "brain": {
+        "danger": 3,
+        "posture_code": 4,
+        "colony_level_code": 3
+      },
+      "defense": {
+        "towers": 0,
+        "tower_energy": 0,
+        "tower_energy_capacity": 0,
+        "tower_energy_percent": 0,
+        "tower_reserve_energy": 0,
+        "tower_reserve_deficit": 0
+      },
+      "spawn_queue": {
+        "total": 0,
+        "emergency": 0,
+        "high": 0,
+        "normal": 0,
+        "low": 0,
+        "in_progress": 0,
+        "spawned_last_tick": 0,
+        "total_spawns": 0,
+        "idle_spawns": 0,
+        "busy_spawns": 0,
+        "idle_spawn_ticks": 0
+      },
+      "metrics": {
+        "hostile_count": 9,
+        "construction_sites": 6,
+        "damage_received": 1660
+      },
+      "profiler": {
+        "avg_cpu": 0.31528153813686755,
+        "peak_cpu": 26.979372299974784,
+        "samples": 13569
+      }
+    },
+    "W19S26": {
+      "rcl": 2,
+      "energy": {
+        "available": 108,
+        "capacity": 350,
+        "storage": 0,
+        "terminal": 0
+      },
+      "creeps": 5,
+      "hostiles": 2,
+      "brain": {
+        "danger": 3,
+        "posture_code": 4,
+        "colony_level_code": 1
+      },
+      "defense": {
+        "towers": 0,
+        "tower_energy": 0,
+        "tower_energy_capacity": 0,
+        "tower_energy_percent": 0,
+        "tower_reserve_energy": 0,
+        "tower_reserve_deficit": 0
+      },
+      "spawn_queue": {
+        "total": 0,
+        "emergency": 0,
+        "high": 0,
+        "normal": 0,
+        "low": 0,
+        "in_progress": 0,
+        "spawned_last_tick": 0,
+        "total_spawns": 1,
+        "idle_spawns": 1,
+        "busy_spawns": 0,
+        "idle_spawn_ticks": 51
+      },
+      "metrics": {
+        "hostile_count": 2,
+        "construction_sites": 3,
+        "damage_received": 80
+      },
+      "profiler": {
+        "avg_cpu": 0.481949123114531,
+        "peak_cpu": 42.11184639998828,
+        "samples": 15216
+      }
+    },
+    "W17S29": {
+      "rcl": 6,
+      "energy": {
+        "available": 2000,
+        "capacity": 2300,
+        "storage": 357924,
+        "terminal": 225883
+      },
+      "creeps": 12,
+      "hostiles": 0,
+      "brain": {
+        "danger": 0,
+        "posture_code": 1,
+        "colony_level_code": 3
+      },
+      "defense": {
+        "towers": 2,
+        "tower_energy": 1970,
+        "tower_energy_capacity": 2000,
+        "tower_energy_percent": 98.5,
+        "tower_reserve_energy": 1000,
+        "tower_reserve_deficit": 0
+      },
+      "spawn_queue": {
+        "total": 7,
+        "emergency": 2,
+        "high": 1,
+        "normal": 1,
+        "low": 3,
+        "in_progress": 1,
+        "spawned_last_tick": 0,
+        "total_spawns": 1,
+        "idle_spawns": 0,
+        "busy_spawns": 1,
+        "idle_spawn_ticks": 1
+      },
+      "metrics": {
+        "hostile_count": 0,
+        "construction_sites": 1,
+        "damage_received": 0
+      },
+      "profiler": {
+        "avg_cpu": 9.645712665197767,
+        "peak_cpu": 71.40210819999993,
+        "samples": 12479
+      }
+    },
+    "W18S29": {
+      "rcl": 5,
+      "energy": {
+        "available": 1800,
+        "capacity": 1800,
+        "storage": 986551,
+        "terminal": 0
+      },
+      "creeps": 12,
+      "hostiles": 0,
+      "brain": {
+        "danger": 0,
+        "posture_code": 0,
+        "colony_level_code": 3
+      },
+      "defense": {
+        "towers": 2,
+        "tower_energy": 1860,
+        "tower_energy_capacity": 2000,
+        "tower_energy_percent": 93,
+        "tower_reserve_energy": 1000,
+        "tower_reserve_deficit": 0
+      },
+      "spawn_queue": {
+        "total": 8,
+        "emergency": 3,
+        "high": 0,
+        "normal": 2,
+        "low": 3,
+        "in_progress": 0,
+        "spawned_last_tick": 0,
+        "total_spawns": 1,
+        "idle_spawns": 0,
+        "busy_spawns": 1,
+        "idle_spawn_ticks": 0
+      },
+      "metrics": {
+        "hostile_count": 1,
+        "construction_sites": 12,
+        "damage_received": 88
+      },
+      "profiler": {
+        "avg_cpu": 0.9953686962983305,
+        "peak_cpu": 37.44734409998637,
+        "samples": 12618
+      }
+    }
+  }
+}

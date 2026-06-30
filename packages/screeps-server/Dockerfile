@@ -3,7 +3,6 @@ FROM node:22-bookworm-slim
 ARG SCREEPS_VERSION=4.3.0
 ARG SCREEPSMOD_AUTH_VERSION=2.8.2
 ARG SCREEPSMOD_ADMIN_UTILS_VERSION=1.36.0
-ARG SCREEPSMOD_BOTS_VERSION=0.1.1
 ARG SCREEPSMOD_MONGO_VERSION=2.13.0
 
 ENV NODE_ENV=production \
@@ -18,7 +17,6 @@ RUN apt-get update \
     screeps@${SCREEPS_VERSION} \
     screepsmod-auth@${SCREEPSMOD_AUTH_VERSION} \
     screepsmod-admin-utils@${SCREEPSMOD_ADMIN_UTILS_VERSION} \
-    screepsmod-bots@${SCREEPSMOD_BOTS_VERSION} \
     screepsmod-mongo@${SCREEPSMOD_MONGO_VERSION} \
   && rm -rf /usr/local/lib/node_modules/screepsmod-*/node_modules/@screeps \
   && npm cache clean --force \

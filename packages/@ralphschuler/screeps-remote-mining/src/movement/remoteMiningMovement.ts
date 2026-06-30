@@ -17,7 +17,6 @@
 
 import type { ILogger, IPathCache, RemoteRouteType } from "../types";
 import type { RemotePathCache } from "../paths/remotePathCache";
-import { getRemoteMiningRoomCallback } from "../analysis/remoteRoomUtils";
 
 /**
  * Remote Mining Movement Manager
@@ -102,56 +101,7 @@ export class RemoteMiningMovement {
       maxRooms: 16, // Allow multi-room pathfinding for remote mining
     });
     
-    // If movement was successful and we have a valid path, cache it for future use
-    // Note: We only cache on successful pathfinding (OK or ERR_TIRED means path was found)
-    if ((moveToResult === OK || moveToResult === ERR_TIRED) && !cachedPath) {
-      // Cache the path opportunistically after successful movement
-      this.cachePathAfterMovement(creep, targetPos, routeType);
-    }
-    
     return moveToResult;
-  }
-
-  /**
-   * Cache a path opportunistically after successful movement.
-   * This is called after cartographer's moveTo succeeds to populate our centralized cache.
-   * 
-   * Note: This function uses PathFinder to recalculate the path for caching.
-   * While this adds some CPU cost on cache misses, it's a one-time cost that saves
-   * significant CPU on future ticks when multiple creeps use the cached path.
-   *
-   * @param creep - The creep that just moved
-   * @param target - The target position
-   * @param routeType - Type of route
-   */
-  private cachePathAfterMovement(
-    creep: Creep,
-    target: RoomPosition,
-    routeType: RemoteRouteType
-  ): void {
-    // Only cache paths for multi-room routes (remote mining)
-    if (creep.pos.roomName === target.roomName) {
-      return;
-    }
-    
-    // Calculate the path using PathFinder
-    // We use the same parameters as cartographer would use
-    const pathResult = PathFinder.search(creep.pos, { pos: target, range: 1 }, {
-      plainCost: 2,
-      swampCost: 10,
-      maxRooms: 16,
-      roomCallback: (roomName) => getRemoteMiningRoomCallback(roomName, this.logger)
-    });
-    
-    if (!pathResult.incomplete && pathResult.path.length > 0) {
-      // Convert RoomPosition[] to PathStep[] and cache the path for future use
-      const pathSteps = this.pathCache.convertRoomPositionsToPathSteps(pathResult.path);
-      this.remotePaths.cacheRemoteMiningPath(creep.pos, target, pathSteps, routeType);
-      
-      this.logger.debug(`Cached new remote path for ${creep.name} (${routeType})`, {
-        meta: { pathLength: pathResult.path.length }
-      });
-    }
   }
 
   /**

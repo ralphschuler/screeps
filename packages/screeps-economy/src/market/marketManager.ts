@@ -23,16 +23,20 @@
  * Provide liquidity for less common resources to earn fees
  * TODO(P2): ARCH - Add integration with expansion manager for resource acquisition
  * Buy resources needed for rapid expansion or war preparation
- * TODO(P1): FEATURE - Implement emergency resource sharing via market
- * When cluster is under attack, buy critical resources immediately
  * TODO(P2): TEST - Add unit tests for price calculation and trade decision logic
  * Verify trading decisions are made correctly based on price data
  */
 
 import { createDefaultMarketMemory, memoryManager } from "@ralphschuler/screeps-memory";
-import type { PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@ralphschuler/screeps-memory";
+import type { EmpireMemory, PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@ralphschuler/screeps-memory";
 import { logger } from "@ralphschuler/screeps-core";
 import { LowFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
+import { rankActiveSellOrders, rankEmergencyBuyOrders } from "./orderSelection";
+
+function measureCpuDetail<T>(name: string, fn: () => T): T {
+  const profiler = (globalThis as unknown as { cpuProfiler?: { measure?: <R>(label: string, work: () => R) => R } }).cpuProfiler;
+  return profiler?.measure ? profiler.measure(name, fn) : fn();
+}
 
 /**
  * Market Manager Configuration
@@ -44,6 +48,8 @@ export interface MarketConfig {
   priceUpdateInterval: number;
   /** Minimum bucket to run market logic */
   minBucket: number;
+  /** Minimum bucket for discretionary active trading scans/deals. Emergency safety logic still runs below this. */
+  activeTradingMinBucket: number;
   /** Minimum credits to maintain */
   minCredits: number;
   /** Emergency credit reserve for critical purchases */
@@ -84,12 +90,37 @@ export interface MarketConfig {
   orderExtensionAge: number;
   /** Maximum transport cost as % of deal value for arbitrage */
   maxTransportCostRatio: number;
+  /** Credit value assigned to one terminal energy for net trade calculations */
+  energyCreditValue: number;
+  /** Minimum terminal energy to keep after market deals */
+  terminalEnergyReserve: number;
+  /** Maximum amount for one active market sale */
+  maxActiveSellAmount: number;
+  /** Maximum amount for one active market buy */
+  maxActiveBuyAmount: number;
+  /** Maximum arbitrage trades to start per manager run */
+  maxArbitrageTradesPerRun: number;
+  /** Maximum resource amount per arbitrage trade */
+  maxArbitrageAmount: number;
+  /** Maximum credits to spend on one arbitrage buy leg */
+  maxArbitrageCredits: number;
+  /** Minimum net profit required for arbitrage */
+  minArbitrageProfit: number;
+  /** Minimum net margin required for arbitrage */
+  minArbitrageMargin: number;
+  /** Storage energy that enters overflow export mode for a room */
+  energyOverflowStorageEnter: number;
+  /** Storage energy that exits overflow export mode for a room */
+  energyOverflowStorageExit: number;
+  /** Minimum terminal energy sale amount for storage overflow handling */
+  minOverflowEnergySellAmount: number;
 }
 
 const DEFAULT_CONFIG: MarketConfig = {
   updateInterval: 100,
   priceUpdateInterval: 500, // Update prices every 500 ticks
   minBucket: 2000,
+  activeTradingMinBucket: 9800,
   minCredits: 10000,
   emergencyCredits: 5000, // Reserve for critical purchases
   tradingCredits: 50000, // Threshold to enable active trading
@@ -138,7 +169,19 @@ const DEFAULT_CONFIG: MarketConfig = {
   criticalResources: [RESOURCE_ENERGY, RESOURCE_GHODIUM],
   emergencyBuyThreshold: 5000,
   orderExtensionAge: 5000,
-  maxTransportCostRatio: 0.3 // Max 30% of deal value for transport
+  maxTransportCostRatio: 0.3, // Max 30% of deal value for transport
+  energyCreditValue: 0.001,
+  terminalEnergyReserve: 10000,
+  maxActiveSellAmount: 5000,
+  maxActiveBuyAmount: 5000,
+  maxArbitrageTradesPerRun: 1,
+  maxArbitrageAmount: 1000,
+  maxArbitrageCredits: 5000,
+  minArbitrageProfit: 100,
+  minArbitrageMargin: 0.05,
+  energyOverflowStorageEnter: 800000,
+  energyOverflowStorageExit: 500000,
+  minOverflowEnergySellAmount: 1000
 };
 
 /**
@@ -148,6 +191,8 @@ const DEFAULT_CONFIG: MarketConfig = {
 export class MarketManager {
   private config: MarketConfig;
   private lastRun = 0;
+  private cachedEmpireTick = -1;
+  private cachedEmpire: EmpireMemory | null = null;
 
   public constructor(config: Partial<MarketConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -165,51 +210,72 @@ export class MarketManager {
   })
   public run(): void {
     this.lastRun = Game.time;
+    this.cachedEmpireTick = -1;
+    this.cachedEmpire = null;
 
     // Ensure market memory exists
-    this.ensureMarketMemory();
+    measureCpuDetail("market.ensureMemory", () => this.ensureMarketMemory());
 
     // Update price tracking
     if (Game.time % this.config.priceUpdateInterval === 0) {
-      this.updatePriceTracking();
+      measureCpuDetail("market.updatePriceTracking", () => this.updatePriceTracking());
     }
 
     // Update order statistics
-    this.updateOrderStats();
+    measureCpuDetail("market.updateOrderStats", () => this.updateOrderStats());
 
     // Reconcile pending arbitrage trades
-    this.reconcilePendingArbitrage();
+    measureCpuDetail("market.reconcilePendingArbitrage", () => this.reconcilePendingArbitrage());
 
     // Check for emergency resource needs
-    this.handleEmergencyBuying();
+    measureCpuDetail("market.handleEmergencyBuying", () => this.handleEmergencyBuying());
 
     // Cancel old orders
-    this.cancelOldOrders();
+    measureCpuDetail("market.cancelOldOrders", () => this.cancelOldOrders());
 
     // Extend/modify existing orders
-    this.manageExistingOrders();
+    measureCpuDetail("market.manageExistingOrders", () => this.manageExistingOrders());
+
+    if (!this.canRunActiveTrading()) {
+      return;
+    }
 
     // Update buy orders (with price-aware logic)
-    this.updateBuyOrders();
+    measureCpuDetail("market.updateBuyOrders", () => this.updateBuyOrders());
+
+    // Sell room-scoped storage energy overflow without waiting for high-price aggregate windows.
+    measureCpuDetail("market.handleEnergyOverflowSales", () => this.handleEnergyOverflowSales());
 
     // Update sell orders (with price-aware logic)
-    this.updateSellOrders();
+    measureCpuDetail("market.updateSellOrders", () => this.updateSellOrders());
 
     // Execute deals and arbitrage
-    this.checkArbitrageOpportunities();
-    this.executeDeal();
+    measureCpuDetail("market.checkArbitrageOpportunities", () => this.checkArbitrageOpportunities());
+    measureCpuDetail("market.executeDeal", () => this.executeDeal());
 
     // Balance resources across rooms
     if (Game.time % 200 === 0) {
-      this.balanceResourcesAcrossRooms();
+      measureCpuDetail("market.balanceResourcesAcrossRooms", () => this.balanceResourcesAcrossRooms());
     }
+  }
+
+  private canRunActiveTrading(): boolean {
+    return Game.cpu.bucket >= this.config.activeTradingMinBucket;
+  }
+
+  private getEmpireMemory(): EmpireMemory {
+    if (this.cachedEmpireTick !== Game.time || !this.cachedEmpire) {
+      this.cachedEmpire = memoryManager.getEmpire();
+      this.cachedEmpireTick = Game.time;
+    }
+    return this.cachedEmpire;
   }
 
   /**
    * Ensure market memory exists and is initialized
    */
   private ensureMarketMemory(): void {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     if (!empire.market) {
       empire.market = createDefaultMarketMemory();
     }
@@ -237,7 +303,7 @@ export class MarketManager {
    * Update price tracking for all tracked resources
    */
   private updatePriceTracking(): void {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     if (!empire.market) return;
 
     for (const resource of this.config.trackedResources) {
@@ -254,7 +320,7 @@ export class MarketManager {
    * Update price data for a specific resource
    */
   private updateResourcePrice(resource: ResourceConstant): void {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     if (!empire.market) return;
 
     const history = Game.market.getHistory(resource);
@@ -333,8 +399,112 @@ export class MarketManager {
    * Get market data for a resource
    */
   private getMarketData(resource: ResourceConstant): ResourceMarketData | undefined {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     return empire.market?.resources[resource] ;
+  }
+
+  private getOwnedResourceTotals(): Record<string, number> {
+    const totals: Record<string, number> = {};
+
+    for (const room of Object.values(Game.rooms)) {
+      if (!room.controller?.my) continue;
+
+      for (const store of [room.storage?.store, room.terminal?.store]) {
+        if (!store) continue;
+
+        for (const resource of Object.keys(store) as ResourceConstant[]) {
+          if (typeof (store as unknown as Record<string, unknown>)[resource] !== "number") continue;
+
+          const amount = store.getUsedCapacity(resource);
+          if (amount > 0) {
+            totals[resource] = (totals[resource] ?? 0) + amount;
+          }
+        }
+      }
+    }
+
+    return totals;
+  }
+
+  private trackCreatedOrder(type: "buy" | "sell", resource: ResourceConstant, roomName: string): void {
+    const empire = this.getEmpireMemory();
+    if (!empire.market?.orders) return;
+
+    const orderType = type === "buy" ? ORDER_BUY : ORDER_SELL;
+    const order = Object.values(Game.market.orders)
+      .filter(o => o.type === orderType && o.resourceType === resource && o.roomName === roomName)
+      .sort((a, b) => b.created - a.created)[0];
+
+    if (!order) return;
+
+    empire.market.orders[order.id] = {
+      orderId: order.id,
+      resource,
+      type,
+      created: order.created,
+      totalTraded: 0,
+      totalValue: 0
+    };
+  }
+
+  private getRoomMarketMemory(roomName: string): RoomMemory & { energyExportActive?: boolean } {
+    if (!Memory.rooms) {
+      Memory.rooms = {};
+    }
+    if (!Memory.rooms[roomName]) {
+      Memory.rooms[roomName] = {};
+    }
+    return Memory.rooms[roomName] as RoomMemory & { energyExportActive?: boolean };
+  }
+
+  private updateRoomEnergyOverflowActive(room: Room): boolean {
+    const storageEnergy = room.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0;
+    const roomMemory = this.getRoomMarketMemory(room.name);
+    const wasActive = roomMemory.energyExportActive === true;
+    const active =
+      storageEnergy >= this.config.energyOverflowStorageEnter ||
+      (wasActive && storageEnergy > this.config.energyOverflowStorageExit);
+
+    roomMemory.energyExportActive = active;
+    return active;
+  }
+
+  private getOverflowEnergySaleAmount(room: Room): number {
+    if (!room.controller?.my || !room.storage || !room.terminal) return 0;
+    if (!this.updateRoomEnergyOverflowActive(room)) return 0;
+
+    const terminalEnergy = room.terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+    const saleableEnergy = terminalEnergy - this.config.terminalEnergyReserve;
+    if (saleableEnergy < this.config.minOverflowEnergySellAmount) return 0;
+
+    return Math.min(saleableEnergy, this.config.maxActiveSellAmount);
+  }
+
+  private hasActiveSellOrder(roomName: string, resource: ResourceConstant): boolean {
+    return Object.values(Game.market.orders).some(
+      order =>
+        order.type === ORDER_SELL &&
+        order.resourceType === resource &&
+        order.roomName === roomName &&
+        order.remainingAmount > 0
+    );
+  }
+
+  private handleEnergyOverflowSales(): void {
+    const rooms = Object.values(Game.rooms)
+      .filter(room => room.controller?.my && room.storage && room.terminal)
+      .sort(
+        (a, b) =>
+          (b.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0) -
+          (a.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0)
+      );
+
+    for (const room of rooms) {
+      const amount = this.getOverflowEnergySaleAmount(room);
+      if (amount <= 0) continue;
+
+      this.sellSurplusFromTerminal(room.name, RESOURCE_ENERGY, amount);
+    }
   }
 
   /**
@@ -395,20 +565,9 @@ export class MarketManager {
    * Update buy orders based on resource needs and price signals
    */
   private updateBuyOrders(): void {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     const isWarMode = empire.objectives.warMode;
-
-    // Get total resources across all terminals
-    const totalResources: Record<string, number> = {};
-
-    for (const roomName in Game.rooms) {
-      const room = Game.rooms[roomName];
-      if (room.terminal && room.controller?.my) {
-        for (const resource in room.terminal.store) {
-          totalResources[resource] = (totalResources[resource] ?? 0) + room.terminal.store[resource as ResourceConstant];
-        }
-      }
-    }
+    const totalResources = this.getOwnedResourceTotals();
 
     // Check if we need to buy resources
     for (const resource in this.config.buyThresholds) {
@@ -420,7 +579,10 @@ export class MarketManager {
         const isBuyOpp = this.isBuyOpportunity(resource as ResourceConstant);
 
         if (isWarMode || isBuyOpp) {
-          this.createBuyOrder(resource as ResourceConstant, threshold - current, isWarMode, isBuyOpp);
+          const bought = this.buyMissingResource(resource as ResourceConstant, threshold - current, isWarMode);
+          if (!bought) {
+            this.createBuyOrder(resource as ResourceConstant, threshold - current, isWarMode, isBuyOpp);
+          }
         } else {
           logger.debug(`Skipping buy for ${resource}: waiting for better price`, { subsystem: "Market" });
         }
@@ -445,6 +607,11 @@ export class MarketManager {
     if (existingOrders.length > 0) {
       return; // Already have a buy order
     }
+
+    const existingSellOrders = Object.values(Game.market.orders).filter(
+      o => o.type === ORDER_SELL && o.resourceType === resource
+    );
+    if (existingSellOrders.length > 0) return;
 
     // Get market price
     const history = Game.market.getHistory(resource);
@@ -485,11 +652,61 @@ export class MarketManager {
     });
 
     if (result === OK) {
+      this.trackCreatedOrder("buy", resource, roomWithTerminal.name);
+
       const priceContext = isBuyOpportunity ? " (LOW PRICE!)" : isWarMode ? " (WAR MODE)" : "";
       logger.info(`Created buy order: ${amount} ${resource} at ${maxPrice.toFixed(3)} credits${priceContext}`, {
         subsystem: "Market"
       });
     }
+  }
+
+  private buyMissingResource(resource: ResourceConstant, amount: number, isWarMode: boolean): boolean {
+    if (Game.market.credits < this.config.minCredits) return false;
+
+    const sellOrders = Game.market
+      .getAllOrders({ type: ORDER_SELL, resourceType: resource })
+      .filter(o => o.remainingAmount > 0 && o.roomName);
+    if (sellOrders.length === 0) return false;
+
+    const marketData = this.getMarketData(resource);
+    const maxUnitPrice = isWarMode
+      ? (marketData?.avgPrice ?? sellOrders[0]?.price ?? 0) * this.config.warPriceMultiplier
+      : (marketData?.avgPrice ?? sellOrders[0]?.price ?? 0) * this.config.buyOpportunityAdjustment;
+
+    const terminalRooms = Object.values(Game.rooms).filter(r => r.controller?.my && r.terminal && r.terminal.cooldown === 0);
+    if (terminalRooms.length === 0) return false;
+
+    sellOrders.sort((a, b) => a.price - b.price);
+
+    for (const order of sellOrders) {
+      if (!order.roomName || order.price > maxUnitPrice) continue;
+
+      for (const room of terminalRooms) {
+        const terminal = room.terminal!;
+        const freeCapacity = terminal.store.getFreeCapacity(resource);
+        if (freeCapacity <= 0) continue;
+
+        const dealAmount = Math.min(amount, order.remainingAmount, this.config.maxActiveBuyAmount, freeCapacity);
+        if (dealAmount <= 0) continue;
+
+        const energyCost = Game.market.calcTransactionCost(dealAmount, room.name, order.roomName);
+        if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) - energyCost < this.config.terminalEnergyReserve) continue;
+
+        const creditsNeeded = order.price * dealAmount;
+        if (Game.market.credits - creditsNeeded < this.config.minCredits) continue;
+
+        const result = Game.market.deal(order.id, dealAmount, room.name);
+        if (result === OK) {
+          logger.info(`Bought ${dealAmount} ${resource} at ${order.price.toFixed(3)} credits/unit`, {
+            subsystem: "Market"
+          });
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -509,6 +726,8 @@ export class MarketManager {
       return false;
     }
 
+    this.ensureMarketMemory();
+
     // Check if we have enough resources
     const available = room.terminal.store.getUsedCapacity(resource);
     if (available < amount) {
@@ -519,8 +738,16 @@ export class MarketManager {
       return false;
     }
 
+    if (this.executeActiveSell(room, resource, amount)) {
+      return true;
+    }
+
+    if (this.hasActiveSellOrder(roomName, resource)) {
+      return true;
+    }
+
     // Get current market data for pricing
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     if (!empire.market) {
       // Market memory not initialized, use fallback pricing
       const price = 0.5;
@@ -535,24 +762,29 @@ export class MarketManager {
     }
     
     const marketData = empire.market.resources[resource];
-    
+
     // Calculate sell price (slightly below average to sell quickly)
-    let price = 0.5; // Default fallback
-    
+    let price = resource === RESOURCE_ENERGY ? 0.03 : 0.5; // Default fallback
+
     if (marketData?.avgPrice) {
       // Sell at 5% below average for quick sale
       price = marketData.avgPrice * 0.95;
     } else {
-      // No price data, check current market orders
-      const buyOrders = Game.market.getAllOrders({
-        type: ORDER_BUY,
-        resourceType: resource
-      });
-      
-      if (buyOrders.length > 0) {
-        // Sell at best buy order price (instant sale)
-        buyOrders.sort((a, b) => b.price - a.price);
-        price = buyOrders[0]!.price;
+      const history = Game.market.getHistory(resource);
+      if (history.length > 0) {
+        price = history[history.length - 1].avgPrice * 0.95;
+      } else {
+        // No price data, check current market orders
+        const buyOrders = Game.market.getAllOrders({
+          type: ORDER_BUY,
+          resourceType: resource
+        });
+
+        if (buyOrders.length > 0) {
+          // Sell at best buy order price (instant sale)
+          buyOrders.sort((a, b) => b.price - a.price);
+          price = buyOrders[0]!.price;
+        }
       }
     }
 
@@ -566,6 +798,8 @@ export class MarketManager {
     });
 
     if (orderResult === OK) {
+      this.trackCreatedOrder("sell", resource, roomName);
+
       logger.info(
         `Created surplus sell order: ${amount} ${resource} from ${roomName} at ${price.toFixed(3)} credits/unit`,
         { subsystem: "Market" }
@@ -580,24 +814,68 @@ export class MarketManager {
     }
   }
 
+  private executeActiveSell(room: Room, resource: ResourceConstant, amount: number): boolean {
+    const terminal = room.terminal;
+    if (!terminal || terminal.cooldown > 0) return false;
+
+    const buyOrders = Game.market
+      .getAllOrders({ type: ORDER_BUY, resourceType: resource })
+      .filter(o => o.remainingAmount > 0 && o.roomName);
+    if (buyOrders.length === 0) return false;
+
+    const candidates = rankActiveSellOrders({
+      orders: buyOrders,
+      requestedAmount: amount,
+      sourceRoomName: room.name,
+      maxDealAmount: this.config.maxActiveSellAmount,
+      energyCreditValue: this.config.energyCreditValue,
+      calcTransactionCost: (dealAmount, fromRoomName, toRoomName) =>
+        Game.market.calcTransactionCost(dealAmount, fromRoomName, toRoomName)
+    });
+
+    for (const candidate of candidates) {
+      const { order, dealAmount, energyCost } = candidate;
+      const resourceAvailable = terminal.store.getUsedCapacity(resource);
+      const energyAvailable = terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+      const requiredResource = resource === RESOURCE_ENERGY ? dealAmount + energyCost : dealAmount;
+      const energyAfterDeal = resource === RESOURCE_ENERGY
+        ? energyAvailable - dealAmount - energyCost
+        : energyAvailable - energyCost;
+
+      if (resourceAvailable < requiredResource) continue;
+      if (energyAfterDeal < this.config.terminalEnergyReserve) continue;
+
+      const result = Game.market.deal(order.id, dealAmount, room.name);
+      if (result === OK) {
+        const empire = this.getEmpireMemory();
+        const value = order.price * dealAmount;
+        if (empire.market) {
+          empire.market.totalProfit = (empire.market.totalProfit ?? 0) + value;
+        }
+
+        logger.info(`Sold ${dealAmount} ${resource} at ${order.price.toFixed(3)} credits/unit`, {
+          subsystem: "Market"
+        });
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * Update sell orders based on resource surplus and price signals
    */
   private updateSellOrders(): void {
-    // Get total resources across all terminals
-    const totalResources: Record<string, number> = {};
-
-    for (const roomName in Game.rooms) {
-      const room = Game.rooms[roomName];
-      if (room.terminal && room.controller?.my) {
-        for (const resource in room.terminal.store) {
-          totalResources[resource] = (totalResources[resource] ?? 0) + room.terminal.store[resource as ResourceConstant];
-        }
-      }
-    }
+    const totalResources = this.getOwnedResourceTotals();
 
     // Check if we have surplus to sell
     for (const resource in this.config.sellThresholds) {
+      if (resource === RESOURCE_ENERGY) {
+        // Energy sales are room-scoped and reserve-safe via handleEnergyOverflowSales().
+        continue;
+      }
+
       const threshold = this.config.sellThresholds[resource];
       const current = totalResources[resource] ?? 0;
 
@@ -627,6 +905,11 @@ export class MarketManager {
       return; // Already have a sell order
     }
 
+    const existingBuyOrders = Object.values(Game.market.orders).filter(
+      o => o.type === ORDER_BUY && o.resourceType === resource
+    );
+    if (existingBuyOrders.length > 0) return;
+
     // Get market price
     const history = Game.market.getHistory(resource);
     if (history.length === 0) return;
@@ -651,6 +934,8 @@ export class MarketManager {
 
     if (!roomWithResource?.terminal) return;
 
+    if (this.executeActiveSell(roomWithResource, resource, amount)) return;
+
     // Create order
     const result = Game.market.createOrder({
       type: ORDER_SELL,
@@ -661,6 +946,8 @@ export class MarketManager {
     });
 
     if (result === OK) {
+      this.trackCreatedOrder("sell", resource, roomWithResource.name);
+
       const priceContext = isSellOpportunity ? " (HIGH PRICE!)" : "";
       logger.info(`Created sell order: ${amount} ${resource} at ${sellPrice.toFixed(3)} credits${priceContext}`, {
         subsystem: "Market"
@@ -672,7 +959,7 @@ export class MarketManager {
    * Update order statistics
    */
   private updateOrderStats(): void {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     if (!empire.market?.orders) return;
 
     const currentOrders = Game.market.orders;
@@ -716,7 +1003,7 @@ export class MarketManager {
     // Find best deals (every 50 ticks to save CPU)
     if (Game.time % 50 !== 0) return;
 
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     const isWarMode = empire.objectives.warMode;
 
     // In war mode, prioritize buying boosts
@@ -757,65 +1044,126 @@ export class MarketManager {
 
   /**
    * Handle emergency resource buying
-   * Buys critical resources at any price if below emergency threshold
+   * Buys critical resources only for owned rooms with terminal deficits.
    */
   private handleEmergencyBuying(): void {
     // Skip if not enough emergency credits
     if (Game.market.credits < this.config.emergencyCredits) return;
 
-    // Get total resources across all terminals
-    const totalResources: Record<string, number> = {};
-    for (const roomName in Game.rooms) {
-      const room = Game.rooms[roomName];
-      if (room.terminal && room.controller?.my) {
-        for (const resource in room.terminal.store) {
-          totalResources[resource] = (totalResources[resource] ?? 0) + room.terminal.store[resource as ResourceConstant];
-        }
-      }
-    }
-
-    // Check critical resources
     for (const resource of this.config.criticalResources) {
-      const current = totalResources[resource] ?? 0;
+      const deficits = this.getCriticalResourceDeficits(resource);
 
-      if (current < this.config.emergencyBuyThreshold) {
-        this.executeEmergencyBuy(resource, this.config.emergencyBuyThreshold - current);
+      if (deficits.length === 0) {
+        continue;
+      }
+
+      // Fill highest deficit room first to contain risk while preserving reserves.
+      const target = deficits[0];
+      if (target) {
+        this.executeEmergencyBuy(resource, target.deficit, target.roomName);
       }
     }
   }
 
   /**
-   * Execute emergency buy at best available price
+   * Identify owned rooms with terminal below critical threshold for an emergency resource.
    */
-  private executeEmergencyBuy(resource: ResourceConstant, amount: number): void {
+  private getCriticalResourceDeficits(resource: ResourceConstant): Array<{ roomName: string; deficit: number }> {
+    const deficits: Array<{ roomName: string; deficit: number }> = [];
+    const threshold = this.config.emergencyBuyThreshold;
+
+    for (const room of Object.values(Game.rooms)) {
+      if (!room.controller?.my || !room.terminal) {
+        continue;
+      }
+
+      const terminalAmount = room.terminal.store.getUsedCapacity(resource);
+      const storageAmount = room.storage?.store.getUsedCapacity(resource) ?? 0;
+      const current = terminalAmount + storageAmount;
+      const deficit = threshold - current;
+
+      if (deficit > 0) {
+        deficits.push({ roomName: room.name, deficit });
+      }
+    }
+
+    deficits.sort((a, b) => b.deficit - a.deficit);
+    return deficits;
+  }
+
+  /**
+   * Execute emergency buy at best available price for a specific room.
+   */
+  private executeEmergencyBuy(resource: ResourceConstant, amount: number, destinationRoomName: string): boolean {
+    const destinationRoom = Game.rooms[destinationRoomName];
+    const destinationTerminal = destinationRoom?.terminal;
+
+    if (!destinationRoom?.controller?.my || !destinationTerminal) return false;
+
+    const requestedAmount = Math.max(1, Math.floor(amount));
+
     const orders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+    if (orders.length === 0) return false;
+    if (destinationTerminal.cooldown > 0) return false;
 
-    if (orders.length === 0) return;
-
-    // Sort by total cost (price + transport)
-    const roomWithTerminal = Object.values(Game.rooms).find(r => r.terminal && r.controller?.my);
-    if (!roomWithTerminal?.terminal) return;
-
-    orders.sort((a, b) => {
-      // Calculate total cost including transport (if room is known)
-      const costA = a.roomName
-        ? a.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, a.roomName) / 1000
-        : a.price;
-      const costB = b.roomName
-        ? b.price + Game.market.calcTransactionCost(1000, roomWithTerminal.name, b.roomName) / 1000
-        : b.price;
-      return costA - costB;
+    const candidateOrders = rankEmergencyBuyOrders({
+      orders,
+      requestedAmount,
+      destinationRoomName: destinationRoom.name,
+      maxDealAmount: this.config.maxActiveBuyAmount,
+      calcTransactionCost: (dealAmount, fromRoomName, toRoomName) =>
+        Game.market.calcTransactionCost(dealAmount, fromRoomName, toRoomName)
     });
 
-    const bestOrder = orders[0];
-    const buyAmount = Math.min(amount, bestOrder.amount, 10000);
-    const result = Game.market.deal(bestOrder.id, buyAmount, roomWithTerminal.name);
+    if (candidateOrders.length === 0) return false;
 
-    if (result === OK) {
-      logger.warn(`EMERGENCY BUY: ${buyAmount} ${resource} at ${bestOrder.price.toFixed(3)} credits/unit`, {
-        subsystem: "Market"
-      });
+    for (const candidate of candidateOrders) {
+      const order = candidate.order;
+      let purchaseAmount = Math.min(requestedAmount, candidate.cappedOrderAmount);
+      if (purchaseAmount <= 0) continue;
+
+      let transportCost = Game.market.calcTransactionCost(purchaseAmount, order.roomName!, destinationRoom.name);
+      if (resource === RESOURCE_ENERGY) {
+        // Need ENERGY both for purchased units + transport.
+        while (purchaseAmount > 0) {
+          const budget = Math.max(0, destinationTerminal.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve);
+          if (purchaseAmount + transportCost <= budget) break;
+
+          purchaseAmount -= 1;
+          if (purchaseAmount <= 0) break;
+          transportCost = Game.market.calcTransactionCost(purchaseAmount, order.roomName!, destinationRoom.name);
+        }
+      } else {
+        // Non-energy purchase only needs terminal energy for transport.
+        while (purchaseAmount > 0) {
+          const budget = Math.max(0, destinationTerminal.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve);
+          if (transportCost <= budget) break;
+
+          purchaseAmount -= 1;
+          if (purchaseAmount <= 0) break;
+          transportCost = Game.market.calcTransactionCost(purchaseAmount, order.roomName!, destinationRoom.name);
+        }
+      }
+
+      if (purchaseAmount <= 0) continue;
+
+      // Credits required should stay above emergency reserve.
+      const maxByCredits = Math.max(0, Math.floor((Game.market.credits - this.config.emergencyCredits) / order.price));
+      purchaseAmount = Math.min(purchaseAmount, maxByCredits);
+      if (purchaseAmount <= 0) continue;
+
+      const result = Game.market.deal(order.id, purchaseAmount, destinationRoom.name);
+
+      if (result === OK) {
+        logger.warn(
+          `EMERGENCY BUY: ${purchaseAmount} ${resource} for ${destinationRoom.name} at ${order.price.toFixed(3)} credits/unit`,
+          { subsystem: "Market" }
+        );
+        return true;
+      }
     }
+
+    return false;
   }
 
   /**
@@ -850,12 +1198,14 @@ export class MarketManager {
       if (order.type === ORDER_BUY) {
         const targetPrice = currentPrice * this.config.buyOpportunityAdjustment;
 
-        // If our price is too low (more than 10% below target), extend with better price
+        // If our price is too low (more than 10% below target), reprice it.
         if (order.price < targetPrice * 0.9 && order.remainingAmount > 1000) {
-          Game.market.extendOrder(orderId, Math.min(5000, order.remainingAmount));
-          logger.debug(`Extended buy order for ${order.resourceType}: +${order.remainingAmount} at ${order.price.toFixed(3)}`, {
-            subsystem: "Market"
-          });
+          const result = Game.market.changeOrderPrice(orderId, targetPrice);
+          if (result === OK) {
+            logger.debug(`Repriced buy order for ${order.resourceType}: ${order.price.toFixed(3)} -> ${targetPrice.toFixed(3)}`, {
+              subsystem: "Market"
+            });
+          }
         }
       }
 
@@ -863,12 +1213,14 @@ export class MarketManager {
       if (order.type === ORDER_SELL) {
         const targetPrice = currentPrice * this.config.sellOpportunityAdjustment;
 
-        // If our price is too high (more than 10% above target), extend with better price
+        // If our price is too high (more than 10% above target), reprice it.
         if (order.price > targetPrice * 1.1 && order.remainingAmount > 1000) {
-          Game.market.extendOrder(orderId, Math.min(5000, order.remainingAmount));
-          logger.debug(`Extended sell order for ${order.resourceType}: +${order.remainingAmount} at ${order.price.toFixed(3)}`, {
-            subsystem: "Market"
-          });
+          const result = Game.market.changeOrderPrice(orderId, targetPrice);
+          if (result === OK) {
+            logger.debug(`Repriced sell order for ${order.resourceType}: ${order.price.toFixed(3)} -> ${targetPrice.toFixed(3)}`, {
+              subsystem: "Market"
+            });
+          }
         }
       }
     }
@@ -878,7 +1230,7 @@ export class MarketManager {
    * Reconcile pending arbitrage trades and execute outbound sales
    */
   private reconcilePendingArbitrage(): void {
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     const market = empire.market;
 
     if (!market?.pendingArbitrage || market.pendingArbitrage.length === 0) return;
@@ -899,7 +1251,7 @@ export class MarketManager {
         continue;
       }
 
-      const available = terminal.store[trade.resource] ?? 0;
+      const available = terminal.store.getUsedCapacity(trade.resource);
       if (available < trade.amount) {
         remaining.push(trade);
         continue;
@@ -914,11 +1266,12 @@ export class MarketManager {
           const dealAmount = Math.min(trade.amount, order.remainingAmount, available);
           const energyCost = Game.market.calcTransactionCost(dealAmount, terminal.room.name, order.roomName);
 
-          if (terminal.store[RESOURCE_ENERGY] >= energyCost) {
+          if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) - energyCost >= this.config.terminalEnergyReserve) {
             const result = Game.market.deal(order.id, dealAmount, terminal.room.name);
 
             if (result === OK) {
-              const profit = (order.price - trade.buyPrice) * dealAmount;
+              const proportionalTransportCost = trade.transportCost * (dealAmount / trade.amount);
+              const profit = (order.price - trade.buyPrice) * dealAmount - proportionalTransportCost * this.config.energyCreditValue;
               market.totalProfit = (market.totalProfit ?? 0) + profit;
               market.arbitrageProfit = (market.arbitrageProfit ?? 0) + profit;
               market.completedArbitrage = (market.completedArbitrage ?? 0) + 1;
@@ -946,6 +1299,8 @@ export class MarketManager {
         });
 
         if (result === OK) {
+          this.trackCreatedOrder("sell", trade.resource, terminal.room.name);
+
           logger.info(
             `Arbitrage posted sell order: ${trade.amount} ${trade.resource} at ${trade.targetSellPrice.toFixed(3)} from ${
               terminal.room.name
@@ -972,15 +1327,18 @@ export class MarketManager {
     if (Game.cpu.bucket < this.config.minBucket) return;
     if (Game.market.credits < this.config.tradingCredits) return;
 
-    const empire = memoryManager.getEmpire();
+    const empire = this.getEmpireMemory();
     const market = empire.market;
     const terminals = Object.values(Game.rooms).filter(r => r.terminal && r.controller?.my);
 
     if (!market || terminals.length === 0) return;
 
     const getRemainingAmount = (order: Order) => order.remainingAmount ?? order.amount ?? 0;
+    let tradesStarted = 0;
 
     for (const resource of this.config.trackedResources) {
+      if (tradesStarted >= this.config.maxArbitrageTradesPerRun) return;
+
       const buyOrders = Game.market
         .getAllOrders({ type: ORDER_BUY, resourceType: resource })
         .filter(o => o.remainingAmount > 0 && o.roomName);
@@ -1003,7 +1361,13 @@ export class MarketManager {
       );
       if (alreadyPending) continue;
 
-      const tradeAmount = Math.min(getRemainingAmount(highestBuy), getRemainingAmount(lowestSell), 5000);
+      const creditCappedAmount = Math.floor(this.config.maxArbitrageCredits / lowestSell.price);
+      const tradeAmount = Math.min(
+        getRemainingAmount(highestBuy),
+        getRemainingAmount(lowestSell),
+        this.config.maxArbitrageAmount,
+        creditCappedAmount
+      );
       if (tradeAmount <= 0) continue;
 
       for (const room of terminals) {
@@ -1013,13 +1377,18 @@ export class MarketManager {
 
         const buyEnergyCost = Game.market.calcTransactionCost(tradeAmount, room.name, lowestSell.roomName);
         const sellEnergyCost = Game.market.calcTransactionCost(tradeAmount, room.name, highestBuy.roomName);
+        const totalEnergyCost = buyEnergyCost + sellEnergyCost;
+        const transportCreditCost = totalEnergyCost * this.config.energyCreditValue;
+        const grossProfit = (highestBuy.price - lowestSell.price) * tradeAmount;
+        const netProfit = grossProfit - transportCreditCost;
+        const grossCost = lowestSell.price * tradeAmount;
+        const netMargin = grossCost > 0 ? netProfit / grossCost : 0;
+        const transportRatio = grossCost > 0 ? transportCreditCost / grossCost : Infinity;
 
-        const perUnitTransport = (buyEnergyCost + sellEnergyCost) / tradeAmount;
-        const profitPerUnit = highestBuy.price - lowestSell.price - perUnitTransport;
-
-        if (profitPerUnit <= 0) continue;
-        if (perUnitTransport / lowestSell.price > this.config.maxTransportCostRatio) continue;
-        if (terminal.store[RESOURCE_ENERGY] < buyEnergyCost) continue;
+        if (netProfit < this.config.minArbitrageProfit) continue;
+        if (netMargin < this.config.minArbitrageMargin) continue;
+        if (transportRatio > this.config.maxTransportCostRatio) continue;
+        if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) - totalEnergyCost < this.config.terminalEnergyReserve) continue;
 
         const creditsNeeded = lowestSell.price * tradeAmount;
         if (Game.market.credits - creditsNeeded < this.config.minCredits) continue;
@@ -1038,15 +1407,16 @@ export class MarketManager {
           destinationRoom: room.name,
           expectedArrival: Game.time + (terminal.cooldown ?? 0) + 1,
           buyPrice: lowestSell.price,
-          transportCost: buyEnergyCost
+          transportCost: totalEnergyCost
         };
 
         market.pendingArbitrage?.push(pendingTrade);
+        tradesStarted++;
 
         logger.info(
           `Arbitrage started: bought ${tradeAmount} ${resource} at ${lowestSell.price.toFixed(3)} to sell @ ${highestBuy.price.toFixed(
             3
-          )} (profit/unit ~${profitPerUnit.toFixed(2)})`,
+          )} (net profit ~${netProfit.toFixed(2)})`,
           { subsystem: "Market" }
         );
 

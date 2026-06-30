@@ -25,7 +25,23 @@ import {
   deserializeInterShardMemory,
   serializeInterShardMemory
 } from "./schema";
-import { logger } from "@ralphschuler/screeps-kernel";
+import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+import { logger as frameworkLogger } from "@ralphschuler/screeps-kernel";
+
+const logger = frameworkLogger ?? {
+  debug: () => {
+    /* no-op */
+  },
+  info: () => {
+    /* no-op */
+  },
+  warn: () => {
+    /* no-op */
+  },
+  error: () => {
+    /* no-op */
+  }
+};
 import { LowFrequencyProcess, ProcessClass, ProcessPriority } from "./stubs";
 
 /**
@@ -232,10 +248,10 @@ export class ShardManager {
     }
     economyIndex = ownedRooms.length > 0 ? economyIndex / ownedRooms.length : 0;
 
-    // Calculate war index based on danger levels
+    // Calculate war index from actual hostile creeps only; permanent allies are non-aggression partners.
     let warIndex = 0;
     for (const room of ownedRooms) {
-      const hostiles = room.find(FIND_HOSTILE_CREEPS).length;
+      const hostiles = getActualHostileCreeps(room).length;
       warIndex += Math.min(100, hostiles * 10);
     }
     warIndex = ownedRooms.length > 0 ? warIndex / ownedRooms.length : 0;
@@ -601,6 +617,21 @@ export class ShardManager {
         );
         // Attempt to fix validation issues
         this.repairInterShardMemory();
+      }
+
+      // Preserve operation state written by the footprint manager between shard-manager ticks.
+      // ShardManager owns the normal periodic InterShardMemory write; without this merge,
+      // its cached memory would erase same-tick operation progress.
+      try {
+        const currentRaw = InterShardMemory.getLocal();
+        const current = currentRaw ? deserializeInterShardMemory(currentRaw) : null;
+        const currentOp = current?.footprintOperation;
+        const cachedOp = this.interShardMemory.footprintOperation;
+        if (currentOp && (!cachedOp || currentOp.updatedAt >= cachedOp.updatedAt)) {
+          this.interShardMemory.footprintOperation = currentOp;
+        }
+      } catch {
+        // Non-fatal: continue with cached state.
       }
 
       const serialized = serializeInterShardMemory(this.interShardMemory);

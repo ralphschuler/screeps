@@ -7,6 +7,14 @@
 
 import { expect } from 'chai';
 import {
+  // Defense-assist combat
+  addCombatPower,
+  buildDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
+  calculateCombatPower,
+  emptyCombatPower,
+  multiplyCombatPower,
+
   // Threat Assessment
   assessThreat,
   calculateTowerDamage,
@@ -39,6 +47,15 @@ import {
 describe('@ralphschuler/screeps-defense', () => {
   describe('Package Exports', () => {
     
+    it('should export defense-assist combat functions', () => {
+      expect(addCombatPower).to.be.a('function');
+      expect(buildDefenseAssistBody).to.be.a('function');
+      expect(calculateAggregateDefenseResponsePlan).to.be.a('function');
+      expect(calculateCombatPower).to.be.a('function');
+      expect(emptyCombatPower).to.be.a('function');
+      expect(multiplyCombatPower).to.be.a('function');
+    });
+
     it('should export threat assessment functions', () => {
       expect(assessThreat).to.be.a('function');
       expect(calculateTowerDamage).to.be.a('function');

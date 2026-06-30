@@ -10,6 +10,10 @@ import { testRunner } from './index';
 import { TestContext, TestFilter } from './types';
 import { PersistenceManager } from './persistence';
 import { JSONReporter, ConsoleReporter } from './reporter';
+import { runBackendRuntimeAssertions } from './runtime/backendAssertions';
+import { getConfiguredScenarios } from './runtime/config';
+import { buildPlayerSandboxTestSource } from './runtime/playerAssertions';
+import { mergeRuntimeSummaries } from './runtime/summary';
 
 let initialized = false;
 let testInterval = 0; // Run tests every N ticks (0 = run once for legacy runner)
@@ -23,81 +27,22 @@ let testFilter: TestFilter | undefined;
 let testFiles: string[] = [];
 let latestSummary: any = null;
 
-const PLAYER_SANDBOX_TEST_SOURCE = `
-(function screepsmodTestingPlayerSandbox() {
-  const started = Date.now();
-  const failures = [];
-  let passed = 0;
-  let skipped = 0;
+const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
 
-  function pass() { passed += 1; }
-  function skip() { skipped += 1; }
-  function assert(name, predicate, details) {
-    try {
-      if (predicate()) {
-        pass();
-      } else {
-        failures.push({ name, message: details || 'assertion failed' });
-      }
-    } catch (error) {
-      failures.push({ name, message: error && (error.stack || error.message) || String(error) });
-    }
-  }
-
-  const game = typeof Game === 'object' && Game ? Game : {};
-  const memory = typeof Memory === 'object' && Memory ? Memory : {};
-  const rooms = Object.values(game.rooms || {});
-  const ownedRooms = rooms.filter(room => room && room.controller && room.controller.my);
-  const tick = Number(game.time || 0);
-
-  assert('server exposes Game and advances ticks', () => tick > 0, 'Game.time did not advance');
-  assert('our bot has at least one owned visible room', () => ownedRooms.length > 0, 'no owned visible rooms');
-  assert('owned room has a spawn after initialization', () => Object.keys(game.spawns || {}).length > 0, 'no owned spawns');
-  assert('global reset loop is not detected', () => (memory.__globalResetCount || 0) < 5, 'too many global resets');
-
-  if (tick < 100) {
-    skip();
-  } else {
-    assert('creep population exists after warmup', () => Object.keys(game.creeps || {}).length > 0, 'no creeps after warmup');
-  }
-
-  if (tick < 100) {
-    skip();
-  } else {
-    assert('CPU bucket is not chronically empty', () => ((game.cpu && game.cpu.bucket) || 10000) > 1000, 'CPU bucket below 1000');
-  }
-
-  if (tick < 100) {
-    skip();
-  } else {
-    assert(
-      'task board memory exists and can track room tasks',
-      () => Object.keys(((memory.creepTaskBoard || {}).rooms) || {}).length > 0,
-      'Memory.creepTaskBoard.rooms is empty'
-    );
-  }
-
-  assert('critical console error counter stays below threshold', () => (memory.ciCriticalConsoleErrors || 0) < 10, 'critical console errors above threshold');
-
-  memory.screepsmodTesting = {
-    source: 'screepsmod-testing-player-sandbox',
-    total: passed + failures.length + skipped,
-    passed,
-    failed: failures.length,
-    skipped,
-    failures,
-    tick,
-    duration: Date.now() - started
-  };
-}).call(global);
-`;
+function getRuntimeWarmupTicks(config: any): number {
+  const warmupTicks = Number(config.screepsmod?.testing?.runtimeWarmupTicks ?? DEFAULT_RUNTIME_WARMUP_TICKS);
+  if (!Number.isFinite(warmupTicks) || warmupTicks < 0) return DEFAULT_RUNTIME_WARMUP_TICKS;
+  return warmupTicks;
+}
 
 function installPlayerSandboxRunner(config: any): void {
   if (!config.engine?.on) return;
 
+  const playerSandboxTestSource = buildPlayerSandboxTestSource(getRuntimeWarmupTicks(config), getConfiguredScenarios(config));
+
   config.engine.on('playerSandbox', (sandbox: any) => {
     try {
-      sandbox.run(PLAYER_SANDBOX_TEST_SOURCE);
+      sandbox.run(playerSandboxTestSource);
     } catch (error: any) {
       console.log(`[screepsmod-testing] playerSandbox test runner failed: ${error?.stack || error?.message || String(error)}`);
     }
@@ -133,13 +78,15 @@ async function readBotCodeState(storage: any, userId: any): Promise<{ hasBotCode
   if (!codeCollection?.findOne) return { hasBotCode: true, bypassWarmup: true };
 
   const activeCode = await codeCollection.findOne({
-    user: String(userId),
-    activeWorld: true
+    ...makeUserObjectIdFilter(userId),
+    activeWorld: true,
   });
   const modules = activeCode?.modules ?? {};
   return {
-    hasBotCode: Object.values(modules).some(module => typeof module === 'string' && module.trim().length > 0),
-    bypassWarmup: false
+    hasBotCode: Object.values(modules).some(
+      (module) => typeof module === 'string' && module.trim().length > 0,
+    ),
+    bypassWarmup: false,
   };
 }
 
@@ -163,21 +110,41 @@ function isBotRuntimeWarmed(
   return tick - memory.__screepsmodTestingBotCodeSeenAt >= warmupTicks;
 }
 
+function makeUserObjectIdFilter(userId: any): Record<string, any> {
+  const userIdString = String(userId);
+  if (typeof userId === 'string') return { user: userId };
+
+  return {
+    $or: [
+      { user: userId },
+      { user: userIdString }
+    ]
+  };
+}
+
+function asMemoryUserKey(userId: any): string {
+  return String(userId);
+}
+
+async function readErrorNotifications(storage: any, userIdFilter: Record<string, any>): Promise<string[]> {
+  const notificationsCollection = storage.db['users.notifications'];
+  if (!notificationsCollection?.find) return [];
+
+  const notifications = await notificationsCollection.find({
+    type: 'error',
+    ...userIdFilter
+  });
+
+  if (!Array.isArray(notifications)) return [];
+  return notifications
+    .map((notification: any) => String(notification?.message ?? notification?.error ?? notification ?? ''))
+    .filter(Boolean)
+    .slice(0, 3)
+    .map(message => message.slice(0, 300));
+}
+
 async function runBackendBotAssertions(config: any): Promise<void> {
   const started = Date.now();
-  const failures: Array<{ name: string; message: string }> = [];
-  let passed = 0;
-  let skipped = 0;
-  const assert = (name: string, predicate: () => boolean, message: string) => {
-    try {
-      if (predicate()) passed += 1;
-      else failures.push({ name, message });
-    } catch (error: any) {
-      failures.push({ name, message: error?.stack || error?.message || String(error) });
-    }
-  };
-  const skipRuntimeAssertion = () => { skipped += 1; };
-
   const common = config.common ?? require('@screeps/common');
   const storage = common.storage;
   const username = config.screepsmod?.testing?.username ?? 'swarm-bot';
@@ -185,8 +152,9 @@ async function runBackendBotAssertions(config: any): Promise<void> {
   if (!user?._id) return;
 
   const userId = user._id;
+  const userIdFilter = makeUserObjectIdFilter(userId);
   const tick = Number(await storage.env.get(storage.env.keys.GAMETIME) ?? 0);
-  const memoryKey = storage.env.keys.MEMORY + userId;
+  const memoryKey = storage.env.keys.MEMORY + asMemoryUserKey(userId);
   const rawMemory = await storage.env.get(memoryKey);
   let memory: any = {};
   try {
@@ -195,7 +163,7 @@ async function runBackendBotAssertions(config: any): Promise<void> {
     memory = { __screepsmodTestingMemoryParseError: error?.message || String(error) };
   }
 
-  const warmupTicks = Number(config.screepsmod?.testing?.runtimeWarmupTicks ?? 100);
+  const warmupTicks = getRuntimeWarmupTicks(config);
   const botRuntimeWarmed = isBotRuntimeWarmed(
     memory,
     tick,
@@ -203,44 +171,41 @@ async function runBackendBotAssertions(config: any): Promise<void> {
     warmupTicks
   );
 
-  const [ownedControllers, spawns, creeps] = await Promise.all([
-    storage.db['rooms.objects'].find({ type: 'controller', user: userId }),
-    storage.db['rooms.objects'].find({ type: 'spawn', user: userId }),
-    storage.db['rooms.objects'].find({ type: 'creep', user: userId })
+  const [ownedControllers, spawns, creeps, errorSamples] = await Promise.all([
+    storage.db['rooms.objects'].find({ type: 'controller', ...userIdFilter }),
+    storage.db['rooms.objects'].find({ type: 'spawn', ...userIdFilter }),
+    storage.db['rooms.objects'].find({ type: 'creep', ...userIdFilter }),
+    readErrorNotifications(storage, userIdFilter)
   ]);
 
-  assert('server exposes storage and advances ticks', () => tick > 0, 'gameTime did not advance');
-  assert('our bot has at least one owned room controller', () => ownedControllers.length > 0, 'no owned controllers');
-  assert('owned room has a spawn after initialization', () => spawns.length > 0, 'no owned spawns');
-  assert('global reset loop is not detected', () => (memory.__globalResetCount || 0) < 5, 'too many global resets');
-
-  if (!botRuntimeWarmed) skipRuntimeAssertion();
-  else assert('creep population exists after warmup', () => creeps.length > 0, 'no creeps after warmup');
-
-  if (!botRuntimeWarmed) skipRuntimeAssertion();
-  else assert('CPU bucket is not chronically empty', () => (user.cpuAvailable ?? 10000) > 1000, 'CPU bucket below 1000');
-
-  if (!botRuntimeWarmed) skipRuntimeAssertion();
-  else assert(
-    'task board memory exists and can track room tasks',
-    () => Object.keys(memory.creepTaskBoard?.rooms ?? {}).length > 0,
-    'Memory.creepTaskBoard.rooms is empty'
-  );
-
-  assert('critical console error counter stays below threshold', () => (memory.ciCriticalConsoleErrors || 0) < 10, 'critical console errors above threshold');
-
-  latestSummary = {
-    source: 'screepsmod-testing-backend-cronjob',
-    total: passed + failures.length + skipped,
-    passed,
-    failed: failures.length,
-    skipped,
-    failures,
+  const scenarios = getConfiguredScenarios(config);
+  const backendSummary = await runBackendRuntimeAssertions({
+    config,
+    storage,
+    memory,
     tick,
-    duration: Date.now() - started
-  };
+    runtimeWarmupTicks: warmupTicks,
+    botRuntimeWarmed,
+    user,
+    userId,
+    userIdFilter,
+    ownedControllers,
+    spawns,
+    creeps,
+    errorSamples,
+    scenarios,
+    startedAt: started
+  });
 
-  memory.screepsmodTesting = latestSummary;
+  const mergedSummary = mergeRuntimeSummaries({
+    player: memory.screepsmodTestingPlayer,
+    backend: backendSummary,
+    legacy: memory.screepsmodTestingLegacy
+  }, tick, started, warmupTicks, scenarios);
+
+  memory.screepsmodTestingBackend = backendSummary;
+  memory.screepsmodTesting = mergedSummary;
+  latestSummary = mergedSummary;
   await storage.env.set(memoryKey, JSON.stringify(memory));
 }
 
@@ -354,7 +319,15 @@ module.exports = function (config: any) {
       }
       gameData.__testResults = summary;
       if (gameData.Memory && typeof gameData.Memory === 'object') {
-        gameData.Memory.screepsmodTesting = { ...summary, source: 'screepsmod-testing-legacy-runner' };
+        const legacySummary = { ...summary, source: 'screepsmod-testing-legacy-runner', tick, failures: summary.results
+          .filter(result => result.status === 'failed')
+          .map(result => ({ name: `${result.suiteName} > ${result.testName}`, message: result.error?.message ?? 'legacy assertion failed', source: 'screepsmod-testing-legacy-runner' })) };
+        gameData.Memory.screepsmodTestingLegacy = legacySummary;
+        gameData.Memory.screepsmodTesting = mergeRuntimeSummaries({
+          player: gameData.Memory.screepsmodTestingPlayer,
+          backend: gameData.Memory.screepsmodTestingBackend,
+          legacy: legacySummary
+        }, tick, Date.now(), getRuntimeWarmupTicks(config), getConfiguredScenarios(config));
       }
 
       if (persistenceManager) persistenceManager.save(summary);

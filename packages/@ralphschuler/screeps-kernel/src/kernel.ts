@@ -21,13 +21,12 @@
  * - Rolling index execution: All processes get fair execution time via wrap-around queue
  * - Frequenzebenen: High frequency (every tick), Medium (5-20 ticks), Low (≥100 ticks)
  * - Ereignisgetriebene Logik: Critical events trigger immediate updates
- * 
- * TODO(P2): ARCH - Implement adaptive CPU budgets based on room count and actual process performance
- * Dynamic budget adjustment could better handle growth from 10 to 100+ rooms
- * TODO(P2): ARCH - Add process dependency tracking to ensure prerequisite processes run first
- * Some processes depend on others (e.g., intel must run before expansion decisions)
+ *
  * TODO(P3): ARCH - Consider implementing process groups for coordinated batch execution
  * Related processes could be grouped and executed together for better cache locality
+ *
+ * Completed in this branch:
+ * - Adaptive budgets now include frequency utilization feedback in addition to room count and bucket pressure.
  */
 
 import {
@@ -40,7 +39,12 @@ import {
 import type { CPUConfig } from "./config";
 import { getConfig } from "./config";
 import { logger } from "./logger";
-import { getAdaptiveBudgets, type AdaptiveBudgetConfig, DEFAULT_ADAPTIVE_CONFIG } from "./adaptiveBudgets";
+import {
+  getAdaptiveBudgets,
+  type AdaptiveBudgetConfig,
+  DEFAULT_ADAPTIVE_CONFIG,
+  type FrequencyUtilizationSnapshot
+} from "./adaptiveBudgets";
 
 /**
  * Process priority levels
@@ -162,7 +166,12 @@ export interface Process {
   cpuBudget: number;
   /** Run interval in ticks (for medium/low frequency) */
   interval: number;
-  /** 
+  /**
+   * Internal scheduling phase for interval-based jitter.
+   * Keeps equal-interval processes offset to reduce thundering-herd spikes.
+   */
+  intervalJitterOffset?: number;
+  /**
    * Tick modulo for distributed execution (optional)
    * If set, process runs when (Game.time + tickOffset) % tickModulo === 0
    * Example: tickModulo=5, tickOffset=2 -> runs on ticks 2, 7, 12, 17, ...
@@ -200,7 +209,7 @@ export interface KernelConfig {
    * Reserved CPU for finalization (fraction of limit, e.g., 0.02 = 2%)
    * This is subtracted from the effective CPU limit to ensure we have buffer
    * for end-of-tick operations like memory serialization.
-   * 
+   *
    * Using a percentage ensures the reserve scales with CPU limit:
    * - 20 CPU limit: 0.02 * 20 = 0.4 CPU reserved
    * - 50 CPU limit: 0.02 * 50 = 1.0 CPU reserved
@@ -278,6 +287,13 @@ const BASE_CONFIG: Omit<KernelConfig, "lowBucketThreshold" | "highBucketThreshol
   maxPriorityBoost: 50
 };
 
+/**
+ * Frequency utilization smoothing for adaptive budget feedback.
+ *
+ * Higher values react faster to changing workload, lower values prioritize stability.
+ */
+const FREQUENCY_UTILIZATION_ALPHA = 0.25;
+
 const DEFAULT_CRITICAL_DIVISOR = 2;
 
 function deriveCriticalThreshold(lowBucketThreshold: number): number {
@@ -294,7 +310,7 @@ function deriveFrequencyIntervals(taskFrequencies: CPUConfig["taskFrequencies"])
 
 /**
  * Derive frequency min bucket thresholds
- * 
+ *
  * Derive bucket requirements by frequency.
  *
  * High and medium frequency work is core survival and room control work, so it
@@ -362,6 +378,20 @@ export class Kernel {
   private queueDirty = true;
   /** Number of processes skipped this tick */
   private skippedProcessesThisTick = 0;
+  /** CPU usage observed in the current tick per frequency */
+  private tickFrequencyCpuUsed: Record<ProcessFrequency, number> = {
+    high: 0,
+    medium: 0,
+    low: 0
+  };
+  /** Number of executed processes in the current tick per frequency */
+  private tickFrequencyRunCount: Record<ProcessFrequency, number> = {
+    high: 0,
+    medium: 0,
+    low: 0
+  };
+  /** EWMA frequency utilization from previous ticks (0..1+) */
+  private frequencyUtilization: FrequencyUtilizationSnapshot = {};
 
   public constructor(config: KernelConfig) {
     this.config = { ...config };
@@ -397,7 +427,7 @@ export class Kernel {
         );
         throw new Error(`Invalid tickModulo: ${options.tickModulo} (must be >= 0)`);
       }
-      
+
       if (options.tickModulo > 0 && options.tickOffset !== undefined && options.tickOffset >= options.tickModulo) {
         logger.error(
           `Kernel: Cannot register process "${options.name}" - tickOffset (${options.tickOffset}) must be less than tickModulo (${options.tickModulo})`,
@@ -407,6 +437,15 @@ export class Kernel {
       }
     }
 
+    const interval = options.interval ?? defaults.interval;
+    const hasDistributedIntervalJitter =
+      options.tickModulo === undefined &&
+      interval > 1 &&
+      interval <= 20;
+    const intervalJitterOffset = hasDistributedIntervalJitter
+      ? this.resolveIntervalJitterOffset(interval, options.id)
+      : undefined;
+
     const process: Process = {
       id: options.id,
       name: options.name,
@@ -414,9 +453,10 @@ export class Kernel {
       frequency,
       minBucket: options.minBucket ?? defaults.minBucket,
       cpuBudget: options.cpuBudget ?? defaults.cpuBudget,
-      interval: options.interval ?? defaults.interval,
+      interval,
       tickModulo: options.tickModulo,
       tickOffset: options.tickOffset,
+      intervalJitterOffset,
       topology: options.topology ? { ...options.topology } : undefined,
       execute: options.execute,
       state: "idle",
@@ -557,7 +597,7 @@ export class Kernel {
    */
   public initialize(): void {
     if (this.initialized) return;
-    
+
     logger.info(`Kernel initialized with ${this.processes.size} processes`, { subsystem: "Kernel" });
     this.initialized = true;
   }
@@ -585,12 +625,12 @@ export class Kernel {
       });
       this.bucketMode = newMode;
     }
-    
+
     // FEATURE: Periodic bucket status logging for user visibility
     // Log bucket status every 100 ticks to help users monitor bucket health
     if (Game.time % 100 === 0 && (this.bucketMode === "low" || this.bucketMode === "critical")) {
       const totalProcesses = this.processes.size;
-      
+
       logger.info(
         `Bucket ${this.bucketMode.toUpperCase()} mode: ${bucket}/10000 bucket. ` +
         `Core work remains enabled; optional processes below their minBucket are deferred. ` +
@@ -638,18 +678,74 @@ export class Kernel {
     };
   }
 
+  private resetFrequencyTracking(): void {
+    this.tickFrequencyCpuUsed = {
+      high: 0,
+      medium: 0,
+      low: 0
+    };
+    this.tickFrequencyRunCount = {
+      high: 0,
+      medium: 0,
+      low: 0
+    };
+  }
+
+  private collectFrequencyUtilization(): void {
+    const cpuLimit = this.getCpuLimit();
+    const frequencies: ProcessFrequency[] = ["high", "medium", "low"];
+
+    for (const frequency of frequencies) {
+      if (this.tickFrequencyRunCount[frequency] <= 0) {
+        continue;
+      }
+
+      const budget = this.frequencyDefaults[frequency].cpuBudget;
+      const capacity = Math.max(0.0001, cpuLimit * budget);
+      const rawUtilization = this.tickFrequencyCpuUsed[frequency] / capacity;
+      const previous = this.frequencyUtilization[frequency];
+
+      if (previous === undefined) {
+        this.frequencyUtilization[frequency] = rawUtilization;
+      } else {
+        const alpha = FREQUENCY_UTILIZATION_ALPHA;
+        this.frequencyUtilization[frequency] = previous * (1 - alpha) + rawUtilization * alpha;
+      }
+    }
+  }
+
+  private formatFrequencyUtilization(snapshot: FrequencyUtilizationSnapshot): string {
+    return [
+      `high=${snapshot.high !== undefined ? snapshot.high.toFixed(2) : "-"}`,
+      `medium=${snapshot.medium !== undefined ? snapshot.medium.toFixed(2) : "-"}`,
+      `low=${snapshot.low !== undefined ? snapshot.low.toFixed(2) : "-"}`
+    ].join(",");
+  }
+
+  private formatBudgetDelta(previous: number, current: number): string {
+    if (previous === current) {
+      return "0.000";
+    }
+
+    const delta = current - previous;
+    const sign = delta >= 0 ? "+" : "-";
+    return `${sign}${Math.abs(delta).toFixed(3)}`;
+  }
+
   /**
    * Update adaptive CPU budgets based on current game state
-   * 
+   *
    * If adaptive budgets are enabled, calculates new budgets based on:
    * - Current room count (logarithmic scaling)
    * - Current bucket level (conservation/boost multipliers)
-   * 
-   * This is called each tick during run() to keep budgets aligned with empire size
-   * 
+   * - Recent process frequency utilization
+   *
+   * This is called each tick during run() to keep budgets aligned with runtime
+   * pressure and empire scale.
+   *
    * WARNING: This method mutates this.config.frequencyCpuBudgets and rebuilds
    * this.frequencyDefaults each tick. Code that caches references to these
-   * objects may see stale values. Always access via getConfig() or 
+   * objects may see stale values. Always access via getConfig() or
    * getFrequencyDefaults() to get current values.
    */
   private updateAdaptiveBudgets(): void {
@@ -657,8 +753,9 @@ export class Kernel {
       return;
     }
 
-    const adaptiveBudgets = getAdaptiveBudgets(this.config.adaptiveBudgetConfig);
-    
+    const previousBudgets = { ...this.config.frequencyCpuBudgets };
+    const adaptiveBudgets = getAdaptiveBudgets(this.config.adaptiveBudgetConfig, this.frequencyUtilization);
+
     // Update frequency defaults with new adaptive budgets
     // NOTE: This mutates the config object - see method documentation
     this.config.frequencyCpuBudgets = adaptiveBudgets;
@@ -668,9 +765,13 @@ export class Kernel {
     if (Game.time % 500 === 0) {
       const roomCount = Object.keys(Game.rooms).length;
       const bucket = Game.cpu.bucket;
+      const utilSummary = this.formatFrequencyUtilization(this.frequencyUtilization);
       logger.info(
         `Adaptive budgets updated: rooms=${roomCount}, bucket=${bucket}, ` +
-        `high=${adaptiveBudgets.high.toFixed(3)}, medium=${adaptiveBudgets.medium.toFixed(3)}, low=${adaptiveBudgets.low.toFixed(3)}`,
+        `high=${adaptiveBudgets.high.toFixed(3)} (${this.formatBudgetDelta(previousBudgets.high, adaptiveBudgets.high)}), ` +
+        `medium=${adaptiveBudgets.medium.toFixed(3)} (${this.formatBudgetDelta(previousBudgets.medium, adaptiveBudgets.medium)}), ` +
+        `low=${adaptiveBudgets.low.toFixed(3)} (${this.formatBudgetDelta(previousBudgets.low, adaptiveBudgets.low)}), ` +
+        `util=${utilSummary}`,
         { subsystem: "Kernel" }
       );
     }
@@ -687,7 +788,7 @@ export class Kernel {
 
   /**
    * Get CPU limit for current tick
-   * 
+   *
    * Returns the effective CPU limit regardless of bucket mode. The system continues
    * to process normally even with low bucket, using the full targetCpuUsage.
    * Individual processes can check bucket mode if they want to skip expensive
@@ -699,7 +800,7 @@ export class Kernel {
 
   /**
    * Check if CPU budget is available
-   * 
+   *
    * BUGFIX: Use the effective CPU limit (from getCpuLimit()) for both
    * the limit and reserved CPU calculation to maintain consistency across
    * all bucket modes (critical, low, normal, high).
@@ -713,7 +814,7 @@ export class Kernel {
 
   /**
    * Get remaining CPU budget
-   * 
+   *
    * BUGFIX: Use the effective CPU limit (from getCpuLimit()) for both
    * the limit and reserved CPU calculation to maintain consistency across
    * all bucket modes (critical, low, normal, high).
@@ -726,7 +827,7 @@ export class Kernel {
 
   /**
    * Calculate priority boost from consecutive CPU skips
-   * 
+   *
    * @param consecutiveCpuSkips - Number of consecutive CPU skips
    * @returns The priority boost amount (capped at maxPriorityBoost)
    */
@@ -739,15 +840,15 @@ export class Kernel {
 
   /**
    * Calculate effective priority for a process with priority decay
-   * 
+   *
    * When priority decay is enabled, processes that are repeatedly skipped due to
    * CPU budget exhaustion receive a temporary priority boost. This ensures that
    * low-priority processes eventually execute even under sustained CPU pressure.
-   * 
+   *
    * Effective priority = base priority + min(consecutiveCpuSkips * decayRate, maxBoost)
-   * 
+   *
    * The boost is reset when the process successfully executes.
-   * 
+   *
    * @param process - The process to calculate effective priority for
    * @returns The effective priority (base + decay boost)
    */
@@ -760,15 +861,148 @@ export class Kernel {
   }
 
   /**
+   * Build a stable dependency-aware ordering for processes.
+   *
+   * Existing explicit topology parentId relationships are treated as strict execution
+   * dependencies: a process waits until its parent runs first in the same tick.
+   *
+   * If a dependency chain cannot be resolved (cycle or invalid ids), the queue
+   * falls back to the original effective-priority order to avoid deadlock.
+   */
+  private buildDependencyAwareQueue(processes: Process[]): Process[] {
+    if (processes.length <= 1) {
+      return [...processes];
+    }
+
+    const processById = new Map(processes.map(process => [process.id, process]));
+    const dependencyIds = new Map<string, string[]>();
+    const missingDependencyOwners = new Set<string>();
+    const validDependencies = new Set<string>();
+
+    for (const process of processes) {
+      const parentId = process.topology?.parentId;
+      if (!parentId) {
+        dependencyIds.set(process.id, []);
+        continue;
+      }
+
+      if (parentId === process.id || !processById.has(parentId)) {
+        missingDependencyOwners.add(process.id);
+        dependencyIds.set(process.id, []);
+      } else {
+        dependencyIds.set(process.id, [parentId]);
+        validDependencies.add(process.id);
+      }
+    }
+
+    const ready: Process[] = [];
+    const pending = new Set(processes);
+    const completed = new Set<string>();
+
+    while (ready.length < processes.length) {
+      let progressed = false;
+
+      for (const process of processes) {
+        if (!pending.has(process)) {
+          continue;
+        }
+
+        const deps = dependencyIds.get(process.id) ?? [];
+        if (deps.every(dependency => completed.has(dependency))) {
+          ready.push(process);
+          pending.delete(process);
+          completed.add(process.id);
+          progressed = true;
+        }
+      }
+
+      if (!progressed) {
+        break;
+      }
+    }
+
+    if (pending.size > 0) {
+      // Cycle or invalid dependency references detected: keep deterministic priority order
+      for (const process of pending) {
+        ready.push(process);
+      }
+
+      if (validDependencies.size > 0) {
+        logger.warn(
+          `Kernel: Dependency cycle detected, falling back to priority-only execution for ${pending.size} process(es).`,
+          { subsystem: "Kernel" }
+        );
+      }
+    }
+
+    if (missingDependencyOwners.size > 0) {
+      logger.warn(
+        `Kernel: Some process dependencies were invalid and ignored for: ${Array.from(missingDependencyOwners).join(", ")}`,
+        { subsystem: "Kernel" }
+      );
+    }
+
+    return ready;
+  }
+
+  /**
+   * Resolve a deterministic interval jitter offset while avoiding immediate collisions
+   * with existing processes on the same raw interval.
+   */
+  private resolveIntervalJitterOffset(interval: number, processId: string): number {
+    const baseOffset = this.computeIntervalJitterOffset(processId, interval);
+
+    if (interval <= 1) {
+      return 0;
+    }
+
+    const jitterRange = Math.max(1, Math.floor(interval * 0.1));
+    const usedOffsets = new Set<number>();
+
+    for (const process of this.processes.values()) {
+      if (
+        process.interval === interval &&
+        process.tickModulo === undefined &&
+        process.intervalJitterOffset !== undefined
+      ) {
+        usedOffsets.add(process.intervalJitterOffset);
+      }
+    }
+
+    if (!usedOffsets.has(baseOffset)) {
+      return baseOffset;
+    }
+
+    const span = jitterRange * 2 + 1;
+    let candidate = baseOffset + 1;
+
+    for (let i = 0; i < span; i++) {
+      if (candidate > jitterRange) {
+        candidate = -jitterRange;
+      }
+
+      if (!usedOffsets.has(candidate)) {
+        return candidate;
+      }
+
+      candidate++;
+    }
+
+    return baseOffset;
+  }
+
+  /**
    * Rebuild the process queue sorted by priority.
    * Preserves execution fairness by finding the last executed process
    * in the new queue and continuing from the next one.
    */
   private rebuildProcessQueue(): void {
-    this.processQueue = Array.from(this.processes.values())
+    const sortedByPriority = Array.from(this.processes.values())
       .sort((a, b) => this.getEffectivePriority(b) - this.getEffectivePriority(a));
+
+    this.processQueue = this.buildDependencyAwareQueue(sortedByPriority);
     this.queueDirty = false;
-    
+
     // BUGFIX: Preserve wrap-around position across queue rebuilds
     // When processes are added/removed (e.g., creep spawns/dies), we rebuild the queue.
     // Find the last executed process in the new queue to resume from the next one.
@@ -783,19 +1017,59 @@ export class Kernel {
   }
 
   /**
+   * Create a deterministic interval jitter offset for interval-based scheduling.
+   *
+   * Uses a lightweight FNV-1a style hash over process ID so each process keeps a
+   * stable jitter across restarts while still spreading same-interval work.
+   */
+  private computeIntervalJitterOffset(processId: string, interval: number): number {
+    if (interval <= 1) {
+      return 0;
+    }
+
+    const jitterRange = Math.max(1, Math.floor(interval * 0.1));
+    const span = jitterRange * 2 + 1;
+
+    let hash = 2166136261;
+    for (let i = 0; i < processId.length; i++) {
+      hash ^= processId.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return Math.abs(hash) % span - jitterRange;
+  }
+
+  /**
+   * Check if process is ready for interval-based execution this tick.
+   */
+  private isIntervalReady(process: Process): boolean {
+    if (process.stats.runCount === 0) {
+      return true;
+    }
+
+    if (process.interval <= 1) {
+      return true;
+    }
+
+    const intervalWithJitter = Math.max(
+      1,
+      process.interval + (process.intervalJitterOffset ?? 0)
+    );
+    const ticksSinceRun = Game.time - process.stats.lastRunTick;
+    return ticksSinceRun >= intervalWithJitter;
+  }
+
+  /**
    * Check if process should run this tick
-   * 
+   *
    * Processes are skipped based on:
    * - Minimum bucket requirement for optional work
    * - Tick distribution (tickModulo/tickOffset for distributed execution)
    * - Interval timing (process hasn't reached its next scheduled run)
    * - Suspension state (process is explicitly suspended)
-   * 
+   *
    * Priority decay ensures that processes skipped due to CPU budget exhaustion
    * will eventually execute by receiving temporary priority boosts.
-   * 
-   * TODO(P2): PERF - Add jitter to intervals to prevent all processes running on the same tick
-   * Spread process execution across ticks for more even CPU distribution
    */
   private shouldRunProcess(process: Process): boolean {
     if (Game.cpu.bucket < process.minBucket) {
@@ -822,16 +1096,16 @@ export class Kernel {
         process.stats.suspendedUntil = null;
         const previousReason = process.stats.suspensionReason;
         process.stats.suspensionReason = null;
-        
+
         logger.info(
           `Kernel: Process "${process.name}" automatically resumed after suspension. ` +
           `Previous reason: ${previousReason}. Consecutive errors: ${process.stats.consecutiveErrors}`,
-          { 
+          {
             subsystem: "Kernel",
             processId: process.id
           }
         );
-        
+
         // Emit recovery event
         this.emit('process.recovered', {
           processId: process.id,
@@ -839,7 +1113,7 @@ export class Kernel {
           previousReason: previousReason || 'Unknown',
           consecutiveErrors: process.stats.consecutiveErrors
         }, { priority: 50 });
-        
+
         // Resume state this tick, but wait until the next eligible tick before
         // executing so a still-broken process does not immediately re-suspend.
         return false;
@@ -865,19 +1139,22 @@ export class Kernel {
       }
     }
 
-    // Check interval (skip check if process has never run - runCount will be 0)
-    if (process.stats.runCount > 0) {
-      const ticksSinceRun = Game.time - process.stats.lastRunTick;
-      if (ticksSinceRun < process.interval) {
-        // Only log interval skips occasionally to avoid spam
-        if (Game.time % 100 === 0 && process.priority >= ProcessPriority.HIGH) {
-          logger.debug(
-            `Kernel: Process "${process.name}" skipped (interval: ${ticksSinceRun}/${process.interval} ticks)`,
-            { subsystem: "Kernel" }
-          );
-        }
-        return false;
+    // Check interval and deterministic jitter. New processes execute once on
+    // registration, then use a deterministic interval jitter to reduce herd effects.
+    if (!this.isIntervalReady(process)) {
+      // Only log interval skips occasionally to avoid spam
+      if (process.stats.runCount > 0 && Game.time % 100 === 0 && process.priority >= ProcessPriority.HIGH) {
+        const ticksSinceRun = Game.time - process.stats.lastRunTick;
+        const effectiveInterval = Math.max(
+          1,
+          process.interval + (process.intervalJitterOffset ?? 0)
+        );
+        logger.debug(
+          `Kernel: Process "${process.name}" skipped (interval: ${ticksSinceRun}/${effectiveInterval} ticks)`,
+          { subsystem: "Kernel" }
+        );
       }
+      return false;
     }
 
     return true;
@@ -885,12 +1162,12 @@ export class Kernel {
 
   /**
    * Calculate health score for a process (0-100)
-   * 
+   *
    * Health score is based on:
    * - Success rate: (runCount - errorCount) / runCount * 100
    * - Recent success bonus: +20 if successful run in last 100 ticks
    * - Penalty for consecutive errors: reduces score significantly
-   * 
+   *
    * @param stats - Process statistics
    * @returns Health score between 0 and 100
    */
@@ -928,7 +1205,7 @@ export class Kernel {
     try {
       process.execute();
       process.state = "idle";
-      
+
       // Success: reset consecutive errors, CPU skips, and update last successful run
       process.stats.consecutiveErrors = 0;
       process.stats.consecutiveCpuSkips = 0;
@@ -937,7 +1214,7 @@ export class Kernel {
       process.state = "error";
       process.stats.errorCount++;
       process.stats.consecutiveErrors++;
-      
+
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error(`Kernel: Process "${process.name}" error: ${errorMessage}`, { subsystem: "Kernel" });
       if (err instanceof Error && err.stack) {
@@ -946,18 +1223,18 @@ export class Kernel {
 
       // Check for automatic suspension
       const consecutiveErrors = process.stats.consecutiveErrors;
-      
+
       // Circuit breaker: permanent suspension after 10 consecutive failures
       if (consecutiveErrors >= 10) {
         process.stats.suspendedUntil = Number.MAX_SAFE_INTEGER;
         process.stats.suspensionReason = `Circuit breaker: ${consecutiveErrors} consecutive failures (permanent)`;
         process.state = "suspended";
-        
+
         logger.error(
           `Kernel: Process "${process.name}" permanently suspended after ${consecutiveErrors} consecutive failures`,
           { subsystem: "Kernel", processId: process.id }
         );
-        
+
         // Emit critical event for permanent suspension
         this.emit('process.suspended', {
           processId: process.id,
@@ -974,10 +1251,10 @@ export class Kernel {
         process.stats.suspendedUntil = Game.time + suspensionDuration;
         process.stats.suspensionReason = `${consecutiveErrors} consecutive failures (auto-resume in ${suspensionDuration} ticks)`;
         process.state = "suspended";
-        
+
         logger.warn(
           `Kernel: Process "${process.name}" suspended for ${suspensionDuration} ticks after ${consecutiveErrors} consecutive failures`,
-          { 
+          {
             subsystem: "Kernel",
             processId: process.id,
             meta: {
@@ -986,7 +1263,7 @@ export class Kernel {
             }
           }
         );
-        
+
         // Emit event for temporary suspension
         this.emit('process.suspended', {
           processId: process.id,
@@ -1008,18 +1285,21 @@ export class Kernel {
       process.stats.avgCpu = process.stats.totalCpu / process.stats.runCount;
       process.stats.maxCpu = Math.max(process.stats.maxCpu, cpuUsed);
       process.stats.lastRunTick = Game.time;
-      
+
       // Update health score
       process.stats.healthScore = this.calculateHealthScore(process.stats);
     }
 
     this.tickCpuUsed += cpuUsed;
 
+    this.tickFrequencyCpuUsed[process.frequency] += cpuUsed;
+    this.tickFrequencyRunCount[process.frequency] += 1;
+
     // Check CPU budget violation
     // Only log if significantly over budget to reduce noise
     const budgetLimit = this.getCpuLimit() * process.cpuBudget;
     const overBudgetRatio = cpuUsed / budgetLimit;
-    if (overBudgetRatio > this.config.budgetWarningThreshold && 
+    if (overBudgetRatio > this.config.budgetWarningThreshold &&
         Game.time % this.config.budgetWarningInterval === 0) {
       logger.warn(
         `Kernel: Process "${process.name}" exceeded CPU budget: ${cpuUsed.toFixed(3)} > ${budgetLimit.toFixed(3)} (${(overBudgetRatio * 100).toFixed(0)}%)`,
@@ -1030,7 +1310,7 @@ export class Kernel {
 
   /**
    * Run all scheduled processes for this tick using a wrap-around queue.
-   * 
+   *
    * When processes are skipped due to CPU budget, they are guaranteed to be
    * considered first in the next tick by continuing from where we left off.
    * This ensures fair process execution across ticks while maintaining priority order.
@@ -1040,6 +1320,7 @@ export class Kernel {
     this.updateAdaptiveBudgets(); // Update budgets based on current empire size and bucket
     this.tickCpuUsed = 0;
     this.skippedProcessesThisTick = 0;
+    this.resetFrequencyTracking();
 
     // Process queued events from previous ticks
     eventBus.processQueue();
@@ -1074,7 +1355,7 @@ export class Kernel {
     // This creates a wrap-around effect: if we stopped at index 5 last tick,
     // we start at index 6 this tick, wrapping to 0 when we reach the end
     const startIndex = (this.lastExecutedIndex + 1) % this.processQueue.length;
-    
+
     // Iterate through all processes exactly once, starting from startIndex
     for (let i = 0; i < this.processQueue.length; i++) {
       const index = (startIndex + i) % this.processQueue.length;
@@ -1083,16 +1364,16 @@ export class Kernel {
       // Check if we should run this process
       const shouldRun = this.shouldRunProcess(process);
       if (!shouldRun) {
-        // Track processes that were skipped due to interval/suspension
+        // Track processes that were skipped due to interval/suspension/mode
         // BUGFIX: Increment per-process skippedCount for Grafana tracking
         if (this.config.enableStats) {
           process.stats.skippedCount++;
         }
         processesSkipped++;
         this.skippedProcessesThisTick++;
-        
-        // Track skip reasons for better diagnostics
-        if (process.stats.runCount > 0 && (Game.time - process.stats.lastRunTick) < process.interval) {
+
+        // Track interval-related skips (including deterministic jitter alignment)
+        if (process.stats.runCount > 0 && !this.isIntervalReady(process)) {
           processesSkippedByInterval++;
         }
         continue;
@@ -1107,37 +1388,40 @@ export class Kernel {
           for (let j = i; j < this.processQueue.length; j++) {
             const remainingIndex = (startIndex + j) % this.processQueue.length;
             const remainingProcess = this.processQueue[remainingIndex];
-            
+
             // Only increment CPU skips for processes that would have run
             if (this.shouldRunProcess(remainingProcess)) {
               remainingProcess.stats.consecutiveCpuSkips++;
             }
           }
         }
-        
+
         processesSkippedByCpu = this.processQueue.length - processesRun - processesSkipped;
         logger.warn(
           `Kernel: CPU budget exhausted after ${processesRun} processes. ${processesSkippedByCpu} processes deferred to next tick. Used: ${Game.cpu.getUsed().toFixed(2)}/${this.getCpuLimit().toFixed(2)}`,
           { subsystem: "Kernel" }
         );
-        
+
         // Mark queue as dirty to re-sort with updated priorities next tick
         if (this.config.enablePriorityDecay && processesSkippedByCpu > 0) {
           this.queueDirty = true;
         }
-        
+
         break;
       }
 
       // Execute the process
       this.executeProcess(process);
       processesRun++;
-      
+
       // Track the last executed process by both ID and index
       // ID survives queue rebuilds, index is used for wrap-around within the current queue
       this.lastExecutedProcessId = process.id;
       this.lastExecutedIndex = index;
     }
+
+    // Capture adaptive CPU utilization trends after this tick.
+    this.collectFrequencyUtilization();
 
     // Log stats periodically
     if (this.config.enableStats && Game.time % this.config.statsLogInterval === 0) {
@@ -1150,7 +1434,7 @@ export class Kernel {
    * Log kernel statistics with detailed breakdown
    */
   private logStats(
-    processesRun: number, 
+    processesRun: number,
     processesSkipped: number,
     skippedByInterval: number,
     skippedByCpu: number
@@ -1159,37 +1443,37 @@ export class Kernel {
     const bucketPercent = (bucket / 10000 * 100).toFixed(1);
     const cpuUsed = Game.cpu.getUsed();
     const cpuLimit = this.getCpuLimit();
-    
+
     logger.info(
       `Kernel: ${processesRun} ran, ${processesSkipped} skipped (interval: ${skippedByInterval}, CPU: ${skippedByCpu}), ` +
       `CPU: ${cpuUsed.toFixed(2)}/${cpuLimit.toFixed(2)} (${(cpuUsed/cpuLimit*100).toFixed(1)}%), bucket: ${bucket}/10000 (${bucketPercent}%), mode: ${this.bucketMode}`,
       { subsystem: "Kernel" }
     );
-    
+
     // Log processes with significant priority decay
     if (this.config.enablePriorityDecay && skippedByCpu > 0) {
       const decayedProcesses = this.processQueue
         .filter(p => p.stats.consecutiveCpuSkips >= 5)
         .sort((a, b) => b.stats.consecutiveCpuSkips - a.stats.consecutiveCpuSkips)
         .slice(0, 3);
-      
+
       if (decayedProcesses.length > 0) {
         logger.info(
-          `Kernel: Priority decay active: ${decayedProcesses.map(p => 
+          `Kernel: Priority decay active: ${decayedProcesses.map(p =>
             `${p.name}(base:${p.priority}, boost:+${this.calculatePriorityBoost(p.stats.consecutiveCpuSkips)}, skips:${p.stats.consecutiveCpuSkips})`
           ).join(', ')}`,
           { subsystem: "Kernel" }
         );
       }
     }
-    
+
     // Log top skipped processes if we have a high skip count
     if (processesSkipped > 10) {
       const topSkipped = this.processQueue
         .filter(p => p.stats.skippedCount > 100)
         .sort((a, b) => b.stats.skippedCount - a.stats.skippedCount)
         .slice(0, 5);
-      
+
       if (topSkipped.length > 0) {
         logger.warn(
           `Kernel: Top skipped processes: ${topSkipped.map(p => `${p.name}(${p.stats.skippedCount}, interval:${p.interval})`).join(', ')}`,
@@ -1236,16 +1520,16 @@ export class Kernel {
       process.stats.suspendedUntil = null;
       const previousReason = process.stats.suspensionReason;
       process.stats.suspensionReason = null;
-      
+
       logger.info(
         `Kernel: Manually resumed process "${process.name}". ` +
         `Previous reason: ${previousReason}. Consecutive errors: ${process.stats.consecutiveErrors}`,
-        { 
+        {
           subsystem: "Kernel",
           processId: id
         }
       );
-      
+
       // Emit manual recovery event
       this.emit('process.recovered', {
         processId: process.id,
@@ -1254,7 +1538,7 @@ export class Kernel {
         consecutiveErrors: process.stats.consecutiveErrors,
         manual: true
       }, { priority: 50 });
-      
+
       return true;
     }
     return false;
@@ -1276,10 +1560,10 @@ export class Kernel {
     const processes = Array.from(this.processes.values());
     const active = processes.filter(p => p.state !== "suspended");
     const suspended = processes.filter(p => p.state === "suspended");
-    
+
     const totalCpu = processes.reduce((sum, p) => sum + p.stats.totalCpu, 0);
     const avgCpu = processes.length > 0 ? totalCpu / processes.length : 0;
-    
+
     const topCpu = [...processes]
       .sort((a, b) => b.stats.avgCpu - a.stats.avgCpu)
       .slice(0, 5)
@@ -1290,8 +1574,8 @@ export class Kernel {
       .filter(p => p.stats.healthScore < 50)
       .sort((a, b) => a.stats.healthScore - b.stats.healthScore)
       .slice(0, 5)
-      .map(p => ({ 
-        name: p.name, 
+      .map(p => ({
+        name: p.name,
         healthScore: p.stats.healthScore,
         consecutiveErrors: p.stats.consecutiveErrors
       }));
@@ -1352,7 +1636,7 @@ export class Kernel {
     const processes = Array.from(this.processes.values());
     const distributed = processes.filter(p => p.tickModulo !== undefined && p.tickModulo > 0);
     const everyTick = processes.filter(p => !p.tickModulo || p.tickModulo === 0);
-    
+
     // Count processes by modulo value
     const moduloCounts: Record<number, number> = {};
     for (const process of distributed) {

@@ -102,7 +102,7 @@
 | screeps-cache | 4,021 | 195 lines | 500+ | ⚠️ Needs work | P0 |
 | screeps-economy | 3,166 | 197 lines | 500+ | ⚠️ Needs work | P1 |
 | screeps-defense | 1,583 | 396 lines | 500+ | ⚠️ Needs reorganization | P2 |
-| screeps-tasks | 1,431 | 485 lines | 500+ | ⚠️ Needs examples | P2 |
+| screeps-roles | 1,431 | 485 lines | 500+ | ⚠️ Needs examples | P2 |
 | screeps-posis | 1,139 | 229 lines | 400+ | ⚠️ Minimal | P2 |
 | screeps-utils | 658 | 248 lines | 500+ | ⚠️ Minimal | P2 |
 | screeps-console | 1,893 | 132 lines | 400+ | ⚠️ Minimal | P1 |
@@ -219,7 +219,7 @@
 1. screeps-visuals (3-4h)
 2. screeps-core (2h)
 3. screeps-defense (1.5-2h)
-4. screeps-tasks (1.5-2h)
+4. screeps-roles (1.5-2h)
 5. screeps-posis (2h)
 6. screeps-utils (2h)
 7. screeps-empire (2h)

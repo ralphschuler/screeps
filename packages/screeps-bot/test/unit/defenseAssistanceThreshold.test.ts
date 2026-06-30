@@ -73,7 +73,7 @@ describe("Defense Assistance Thresholds", () => {
       expect(needsHelp).to.be.true;
     });
 
-    it("should NOT request help when can spawn defenders", () => {
+    it("should request a helper wave when a visible dangerous hostile creates a defender deficit", () => {
       const spawnsCount = 1;
       const availableSpawns = 1;
       const energyAvailable = 300;
@@ -81,16 +81,19 @@ describe("Defense Assistance Thresholds", () => {
       const defenderDeficit = 1;
       const urgency = 1.0;
       const dangerLevel = 1;
+      const visibleDefenseThreat = true;
 
-      // Has spawns, energy, but threat is manageable
+      // A room may be able to spawn locally, but live hostile pressure should still
+      // ask safe helper rooms to start reinforcement waves immediately.
       const needsHelp =
+        (visibleDefenseThreat && defenderDeficit >= 1) ||
         spawnsCount === 0 ||
         (availableSpawns === 0 && defenderDeficit >= 1) ||
         (energyAvailable < minDefenderCost && defenderDeficit >= 1) ||
         (urgency >= 2.0 && defenderDeficit >= 2) ||
         (dangerLevel >= 3 && defenderDeficit >= 1);
 
-      expect(needsHelp).to.be.false;
+      expect(needsHelp).to.be.true;
     });
   });
 
@@ -133,7 +136,7 @@ describe("Defense Assistance Thresholds", () => {
       expect(needsHelp).to.be.true;
     });
 
-    it("should NOT request help for minor threat on high RCL room with deficit", () => {
+    it("should not request help for a minor stale danger signal when no hostile is visible", () => {
       const dangerLevel = 1;
       const rcl = 7;
       const defenderDeficit = 1;
@@ -141,9 +144,10 @@ describe("Defense Assistance Thresholds", () => {
       const spawnsCount = 3;
       const availableSpawns = 2;
       const energyAvailable = 1000;
+      const visibleDefenseThreat = false;
 
-      // High level room can handle minor threats
       const criticalHelp =
+        (visibleDefenseThreat && defenderDeficit >= 1) ||
         (urgency >= 2.0 && defenderDeficit >= 2) ||
         (dangerLevel >= 3 && defenderDeficit >= 1) ||
         (dangerLevel >= 2 && (defenderDeficit >= 2 || rcl <= 3));

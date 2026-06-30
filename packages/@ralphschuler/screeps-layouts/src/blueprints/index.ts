@@ -11,8 +11,7 @@
  * - ✅ Blueprint efficiency scoring (anchor selection with multiple metrics)
  * - ✅ Blueprint import/export for sharing proven designs (JSON serialization)
  * 
- * TODO: Add dynamic blueprint generation for irregular terrain
- Issue URL: https://github.com/ralphschuler/screeps/issues/794
+ * Terrain-adaptive fallback generation supports irregular-room layouts
  * Generate custom layouts when pre-made blueprints don't fit
  */
 
@@ -22,11 +21,35 @@ export type {
   Blueprint,
   MisplacedStructure,
   BlueprintEfficiencyMetrics,
-  EvolutionStage
+  EvolutionStage,
+  BlueprintPoint,
+  BlueprintRoomFacts,
+  BlueprintExistingPlacement,
+  BlueprintPlan,
+  BlueprintPlanError,
+  BlueprintPlanValidation,
+  PlannedStructure,
+  PlannedRoad,
+  PlannedRampart,
+  StampDefinition,
+  StampMember,
+  StampMemberGroup,
+  StampFallbackPolicy,
+  StampRoad,
+  UnplacedDemand
 } from "./types";
 
-// Constants
+// Constants and RCL targets
 export { getStructureLimits } from "./constants";
+export {
+  getControllerStructureLimits,
+  getMandatoryStructureTargets,
+  getStructureTarget,
+  normalizeRcl,
+  STRUCTURE_TYPES,
+  MANDATORY_BLUEPRINT_STRUCTURE_TYPES,
+  OPTIONAL_BLUEPRINT_STRUCTURE_TYPES
+} from "./definitions/rcl-plan";
 
 // Blueprint definitions
 export { EARLY_COLONY_BLUEPRINT } from "./definitions/early-colony";
@@ -64,6 +87,35 @@ export {
   calculateBlueprintEfficiency,
   compareBlueprintEfficiency
 } from "./metrics";
+
+// Stamp planner
+export * from "./definitions/stamps";
+export {
+  planRoomBlueprint,
+  planRoomBlueprintFromRoom,
+  createBlueprintFactsFromRoom,
+  blueprintFromPlan,
+  placeStampOrPartial,
+  validatePlanAgainstRclLimits,
+  type BlueprintPlannerOptions,
+  type MutablePlanState,
+  type StampPlacementResult
+} from "./planner";
+export {
+  enumerateFallbackCandidates,
+  chooseBestFallbackCandidate,
+  isBuildableRoomTile,
+  isCriticalStructureType,
+  isWallTerrain,
+  terrainAt
+} from "./fallback";
+export {
+  buildConstructionQueue,
+  issueConstructionSites,
+  type BlueprintConstructionItem,
+  type ConstructionPriority,
+  type ConstructionQueueOptions
+} from "./constructionQueue";
 
 // Blueprint serialization
 export {

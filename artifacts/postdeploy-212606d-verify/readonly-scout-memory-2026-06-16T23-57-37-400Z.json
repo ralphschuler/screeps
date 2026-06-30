@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-06-16T23:57:37.400Z",
+  "hostname": "screeps.com",
+  "branch": "main",
+  "commit": "212606d",
+  "shard": "shard1",
+  "consoleCheck": {
+    "called": false,
+    "reason": "Read-only memory/stats endpoints only; no /api/user/console."
+  },
+  "time": 71723404,
+  "scouts": [
+    {
+      "name": "scout_71721957_je729e635",
+      "homeRoom": "W17S29",
+      "targetRoom": "W17S28",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71723394,
+        "timeout": 25,
+        "targetRoom": "W17S28"
+      },
+      "stats": {
+        "role": "scout",
+        "home_room": "W17S29",
+        "current_room": "W18S27",
+        "cpu": 0,
+        "action": "moveToRoom",
+        "ticks_to_live": 55,
+        "hits": 100,
+        "hits_max": 100,
+        "body_parts": 1,
+        "fatigue": 0,
+        "actions_this_tick": 0
+      }
+    },
+    {
+      "name": "scout_71722212_oe8xtvjhm",
+      "homeRoom": "W18S28",
+      "targetRoom": "W17S28",
+      "state": {
+        "action": "moveToRoom",
+        "startTick": 71723394,
+        "timeout": 25,
+        "targetRoom": "W17S28"
+      },
+      "stats": {
+        "role": "scout",
+        "home_room": "W18S28",
+        "current_room": "W19S26",
+        "cpu": 0,
+        "action": "moveToRoom",
+        "ticks_to_live": 310,
+        "hits": 100,
+        "hits_max": 100,
+        "body_parts": 1,
+        "fatigue": 0,
+        "actions_this_tick": 0
+      }
+    }
+  ]
+}

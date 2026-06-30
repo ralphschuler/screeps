@@ -37,11 +37,78 @@ const THREAT_SQUAD_SIZE: Record<number, SquadComposition> = {
  * Squad formation timeout in ticks (5 minutes)
  */
 const SQUAD_FORMATION_TIMEOUT = 300;
+const SQUAD_PARTIAL_QUORUM_RATIO = 0.6;
 
-/**
- * Squad idle timeout in ticks (10 minutes)
- */
-const SQUAD_IDLE_TIMEOUT = 600;
+function compositionToRoleMap(composition: SquadComposition): Record<string, number> {
+  const roles: Record<string, number> = {};
+  if (composition.guards > 0) roles.guard = composition.guards;
+  if (composition.rangers > 0) roles.ranger = composition.rangers;
+  if (composition.healers > 0) roles.healer = composition.healers;
+  if (composition.siegeUnits > 0) roles.siegeUnit = composition.siegeUnits;
+  return roles;
+}
+
+function syncSquadMembers(squad: SquadDefinition): void {
+  const known = new Set(squad.members.filter(name => Boolean(Game.creeps[name])));
+  for (const creep of Object.values(Game.creeps)) {
+    if ((creep.memory as { squadId?: string }).squadId === squad.id) {
+      known.add(creep.name);
+    }
+  }
+  squad.members = [...known];
+}
+
+function countMembersByRole(squad: SquadDefinition): Record<string, number> {
+  syncSquadMembers(squad);
+  const counts: Record<string, number> = {};
+  for (const name of squad.members) {
+    const creep = Game.creeps[name];
+    if (!creep || creep.spawning) continue;
+    const role = (creep.memory as { role?: string }).role;
+    if (!role) continue;
+    counts[role] = (counts[role] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export function getSquadTargetSize(squad: SquadDefinition): number {
+  const composition = squad.targetComposition ?? {};
+  const total = (Object.values(composition) as number[]).reduce((sum, count) => sum + (count ?? 0), 0);
+  return total > 0 ? total : squad.members.length;
+}
+
+export function isSquadFullyFormed(squad: SquadDefinition): boolean {
+  syncSquadMembers(squad);
+  const composition = squad.targetComposition ?? {};
+  const roleCounts = countMembersByRole(squad);
+  return Object.entries(composition).every(([role, needed]) => (roleCounts[role] ?? 0) >= (needed ?? 0));
+}
+
+export function hasSafePartialQuorum(squad: SquadDefinition): boolean {
+  syncSquadMembers(squad);
+  const targetSize = getSquadTargetSize(squad);
+  const liveMembers = squad.members.filter(name => {
+    const creep = Game.creeps[name];
+    return creep && !creep.spawning;
+  });
+  if (targetSize <= 0 || liveMembers.length < Math.max(2, Math.ceil(targetSize * SQUAD_PARTIAL_QUORUM_RATIO))) return false;
+
+  const roleCounts = countMembersByRole(squad);
+  const combatCount = (roleCounts.guard ?? 0) + (roleCounts.soldier ?? 0) + (roleCounts.ranger ?? 0) + (roleCounts.harasser ?? 0) + (roleCounts.siegeUnit ?? 0);
+  if (combatCount === 0) return false;
+
+  const expectedHealers = squad.targetComposition?.healer ?? 0;
+  if (expectedHealers > 0 && (roleCounts.healer ?? 0) === 0) return false;
+
+  if (squad.type === "siege" && (roleCounts.siegeUnit ?? 0) === 0) return false;
+
+  return true;
+}
+
+export function canSquadDepart(squad: SquadDefinition): boolean {
+  if (isSquadFullyFormed(squad)) return true;
+  return Boolean(squad.stagingTimeoutAt && Game.time >= squad.stagingTimeoutAt && hasSafePartialQuorum(squad));
+}
 
 /**
  * Calculate optimal squad composition for a defense request
@@ -136,10 +203,12 @@ export function createDefenseSquad(
     id: squadId,
     type: "defense",
     members: [],
+    targetComposition: compositionToRoleMap(composition),
     rallyRoom,
     targetRooms: [request.roomName],
     state: "gathering",
-    createdAt: Game.time
+    createdAt: Game.time,
+    stagingTimeoutAt: Game.time + SQUAD_FORMATION_TIMEOUT
   };
 
   logger.info(
@@ -178,10 +247,12 @@ export function createOffensiveSquad(
     id: squadId,
     type,
     members: [],
+    targetComposition: compositionToRoleMap(composition),
     rallyRoom,
     targetRooms: [targetRoom],
     state: "gathering",
     createdAt: Game.time,
+    stagingTimeoutAt: Game.time + SQUAD_FORMATION_TIMEOUT,
     retreatThreshold
   };
 
@@ -245,6 +316,14 @@ export function addCreepToSquad(creepName: string, squadId: string): void {
   const mem = creep.memory as { squadId?: string };
   mem.squadId = squadId;
 
+  for (const cluster of Object.values((Memory as unknown as { clusters?: Record<string, ClusterMemory> }).clusters ?? {})) {
+    const squad = cluster.squads.find(candidate => candidate.id === squadId);
+    if (squad && !squad.members.includes(creepName)) {
+      squad.members.push(creepName);
+      break;
+    }
+  }
+
   logger.debug(`Added ${creepName} to squad ${squadId}`, { subsystem: "Squad" });
 }
 
@@ -268,9 +347,9 @@ export function removeCreepFromSquad(creepName: string): void {
  * Validate squad state and update if needed
  */
 export function validateSquadState(squad: SquadDefinition): void {
-  // Remove dead members
+  // Remove dead members and recover live members after global reset.
   const aliveMembersBefore = squad.members.length;
-  squad.members = squad.members.filter(name => Game.creeps[name]);
+  syncSquadMembers(squad);
   
   if (squad.members.length < aliveMembersBefore) {
     logger.debug(
@@ -290,9 +369,8 @@ export function validateSquadState(squad: SquadDefinition): void {
 
   switch (squad.state) {
     case "gathering": {
-      // Check if all members are in rally room
       const inRally = members.every(c => c.room.name === squad.rallyRoom);
-      if (inRally) {
+      if (inRally && canSquadDepart(squad)) {
         squad.state = "moving";
         logger.info(`Squad ${squad.id} gathered, moving to ${targetRoom}`, {
           subsystem: "Squad"
@@ -302,9 +380,8 @@ export function validateSquadState(squad: SquadDefinition): void {
     }
 
     case "moving": {
-      // Check if any member reached target room
-      const inTarget = members.some(c => c.room.name === targetRoom);
-      if (inTarget) {
+      const inTarget = members.filter(c => c.room.name === targetRoom).length;
+      if (inTarget >= Math.max(1, Math.ceil(members.length * 0.5))) {
         squad.state = "attacking";
         logger.info(`Squad ${squad.id} reached ${targetRoom}, engaging`, {
           subsystem: "Squad"

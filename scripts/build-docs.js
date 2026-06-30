@@ -18,8 +18,12 @@
  * All other source files are TypeScript
  */
 
-const fs = require('fs').promises;
-const path = require('path');
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.join(__dirname, '..');
 const DOCS_DIR = path.join(ROOT_DIR, 'docs');
@@ -56,8 +60,10 @@ async function findMarkdownFiles(dir, baseDir = dir) {
       }
     }
   } catch (error) {
-    // Directory doesn't exist or can't be read
-    console.warn(`Warning: Could not read directory ${dir}: ${error.message}`);
+    // Missing package docs directories are normal; warn only for unexpected read failures.
+    if (error.code !== 'ENOENT') {
+      console.warn(`Warning: Could not read directory ${dir}: ${error.message}`);
+    }
   }
   
   return files;
@@ -69,9 +75,25 @@ async function findMarkdownFiles(dir, baseDir = dir) {
 async function getPackages() {
   try {
     const entries = await fs.readdir(PACKAGES_DIR, { withFileTypes: true });
-    return entries
-      .filter(entry => entry.isDirectory())
-      .map(entry => entry.name);
+    const packages = [];
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      if (entry.name.startsWith('@')) {
+        const scopeDir = path.join(PACKAGES_DIR, entry.name);
+        const scopedEntries = await fs.readdir(scopeDir, { withFileTypes: true });
+        for (const scopedEntry of scopedEntries) {
+          if (scopedEntry.isDirectory()) {
+            packages.push(path.join(entry.name, scopedEntry.name));
+          }
+        }
+      } else {
+        packages.push(entry.name);
+      }
+    }
+
+    return packages.sort();
   } catch (error) {
     console.warn(`Warning: Could not read packages directory: ${error.message}`);
     return [];

@@ -27,45 +27,13 @@
  * ```
  */
 
+import { getDecoratorMetadataForInstance, storeCommandDecoratorMetadata } from "./decoratorStore";
+import { formatCommandHelp, formatRegistryHelp } from "./helpFormatter";
 import { logger } from "./interfaces";
+import type { CommandMetadata, RegisteredCommand } from "./commandTypes";
 
-/**
- * Command metadata for registration and help display
- */
-export interface CommandMetadata {
-  /** Command name (will be used as global function name) */
-  name: string;
-  /** Brief description of what the command does */
-  description: string;
-  /** Usage syntax (e.g., "myCommand(arg1, arg2)") */
-  usage?: string;
-  /** Example invocations */
-  examples?: string[];
-  /** Category for grouping in help output */
-  category?: string;
-}
-
-/**
- * Internal storage for command with its handler
- */
-interface RegisteredCommand {
-  metadata: CommandMetadata;
-  handler: (...args: unknown[]) => unknown;
-}
-
-/**
- * Metadata storage for decorated commands before registration
- */
-interface CommandDecoratorMetadata {
-  metadata: CommandMetadata;
-  methodName: string;
-  target: object;
-}
-
-/**
- * Storage for command decorator metadata
- */
-const commandDecoratorStore: CommandDecoratorMetadata[] = [];
+export type { CommandDecoratorMetadata, CommandMetadata, RegisteredCommand } from "./commandTypes";
+export { clearCommandDecoratorMetadata, getCommandDecoratorMetadata } from "./decoratorStore";
 
 /**
  * Command Registry - Manages console commands
@@ -112,12 +80,9 @@ class CommandRegistry {
 
   /**
    * Get a registered command
-   * Triggers lazy loading if needed
+   * Does not trigger lazy loading; execute/help paths load commands on demand.
    */
   public getCommand(name: string): RegisteredCommand | undefined {
-    if (this.lazyLoadEnabled && !this.commandsRegistered) {
-      this.triggerLazyLoad();
-    }
     return this.commands.get(name);
   }
 
@@ -140,7 +105,7 @@ class CommandRegistry {
     if (this.lazyLoadEnabled && !this.commandsRegistered) {
       this.triggerLazyLoad();
     }
-    
+
     const categories = new Map<string, RegisteredCommand[]>();
 
     for (const cmd of this.commands.values()) {
@@ -152,7 +117,10 @@ class CommandRegistry {
 
     // Sort commands within each category
     for (const [category, cmds] of categories) {
-      categories.set(category, cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name)));
+      categories.set(
+        category,
+        cmds.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name))
+      );
     }
 
     return categories;
@@ -187,38 +155,7 @@ class CommandRegistry {
    * Generate help output for all commands
    */
   public generateHelp(): string {
-    const categories = this.getCommandsByCategory();
-    const lines: string[] = ["=== Available Console Commands ===", ""];
-
-    // Sort categories, putting "General" first
-    const sortedCategories = Array.from(categories.keys()).sort((a, b) => {
-      if (a === "General") return -1;
-      if (b === "General") return 1;
-      return a.localeCompare(b);
-    });
-
-    for (const category of sortedCategories) {
-      const cmds = categories.get(category);
-      if (!cmds || cmds.length === 0) continue;
-
-      lines.push(`--- ${category} ---`);
-
-      for (const cmd of cmds) {
-        const usage = cmd.metadata.usage ?? `${cmd.metadata.name}()`;
-        lines.push(`  ${usage}`);
-        lines.push(`    ${cmd.metadata.description}`);
-
-        if (cmd.metadata.examples && cmd.metadata.examples.length > 0) {
-          lines.push(`    Examples:`);
-          for (const example of cmd.metadata.examples) {
-            lines.push(`      ${example}`);
-          }
-        }
-        lines.push("");
-      }
-    }
-
-    return lines.join("\n");
+    return formatRegistryHelp(this.getCommandsByCategory());
   }
 
   /**
@@ -229,29 +166,13 @@ class CommandRegistry {
     if (this.lazyLoadEnabled && !this.commandsRegistered) {
       this.triggerLazyLoad();
     }
-    
+
     const command = this.commands.get(name);
     if (!command) {
       return `Command "${name}" not found. Use help() to see available commands.`;
     }
 
-    const lines: string[] = [
-      `=== ${command.metadata.name} ===`,
-      "",
-      `Description: ${command.metadata.description}`,
-      `Usage: ${command.metadata.usage ?? `${command.metadata.name}()`}`,
-      `Category: ${command.metadata.category ?? "General"}`
-    ];
-
-    if (command.metadata.examples && command.metadata.examples.length > 0) {
-      lines.push("");
-      lines.push("Examples:");
-      for (const example of command.metadata.examples) {
-        lines.push(`  ${example}`);
-      }
-    }
-
-    return lines.join("\n");
+    return formatCommandHelp(command);
   }
 
   /**
@@ -264,16 +185,14 @@ class CommandRegistry {
     // This is safe because we're only adding command handler functions.
     const g = global as unknown as Record<string, unknown>;
 
-    // Only expose commands if not already exposed or if new commands were registered
-    if (!this.commandsExposed || (this.lazyLoadEnabled && this.commandsRegistered)) {
-      for (const [name, command] of this.commands) {
-        g[name] = command.handler;
-      }
-      this.commandsExposed = true;
-      logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
-        subsystem: "CommandRegistry"
-      });
+    for (const [name, command] of this.commands) {
+      g[name] = command.handler;
     }
+
+    this.commandsExposed = true;
+    logger.debug(`Exposed ${this.commands.size} commands to global scope`, {
+      subsystem: "CommandRegistry"
+    });
 
     // Always set up the help command wrapper (for lazy loading support)
     g.help = (commandName?: string): string => {
@@ -367,6 +286,14 @@ class CommandRegistry {
     this.commandsExposed = false;
     this.registrationCallback = undefined;
   }
+
+  /**
+   * Clear all registered commands.
+   * Kept as a compatibility alias for older console command setup/tests.
+   */
+  public clear(): void {
+    this.reset();
+  }
 }
 
 /**
@@ -401,15 +328,23 @@ export const commandRegistry = new CommandRegistry();
  */
 export function Command(metadata: CommandMetadata) {
   return function <T>(
-    target: object,
-    propertyKey: string | symbol,
+    targetOrMethod: object,
+    propertyKeyOrContext: string | symbol | ClassMethodDecoratorContext,
     _descriptor?: TypedPropertyDescriptor<T>
   ): void {
-    commandDecoratorStore.push({
-      metadata,
-      methodName: String(propertyKey),
-      target
-    });
+    if (typeof propertyKeyOrContext === "object") {
+      const context = propertyKeyOrContext;
+      const methodName = String(context.name);
+
+      context.addInitializer(function (this: unknown) {
+        if (typeof this === "object" && this !== null) {
+          storeCommandDecoratorMetadata(metadata, methodName, Object.getPrototypeOf(this) as object);
+        }
+      });
+      return;
+    }
+
+    storeCommandDecoratorMetadata(metadata, String(propertyKeyOrContext), targetOrMethod);
   };
 }
 
@@ -426,40 +361,19 @@ export function Command(metadata: CommandMetadata) {
  * ```
  */
 export function registerDecoratedCommands(instance: object): void {
-  const instancePrototype = Object.getPrototypeOf(instance) as object | null;
+  for (const decoratorMeta of getDecoratorMetadataForInstance(instance)) {
+    const method = (instance as Record<string, unknown>)[decoratorMeta.methodName];
 
-  for (const decoratorMeta of commandDecoratorStore) {
-    // Check if this metadata belongs to the instance's prototype chain
-    // This handles cases where decorators are applied at different levels of the prototype chain
-    if (isDecoratorForInstance(decoratorMeta.target, instancePrototype)) {
-      const method = (instance as Record<string, unknown>)[decoratorMeta.methodName];
+    if (typeof method !== "function") continue;
 
-      if (typeof method === "function") {
-        const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
+    const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
 
-        commandRegistry.register(decoratorMeta.metadata, boundMethod);
+    commandRegistry.register(decoratorMeta.metadata, boundMethod);
 
-        logger.debug(`Registered decorated command "${decoratorMeta.metadata.name}"`, {
-          subsystem: "CommandRegistry"
-        });
-      }
-    }
+    logger.debug(`Registered decorated command "${decoratorMeta.metadata.name}"`, {
+      subsystem: "CommandRegistry"
+    });
   }
-}
-
-/**
- * Check if a decorator target belongs to an instance's prototype chain
- * @param decoratorTarget - The target object where the decorator was applied
- * @param instancePrototype - The prototype of the instance being registered
- */
-function isDecoratorForInstance(decoratorTarget: object, instancePrototype: object | null): boolean {
-  if (instancePrototype === null) return false;
-
-  return (
-    decoratorTarget === instancePrototype ||
-    Object.getPrototypeOf(decoratorTarget) === instancePrototype ||
-    decoratorTarget === Object.getPrototypeOf(instancePrototype)
-  );
 }
 
 /**
@@ -475,18 +389,4 @@ export function registerAllDecoratedCommands(...instances: object[]): void {
   logger.info(`Registered decorated commands from ${instances.length} instance(s)`, {
     subsystem: "CommandRegistry"
   });
-}
-
-/**
- * Get all stored command decorator metadata (for debugging)
- */
-export function getCommandDecoratorMetadata(): CommandDecoratorMetadata[] {
-  return [...commandDecoratorStore];
-}
-
-/**
- * Clear all stored command decorator metadata (for testing)
- */
-export function clearCommandDecoratorMetadata(): void {
-  commandDecoratorStore.length = 0;
 }

@@ -17,10 +17,154 @@ import { getConfig, updateConfig } from "../../config";
 import { Command } from "../commandRegistry";
 import { configureLogger } from "../logger";
 
+type StatsRecord = Record<string, unknown>;
+
+interface StatsMemoryView {
+  stats?: StatsRecord & {
+    cpu_details?: CpuDetailsSnapshot;
+    cpu?: StatsRecord;
+    processes?: Record<string, CpuBreakdownProcess>;
+    rooms?: Record<string, CpuBreakdownRoom>;
+    subsystems?: Record<string, CpuBreakdownSubsystem>;
+    creeps?: Record<string, CpuBreakdownCreep>;
+  };
+}
+
+interface CpuDetailsSnapshot {
+  enabled?: unknown;
+  expires_tick?: unknown;
+  sample_rate?: unknown;
+  labels?: unknown[];
+  entries?: Record<string, CpuDetailEntry>;
+}
+
+interface CpuDetailEntry extends StatsRecord {
+  avg_cpu?: unknown;
+  total_cpu?: unknown;
+  max_cpu?: unknown;
+  calls?: unknown;
+}
+
+interface CpuBreakdownProcess extends StatsRecord {
+  name?: unknown;
+  avg_cpu?: unknown;
+  avgCpu?: unknown;
+  max_cpu?: unknown;
+  maxCpu?: unknown;
+  run_count?: unknown;
+  runCount?: unknown;
+}
+
+interface CpuBreakdownRoom extends StatsRecord {
+  name?: unknown;
+  roomName?: unknown;
+  rcl?: unknown;
+  profiler?: StatsRecord;
+}
+
+interface CpuBreakdownSubsystem extends StatsRecord {
+  name?: unknown;
+  avg_cpu?: unknown;
+  avgCpu?: unknown;
+  calls?: unknown;
+  callCount?: unknown;
+}
+
+interface CpuBreakdownCreep extends StatsRecord {
+  name?: unknown;
+  role?: unknown;
+  cpu?: unknown;
+  current_room?: unknown;
+  currentRoom?: unknown;
+}
+
 /**
  * Statistics commands
  */
 export class StatisticsCommands {
+  private toNumber(value: unknown): number | undefined {
+    if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  }
+
+  private toNumberOrZero(value: unknown): number {
+    return this.toNumber(value) ?? 0;
+  }
+
+  private sumNumericValues(value: unknown): number {
+    if (value == null) return 0;
+
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    if (Array.isArray(value)) {
+      return value.reduce((sum, item) => sum + this.sumNumericValues(item), 0);
+    }
+
+    if (typeof value === "object") {
+      return Object.values(value as Record<string, unknown>).reduce<number>((sum, item) => sum + this.sumNumericValues(item), 0);
+    }
+
+    return 0;
+  }
+
+  private asRecord(value: unknown): StatsRecord | undefined {
+    return value && typeof value === "object" ? value as StatsRecord : undefined;
+  }
+
+  private getStatsValue(stats: unknown, key: string): number | undefined {
+    return this.toNumber(this.asRecord(stats)?.[key]);
+  }
+
+  private getRoomBrainMetrics(roomStats: unknown): {
+    postureCode: number;
+    dangerLevel: number;
+    hostileCount: number;
+  } {
+    const typedRoom = (roomStats ?? {}) as {
+      brain?: {
+        danger?: unknown;
+        dangerLevel?: unknown;
+        postureCode?: unknown;
+        posture_code?: unknown;
+      };
+      metrics?: {
+        hostileCount?: unknown;
+        hostile_count?: unknown;
+      };
+      hostiles?: unknown;
+    };
+
+    const roomBrain = typedRoom.brain ?? {};
+    const postureCode = this.toNumber(roomBrain.postureCode) ?? this.toNumber(roomBrain.posture_code) ?? 0;
+    const dangerLevel = this.toNumber(roomBrain.danger) ?? this.toNumber(roomBrain.dangerLevel) ?? 0;
+    const hostileCount = this.toNumber(typedRoom.metrics?.hostileCount)
+      ?? this.toNumber(typedRoom.metrics?.hostile_count)
+      ?? this.toNumber(typedRoom.hostiles)
+      ?? 0;
+
+    return { postureCode, dangerLevel, hostileCount };
+  }
+
+  private getRoomMetricValue(roomStats: unknown, camelKey: string, snakeKey: string): number {
+    const metrics = this.asRecord(this.asRecord(roomStats)?.metrics);
+    const energyMetrics = this.asRecord(metrics?.energy);
+    return this.toNumber(metrics?.[camelKey])
+      ?? this.toNumber(energyMetrics?.[snakeKey])
+      ?? this.toNumber(metrics?.[snakeKey])
+      ?? 0;
+  }
+
   @Command({
     name: "showStats",
     description: "Show current bot statistics from memory segment",
@@ -105,7 +249,7 @@ Hit Rate: ${hitRatePercent}%
 Cache Invalidations: ${stats.invalidations}
 Estimated CPU Saved: ~${estimatedCpuSaved} CPU this tick
 
-Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "Good" : stats.hitRate >= 0.5 ? "Fair" : "Poor - Consider more caching"}`;
+Performance: ${stats.hitRate >= 0.8 ? "Excellent OK" : stats.hitRate >= 0.6 ? "Good" : stats.hitRate >= 0.5 ? "Fair" : "Poor - Consider more caching"}`;
   }
 
   @Command({
@@ -137,6 +281,60 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
   }
 
   @Command({
+    name: "enableCpuDetails",
+    description: "Enable temporary fine-grained CPU detail profiling",
+    usage: "enableCpuDetails(ttl?, sampleRate?, labels?)",
+    examples: ["enableCpuDetails(500, 1)", "enableCpuDetails(200, 5, ['remoteInfrastructure', 'taskBoard'])"],
+    category: "Statistics"
+  })
+  public enableCpuDetails(ttl = 500, sampleRate = 1, labels?: string[]): string {
+    const status = unifiedStats.enableCpuDetails(ttl, sampleRate, labels);
+    return `CPU details enabled until tick ${status.expiresTick ?? "unknown"} (sampleRate=${status.sampleRate ?? 1}, labels=${(status.labels ?? []).join(",") || "all"})`;
+  }
+
+  @Command({
+    name: "disableCpuDetails",
+    description: "Disable temporary fine-grained CPU detail profiling",
+    usage: "disableCpuDetails()",
+    examples: ["disableCpuDetails()"],
+    category: "Statistics"
+  })
+  public disableCpuDetails(): string {
+    unifiedStats.disableCpuDetails();
+    return "CPU details disabled";
+  }
+
+  @Command({
+    name: "cpuDetails",
+    description: "Show temporary fine-grained CPU detail profiler output",
+    usage: "cpuDetails()",
+    examples: ["cpuDetails()"],
+    category: "Statistics"
+  })
+  public cpuDetails(): string {
+    const mem = Memory as unknown as StatsMemoryView;
+    const details = mem.stats?.cpu_details;
+    const status = unifiedStats.getCpuDetailsStatus();
+    if (!details) {
+      return `CPU details ${status.enabled ? "enabled" : "disabled"}; no samples published yet`;
+    }
+
+    const entries = Object.entries(details.entries ?? {});
+    const labels = Array.isArray(details.labels) ? details.labels.join(",") : "";
+    const lines = [
+      `=== CPU Details ===`,
+      `Enabled: ${String(details.enabled)} | Expires: ${details.expires_tick ?? "n/a"} | Sample rate: ${details.sample_rate ?? 1} | Labels: ${labels || "all"}`
+    ];
+
+    for (const [name, entry] of entries.sort((a, b) => this.toNumberOrZero(b[1].avg_cpu) - this.toNumberOrZero(a[1].avg_cpu)).slice(0, 20)) {
+      lines.push(`  ${name}: avg ${this.toNumberOrZero(entry.avg_cpu).toFixed(3)} | total ${this.toNumberOrZero(entry.total_cpu).toFixed(3)} | max ${this.toNumberOrZero(entry.max_cpu).toFixed(3)} | calls ${this.toNumberOrZero(entry.calls).toFixed(0)}`);
+    }
+
+    if (entries.length === 0) lines.push("  No detail samples this tick");
+    return lines.join("\n");
+  }
+
+  @Command({
     name: "cpuBreakdown",
     description: "Show detailed CPU breakdown by process, room, creep, and subsystem",
     usage: "cpuBreakdown(type?)",
@@ -150,7 +348,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     category: "Statistics"
   })
   public cpuBreakdown(type?: string): string {
-    const mem = Memory as unknown as Record<string, any>;
+    const mem = Memory as unknown as StatsMemoryView;
     const stats = mem.stats;
 
     if (!stats) {
@@ -159,23 +357,35 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     const showAll = !type;
     const lines: string[] = ["=== CPU Breakdown ==="];
-    lines.push(`Tick: ${stats.tick}`);
-    lines.push(`Total CPU: ${stats.cpu.used.toFixed(2)}/${stats.cpu.limit} (${stats.cpu.percent.toFixed(1)}%)`);
-    lines.push(`Bucket: ${stats.cpu.bucket}`);
+    const cpuStats = this.asRecord(stats.cpu);
+    const cpuUsed = this.toNumberOrZero(this.getStatsValue(cpuStats, "used")
+      ?? this.getStatsValue(cpuStats, "getUsed")
+      ?? this.sumNumericValues(this.asRecord(cpuStats?.usage)));
+    const cpuLimit = this.toNumberOrZero(this.getStatsValue(cpuStats, "limit") ?? this.toNumberOrZero(cpuStats?.tickLimit));
+    const cpuPercent = this.toNumberOrZero(this.getStatsValue(stats.cpu, "percent")
+      ?? (cpuLimit > 0 ? (cpuUsed / cpuLimit) * 100 : 0));
+    const cpuBucket = this.toNumberOrZero(this.getStatsValue(stats.cpu, "bucket"));
+
+    lines.push(`Tick: ${this.toNumberOrZero(stats.tick)}`);
+    lines.push(`Total CPU: ${cpuUsed.toFixed(2)}/${cpuLimit.toFixed(0)} (${cpuPercent.toFixed(1)}%)`);
+    lines.push(`Bucket: ${cpuBucket.toFixed(0)}`);
     lines.push("");
 
     // Process breakdown
     if (showAll || type === "process") {
-      const processes = stats.processes || {};
-      const processList = Object.values(processes) as any[];
+      const processList = Object.values(stats.processes ?? {});
       if (processList.length > 0) {
         lines.push("=== Process CPU Usage ===");
-        const sorted = processList.sort((a: any, b: any) => b.avg_cpu - a.avg_cpu);
+        const sorted = processList.sort((a, b) => {
+          const aCpu = this.toNumberOrZero(this.getStatsValue(a, "avg_cpu") ?? this.getStatsValue(a, "avgCpu"));
+          const bCpu = this.toNumberOrZero(this.getStatsValue(b, "avg_cpu") ?? this.getStatsValue(b, "avgCpu"));
+          return bCpu - aCpu;
+        });
         for (const proc of sorted.slice(0, 10)) {
-          const procAny = proc as any;
-          lines.push(
-            `  ${procAny.name}: ${procAny.avg_cpu.toFixed(3)} CPU (runs: ${procAny.run_count}, max: ${procAny.max_cpu.toFixed(3)})`
-          );
+          const procAvg = this.toNumberOrZero(this.getStatsValue(proc, "avg_cpu") ?? this.getStatsValue(proc, "avgCpu"));
+          const procMax = this.toNumberOrZero(this.getStatsValue(proc, "max_cpu") ?? this.getStatsValue(proc, "maxCpu"));
+          const procRuns = this.toNumberOrZero(proc.run_count ?? proc.runCount);
+          lines.push(`  ${String(proc.name ?? "unknown")}: ${procAvg.toFixed(3)} CPU (runs: ${procRuns.toFixed(0)}, max: ${procMax.toFixed(3)})`);
         }
         lines.push("");
       }
@@ -183,15 +393,19 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     // Room breakdown
     if (showAll || type === "room") {
-      const rooms = stats.rooms || {};
-      const roomList = Object.values(rooms) as any[];
+      const roomList = Object.values(stats.rooms ?? {});
       if (roomList.length > 0) {
         lines.push("=== Room CPU Usage ===");
-        const sorted = roomList.sort((a: any, b: any) => b.profiler.avg_cpu - a.profiler.avg_cpu);
+        const sorted = roomList.sort((a, b) => {
+          const aCpu = this.toNumberOrZero(this.getStatsValue(a.profiler, "avg_cpu") ?? this.getStatsValue(a.profiler, "avgCpu"));
+          const bCpu = this.toNumberOrZero(this.getStatsValue(b.profiler, "avg_cpu") ?? this.getStatsValue(b.profiler, "avgCpu"));
+          return bCpu - aCpu;
+        });
         for (const room of sorted) {
-          const roomAny = room as any;
-          const roomName = roomAny.name || "unknown";
-          lines.push(`  ${roomName}: ${roomAny.profiler.avg_cpu.toFixed(3)} CPU (RCL ${roomAny.rcl})`);
+          const roomCpu = this.toNumberOrZero(this.getStatsValue(room.profiler, "avg_cpu") ?? this.getStatsValue(room.profiler, "avgCpu"));
+          const roomRcl = this.toNumberOrZero(room.rcl);
+          const roomName = room.name ?? room.roomName ?? "unknown";
+          lines.push(`  ${String(roomName)}: ${roomCpu.toFixed(3)} CPU (RCL ${roomRcl})`);
         }
         lines.push("");
       }
@@ -199,15 +413,19 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     // Subsystem breakdown
     if (showAll || type === "subsystem") {
-      const subsystems = stats.subsystems || {};
-      const subsystemList = Object.values(subsystems) as any[];
+      const subsystemList = Object.values(stats.subsystems ?? {});
       if (subsystemList.length > 0) {
         lines.push("=== Subsystem CPU Usage ===");
-        const sorted = subsystemList.sort((a: any, b: any) => b.avg_cpu - a.avg_cpu);
+        const sorted = subsystemList.sort((a, b) => {
+          const aCpu = this.toNumberOrZero(this.getStatsValue(a, "avg_cpu") ?? this.getStatsValue(a, "avgCpu"));
+          const bCpu = this.toNumberOrZero(this.getStatsValue(b, "avg_cpu") ?? this.getStatsValue(b, "avgCpu"));
+          return bCpu - aCpu;
+        });
         for (const subsys of sorted.slice(0, 10)) {
-          const subsysAny = subsys as any;
-          const subsysName = subsysAny.name || "unknown";
-          lines.push(`  ${subsysName}: ${subsysAny.avg_cpu.toFixed(3)} CPU (calls: ${subsysAny.calls})`);
+          const subsysName = subsys.name ?? "unknown";
+          const subsysAvg = this.toNumberOrZero(this.getStatsValue(subsys, "avg_cpu") ?? this.getStatsValue(subsys, "avgCpu"));
+          const subsysCalls = this.toNumberOrZero(subsys.calls ?? subsys.callCount);
+          lines.push(`  ${String(subsysName)}: ${subsysAvg.toFixed(3)} CPU (calls: ${subsysCalls.toFixed(0)})`);
         }
         lines.push("");
       }
@@ -215,16 +433,21 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     // Creep breakdown (top 10)
     if (showAll || type === "creep") {
-      const creeps = stats.creeps || {};
-      const creepList = Object.values(creeps) as any[];
+      const creepList = Object.values(stats.creeps ?? {});
       if (creepList.length > 0) {
         lines.push("=== Top Creeps by CPU (Top 10) ===");
-        const sorted = creepList.sort((a: any, b: any) => b.cpu - a.cpu);
+        const sorted = creepList.sort((a, b) => {
+          const aCpu = this.toNumberOrZero(this.getStatsValue(a, "cpu"));
+          const bCpu = this.toNumberOrZero(this.getStatsValue(b, "cpu"));
+          return bCpu - aCpu;
+        });
         for (const creep of sorted.slice(0, 10)) {
-          const creepAny = creep as any;
-          if (creepAny.cpu > 0) {
-            const creepName = creepAny.name || `${creepAny.role}_unknown`;
-            lines.push(`  ${creepName} (${creepAny.role}): ${creepAny.cpu.toFixed(3)} CPU in ${creepAny.current_room}`);
+          const creepCpu = this.toNumberOrZero(this.getStatsValue(creep, "cpu"));
+          if (creepCpu > 0) {
+            const role = creep.role ?? "unknown";
+            const creepName = creep.name ?? `${String(role)}_unknown`;
+            const room = creep.current_room ?? creep.currentRoom ?? "unknown";
+            lines.push(`  ${String(creepName)} (${String(role)}): ${creepCpu.toFixed(3)} CPU in ${String(room)}`);
           }
         }
         lines.push("");
@@ -250,7 +473,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     result += `Over Budget: ${report.roomsOverBudget}\n\n`;
 
     if (report.alerts.length === 0) {
-      result += "✓ All rooms within budget!\n";
+      result += "OK All rooms within budget!\n";
     } else {
       result += `Alerts: ${report.alerts.length}\n`;
 
@@ -258,14 +481,14 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
       const warnings = report.alerts.filter(a => a.severity === "warning");
 
       if (critical.length > 0) {
-        result += "\n🔴 CRITICAL (≥100% of budget):\n";
+        result += "\nCRITICAL CRITICAL (>=100% of budget):\n";
         for (const alert of critical) {
           result += `  ${alert.target}: ${alert.cpuUsed.toFixed(3)} CPU / ${alert.budgetLimit.toFixed(3)} limit (${(alert.percentUsed * 100).toFixed(1)}%)\n`;
         }
       }
 
       if (warnings.length > 0) {
-        result += "\n⚠️  WARNING (≥80% of budget):\n";
+        result += "\nWARNING  WARNING (>=80% of budget):\n";
         for (const alert of warnings) {
           result += `  ${alert.target}: ${alert.cpuUsed.toFixed(3)} CPU / ${alert.budgetLimit.toFixed(3)} limit (${(alert.percentUsed * 100).toFixed(1)}%)\n`;
         }
@@ -286,7 +509,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     const anomalies = unifiedStats.detectAnomalies();
 
     if (anomalies.length === 0) {
-      return "✓ No CPU anomalies detected";
+      return "OK No CPU anomalies detected";
     }
 
     let result = `=== CPU Anomalies Detected: ${anomalies.length} ===\n\n`;
@@ -295,7 +518,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     const sustained = anomalies.filter(a => a.type === "sustained_high");
 
     if (spikes.length > 0) {
-      result += `⚡ CPU Spikes (${spikes.length}):\n`;
+      result += `CPU CPU Spikes (${spikes.length}):\n`;
       for (const anomaly of spikes) {
         result += `  ${anomaly.target}: ${anomaly.current.toFixed(3)} CPU (${anomaly.multiplier.toFixed(1)}x baseline ${anomaly.baseline.toFixed(3)})\n`;
         if (anomaly.context) {
@@ -306,7 +529,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     }
 
     if (sustained.length > 0) {
-      result += `📊 Sustained High Usage (${sustained.length}):\n`;
+      result += `SUMMARY Sustained High Usage (${sustained.length}):\n`;
       for (const anomaly of sustained) {
         result += `  ${anomaly.target}: ${anomaly.current.toFixed(3)} CPU (${anomaly.multiplier.toFixed(1)}x budget ${anomaly.baseline.toFixed(3)})\n`;
         if (anomaly.context) {
@@ -339,7 +562,8 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     result += `Top ${topRooms.length} Rooms by CPU:\n`;
     for (const room of topRooms) {
-      const posture = unifiedStats.postureCodeToName(room.brain.postureCode);
+      const postureCode = this.getRoomBrainMetrics(room).postureCode;
+      const posture = unifiedStats.postureCodeToName(postureCode);
       result += `  ${room.name} (RCL${room.rcl}, ${posture}): avg ${room.profiler.avgCpu.toFixed(3)} | peak ${room.profiler.peakCpu.toFixed(3)} | samples ${room.profiler.samples}\n`;
     }
 
@@ -393,27 +617,36 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     const tickModulo = roomProcess?.tickModulo ?? 1;
     const adjustedBudget = baseBudget * tickModulo;
 
-    let result = `═══════════════════════════════════════════════\n`;
+    let result = `----------------------------------------------
+`;
     result += `  Room Diagnostic: ${roomName}\n`;
-    result += `═══════════════════════════════════════════════\n\n`;
+    result += `----------------------------------------------
+\n`;
 
     // Basic Info
-    result += `📊 Basic Info:\n`;
+    const roomBrain = this.getRoomBrainMetrics(roomStats);
+    const roomMetrics = {
+      energyHarvested: this.getRoomMetricValue(roomStats, "energyHarvested", "harvested"),
+      energyCapacityTotal: this.getRoomMetricValue(roomStats, "energyCapacityTotal", "capacity_total"),
+      constructionSites: this.getRoomMetricValue(roomStats, "constructionSites", "construction_sites")
+    };
+
+    result += `SUMMARY Basic Info:\n`;
     result += `  RCL: ${roomStats.rcl}\n`;
     result += `  Controller Progress: ${roomStats.controller.progressPercent.toFixed(1)}%\n`;
-    result += `  Posture: ${unifiedStats.postureCodeToName(roomStats.brain.postureCode)}\n`;
-    result += `  Danger Level: ${roomStats.brain.dangerLevel}\n`;
-    result += `  Hostiles: ${roomStats.metrics.hostileCount}\n\n`;
+    result += `  Posture: ${unifiedStats.postureCodeToName(roomBrain.postureCode)}\n`;
+    result += `  Danger Level: ${roomBrain.dangerLevel}\n`;
+    result += `  Hostiles: ${roomBrain.hostileCount}\n\n`;
 
     // CPU Analysis
-    result += `⚡ CPU Analysis:\n`;
+    result += `CPU CPU Analysis:\n`;
     result += `  Average CPU: ${roomStats.profiler.avgCpu.toFixed(3)}\n`;
     result += `  Peak CPU: ${roomStats.profiler.peakCpu.toFixed(3)}\n`;
     result += `  Samples: ${roomStats.profiler.samples}\n`;
     result += `  Budget: ${adjustedBudget.toFixed(3)} (base ${baseBudget}, modulo ${tickModulo})\n`;
 
     const cpuPercent = (roomStats.profiler.avgCpu / adjustedBudget) * 100;
-    const status = cpuPercent >= 100 ? "🔴 CRITICAL" : cpuPercent >= 80 ? "⚠️  WARNING" : "✅ OK";
+    const status = cpuPercent >= 100 ? "CRITICAL CRITICAL" : cpuPercent >= 80 ? "WARNING  WARNING" : "OK OK";
     result += `  Status: ${status} (${cpuPercent.toFixed(1)}% of budget)\n`;
 
     if (tickModulo > 1) {
@@ -423,7 +656,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     // Process Info
     if (roomProcess) {
-      result += `🔧 Process Info:\n`;
+      result += `PROCESS Process Info:\n`;
       result += `  Process ID: ${roomProcess.id}\n`;
       result += `  State: ${roomProcess.state}\n`;
       result += `  Priority: ${roomProcess.priority}\n`;
@@ -435,7 +668,7 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
 
     // Creeps Analysis
     const creepsInRoom = Object.values(Game.creeps).filter(c => c.room.name === roomName);
-    result += `👥 Creeps: ${creepsInRoom.length} total\n`;
+    result += `CREEPS Creeps: ${creepsInRoom.length} total\n`;
 
     const creepsByRole: Record<string, number> = {};
     for (const creep of creepsInRoom) {
@@ -451,34 +684,34 @@ Performance: ${stats.hitRate >= 0.8 ? "Excellent ✓" : stats.hitRate >= 0.6 ? "
     result += `  By Role: ${roleList}\n\n`;
 
     // Metrics
-    result += `📈 Metrics:\n`;
-    result += `  Energy Harvested: ${roomStats.metrics.energyHarvested}\n`;
+    result += `METRICS Metrics:\n`;
+    result += `  Energy Harvested: ${roomMetrics.energyHarvested}\n`;
     result += `  Energy in Storage: ${roomStats.energy.storage}\n`;
-    result += `  Energy Capacity: ${roomStats.metrics.energyCapacityTotal}\n`;
-    result += `  Construction Sites: ${roomStats.metrics.constructionSites}\n\n`;
+    result += `  Energy Capacity: ${roomMetrics.energyCapacityTotal}\n`;
+    result += `  Construction Sites: ${roomMetrics.constructionSites}\n\n`;
 
     // Recommendations
-    result += `💡 Recommendations:\n`;
+    result += `RECOMMENDATIONS Recommendations:\n`;
 
     if (cpuPercent >= 150) {
-      result += `  ⚠️  CRITICAL: CPU usage is ${cpuPercent.toFixed(0)}% of budget!\n`;
+      result += `  WARNING  CRITICAL: CPU usage is ${cpuPercent.toFixed(0)}% of budget!\n`;
       result += `     - Check for infinite loops or stuck creeps\n`;
-      result += `     - Review construction sites (${roomStats.metrics.constructionSites} active)\n`;
+      result += `     - Review construction sites (${roomMetrics.constructionSites} active)\n`;
       result += `     - Consider reducing creep count (${creepsInRoom.length} creeps)\n`;
     } else if (cpuPercent >= 100) {
-      result += `  ⚠️  Room is over budget. Consider optimizations:\n`;
+      result += `  WARNING  Room is over budget. Consider optimizations:\n`;
       result += `     - Reduce creep count if excessive (currently ${creepsInRoom.length})\n`;
-      result += `     - Limit construction sites (currently ${roomStats.metrics.constructionSites})\n`;
+      result += `     - Limit construction sites (currently ${roomMetrics.constructionSites})\n`;
       result += `     - Review pathfinding (check for recalculation issues)\n`;
     } else if (cpuPercent >= 80) {
-      result += `  ℹ️  Room is nearing budget limit (${cpuPercent.toFixed(1)}%)\n`;
+      result += `  INFO  Room is nearing budget limit (${cpuPercent.toFixed(1)}%)\n`;
       result += `     - Monitor for increases in CPU usage\n`;
     } else {
-      result += `  ✅ Room is performing well within budget\n`;
+      result += `  OK Room is performing well within budget\n`;
     }
 
-    if (roomStats.metrics.hostileCount > 0) {
-      result += `  ⚠️  ${roomStats.metrics.hostileCount} hostiles detected - defense active\n`;
+    if (roomBrain.hostileCount > 0) {
+      result += `  WARNING  ${roomBrain.hostileCount} hostiles detected - defense active\n`;
       result += `     - War mode increases CPU budget to ${isWarRoom ? adjustedBudget.toFixed(3) : (0.25 * tickModulo).toFixed(3)}\n`;
     }
 

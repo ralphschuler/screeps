@@ -16,6 +16,7 @@ import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { memorySegmentStats } from "@ralphschuler/screeps-stats";
+import { getConfig } from "../config";
 import { labConfigManager } from "../labs/labConfig";
 import { ProcessPriority } from "./kernel";
 import { logger } from "./logger";
@@ -52,7 +53,26 @@ export class CoreProcessManager {
     cpuBudget: 0.005
   })
   public checkMemorySize(): void {
-    const used = RawMemory.get().length;
+    const rawMemory = (globalThis as { RawMemory?: { get?: () => string } }).RawMemory;
+    let used: number;
+
+    if (rawMemory?.get && typeof rawMemory.get === "function") {
+      const memoryDump = rawMemory.get();
+      if (typeof memoryDump === "string") {
+        used = memoryDump.length;
+      } else {
+        return;
+      }
+    } else {
+      // In simulation/test environments RawMemory.get can be unavailable.
+      // Fall back to approximate memory size from serialized Memory object.
+      try {
+        used = JSON.stringify(Memory).length;
+      } catch {
+        used = 0;
+      }
+    }
+
     const limit = 2 * 1024 * 1024; // 2MB
     const percentage = (used / limit) * 100;
 
@@ -68,12 +88,13 @@ export class CoreProcessManager {
   }
 
   /**
-   * Memory Segment Stats - Update segment statistics
-   * Runs every 10 ticks to track memory segment usage
+   * Memory Segment Stats - Update segment statistics.
+   * Live profiling showed this optional monitor can cost multiple CPU when it samples all segments,
+   * so keep it low-frequency and only run while the bucket is healthy.
    */
-  @MediumFrequencyProcess("core:memorySegmentStats", "Memory Segment Stats", {
-    priority: ProcessPriority.IDLE,
-    interval: 10,
+  @IdleProcess("core:memorySegmentStats", "Memory Segment Stats", {
+    interval: 500,
+    minBucket: getConfig().cpu.bucketThresholds.highMode,
     cpuBudget: 0.01
   })
   public updateMemorySegmentStats(): void {
@@ -81,12 +102,13 @@ export class CoreProcessManager {
   }
 
   /**
-   * Pheromone Diffusion - Inter-room communication
-   * Runs every 10 ticks to diffuse pheromone signals between rooms
+   * Pheromone Diffusion - Inter-room communication.
+   * Strategic signal propagation is not tactical tick work; run less often to protect CPU.
    */
   @MediumFrequencyProcess("cluster:pheromoneDiffusion", "Pheromone Diffusion", {
-    priority: ProcessPriority.MEDIUM,
-    interval: 10,
+    priority: ProcessPriority.LOW,
+    interval: 50,
+    minBucket: getConfig().cpu.bucketThresholds.lowMode,
     cpuBudget: 0.02
   })
   public runPheromoneDiffusion(): void {

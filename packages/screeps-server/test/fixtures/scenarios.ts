@@ -348,11 +348,11 @@ function createScalingRoomConfig(index: number): RoomFixture {
   const rcl = index === 0 ? 8 : (index < 5 ? 7 : (index < 10 ? 6 : (index < 15 ? 5 : 4)));
   const energy = index === 0 ? 500000 : (index < 5 ? 200000 : (index < 10 ? 100000 : 50000));
   
-  const structures = index === 0 
+  const structures: NonNullable<RoomFixture['structures']> = index === 0
     ? { spawn: 3, extension: 60, tower: 6, storage: 1, terminal: 1 }
-    : (index < 5 
+    : (index < 5
       ? { spawn: 2, extension: 50, tower: 4, storage: 1 }
-      : (index < 10 
+      : (index < 10
         ? { spawn: 2, extension: 40, tower: 3, storage: 1 }
         : (index < 15
           ? { spawn: 1, extension: 30, tower: 2, storage: 1 }

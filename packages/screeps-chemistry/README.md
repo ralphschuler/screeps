@@ -69,9 +69,9 @@ const chain = chemistry.calculateReactionChain(
 
 Labs are automatically assigned roles based on spatial layout:
 
-- **Input Labs (2)**: Labs with maximum reach to other labs
+- **Input Labs (2)**: Pair chosen to maximize shared output labs, then total cluster reach
 - **Output Labs (1-8)**: Labs within range 2 of both input labs
-- **Boost Labs**: Labs not in range of input labs
+- **Boost Labs**: Labs outside the active reaction cluster
 
 ```typescript
 labConfig.initialize('W1N1');
@@ -243,7 +243,8 @@ The package is organized into modules:
   - `reactionChains.ts`: Complete reaction definitions
   - `chemistryManager.ts`: Main coordination class
 - **labs/**: Lab configuration and management
-  - `labConfig.ts`: Lab role assignment and coordination
+  - `labConfig.ts`: Stateful lab config orchestration, Memory import/export, and reaction execution
+  - `labLayout.ts`: Pure lab geometry and reaction-resource assignment rules used by `LabConfigManager`
 - **boosts/**: Boost configuration
   - `config.ts`: Role-based boost definitions
 - **compounds/**: Stockpile management
@@ -264,7 +265,7 @@ The package includes comprehensive tests covering:
 
 - **ChemistryManager**: Tests for reaction lookups, chain calculation, and resource checking
 - **Reaction Chains**: Tests for tier 1, tier 2, and tier 3 compound production
-- **Lab Planning**: Tests for minimum lab requirements and terminal integration
+- **Lab Planning**: Tests for minimum lab requirements, layout-role assignment, active reaction refresh, and cooldown-aware execution
 - **Resource Validation**: Tests for `hasResourcesForReaction()` with various amounts
 - **REACTIONS Constant**: Validation of all reaction definitions
 
@@ -294,7 +295,8 @@ test/
 - ✅ Missing resource handling
 - ✅ Lab requirement validation (3+ labs needed)
 - ✅ REACTIONS constant structure validation
-- 📝 Lab configuration and role assignment (planned)
+- ✅ Lab configuration and role assignment
+- ✅ Cooldown-aware lab reaction execution
 - 📝 Boost management (planned)
 
 ## License

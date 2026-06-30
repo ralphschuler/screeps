@@ -17,6 +17,32 @@ describe("Cross-shard intel merge protocol Module", () => {
     ]);
   });
 
+  it("resolves room-name war targets to their current room owner", () => {
+    const intent = mergeCrossShardEnemyIntel({
+      existingEnemies: [],
+      warTargets: ["W1N1"],
+      knownRooms: [{ roomName: "W1N1", owner: "Enemy", threatLevel: 0, lastSeen: 40 }],
+      now: 50,
+      isAlly: () => false
+    });
+
+    expect(intent.enemies).to.deep.equal([
+      { username: "Enemy", rooms: ["W1N1"], threatLevel: 1, lastSeen: 50, isAlly: false }
+    ]);
+  });
+
+  it("ignores room-name war targets that have no known owner", () => {
+    const intent = mergeCrossShardEnemyIntel({
+      existingEnemies: [],
+      warTargets: ["W1N1"],
+      knownRooms: [],
+      now: 50,
+      isAlly: () => false
+    });
+
+    expect(intent.enemies).to.deep.equal([]);
+  });
+
   it("filters permanent allies from stale enemies, war targets, and room intel", () => {
     const intent = mergeCrossShardEnemyIntel({
       existingEnemies: [{ username: "TooAngel", rooms: ["W1N1"], threatLevel: 3, lastSeen: 10, isAlly: false }],

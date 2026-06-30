@@ -5,6 +5,7 @@
  * Provides room analysis, distance calculation, and pathfinding callbacks.
  */
 
+import { getActualHostileStructures } from "@ralphschuler/screeps-core";
 import type { ILogger } from "../types";
 
 /**
@@ -62,10 +63,9 @@ export function getRemoteMiningRoomCallback(roomName: string, logger?: ILogger):
     (parseInt(coords[0], 10) % 10 === 0 || parseInt(coords[1], 10) % 10 === 0);
   
   if (!isHighway) {
-    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: s => s.structureType !== STRUCTURE_CONTROLLER &&
-                   s.structureType !== STRUCTURE_KEEPER_LAIR
-    });
+    const hostileStructures = getActualHostileStructures(room).filter(
+      s => s.structureType !== STRUCTURE_CONTROLLER && s.structureType !== STRUCTURE_KEEPER_LAIR
+    );
     
     if (hostileStructures.length > 0) {
       if (logger) {

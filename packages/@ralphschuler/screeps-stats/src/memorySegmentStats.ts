@@ -10,7 +10,7 @@
  * Addresses Issue: #35
  */
 
-import { logger, memoryManager, EvolutionStage, PheromoneState, RoomPosture } from "./interfaces";
+import { logger, memoryManager, EvolutionStage, RoomPosture } from "./interfaces";
 
 /**
  * Stats segment configuration
@@ -249,7 +249,6 @@ export class MemorySegmentStats {
    * Only numeric values are published as the exporter expects time-series data.
    */
   private publishStatsToMemory(stats: GlobalStats): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mem = Memory as unknown as Record<string, Record<string, number>>;
     if (!mem.stats || typeof mem.stats !== "object") {
       mem.stats = {} as Record<string, number>;

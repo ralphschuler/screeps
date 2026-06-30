@@ -1,0 +1,1198 @@
+{
+  "generatedAt": "2026-06-17T08:02:41.804Z",
+  "hostname": "screeps.com",
+  "branch": "main",
+  "shard": "shard1",
+  "room": "W19S26",
+  "consoleCheck": {
+    "called": false,
+    "reason": "Read-only roomObjects/memory/stats endpoints only; no /api/user/console."
+  },
+  "samples": [
+    {
+      "time": 71731086,
+      "controller": {
+        "progress": 37875,
+        "progressTotal": 0,
+        "level": 2,
+        "x": 40,
+        "y": 38
+      },
+      "upgraders": [
+        {
+          "name": "upgrader_71730252_fhpupr0up",
+          "pos": [
+            39,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 15
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731051,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 50,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 2,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 674,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71730913_a3ewh9e2q",
+          "pos": [
+            41,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 18
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731028,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 1335,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71730963_6y1ac5w74",
+          "pos": [
+            40,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 38
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731045,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 0,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 1385,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "haulers": [
+        {
+          "name": "hauler_71730806_gu1gjlfhx",
+          "pos": [
+            32,
+            18
+          ],
+          "fatigue": 0,
+          "store": {
+            "energy": 56
+          },
+          "working": false,
+          "state": {
+            "action": "pickup",
+            "startTick": 71731078,
+            "timeout": 25,
+            "targetId": "6a3253e16a3629103fea3706"
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "pickup",
+            "ticks_to_live": 1231,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "hauler_71730870_64zcwf2eb",
+          "pos": [
+            32,
+            17
+          ],
+          "fatigue": 0,
+          "store": {
+            "energy": 6
+          },
+          "working": false,
+          "state": {
+            "action": "pickup",
+            "startTick": 71731078,
+            "timeout": 25,
+            "targetId": "6a3253e16a3629103fea3706"
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "pickup",
+            "ticks_to_live": 1295,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "structures": [
+        {
+          "id": "6a3246e0ab1226b86fb5f524",
+          "type": "container",
+          "x": 21,
+          "y": 31,
+          "store": {
+            "energy": 0
+          },
+          "hits": 240000,
+          "hitsMax": 250000,
+          "spawning": null
+        },
+        {
+          "id": "6a30712565599203bb5cd1d2",
+          "type": "spawn",
+          "x": 31,
+          "y": 25,
+          "store": {
+            "energy": 300
+          },
+          "hits": 5000,
+          "hitsMax": 5000,
+          "spawning": null
+        }
+      ],
+      "roomSwarm": {
+        "colonyLevel": "seedNest",
+        "posture": "expand",
+        "danger": 0,
+        "pheromones": {
+          "expand": 100,
+          "harvest": 92.77454515146059,
+          "build": 100,
+          "upgrade": 1.3962591116557058e-147,
+          "defense": 100,
+          "war": 5.0434751108692945e-33,
+          "siege": 5.515176794114748e-16,
+          "logistics": 2.5e-323,
+          "nukeTarget": 0
+        },
+        "nextUpdateTick": 71731071,
+        "eventLog": [
+          {
+            "type": "hostileDetected",
+            "time": 71677294,
+            "details": "2 hostiles, danger=1, score=220"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71677360,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681239,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71681240,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681342,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681382,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71684196,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71688559,
+            "details": "1 hostiles, danger=1, score=120"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71690926,
+            "details": "1 hostiles, danger=3, score=2140"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71690972,
+            "details": "1 hostiles, danger=3, score=2140"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71693902,
+            "details": "2 hostiles, danger=2, score=600"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71695146,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71705773,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71707089,
+            "details": "1 hostiles, danger=1, score=120"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71707125,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71713194,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71714741,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71723737,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71728043,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71728045,
+            "details": "1 rampart(s) placed on critical structures"
+          }
+        ],
+        "missingStructures": {
+          "spawn": false,
+          "storage": false,
+          "terminal": false,
+          "labs": false,
+          "nuker": false,
+          "factory": false,
+          "extractor": false,
+          "powerSpawn": false,
+          "observer": false
+        },
+        "role": "secondaryCore",
+        "remoteAssignments": [],
+        "metrics": {
+          "energyHarvested": 1052,
+          "energySpawning": 0,
+          "energyConstruction": 0,
+          "energyRepair": 0,
+          "energyTower": 0,
+          "controllerProgress": 36404,
+          "hostileCount": 1,
+          "damageReceived": 0,
+          "constructionSites": 14,
+          "energyAvailable": 0,
+          "energyCapacity": 0,
+          "energyNeed": 0
+        },
+        "lastUpdate": 71731066,
+        "lastHostileTick": 71728072,
+        "nukeDetected": false,
+        "layoutAnchor": {
+          "x": 31,
+          "y": 25,
+          "blueprintName": "seedNest",
+          "rclSelectedAt": 2,
+          "selectedAt": 71649855
+        }
+      }
+    },
+    {
+      "time": 71731094,
+      "controller": {
+        "progress": 37875,
+        "progressTotal": 0,
+        "level": 2,
+        "x": 40,
+        "y": 38
+      },
+      "upgraders": [
+        {
+          "name": "upgrader_71730252_fhpupr0up",
+          "pos": [
+            39,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 15
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731051,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 50,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 2,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 666,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71730913_a3ewh9e2q",
+          "pos": [
+            41,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 18
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731028,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 1327,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71730963_6y1ac5w74",
+          "pos": [
+            40,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 38
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731045,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 0,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 1377,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "haulers": [
+        {
+          "name": "hauler_71730806_gu1gjlfhx",
+          "pos": [
+            32,
+            11
+          ],
+          "fatigue": 0,
+          "store": {
+            "energy": 56
+          },
+          "working": false,
+          "state": {
+            "action": "pickup",
+            "startTick": 71731078,
+            "timeout": 25,
+            "targetId": "6a3253e16a3629103fea3706"
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "pickup",
+            "ticks_to_live": 1223,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "hauler_71730870_64zcwf2eb",
+          "pos": [
+            32,
+            10
+          ],
+          "fatigue": 0,
+          "store": {
+            "energy": 63
+          },
+          "working": false,
+          "state": {
+            "action": "pickup",
+            "startTick": 71731078,
+            "timeout": 25,
+            "targetId": "6a3253e16a3629103fea3706"
+          },
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "pickup",
+            "ticks_to_live": 1287,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "structures": [
+        {
+          "id": "6a3246e0ab1226b86fb5f524",
+          "type": "container",
+          "x": 21,
+          "y": 31,
+          "store": {
+            "energy": 0
+          },
+          "hits": 240000,
+          "hitsMax": 250000,
+          "spawning": null
+        },
+        {
+          "id": "6a30712565599203bb5cd1d2",
+          "type": "spawn",
+          "x": 31,
+          "y": 25,
+          "store": {
+            "energy": 300
+          },
+          "hits": 5000,
+          "hitsMax": 5000,
+          "spawning": null
+        }
+      ],
+      "roomSwarm": {
+        "colonyLevel": "seedNest",
+        "posture": "expand",
+        "danger": 0,
+        "pheromones": {
+          "expand": 100,
+          "harvest": 92.77454515146059,
+          "build": 100,
+          "upgrade": 1.3962591116557058e-147,
+          "defense": 100,
+          "war": 5.0434751108692945e-33,
+          "siege": 5.515176794114748e-16,
+          "logistics": 2.5e-323,
+          "nukeTarget": 0
+        },
+        "nextUpdateTick": 71731071,
+        "eventLog": [
+          {
+            "type": "hostileDetected",
+            "time": 71677294,
+            "details": "2 hostiles, danger=1, score=220"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71677360,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681239,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71681240,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681342,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681382,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71684196,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71688559,
+            "details": "1 hostiles, danger=1, score=120"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71690926,
+            "details": "1 hostiles, danger=3, score=2140"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71690972,
+            "details": "1 hostiles, danger=3, score=2140"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71693902,
+            "details": "2 hostiles, danger=2, score=600"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71695146,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71705773,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71707089,
+            "details": "1 hostiles, danger=1, score=120"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71707125,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71713194,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71714741,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71723737,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71728043,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71728045,
+            "details": "1 rampart(s) placed on critical structures"
+          }
+        ],
+        "missingStructures": {
+          "spawn": false,
+          "storage": false,
+          "terminal": false,
+          "labs": false,
+          "nuker": false,
+          "factory": false,
+          "extractor": false,
+          "powerSpawn": false,
+          "observer": false
+        },
+        "role": "secondaryCore",
+        "remoteAssignments": [],
+        "metrics": {
+          "energyHarvested": 1052,
+          "energySpawning": 0,
+          "energyConstruction": 0,
+          "energyRepair": 0,
+          "energyTower": 0,
+          "controllerProgress": 36404,
+          "hostileCount": 1,
+          "damageReceived": 0,
+          "constructionSites": 14,
+          "energyAvailable": 0,
+          "energyCapacity": 0,
+          "energyNeed": 0
+        },
+        "lastUpdate": 71731066,
+        "lastHostileTick": 71728072,
+        "nukeDetected": false,
+        "layoutAnchor": {
+          "x": 31,
+          "y": 25,
+          "blueprintName": "seedNest",
+          "rclSelectedAt": 2,
+          "selectedAt": 71649855
+        }
+      }
+    },
+    {
+      "time": 71731102,
+      "controller": {
+        "progress": 37875,
+        "progressTotal": 0,
+        "level": 2,
+        "x": 40,
+        "y": 38
+      },
+      "upgraders": [
+        {
+          "name": "upgrader_71730252_fhpupr0up",
+          "pos": [
+            39,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 15
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731051,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 50,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 2,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 658,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71730913_a3ewh9e2q",
+          "pos": [
+            41,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 18
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731028,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 1319,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "upgrader_71730963_6y1ac5w74",
+          "pos": [
+            40,
+            35
+          ],
+          "fatigue": 0,
+          "spawning": false,
+          "body": [
+            "work",
+            "carry",
+            "move"
+          ],
+          "store": {
+            "energy": 38
+          },
+          "working": true,
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731045,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          },
+          "metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 0,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "stats": {
+            "role": "upgrader",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "upgrade",
+            "ticks_to_live": 1369,
+            "hits": 300,
+            "hits_max": 300,
+            "body_parts": 3,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "haulers": [
+        {
+          "name": "hauler_71730806_gu1gjlfhx",
+          "pos": [
+            32,
+            19
+          ],
+          "fatigue": 0,
+          "store": {
+            "energy": 56
+          },
+          "working": false,
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "idle",
+            "ticks_to_live": 1215,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        },
+        {
+          "name": "hauler_71730870_64zcwf2eb",
+          "pos": [
+            32,
+            18
+          ],
+          "fatigue": 0,
+          "store": {
+            "energy": 63
+          },
+          "working": false,
+          "stats": {
+            "role": "hauler",
+            "home_room": "W19S26",
+            "current_room": "W19S26",
+            "cpu": 0,
+            "action": "idle",
+            "ticks_to_live": 1279,
+            "hits": 400,
+            "hits_max": 400,
+            "body_parts": 4,
+            "fatigue": 0,
+            "actions_this_tick": 0
+          }
+        }
+      ],
+      "structures": [
+        {
+          "id": "6a3246e0ab1226b86fb5f524",
+          "type": "container",
+          "x": 21,
+          "y": 31,
+          "store": {
+            "energy": 0
+          },
+          "hits": 240000,
+          "hitsMax": 250000,
+          "spawning": null
+        },
+        {
+          "id": "6a30712565599203bb5cd1d2",
+          "type": "spawn",
+          "x": 31,
+          "y": 25,
+          "store": {
+            "energy": 300
+          },
+          "hits": 5000,
+          "hitsMax": 5000,
+          "spawning": null
+        }
+      ],
+      "roomSwarm": {
+        "colonyLevel": "seedNest",
+        "posture": "expand",
+        "danger": 0,
+        "pheromones": {
+          "expand": 100,
+          "harvest": 92.77454515146059,
+          "build": 100,
+          "upgrade": 1.3962591116557058e-147,
+          "defense": 100,
+          "war": 5.0434751108692945e-33,
+          "siege": 5.515176794114748e-16,
+          "logistics": 2.5e-323,
+          "nukeTarget": 0
+        },
+        "nextUpdateTick": 71731071,
+        "eventLog": [
+          {
+            "type": "hostileDetected",
+            "time": 71677294,
+            "details": "2 hostiles, danger=1, score=220"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71677360,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681239,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71681240,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681342,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71681382,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71684196,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71688559,
+            "details": "1 hostiles, danger=1, score=120"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71690926,
+            "details": "1 hostiles, danger=3, score=2140"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71690972,
+            "details": "1 hostiles, danger=3, score=2140"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71693902,
+            "details": "2 hostiles, danger=2, score=600"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71695146,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71705773,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71707089,
+            "details": "1 hostiles, danger=1, score=120"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71707125,
+            "details": "1 rampart(s) placed on critical structures"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71713194,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71714741,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71723737,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "hostileDetected",
+            "time": 71728043,
+            "details": "1 hostiles, danger=1, score=0"
+          },
+          {
+            "type": "rampartPlaced",
+            "time": 71728045,
+            "details": "1 rampart(s) placed on critical structures"
+          }
+        ],
+        "missingStructures": {
+          "spawn": false,
+          "storage": false,
+          "terminal": false,
+          "labs": false,
+          "nuker": false,
+          "factory": false,
+          "extractor": false,
+          "powerSpawn": false,
+          "observer": false
+        },
+        "role": "secondaryCore",
+        "remoteAssignments": [],
+        "metrics": {
+          "energyHarvested": 1052,
+          "energySpawning": 0,
+          "energyConstruction": 0,
+          "energyRepair": 0,
+          "energyTower": 0,
+          "controllerProgress": 36404,
+          "hostileCount": 1,
+          "damageReceived": 0,
+          "constructionSites": 14,
+          "energyAvailable": 0,
+          "energyCapacity": 0,
+          "energyNeed": 0
+        },
+        "lastUpdate": 71731066,
+        "lastHostileTick": 71728072,
+        "nukeDetected": false,
+        "layoutAnchor": {
+          "x": 31,
+          "y": 25,
+          "blueprintName": "seedNest",
+          "rclSelectedAt": 2,
+          "selectedAt": 71649855
+        }
+      }
+    }
+  ]
+}

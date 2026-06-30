@@ -1,0 +1,871 @@
+{
+  "before": {
+    "time": 71731356,
+    "cpu": {
+      "used": 24.225856199999953,
+      "limit": 50,
+      "bucket": 8555,
+      "percent": 48.47951420000004,
+      "heap_mb": 53.856468200683594
+    },
+    "skipped": 27,
+    "controller": {
+      "level": 2,
+      "progress": 37979
+    },
+    "upgraders": [
+      {
+        "name": "upgrader_71730252_fhpupr0up",
+        "pos": {
+          "x": 40,
+          "y": 35
+        },
+        "energy": 32,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": true,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731257
+          },
+          "_metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 50,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 4,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731336,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": {
+            "x": 40,
+            "y": 38
+          },
+          "reserveController": null
+        }
+      },
+      {
+        "name": "upgrader_71730913_a3ewh9e2q",
+        "pos": {
+          "x": 41,
+          "y": 35
+        },
+        "energy": 35,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": true,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731260
+          },
+          "_metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731315,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": {
+            "x": 40,
+            "y": 38
+          },
+          "reserveController": null
+        }
+      },
+      {
+        "name": "upgrader_71730963_6y1ac5w74",
+        "pos": {
+          "x": 42,
+          "y": 32
+        },
+        "energy": 50,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": true,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731280
+          },
+          "_metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 0,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731335,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": null,
+          "reserveController": null
+        }
+      },
+      {
+        "name": "upgrader_71731342_j4e2rc8o7",
+        "pos": {
+          "x": 26,
+          "y": 27
+        },
+        "energy": 0,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": false,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731351
+          },
+          "state": {
+            "action": "withdraw",
+            "startTick": 71731351,
+            "timeout": 25,
+            "targetId": "6a3246e0ab1226b86fb5f524",
+            "data": {
+              "resourceType": "energy"
+            }
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": null,
+          "reserveController": null
+        }
+      }
+    ],
+    "processes": {
+      "creep:upgrader_71729865_xeouo0zvc": {
+        "name": "Creep upgrader_71729865_xeouo0zvc (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 8.58665490000007,
+        "run_count": 14,
+        "avg_cpu": 0.6133324928571479,
+        "max_cpu": 5.256365399999964,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71729907_4oh5x47ls": {
+        "name": "Creep upgrader_71729907_4oh5x47ls (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.708274999999986,
+        "run_count": 14,
+        "avg_cpu": 0.1934482142857133,
+        "max_cpu": 0.551345600000019,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730252_fhpupr0up": {
+        "name": "Creep upgrader_71730252_fhpupr0up (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.4635979999998767,
+        "run_count": 14,
+        "avg_cpu": 0.24739985714284835,
+        "max_cpu": 0.3473953000000165,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      },
+      "creep:upgrader_71730525_gs9m7f00b": {
+        "name": "Creep upgrader_71730525_gs9m7f00b (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.172102599999704,
+        "run_count": 14,
+        "avg_cpu": 0.15515018571426456,
+        "max_cpu": 0.5832202999999652,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730755_8mig8phxb": {
+        "name": "Creep upgrader_71730755_8mig8phxb (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.3647889000001214,
+        "run_count": 14,
+        "avg_cpu": 0.24034206428572297,
+        "max_cpu": 0.26777549999997063,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730815_dwcfkyx9z": {
+        "name": "Creep upgrader_71730815_dwcfkyx9z (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.40645620000015,
+        "run_count": 14,
+        "avg_cpu": 0.1718897285714393,
+        "max_cpu": 0.6130423000000178,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730913_a3ewh9e2q": {
+        "name": "Creep upgrader_71730913_a3ewh9e2q (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.2735536000001275,
+        "run_count": 14,
+        "avg_cpu": 0.23382525714286626,
+        "max_cpu": 0.2737827999999922,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      },
+      "creep:upgrader_71730963_6y1ac5w74": {
+        "name": "Creep upgrader_71730963_6y1ac5w74 (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 1.616975100000019,
+        "run_count": 14,
+        "avg_cpu": 0.11549822142857279,
+        "max_cpu": 0.3180397999999798,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      },
+      "creep:upgrader_71731058_golshpr00": {
+        "name": "Creep upgrader_71731058_golshpr00 (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 1.577248400000201,
+        "run_count": 14,
+        "avg_cpu": 0.11266060000001435,
+        "max_cpu": 0.37072879999999486,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731146_ykikpgqlt": {
+        "name": "Creep upgrader_71731146_ykikpgqlt (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.255569600000115,
+        "run_count": 14,
+        "avg_cpu": 0.23254068571429393,
+        "max_cpu": 1.061839999999961,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731174_njchxomhm": {
+        "name": "Creep upgrader_71731174_njchxomhm (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.3247369000000617,
+        "run_count": 14,
+        "avg_cpu": 0.16605263571429013,
+        "max_cpu": 0.5677412000000004,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731342_5mlq1ff9c": {
+        "name": "Creep upgrader_71731342_5mlq1ff9c (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 1.2295322000001079,
+        "run_count": 6,
+        "avg_cpu": 0.20492203333335132,
+        "max_cpu": 0.42977089999999407,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731342_j4e2rc8o7": {
+        "name": "Creep upgrader_71731342_j4e2rc8o7 (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 0.7799843999996483,
+        "run_count": 6,
+        "avg_cpu": 0.1299973999999414,
+        "max_cpu": 0.252839599999902,
+        "last_run_tick": 71731356,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      }
+    },
+    "visualProfile": {
+      "bucket": 8555,
+      "visualConfig": {
+        "enabledLayers": 9,
+        "mode": "presentation",
+        "layerCosts": {
+          "pheromones": 0,
+          "paths": 0,
+          "traffic": 0,
+          "defense": 0,
+          "economy": 0,
+          "construction": 0
+        },
+        "totalCost": 0,
+        "cache": {
+          "terrain": {},
+          "structures": {}
+        },
+        "lastCacheClear": 71229613
+      }
+    }
+  },
+  "after": {
+    "time": 71731362,
+    "cpu": {
+      "used": 21.2804182000001,
+      "limit": 50,
+      "bucket": 8653,
+      "percent": 42.561990799999876,
+      "heap_mb": 42.31663513183594
+    },
+    "skipped": 25,
+    "controller": {
+      "level": 2,
+      "progress": 37991
+    },
+    "upgraders": [
+      {
+        "name": "upgrader_71730252_fhpupr0up",
+        "pos": {
+          "x": 39,
+          "y": 34
+        },
+        "energy": 26,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": true,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731257
+          },
+          "_metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 50,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 4,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731336,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": {
+            "x": 40,
+            "y": 38
+          },
+          "reserveController": null
+        }
+      },
+      {
+        "name": "upgrader_71730913_a3ewh9e2q",
+        "pos": {
+          "x": 41,
+          "y": 35
+        },
+        "energy": 29,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": true,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731260
+          },
+          "_metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 50,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731315,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": {
+            "x": 40,
+            "y": 38
+          },
+          "reserveController": null
+        }
+      },
+      {
+        "name": "upgrader_71730963_6y1ac5w74",
+        "pos": {
+          "x": 40,
+          "y": 35
+        },
+        "energy": 50,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": true,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731280
+          },
+          "_metrics": {
+            "tasksCompleted": 0,
+            "energyTransferred": 0,
+            "energyHarvested": 0,
+            "buildProgress": 0,
+            "repairProgress": 0,
+            "upgradeProgress": 0,
+            "damageDealt": 0,
+            "healingDone": 0
+          },
+          "state": {
+            "action": "upgrade",
+            "startTick": 71731361,
+            "timeout": 25,
+            "targetId": "5982fd30b097071b4adbedd6"
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": null,
+          "reserveController": null
+        }
+      },
+      {
+        "name": "upgrader_71731342_j4e2rc8o7",
+        "pos": {
+          "x": 21,
+          "y": 28
+        },
+        "energy": 0,
+        "memory": {
+          "role": "upgrader",
+          "family": "economy",
+          "homeRoom": "W19S26",
+          "version": 1,
+          "working": false,
+          "upgrader_nearby_containers": {
+            "ids": [],
+            "tick": 71731351
+          },
+          "state": {
+            "action": "withdraw",
+            "startTick": 71731361,
+            "timeout": 25,
+            "targetId": "6a3246e0ab1226b86fb5f524",
+            "data": {
+              "resourceType": "energy"
+            }
+          }
+        },
+        "actionLog": {
+          "attacked": null,
+          "healed": null,
+          "attack": null,
+          "rangedAttack": null,
+          "rangedMassAttack": null,
+          "rangedHeal": null,
+          "harvest": null,
+          "heal": null,
+          "repair": null,
+          "build": null,
+          "say": null,
+          "upgradeController": null,
+          "reserveController": null
+        }
+      }
+    ],
+    "processes": {
+      "creep:upgrader_71729865_xeouo0zvc": {
+        "name": "Creep upgrader_71729865_xeouo0zvc (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 9.14792600000007,
+        "run_count": 19,
+        "avg_cpu": 0.48146978947368785,
+        "max_cpu": 5.256365399999964,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71729907_4oh5x47ls": {
+        "name": "Creep upgrader_71729907_4oh5x47ls (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.9245793999997716,
+        "run_count": 19,
+        "avg_cpu": 0.20655681052630376,
+        "max_cpu": 0.551345600000019,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730252_fhpupr0up": {
+        "name": "Creep upgrader_71730252_fhpupr0up (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 4.65542079999949,
+        "run_count": 19,
+        "avg_cpu": 0.24502214736839423,
+        "max_cpu": 0.3473953000000165,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      },
+      "creep:upgrader_71730525_gs9m7f00b": {
+        "name": "Creep upgrader_71730525_gs9m7f00b (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.392526699999763,
+        "run_count": 19,
+        "avg_cpu": 0.1785540368420928,
+        "max_cpu": 0.5832202999999652,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730755_8mig8phxb": {
+        "name": "Creep upgrader_71730755_8mig8phxb (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 4.5441004999998995,
+        "run_count": 19,
+        "avg_cpu": 0.23916318421052102,
+        "max_cpu": 0.26777549999997063,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730815_dwcfkyx9z": {
+        "name": "Creep upgrader_71730815_dwcfkyx9z (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.8565682000001402,
+        "run_count": 19,
+        "avg_cpu": 0.15034569473684947,
+        "max_cpu": 0.6130423000000178,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71730913_a3ewh9e2q": {
+        "name": "Creep upgrader_71730913_a3ewh9e2q (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 4.411471899999924,
+        "run_count": 19,
+        "avg_cpu": 0.23218273157894337,
+        "max_cpu": 0.2737827999999922,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      },
+      "creep:upgrader_71730963_6y1ac5w74": {
+        "name": "Creep upgrader_71730963_6y1ac5w74 (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.123945200000236,
+        "run_count": 19,
+        "avg_cpu": 0.11178658947369663,
+        "max_cpu": 0.3180397999999798,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      },
+      "creep:upgrader_71731058_golshpr00": {
+        "name": "Creep upgrader_71731058_golshpr00 (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.0697703000002434,
+        "run_count": 19,
+        "avg_cpu": 0.10893527894738124,
+        "max_cpu": 0.37072879999999486,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731146_ykikpgqlt": {
+        "name": "Creep upgrader_71731146_ykikpgqlt (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.652843100000325,
+        "run_count": 19,
+        "avg_cpu": 0.1922549000000171,
+        "max_cpu": 1.061839999999961,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731174_njchxomhm": {
+        "name": "Creep upgrader_71731174_njchxomhm (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 3.8766131999999516,
+        "run_count": 19,
+        "avg_cpu": 0.20403227368420798,
+        "max_cpu": 0.8638708000000861,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731342_5mlq1ff9c": {
+        "name": "Creep upgrader_71731342_5mlq1ff9c (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 2.4752353000003495,
+        "run_count": 11,
+        "avg_cpu": 0.22502139090912268,
+        "max_cpu": 0.5138718000000608,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 6000
+      },
+      "creep:upgrader_71731342_j4e2rc8o7": {
+        "name": "Creep upgrader_71731342_j4e2rc8o7 (upgrader)",
+        "priority": 50,
+        "frequency": "high",
+        "state": "idle",
+        "total_cpu": 1.3379768999998305,
+        "run_count": 11,
+        "avg_cpu": 0.12163426363634823,
+        "max_cpu": 0.252839599999902,
+        "last_run_tick": 71731361,
+        "skipped_count": 0,
+        "error_count": 0,
+        "cpu_budget": 0.008,
+        "min_bucket": 0
+      }
+    },
+    "visualProfile": {
+      "bucket": 8653,
+      "visualConfig": {
+        "enabledLayers": 9,
+        "mode": "presentation",
+        "layerCosts": {
+          "pheromones": 0,
+          "paths": 0,
+          "traffic": 0,
+          "defense": 0,
+          "economy": 0,
+          "construction": 0
+        },
+        "totalCost": 0,
+        "cache": {
+          "terrain": {},
+          "structures": {}
+        },
+        "lastCacheClear": 71229613
+      }
+    }
+  },
+  "progressDelta": 12
+}

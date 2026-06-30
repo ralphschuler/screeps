@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { planLayoutAnchorIntent, scoreLayoutAnchor } from "../../src/layouts/layoutAnchorIntent";
+import { planLayoutAnchorIntent, scoreLayoutAnchor } from "@ralphschuler/screeps-layouts";
 
 describe("Layout anchor terrain planning Module", () => {
   function openTerrain(): Map<string, number> {

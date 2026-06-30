@@ -1,0 +1,214 @@
+import { expect } from "chai";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
+import {
+  getClaimerSpawnAssignment,
+  getPioneerSpawnAssignment,
+  needsRole
+} from "../src/spawnNeedsAnalyzer";
+import { spawnQueue } from "../src/spawnQueue";
+
+type RoomOptions = {
+  my?: boolean;
+  hasSpawn?: boolean;
+  spawnSite?: boolean;
+  owner?: string;
+  reserver?: string;
+  hostileCreeps?: Creep[];
+};
+
+function createRoom(name: string, opts: RoomOptions = {}): Room {
+  const controller: Partial<StructureController> = {
+    my: opts.my ?? false,
+    level: 3
+  };
+  if (opts.owner) {
+    controller.owner = { username: opts.owner } as Owner;
+  }
+  if (opts.reserver) {
+    controller.reservation = { username: opts.reserver, ticksToEnd: 5000 };
+  }
+
+  return {
+    name,
+    energyAvailable: 800,
+    energyCapacityAvailable: 800,
+    controller,
+    find: (type: FindConstant) => {
+      if (type === FIND_MY_SPAWNS) {
+        return opts.hasSpawn ? [{ id: `${name}-spawn`, room: { name } }] : [];
+      }
+      if (type === FIND_MY_CONSTRUCTION_SITES) {
+        return opts.spawnSite ? [{ id: `${name}-spawn-site`, structureType: STRUCTURE_SPAWN }] : [];
+      }
+      if (type === FIND_HOSTILE_CREEPS) {
+        return opts.hostileCreeps ?? [];
+      }
+      if (type === FIND_MY_CREEPS || type === FIND_MY_STRUCTURES || type === FIND_STRUCTURES || type === FIND_MINERALS) {
+        return [];
+      }
+      return [];
+    }
+  } as unknown as Room;
+}
+
+function createSwarm(overrides: Partial<SwarmState> = {}): SwarmState {
+  return {
+    posture: "eco",
+    danger: 0,
+    remoteAssignments: [],
+    ...overrides
+  } as SwarmState;
+}
+
+function createDangerousHostile(username = "Invader"): Creep {
+  return {
+    owner: { username },
+    body: [{ type: ATTACK, hits: 100 }]
+  } as Creep;
+}
+
+function setEmpireMemory(overrides: Record<string, unknown> = {}): void {
+  (global as any).Memory = {
+    rooms: {},
+    empire: {
+      knownRooms: {},
+      clusters: [],
+      warTargets: [],
+      ownedRooms: {},
+      recoveryRooms: {},
+      claimQueue: [],
+      nukeCandidates: [],
+      powerBanks: [],
+      objectives: {
+        targetPowerLevel: 0,
+        targetRoomCount: 1,
+        warMode: false,
+        expansionPaused: false
+      },
+      lastUpdate: 0,
+      ...overrides
+    }
+  };
+}
+
+function resetWorld(): void {
+  Game.time = 1000;
+  Game.creeps = {};
+  Game.rooms = {
+    E1N1: createRoom("E1N1", { my: true, hasSpawn: true })
+  };
+  Game.spawns = {
+    Spawn1: {
+      id: "spawn1" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E1N1" }
+    } as StructureSpawn
+  };
+  Game.gcl = { level: 3 } as GlobalControlLevel;
+  Game.map = {
+    getRoomLinearDistance: (from: string, to: string) => {
+      const distances: Record<string, number> = {
+        "E1N1:E2N1": 1,
+        "E1N1:E3N1": 3,
+        "E2N1:E3N1": 1
+      };
+      return distances[`${from}:${to}`] ?? distances[`${to}:${from}`] ?? 10;
+    }
+  } as GameMap;
+  setEmpireMemory();
+  spawnQueue.clearQueue("E1N1");
+  spawnQueue.clearQueue("E2N1");
+  spawnQueue.clearQueue("E3N1");
+}
+
+describe("claimer and pioneer demand", () => {
+  beforeEach(resetWorld);
+
+  it("claims recovery rooms before normal expansion targets", () => {
+    Game.rooms.E3N1 = createRoom("E3N1");
+    setEmpireMemory({
+      recoveryRooms: {
+        E3N1: { roomName: "E3N1", lostAt: 10, rcl: 3, role: "core", clusterId: "c1" }
+      },
+      claimQueue: [{ roomName: "E4N1", claimed: false, score: 100 }]
+    });
+
+    const assignment = getClaimerSpawnAssignment("E1N1", createSwarm());
+
+    expect(assignment).to.deep.equal({ targetRoom: "E3N1", task: "claim" });
+    expect(needsRole("E1N1", "claimer", createSwarm())).to.equal(true);
+  });
+
+  it("reserves safe remotes when the GCL cap blocks new claims", () => {
+    Game.gcl = { level: 1 } as GlobalControlLevel;
+    Game.rooms.E2N1 = createRoom("E2N1");
+    setEmpireMemory({
+      claimQueue: [{ roomName: "E3N1", claimed: false, score: 100 }]
+    });
+
+    const assignment = getClaimerSpawnAssignment("E1N1", createSwarm({ remoteAssignments: ["E2N1"] }));
+
+    expect(assignment).to.deep.equal({ targetRoom: "E2N1", task: "reserve" });
+  });
+
+  it("skips unsafe recovery and remote reservation targets", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { owner: "enemy" });
+    Game.rooms.E3N1 = createRoom("E3N1");
+    setEmpireMemory({
+      recoveryRooms: {
+        E2N1: { roomName: "E2N1", lostAt: 10, rcl: 3, role: "core", clusterId: "c1" },
+        E3N1: { roomName: "E3N1", lostAt: 20, rcl: 3, role: "core", clusterId: "c1" }
+      }
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E3N1", task: "claim" });
+
+    Game.gcl = { level: 1 } as GlobalControlLevel;
+    setEmpireMemory({
+      knownRooms: {
+        E2N1: { roomName: "E2N1", scouted: false, owner: "enemy", threatLevel: 0 },
+        E3N1: { roomName: "E3N1", scouted: false, threatLevel: 0 }
+      }
+    });
+    delete Game.rooms.E2N1;
+    delete Game.rooms.E3N1;
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm({ remoteAssignments: ["E2N1", "E3N1"] }))).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "reserve"
+    });
+  });
+
+  it("assigns pioneers only from the closest safe parent room", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hasSpawn: true });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    Game.spawns.Spawn2 = {
+      id: "spawn2" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E2N1" }
+    } as StructureSpawn;
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
+    expect(getPioneerSpawnAssignment("E2N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn"
+    });
+  });
+
+  it("suppresses pioneer demand when a spawnless room already has enough bootstrap workers", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true });
+    Game.creeps.pioneer1 = {
+      memory: { role: "pioneer", targetRoom: "E2N1", task: "bootstrapSpawn" }
+    } as Creep;
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
+    expect(needsRole("E1N1", "pioneer", createSwarm())).to.equal(false);
+  });
+
+  it("does not send pioneers into spawnless owned rooms with dangerous hostiles", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hostileCreeps: [createDangerousHostile()] });
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
+    expect(needsRole("E1N1", "pioneer", createSwarm())).to.equal(false);
+  });
+});

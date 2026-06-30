@@ -1,0 +1,1134 @@
+{
+  "generatedAt": "2026-06-15T15:23:35.333Z",
+  "hostname": "screeps.com",
+  "verification": {
+    "wantedCommit": "7e12722",
+    "localHead": "fd9d06b",
+    "branch": "main"
+  },
+  "worldStatus": {
+    "ok": 1,
+    "status": "normal"
+  },
+  "roomsById": {
+    "ok": 1,
+    "shards": {
+      "shard0": [],
+      "shard1": [
+        "W17S29",
+        "W18S28",
+        "W18S29",
+        "W19S26"
+      ],
+      "shard2": [],
+      "shard3": [],
+      "shardX": []
+    },
+    "reservations": {
+      "shard0": [],
+      "shard1": [],
+      "shard2": [],
+      "shard3": [],
+      "shardX": []
+    }
+  },
+  "code": {
+    "remoteMainSha256": "f41d0803be8837d2ad502b526cbb44d2d1d4387ea4581ddca5e18b9ad70a62ef",
+    "wantedCommitDistSha256": "38c05effa10ca0c362dacb745e61eab0e4ab8f1f291195e7eea28ee874c2c0e9",
+    "remoteMatchesWantedCommitDist": false
+  },
+  "overview": {
+    "ok": 1,
+    "statsMax": 173160,
+    "totals": {
+      "creepsLost": 556,
+      "energyHarvested": 52074,
+      "energyConstruction": 7103,
+      "energyControl": 1168,
+      "energyCreeps": 49020,
+      "creepsProduced": 642
+    },
+    "shards": {
+      "shard0": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          75764542,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard1": {
+        "rooms": [
+          "W17S29",
+          "W18S28",
+          "W18S29",
+          "W19S26"
+        ],
+        "stats": {
+          "W17S29": [
+            {
+              "value": 1712,
+              "endTime": 3711529
+            },
+            {
+              "value": 3016,
+              "endTime": 3711530
+            },
+            {
+              "value": 2328,
+              "endTime": 3711531
+            },
+            {
+              "value": 2896,
+              "endTime": 3711532
+            },
+            {
+              "value": 2456,
+              "endTime": 3711533
+            },
+            {
+              "value": 2296,
+              "endTime": 3711534
+            },
+            {
+              "value": 2016,
+              "endTime": 3711535
+            },
+            {
+              "value": 640,
+              "endTime": 3711536
+            }
+          ],
+          "W18S28": [
+            {
+              "value": 1040,
+              "endTime": 3711529
+            },
+            {
+              "value": 0,
+              "endTime": 3711530
+            },
+            {
+              "value": 0,
+              "endTime": 3711531
+            },
+            {
+              "value": 0,
+              "endTime": 3711532
+            },
+            {
+              "value": 0,
+              "endTime": 3711533
+            },
+            {
+              "value": 0,
+              "endTime": 3711534
+            },
+            {
+              "value": 0,
+              "endTime": 3711535
+            },
+            {
+              "value": 0,
+              "endTime": 3711536
+            }
+          ],
+          "W18S29": [
+            {
+              "value": 2328,
+              "endTime": 3711529
+            },
+            {
+              "value": 3080,
+              "endTime": 3711530
+            },
+            {
+              "value": 2328,
+              "endTime": 3711531
+            },
+            {
+              "value": 1712,
+              "endTime": 3711532
+            },
+            {
+              "value": 1808,
+              "endTime": 3711533
+            },
+            {
+              "value": 2320,
+              "endTime": 3711534
+            },
+            {
+              "value": 2132,
+              "endTime": 3711535
+            },
+            {
+              "value": 1050,
+              "endTime": 3711536
+            }
+          ],
+          "W19S26": [
+            {
+              "value": 1840,
+              "endTime": 3711529
+            },
+            {
+              "value": 1704,
+              "endTime": 3711530
+            },
+            {
+              "value": 1816,
+              "endTime": 3711531
+            },
+            {
+              "value": 1816,
+              "endTime": 3711532
+            },
+            {
+              "value": 1192,
+              "endTime": 3711533
+            },
+            {
+              "value": 958,
+              "endTime": 3711534
+            },
+            {
+              "value": 1146,
+              "endTime": 3711535
+            },
+            {
+              "value": 344,
+              "endTime": 3711536
+            }
+          ]
+        },
+        "gametimes": [
+          71692013,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard2": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          75202234,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shard3": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          80879358,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "shardX": {
+        "rooms": [],
+        "stats": {},
+        "gametimes": [
+          2216400,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "memoryStats": {
+    "rooms": null
+  },
+  "roomObjects": {
+    "W17S29": {
+      "objectCount": 215,
+      "controller": {
+        "level": 6,
+        "progress": 1456528,
+        "progressTotal": 0,
+        "safeMode": 70230536,
+        "safeModeAvailable": 4,
+        "safeModeCooldown": 70260536,
+        "downgradeTime": 71811995,
+        "user": "5dc0453f9b78abbd4ca04b05"
+      },
+      "myCreeps": 13,
+      "hostileCreeps": 0,
+      "hostileOwners": [],
+      "spawns": [
+        {
+          "id": "69dcd3157f2eaa001200ba22",
+          "x": 14,
+          "y": 30,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "spawning": "harvester_71691986_304cyldqa",
+          "store": {
+            "energy": 0
+          }
+        }
+      ],
+      "towers": [
+        {
+          "id": "6a19facdf4fb902ad00dc315",
+          "x": 27,
+          "y": 8,
+          "hits": 3000,
+          "hitsMax": 3000,
+          "store": {
+            "energy": 900
+          }
+        },
+        {
+          "id": "6a1a144bba9c0f64c10ed635",
+          "x": 31,
+          "y": 4,
+          "hits": 3000,
+          "hitsMax": 3000,
+          "store": {
+            "energy": 980
+          }
+        }
+      ],
+      "constructionSites": [
+        {
+          "type": "rampart",
+          "x": 2,
+          "y": 24,
+          "progress": 0,
+          "progressTotal": 1
+        }
+      ],
+      "hostileSample": []
+    },
+    "W18S28": {
+      "objectCount": 147,
+      "controller": {
+        "level": 5,
+        "progress": 693235,
+        "progressTotal": 0,
+        "safeMode": 71684808,
+        "safeModeAvailable": 3,
+        "safeModeCooldown": 71714808,
+        "downgradeTime": 71765030,
+        "user": "5dc0453f9b78abbd4ca04b05"
+      },
+      "myCreeps": 0,
+      "hostileCreeps": 9,
+      "hostileOwners": [
+        "589f5265d25357e8253e3ee8"
+      ],
+      "spawns": [],
+      "towers": [],
+      "constructionSites": [
+        {
+          "type": "road",
+          "x": 2,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 300
+        },
+        {
+          "type": "road",
+          "x": 1,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 300
+        },
+        {
+          "type": "spawn",
+          "x": 23,
+          "y": 17,
+          "progress": 0,
+          "progressTotal": 15000
+        }
+      ],
+      "hostileSample": [
+        {
+          "id": "6a300a490b0194975598ccc0",
+          "x": 29,
+          "y": 15,
+          "body": [
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "move"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300a61f9baa81cedd0e433",
+          "x": 17,
+          "y": 35,
+          "body": [
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300b9030316e6fb2a11b56",
+          "x": 28,
+          "y": 14,
+          "body": [
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300c7cc6bdc5413c836edd",
+          "x": 3,
+          "y": 4,
+          "body": [
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300c920b0194ca3898cd7f",
+          "x": 17,
+          "y": 47,
+          "body": [
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move"
+          ],
+          "hits": 4730,
+          "hitsMax": 5000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300ec8cc38b116944d82c3",
+          "x": 28,
+          "y": 13,
+          "body": [
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "attack",
+            "move"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300ed4189fe8004326f00a",
+          "x": 15,
+          "y": 38,
+          "body": [
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "move"
+          ],
+          "hits": 3800,
+          "hitsMax": 3800,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300ef59d64d14469bf6348",
+          "x": 27,
+          "y": 12,
+          "body": [
+            "ranged_attack",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "heal",
+            "move"
+          ],
+          "hits": 2000,
+          "hitsMax": 2000,
+          "user": "589f5265d25357e8253e3ee8"
+        },
+        {
+          "id": "6a300fd5d38d333ff477961d",
+          "x": 5,
+          "y": 24,
+          "body": [
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "claim",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move"
+          ],
+          "hits": 3800,
+          "hitsMax": 3800,
+          "user": "589f5265d25357e8253e3ee8"
+        }
+      ]
+    },
+    "W18S29": {
+      "objectCount": 242,
+      "controller": {
+        "level": 5,
+        "progress": 821440,
+        "progressTotal": 0,
+        "safeMode": 71709459,
+        "safeModeAvailable": 2,
+        "safeModeCooldown": 71739459,
+        "downgradeTime": 71771975,
+        "user": "5dc0453f9b78abbd4ca04b05"
+      },
+      "myCreeps": 12,
+      "hostileCreeps": 0,
+      "hostileOwners": [],
+      "spawns": [
+        {
+          "id": "6a16ee1dc928de7d8d47d4c3",
+          "x": 32,
+          "y": 23,
+          "hits": 5000,
+          "hitsMax": 5000,
+          "spawning": "guard_71691958_d7trs8loc",
+          "store": {
+            "energy": 300
+          }
+        }
+      ],
+      "towers": [
+        {
+          "id": "6a18899b30408b48074b7561",
+          "x": 32,
+          "y": 19,
+          "hits": 3000,
+          "hitsMax": 3000,
+          "store": {
+            "energy": 930
+          }
+        },
+        {
+          "id": "6a267fc868274c316e92b489",
+          "x": 28,
+          "y": 23,
+          "hits": 3000,
+          "hitsMax": 3000,
+          "store": {
+            "energy": 930
+          }
+        }
+      ],
+      "constructionSites": [
+        {
+          "type": "rampart",
+          "x": 8,
+          "y": 2,
+          "progress": 0,
+          "progressTotal": 1
+        },
+        {
+          "type": "rampart",
+          "x": 2,
+          "y": 27,
+          "progress": 0,
+          "progressTotal": 1
+        },
+        {
+          "type": "road",
+          "x": 32,
+          "y": 41,
+          "progress": 93,
+          "progressTotal": 300
+        },
+        {
+          "type": "rampart",
+          "x": 2,
+          "y": 23,
+          "progress": 0,
+          "progressTotal": 1
+        },
+        {
+          "type": "road",
+          "x": 34,
+          "y": 41,
+          "progress": 0,
+          "progressTotal": 300
+        }
+      ],
+      "hostileSample": []
+    },
+    "W19S26": {
+      "objectCount": 55,
+      "controller": {
+        "level": 2,
+        "progress": 24587,
+        "progressTotal": 0,
+        "safeMode": null,
+        "safeModeAvailable": 1,
+        "safeModeCooldown": null,
+        "downgradeTime": 71700890,
+        "user": "5dc0453f9b78abbd4ca04b05"
+      },
+      "myCreeps": 5,
+      "hostileCreeps": 2,
+      "hostileOwners": [
+        "588d50e64b9e9fe43a40ebb5"
+      ],
+      "spawns": [
+        {
+          "id": "6a2d57db68ec7b668369ee25",
+          "x": 31,
+          "y": 25,
+          "hits": 3988,
+          "hitsMax": 5000,
+          "spawning": null,
+          "store": {
+            "energy": 51
+          }
+        }
+      ],
+      "towers": [],
+      "constructionSites": [
+        {
+          "type": "container",
+          "x": 40,
+          "y": 37,
+          "progress": 3106,
+          "progressTotal": 5000
+        },
+        {
+          "type": "road",
+          "x": 41,
+          "y": 38,
+          "progress": 0,
+          "progressTotal": 300
+        },
+        {
+          "type": "road",
+          "x": 42,
+          "y": 38,
+          "progress": 0,
+          "progressTotal": 300
+        }
+      ],
+      "hostileSample": [
+        {
+          "id": "6a3003d6da52ec48b298a238",
+          "x": 29,
+          "y": 25,
+          "body": [
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "588d50e64b9e9fe43a40ebb5"
+        },
+        {
+          "id": "6a300b0a30316e65aea11b2a",
+          "x": 29,
+          "y": 24,
+          "body": [
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "move",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "work",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack",
+            "ranged_attack"
+          ],
+          "hits": 5000,
+          "hitsMax": 5000,
+          "user": "588d50e64b9e9fe43a40ebb5"
+        }
+      ]
+    }
+  }
+}

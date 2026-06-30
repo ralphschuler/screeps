@@ -44,6 +44,15 @@ export interface EventLogEntry {
   details?: string;
 }
 
+/** Stable layout anchor selected by the construction planner. */
+export interface LayoutAnchorMemory {
+  x: number;
+  y: number;
+  blueprintName?: string;
+  rclSelectedAt?: number;
+  selectedAt?: number;
+}
+
 /**
  * Room role
  */
@@ -87,6 +96,8 @@ export interface SwarmState {
   clusterId?: string;
   /** Collection point for idle creeps (away from spawn) */
   collectionPoint?: { x: number; y: number };
+  /** Stable construction/layout anchor; prevents destructive cleanup around moving anchors. */
+  layoutAnchor?: LayoutAnchorMemory;
   /** Metrics */
   metrics: {
     energyHarvested: number;
@@ -107,6 +118,8 @@ export interface SwarmState {
   };
   /** Last full update tick */
   lastUpdate: number;
+  /** Tick when hostiles were most recently observed in this room. */
+  lastHostileTick?: number;
   /** Index signature for compatibility with visualization packages */
   [key: string]: unknown;
 }
@@ -166,6 +179,7 @@ export function createDefaultSwarmState(): SwarmState {
       energyCapacity: 0,
       energyNeed: 0
     },
-    lastUpdate: 0
+    lastUpdate: 0,
+    lastHostileTick: 0
   };
 }

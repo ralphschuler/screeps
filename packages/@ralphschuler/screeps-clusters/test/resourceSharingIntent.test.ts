@@ -63,4 +63,31 @@ describe("Resource sharing transfer intent Module", () => {
 
     expect(intent.plannedRequests).to.deep.equal([]);
   });
+
+  it("respects max request cap per source room", () => {
+    const intent = planResourceSharingIntent({
+      time: 123,
+      policy: { ...policy, maxRequestsPerRoom: 1 },
+      existingRequests: [{ fromRoom: "W2N2", toRoom: "W1N2" }],
+      distance: () => 1,
+      rooms: [
+        { roomName: "W1N1", hasTerminal: false, energyNeed: 3, canProvide: 0, needsAmount: 1000 },
+        { roomName: "W2N2", hasTerminal: false, energyNeed: 0, canProvide: 4000, needsAmount: 500 },
+        { roomName: "W3N3", hasTerminal: false, energyNeed: 0, canProvide: 4000, needsAmount: 500 }
+      ]
+    });
+
+    expect(intent.plannedRequests).to.deep.equal([
+      {
+        toRoom: "W1N1",
+        fromRoom: "W3N3",
+        resourceType: RESOURCE_ENERGY,
+        amount: 1000,
+        priority: 3,
+        createdAt: 123,
+        assignedCreeps: [],
+        delivered: 0
+      }
+    ]);
+  });
 });

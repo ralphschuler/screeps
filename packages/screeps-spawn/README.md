@@ -130,9 +130,34 @@ new SpawnManager(config?: SpawnConfig, customRoles?: Record<string, RoleSpawnDef
 - `calculatePriority(role: string, currentCount: number, roomState: RoomState): number`
   - Calculate effective priority for a role
 
+### Role Definition Layout
+
+The public API remains `ROLE_DEFINITIONS` from [`roleDefinitions.ts`](./src/roleDefinitions.ts). Internally, role templates are grouped by swarm responsibility under `src/role-definitions/`:
+
+- `economy.ts` - room economy, remotes, and logistics creeps
+- `military.ts` - combat body templates only; targeting logic stays elsewhere
+- `utility.ts` - scouts, claimers, engineers, and remote workers
+- `power.ts` - power-bank operation creeps
+- `template.ts` - shared body-template helpers and spawn definition types
+
+This keeps the spawn facade stable while making each role family easier to read and audit.
+
+### Spawn Demand Layout
+
+[`spawnNeedsAnalyzer.ts`](./src/spawnNeedsAnalyzer.ts) is the public demand facade used by the bot and intent compiler. Deeper modules hide target-selection details while preserving the same exports:
+
+- `spawn-demand/claimerDemand.ts` - recovery reclaim, expansion claim, and remote reservation assignment order
+- `spawn-demand/pioneerDemand.ts` - spawnless owned-room bootstrap assignment and closest-parent ownership
+- `spawn-demand/defenseAssistDemand.ts` - helper-room reinforcement demand, squad metadata, assigned-power accounting, and stale request pruning; defender need sizing and combat math/body sizing are consumed from `@ralphschuler/screeps-defense`
+- `spawn-demand/shared.ts` - map-distance fallback, remote safety gates, owned-spawn checks, and global utility queue enumeration
+
+Keep new demand policies behind the facade unless callers need a stable public contract. This protects spawn priority/order behavior while making individual demand rules easier to test.
+
+Defender requirement APIs are re-exported only for compatibility. New code should import `analyzeDefenderNeeds`, `getCurrentDefenders`, and defense-assistance helpers from `@ralphschuler/screeps-defense` directly.
+
 ### Types
 
-See [types.ts](./src/types.ts) for full type definitions.
+See [types.ts](./src/types.ts) for spawn-operation types and [roleDefinitions.ts](./src/roleDefinitions.ts) for the re-exported `BodyTemplate` and `RoleSpawnDef` role-template types.
 
 ## Integration with Screeps Bot
 

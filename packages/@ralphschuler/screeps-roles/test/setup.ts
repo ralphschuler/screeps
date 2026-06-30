@@ -101,6 +101,11 @@
 (global as any).ERR_NOT_ENOUGH_EXTENSIONS = -6;
 (global as any).ERR_RCL_NOT_ENOUGH = -14;
 (global as any).ERR_GCL_NOT_ENOUGH = -15;
+(global as any).ERR_ACCESS_DENIED = -16;
+
+// Terrain constants
+(global as any).TERRAIN_MASK_WALL = 1;
+(global as any).TERRAIN_MASK_SWAMP = 2;
 
 // Body part constants
 (global as any).MOVE = 'move';
@@ -111,6 +116,22 @@
 (global as any).TOUGH = 'tough';
 (global as any).HEAL = 'heal';
 (global as any).CLAIM = 'claim';
+
+// ============================================================================
+// Mock Screeps Classes
+// ============================================================================
+
+(global as any).RoomPosition = class RoomPosition {
+  constructor(public x: number, public y: number, public roomName: string) {}
+  getRangeTo(): number { return 0; }
+  isEqualTo(): boolean { return false; }
+  isNearTo(): boolean { return false; }
+  inRangeTo(): boolean { return false; }
+  findClosestByRange(): null { return null; }
+  findClosestByPath(): null { return null; }
+  findInRange(): unknown[] { return []; }
+  lookFor(): unknown[] { return []; }
+};
 
 // ============================================================================
 // Mock Game Object

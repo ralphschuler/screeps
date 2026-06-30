@@ -32,6 +32,7 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/screeps-utils#readme",
   "dependencies": {
+    "@ralphschuler/screeps-core": "*",
     "source-map": "~0.7.6"
   },
   "devDependencies": {

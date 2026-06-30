@@ -13,8 +13,8 @@
 import type { ClusterMemory, SquadDefinition } from "./types";
 import { logger } from "@ralphschuler/screeps-core";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./adapters/spawnQueueAdapter";
-import { addCreepToSquad, getSquadReadiness } from "./squadCoordinator";
-import { DOCTRINE_CONFIGS, getDoctrineComposition } from "./offensiveDoctrine";
+import { addCreepToSquad, canSquadDepart, isSquadFullyFormed } from "./squadCoordinator";
+import { DOCTRINE_CONFIGS } from "./offensiveDoctrine";
 
 /**
  * Screeps BODYPART_COST constants
@@ -68,11 +68,15 @@ export function startSquadFormation(
     // Defense squads use a default composition (will be enhanced by defense manager)
     composition = {
       harassers: 0,
-      soldiers: 2,
-      rangers: 2,
-      healers: 1,
-      siegeUnits: 0
+      soldiers: 0,
+      rangers: squad.targetComposition?.ranger ?? 2,
+      healers: squad.targetComposition?.healer ?? 1,
+      siegeUnits: squad.targetComposition?.siegeUnit ?? 0
     };
+    if ((squad.targetComposition?.guard ?? 0) > 0) {
+      // Guard is encoded separately below for defensive squads.
+      composition.soldiers = 0;
+    }
   } else {
     const doctrineType = squad.type === "harass" ? "harassment" : squad.type;
     const config = DOCTRINE_CONFIGS[doctrineType];
@@ -80,12 +84,17 @@ export function startSquadFormation(
   }
   
   // Convert composition to role map
-  const targetComposition: Record<string, number> = {};
-  if (composition.harassers > 0) targetComposition.harasser = composition.harassers;
-  if (composition.soldiers > 0) targetComposition.soldier = composition.soldiers;
-  if (composition.rangers > 0) targetComposition.ranger = composition.rangers;
-  if (composition.healers > 0) targetComposition.healer = composition.healers;
-  if (composition.siegeUnits > 0) targetComposition.siegeUnit = composition.siegeUnits;
+  const targetComposition: Record<string, number> = Object.fromEntries(
+    Object.entries(squad.targetComposition ?? {}).filter((entry): entry is [string, number] => typeof entry[1] === "number")
+  );
+  if (Object.keys(targetComposition).length === 0) {
+    if (composition.harassers > 0) targetComposition.harasser = composition.harassers;
+    if (composition.soldiers > 0) targetComposition.soldier = composition.soldiers;
+    if (composition.rangers > 0) targetComposition.ranger = composition.rangers;
+    if (composition.healers > 0) targetComposition.healer = composition.healers;
+    if (composition.siegeUnits > 0) targetComposition.siegeUnit = composition.siegeUnits;
+  }
+  squad.targetComposition = targetComposition;
   
   // Create formation tracker
   const formation: SquadFormation = {
@@ -96,8 +105,6 @@ export function startSquadFormation(
     formationStarted: Game.time
   };
   
-  activeFormations.set(squadId, formation);
-  
   // Create spawn requests for each role
   const rallyRoom = Game.rooms[squad.rallyRoom];
   if (!rallyRoom) {
@@ -106,7 +113,8 @@ export function startSquadFormation(
     });
     return;
   }
-  
+
+  activeFormations.set(squadId, formation);
   createSquadSpawnRequests(rallyRoom, squad, composition, formation);
   
   logger.info(
@@ -166,7 +174,11 @@ function createSquadSpawnRequests(
         })),
         createdAt: Game.time,
         additionalMemory: {
-          squadId: squad.id
+          squadId: squad.id,
+          squadRole: role,
+          squadRallyRoom: squad.rallyRoom,
+          squadTargetRoom: squad.targetRooms[0],
+          squadSize: (Object.values(squad.targetComposition ?? {}) as number[]).reduce((sum, value) => sum + (value ?? 0), 0)
         } as any
       };
       
@@ -176,6 +188,8 @@ function createSquadSpawnRequests(
   };
   
   // Create requests for each role
+  const targetComposition = squad.targetComposition ?? {};
+  if ((targetComposition.guard ?? 0) > 0) createRequest("guard", targetComposition.guard!);
   if (composition.harassers > 0) createRequest("harasser", composition.harassers);
   if (composition.soldiers > 0) createRequest("soldier", composition.soldiers);
   if (composition.rangers > 0) createRequest("ranger", composition.rangers);
@@ -193,6 +207,8 @@ function getBodyForRole(role: string, size: "small" | "medium" | "large", maxEne
   switch (role) {
     case "harasser":
       return generateBody([MOVE, ATTACK], budget, [MOVE, ATTACK]);
+    case "guard":
+      return generateBody([TOUGH, MOVE, ATTACK], budget, [TOUGH, MOVE, ATTACK]);
     case "soldier":
       return generateBody([TOUGH, MOVE, ATTACK, MOVE, ATTACK], budget, [TOUGH, MOVE, ATTACK]);
     case "ranger":
@@ -341,4 +357,8 @@ export function getFormationStatus(squadId: string): SquadFormation | null {
  */
 export function isSquadForming(squadId: string): boolean {
   return activeFormations.has(squadId);
+}
+
+export function isSquadReadyToExecute(squad: SquadDefinition): boolean {
+  return isSquadFullyFormed(squad) || canSquadDepart(squad);
 }

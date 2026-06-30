@@ -22,7 +22,7 @@
  * - Memory-efficient storage in global object
  */
 
-
+import { filterAllyCreeps } from "@ralphschuler/screeps-core";
 
 // =============================================================================
 // Types
@@ -188,11 +188,12 @@ export function cachedRoomFind<T>(
   // Cache miss - perform find operation
   cache.stats.misses++;
   let results: T[];
+  const find = room.find as (type: FindConstant, opts?: { filter?: (obj: unknown) => boolean }) => unknown[];
   
   if (opts?.filter) {
-    results = room.find(findType as FindConstant, { filter: opts.filter }) as T[];
+    results = find(findType, { filter: opts.filter as (obj: unknown) => boolean }) as T[];
   } else {
-    results = room.find(findType as FindConstant) as T[];
+    results = find(findType) as T[];
   }
   
   // Store in cache
@@ -340,7 +341,7 @@ export function cachedFindSources(room: Room): Source[] {
  * @returns Array of hostile creeps
  */
 export function cachedFindHostileCreeps(room: Room): Creep[] {
-  return cachedRoomFind(room, FIND_HOSTILE_CREEPS);
+  return filterAllyCreeps(cachedRoomFind<Creep>(room, FIND_HOSTILE_CREEPS));
 }
 
 /**

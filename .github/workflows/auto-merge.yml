@@ -202,7 +202,7 @@ ${risk.autoMergeAllowed ?
       - name: Run private-server smoke
         if: fromJSON(steps.risk.outputs.result).autoMergeAllowed
         run: npm run test:server:smoke || true
-        timeout-minutes: 30
+        timeout-minutes: 45
         continue-on-error: true
 
       - name: Wait for other checks

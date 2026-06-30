@@ -29,7 +29,7 @@ This document tracks the documentation status of all 16 framework packages and o
 | @ralphschuler/screeps-visuals | 55 | 400+ | ⚠️ Minimal | Medium | Large codebase, add visual examples |
 | packages/screeps-economy | 197 | 500+ | ⚠️ Minimal | Medium | Add integration guide |
 | packages/screeps-defense | 396 | 500+ | 🔄 Needs Enhancement | Medium | Has content, needs restructure |
-| packages/screeps-tasks | 485 | 500+ | 🔄 Needs Enhancement | Medium | Good content, needs examples |
+| packages/@ralphschuler/screeps-roles | 485 | 500+ | 🔄 Needs Enhancement | Medium | Good content, needs examples |
 | packages/screeps-posis | 229 | 400+ | ⚠️ Minimal | Low | Add process architecture guide |
 | packages/screeps-utils | 248 | 500+ | ⚠️ Minimal | High | Complete API documentation |
 | **@ralphschuler/screeps-empire** | 47 | N/A | 🚧 Skeleton | - | Needs implementation first |
@@ -281,7 +281,7 @@ These packages need comprehensive documentation created from scratch or heavily 
 
 **Estimated Work**: 1.5 hours
 
-#### packages/screeps-tasks (485 lines)
+#### packages/@ralphschuler/screeps-roles (485 lines)
 
 **Current Status**: Good content, needs examples
 
@@ -377,7 +377,7 @@ These packages need comprehensive documentation created from scratch or heavily 
 1. screeps-console (2h)
 2. screeps-economy (2h)
 3. screeps-defense (1.5h)
-4. screeps-tasks (1.5h)
+4. screeps-roles (1.5h)
 5. screeps-posis (2h)
 6. screeps-utils (2.5h)
 
@@ -405,7 +405,7 @@ These packages can be documented quickly:
 1. **screeps-pathfinding** (1.5h) - Good foundation, just needs examples
 2. **screeps-remote-mining** (1.5h) - Well-structured, needs performance section
 3. **screeps-defense** (1.5h) - Has content, just needs reorganization
-4. **screeps-tasks** (1.5h) - Good content, needs more examples
+4. **screeps-roles** (1.5h) - Good content, needs more examples
 
 **Quick Wins Total**: 6 hours → 4 packages complete
 

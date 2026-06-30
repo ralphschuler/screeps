@@ -93,30 +93,30 @@ export function findEnergy(ctx: CreepContext): CreepAction {
  * BUGFIX: Filter by capacity here, not in room cache, to get fresh capacity state.
  * Multiple creeps can fill structures in the same tick, making cached capacity stale.
  */
-export function deliverEnergy(ctx: CreepContext): CreepAction | null {
-  const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
-  if (assignedDelivery) return assignedDelivery;
-
+export function findCriticalEnergyDelivery(
+  ctx: CreepContext,
+  cachePrefix: string
+): Extract<CreepAction, { type: "transfer" }> | null {
   // 1. Spawns first (highest priority, cache for 5 ticks - they fill quickly)
   // BUGFIX: Filter by free capacity HERE for fresh state, not in room cache
   const spawns = ctx.spawnStructures.filter(
-    (s): s is StructureSpawn => 
+    (s): s is StructureSpawn =>
       s.structureType === STRUCTURE_SPAWN &&
       s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
   );
   if (spawns.length > 0) {
-    const closest = findCachedClosest(ctx.creep, spawns, "deliver_spawn", 5);
+    const closest = findCachedClosest(ctx.creep, spawns, `${cachePrefix}_spawn`, 5);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
   // 2. Extensions second (cache for 5 ticks - they fill quickly)
   const extensions = ctx.spawnStructures.filter(
-    (s): s is StructureExtension => 
+    (s): s is StructureExtension =>
       s.structureType === STRUCTURE_EXTENSION &&
       s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
   );
   if (extensions.length > 0) {
-    const closest = findCachedClosest(ctx.creep, extensions, "deliver_ext", 5);
+    const closest = findCachedClosest(ctx.creep, extensions, `${cachePrefix}_ext`, 5);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
@@ -128,9 +128,19 @@ export function deliverEnergy(ctx: CreepContext): CreepAction | null {
     t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
   );
   if (towersWithCapacity.length > 0) {
-    const closest = findCachedClosest(ctx.creep, towersWithCapacity, "deliver_tower", 10);
+    const closest = findCachedClosest(ctx.creep, towersWithCapacity, `${cachePrefix}_tower`, 10);
     if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
   }
+
+  return null;
+}
+
+export function deliverEnergy(ctx: CreepContext): CreepAction | null {
+  const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
+  if (assignedDelivery) return assignedDelivery;
+
+  const criticalDelivery = findCriticalEnergyDelivery(ctx, "deliver");
+  if (criticalDelivery) return criticalDelivery;
 
   // 4. Storage fourth
   if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
