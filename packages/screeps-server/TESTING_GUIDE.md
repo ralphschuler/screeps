@@ -16,9 +16,9 @@ Default scenarios:
 
 - `default-bootstrap`
 - `construction-economy`
-- `remote-mining`
+- `remote-mining` (accepts room remote assignments, remote stats, or active remote-role creeps as runtime telemetry)
 - `defense-hostile`
-- `defense-hard-invader`
+- `defense-hard-invader` (clears bootstrap safe-mode while seeding and records 50-part hostile seed metadata for runtime assertions)
 - `alliance-safety`
 
 Override with `SCREEPS_TEST_SCENARIOS=none` or a comma list.
@@ -39,7 +39,7 @@ Required checks include bot spawn, room survival, creep population, CPU bucket h
 
 ## Artifacts
 
-Artifacts are written to `packages/screeps-server/artifacts/<mode>/`.
+Artifacts are written to `packages/screeps-server/artifacts/<mode>/`. The harness summary records `finishedGameTime` and `metrics.ticksAdvanced` from the latest observed server game-time read, including the final read that causes polling to stop.
 
 ## Cleanup
 

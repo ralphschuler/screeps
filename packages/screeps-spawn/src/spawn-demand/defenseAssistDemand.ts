@@ -5,18 +5,19 @@
  * tower/targeting policy. The rules here account for existing creep and queued
  * combat power before emitting one spawn assignment for the requested role.
  */
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
-import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import {
+  addCombatPower,
   buildDefenseAssistBody,
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
   calculateDefenseAssistSquadSize,
+  getActualHostileCreeps,
   getVisibleDefenseAssistThreatProfile,
   isDefenseAssistMilitaryRole,
   type DefenseAssistRole,
   type ExistingDefensePower
-} from "../defenseAssistBody";
+} from "@ralphschuler/screeps-defense";
+import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import { spawnQueue, SpawnPriority } from "../spawnQueue";
 
 const DEFENSE_ASSIST_REQUEST_TTL = 500;
@@ -58,14 +59,15 @@ function getDefenseRoleNeedForHelper(
   if (!isDefenseAssistMilitaryRole(role)) return requestedNeed;
   if (!threatProfile) return requestedNeed;
 
-  const assigned = countAssignedDefenseAssist(request.roomName, role);
+  const assignedCounts = countAssignedDefenseAssistByRole(request.roomName);
+  const assigned = assignedCounts[role];
   const aggregatePlan = calculateAggregateDefenseResponsePlan(
     helperEnergyCapacity,
     threatProfile,
     {
-      guard: getDefenseRoleNeed(request, "guard"),
-      ranger: getDefenseRoleNeed(request, "ranger"),
-      healer: getDefenseRoleNeed(request, "healer")
+      guard: Math.max(0, getDefenseRoleNeed(request, "guard") - assignedCounts.guard),
+      ranger: Math.max(0, getDefenseRoleNeed(request, "ranger") - assignedCounts.ranger),
+      healer: Math.max(0, getDefenseRoleNeed(request, "healer") - assignedCounts.healer)
     },
     countAssignedDefenseAssistPower(request.roomName)
   );
@@ -91,6 +93,20 @@ function getAssistTarget(memory: Partial<SwarmCreepMemory>): string | undefined 
 
 function getDefenseAssistSquadSizeForHelper(request: DefenseAssistRequestMemory, helperRoom: Room): number {
   const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
+  const assignedCounts = countAssignedDefenseAssistByRole(request.roomName);
+  const aggregatePlan = calculateAggregateDefenseResponsePlan(
+    helperRoom.energyCapacityAvailable,
+    threatProfile,
+    {
+      guard: Math.max(0, getDefenseRoleNeed(request, "guard") - assignedCounts.guard),
+      ranger: Math.max(0, getDefenseRoleNeed(request, "ranger") - assignedCounts.ranger),
+      healer: Math.max(0, getDefenseRoleNeed(request, "healer") - assignedCounts.healer)
+    },
+    countAssignedDefenseAssistPower(request.roomName)
+  );
+  const aggregateSize = aggregatePlan.counts.guard + aggregatePlan.counts.ranger + aggregatePlan.counts.healer;
+  if (aggregateSize > 0) return aggregateSize;
+
   const localWaveRoles = DEFENSE_ASSIST_ROLES.filter(role => {
     if (getDefenseRoleNeedForHelper(request, role, helperRoom.energyCapacityAvailable, threatProfile) <= 0) return false;
     return Boolean(buildDefenseAssistBody(role, helperRoom.energyCapacityAvailable, threatProfile));
@@ -114,37 +130,37 @@ function countCapableDefenseAssistHelpers(
   return count;
 }
 
-function countAssignedDefenseAssist(targetRoom: string, role: string): number {
-  let count = 0;
+function countAssignedDefenseAssistByRole(targetRoom: string): Record<DefenseAssistRole, number> {
+  const counts: Record<DefenseAssistRole, number> = { guard: 0, ranger: 0, healer: 0 };
   for (const creep of Object.values(Game.creeps)) {
     const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
-    if (memory.role === role && getAssistTarget(memory) === targetRoom) count++;
+    const role = memory.role ?? "";
+    if (isDefenseAssistMilitaryRole(role) && getAssistTarget(memory) === targetRoom) counts[role]++;
   }
 
   for (const roomName in Game.rooms) {
-    count += spawnQueue.getPendingRequests(roomName).filter(request =>
-      request.role === role &&
-      (request.additionalMemory?.assistTarget === targetRoom ||
-        (request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom))
-    ).length;
+    for (const request of spawnQueue.getPendingRequests(roomName)) {
+      if (!isDefenseAssistMilitaryRole(request.role)) continue;
+      if (
+        request.additionalMemory?.assistTarget !== targetRoom &&
+        !(request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom)
+      ) continue;
+      counts[request.role]++;
+    }
   }
 
-  return count;
+  return counts;
+}
+
+function countAssignedDefenseAssist(targetRoom: string, role: string): number {
+  if (!isDefenseAssistMilitaryRole(role)) return 0;
+  return countAssignedDefenseAssistByRole(targetRoom)[role];
 }
 
 function addAssignedPower(power: ExistingDefensePower, role: DefenseAssistRole, parts: Array<BodyPartConstant | BodyPartDefinition>): void {
   const bodyPower = calculateCombatPower(parts);
   const existing = power[role];
-  power[role] = existing
-    ? {
-        partCount: existing.partCount + bodyPower.partCount,
-        attack: existing.attack + bodyPower.attack,
-        ranged: existing.ranged + bodyPower.ranged,
-        heal: existing.heal + bodyPower.heal,
-        dismantle: existing.dismantle + bodyPower.dismantle,
-        score: existing.score + bodyPower.score
-      }
-    : bodyPower;
+  power[role] = existing ? addCombatPower(existing, bodyPower) : bodyPower;
 }
 
 function countAssignedDefenseAssistPower(targetRoom: string): ExistingDefensePower {

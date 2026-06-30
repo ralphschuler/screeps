@@ -78,15 +78,19 @@ export { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
 export {
   analyzeDefenseAssistThreat,
   buildDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
   calculateDefenseAssistSquadSize,
   getVisibleDefenseAssistThreatProfile,
   isDefenseAssistBodyStrongerThanThreat,
   isDefenseAssistMilitaryRole,
+  isDefenseAssistThreatProfileHard,
   type CombatPower,
+  type DefenseAggregateResponsePlan,
   type DefenseAssistRole,
-  type DefenseAssistThreatProfile
-} from "./defenseAssistBody";
+  type DefenseAssistThreatProfile,
+  type ExistingDefensePower
+} from "@ralphschuler/screeps-defense";
 
 // Spawn queue manager
 export { getBestBody, determineNextRole, generateCreepName, getAllSpawnableRoles, runSpawnManager } from "./spawnQueueManager";

@@ -128,6 +128,35 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('defers remote-mining assignment telemetry until expansion work can run', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100, scenarios: ['remote-mining'] } }
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: { names: ['remote-mining'], rooms: { home: 'W1N1', remote: 'W1N2' } }
+    });
+    const context = vm.createContext({
+      Game: createWarmGame(135),
+      Memory: memory,
+      global: {}
+    });
+    context.global = context;
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      }
+    }, 'bot-user-id');
+
+    expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.not.include(
+      'remote-mining scenario exposes remote assignment telemetry'
+    );
+    expect(memory.screepsmodTestingPlayer).to.deep.include({ failed: 0, skipped: 0, tick: 135 });
+  });
+
   it('passes remote-mining scouting assertion when remote assignment telemetry exists', () => {
     const engine = new EventEmitter();
     installTestingMod({
@@ -194,6 +223,42 @@ describe('screepsmod-testing backend mod', () => {
 
     expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.not.include(
       'remote-mining scenario maintains remote or scout telemetry'
+    );
+  });
+
+  it('accepts active remote creeps as remote-mining assignment telemetry', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100, scenarios: ['remote-mining'] } }
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: { names: ['remote-mining'], rooms: { home: 'W1N1', remote: 'W1N2' } },
+      creeps: {
+        RemoteHarvester1: { role: 'remoteHarvester', homeRoom: 'W1N1', targetRoom: 'W1N2' }
+      }
+    });
+    const context = vm.createContext({
+      Game: {
+        ...createWarmGame(1300),
+        creeps: {
+          RemoteHarvester1: { my: true, memory: { role: 'remoteHarvester', homeRoom: 'W1N1', targetRoom: 'W1N2' } }
+        }
+      },
+      Memory: memory,
+      global: {}
+    });
+    context.global = context;
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      }
+    }, 'bot-user-id');
+
+    expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.not.include(
+      'remote-mining scenario exposes remote assignment telemetry'
     );
   });
 

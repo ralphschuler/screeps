@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
 import { ScreepsAPI } from "screeps-api";
+import { appendCpuBenchmarkSample } from "./cpu-benchmark-model.js";
+import { ensureLiveCloneAuth, seedLiveCloneSnapshot } from "./live-clone-seeder.js";
 import { createServerControlPlane, parseTickRate } from "./server-control-plane.js";
 
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
@@ -127,8 +129,9 @@ export function parseHarnessArgs(
     roomName: args.get("room") ?? "W1N1",
     projectName: args.get("project") ?? `screeps-ci-${mode}`,
     scenarios: parseScenarioList(args.get("scenarios") ?? env.SCREEPS_TEST_SCENARIOS),
-    artifactsDir: path.resolve(serverRoot, "artifacts", mode),
-    botBundle: path.resolve(repoRoot, "packages/screeps-bot/dist/main.js"),
+    artifactsDir: path.resolve(args.get("artifactsDir") ?? path.resolve(serverRoot, "artifacts", mode)),
+    botBundle: path.resolve(args.get("botBundle") ?? path.resolve(repoRoot, "packages/screeps-bot/dist/main.js")),
+    liveCloneSnapshot: args.get("liveCloneSnapshot") ?? env.SCREEPS_LIVE_CLONE_SNAPSHOT,
     serverRoot,
     repoRoot,
   };
@@ -198,6 +201,8 @@ export function createInitialSummary(options, now = new Date()) {
     tickRate: options.tickRate,
     roomName: options.roomName,
     scenarios: options.scenarios ?? [],
+    liveCloneSnapshot: options.liveCloneSnapshot ?? null,
+    botBundle: options.botBundle ?? null,
     checks: {},
     metrics: {},
     errors: [],
@@ -218,7 +223,7 @@ export function decodeMemoryData(data) {
   return JSON.parse(data || "{}");
 }
 
-export function inspectMemorySnapshot(memory, summary, now = new Date()) {
+export function inspectMemorySnapshot(memory, summary, now = new Date(), options = {}) {
   const playerSummary = memory.screepsmodTestingPlayer;
   const backendSummary = memory.screepsmodTestingBackend;
   const testSummary = memory.screepsmodTesting ?? playerSummary ?? backendSummary;
@@ -231,15 +236,16 @@ export function inspectMemorySnapshot(memory, summary, now = new Date()) {
   if (backendSummary) summary.metrics.screepsmodTestingBackend = backendSummary;
   summary.metrics.taskBoardRooms = Object.keys(taskBoard?.rooms ?? {}).length;
   summary.metrics.criticalConsoleErrors = memory.ciCriticalConsoleErrors ?? 0;
+  appendCpuBenchmarkSample(memory, summary);
 
   if (testSummary) {
     summary.checks.modResultsPresent = true;
-    if ((testSummary.failed ?? 0) > 0) {
+    if ((testSummary.failed ?? 0) > 0 && options.mode !== "cpu-benchmark") {
       throw new Error(
         `screepsmod-testing reported ${testSummary.failed} failed tests`,
       );
     }
-  } else if ((summary.metrics.screepsmodTesting?.failed ?? 0) > 0) {
+  } else if ((summary.metrics.screepsmodTesting?.failed ?? 0) > 0 && options.mode !== "cpu-benchmark") {
     throw new Error(
       `screepsmod-testing reported ${summary.metrics.screepsmodTesting.failed} failed tests`,
     );
@@ -315,7 +321,7 @@ function compose(options, log, ...composeArgs) {
         SHARD_NAME: options.shardName,
         SCREEPS_SERVER_PORT: String(options.serverPort),
         SCREEPS_CLI_PORT: String(options.cliPort),
-        SCREEPS_TEST_SCENARIOS: (options.scenarios ?? []).join(","),
+        SCREEPS_TEST_SCENARIOS: (options.scenarios ?? []).length ? (options.scenarios ?? []).join(",") : "none",
       },
     },
   );
@@ -373,7 +379,7 @@ export function buildEnsureBotUserCommand(options) {
 
 export function buildSeedRuntimeScenariosCommand(options) {
   const scenarios = options.scenarios ?? [];
-  return `Promise.resolve().then(async()=>{ const username=${JSON.stringify(options.username)}; const requestedRoom=${JSON.stringify(options.roomName)}; const scenarios=${JSON.stringify(scenarios)}; if(!scenarios.length) return; const SOURCE_ENERGY=1500; const ENERGY_REGEN_TIME=300; const plainTerrain='0'.repeat(2500); const toArray=async(result)=>Array.isArray(result)?result:(result&&result.toArray?await result.toArray():[]); const hasScenario=name=>scenarios.indexOf(name)>=0; const ensureRoom=async(roomName)=>{ let room=await storage.db.rooms.findOne({_id:roomName}); if(!room){ await storage.db.rooms.insert({_id:roomName,status:'normal',sourceKeepers:false}); } else if(room.status!=='normal'){ await storage.db.rooms.update({_id:roomName},{$set:{status:'normal'}}); } const terrainRecord=await storage.db['rooms.terrain'].findOne({room:roomName}); if(!terrainRecord){ await storage.db['rooms.terrain'].insert({room:roomName,terrain:plainTerrain}); } else if(!terrainRecord.terrain){ await storage.db['rooms.terrain'].update({room:roomName},{$set:{terrain:plainTerrain}}); } let controller=await storage.db['rooms.objects'].findOne({type:'controller',room:roomName}); if(!controller){ await storage.db['rooms.objects'].insert({room:roomName,type:'controller',x:25,y:40,level:0}); controller=await storage.db['rooms.objects'].findOne({type:'controller',room:roomName}); } const sources=await toArray(await storage.db['rooms.objects'].find({type:'source',room:roomName})); if(sources.length===0){ await storage.db['rooms.objects'].insert([[10,10],[40,10]].map(([x,y])=>({room:roomName,type:'source',x,y,energy:SOURCE_ENERGY,energyCapacity:SOURCE_ENERGY,ticksToRegeneration:ENERGY_REGEN_TIME}))); } await map.openRoom(roomName); return controller; }; const ensureUser=async(name)=>{ let user=await storage.db.users.findOne({username:name}); if(!user){ await storage.db.users.insert({username:name}); user=await storage.db.users.findOne({username:name}); } return user; }; const upsertObject=async(query,doc)=>{ const existing=await storage.db['rooms.objects'].findOne(query); if(existing&&existing._id){ await storage.db['rooms.objects'].update({_id:existing._id},{$set:doc}); return existing._id; } await storage.db['rooms.objects'].insert(doc); const created=await storage.db['rooms.objects'].findOne(query); return created&&created._id; }; const botUser=await storage.db.users.findOne({username}); if(!botUser||!botUser._id) throw new Error('No bot user for runtime scenario seeding: '+username); const userId=''+botUser._id; const homeController=await storage.db['rooms.objects'].findOne({type:'controller',user:userId})||await ensureRoom(requestedRoom); const homeRoom=homeController.room||requestedRoom; await ensureRoom(homeRoom); const remoteRoom='W1N2'; const allianceRoom='W1N3'; if(hasScenario('construction-economy')){ await upsertObject({type:'constructionSite',room:homeRoom,x:26,y:25,user:userId},{type:'constructionSite',room:homeRoom,x:26,y:25,user:userId,structureType:'extension',progress:0,progressTotal:300}); } if(hasScenario('remote-mining')){ await ensureRoom(remoteRoom); } if(hasScenario('defense-hostile')){ const enemy=await ensureUser('ScenarioEnemy'); const enemyId=''+enemy._id; const defenseRoom=homeRoom; await ensureRoom(defenseRoom); await upsertObject({type:'creep',room:defenseRoom,name:'ScenarioEnemyAttacker'},{type:'creep',room:defenseRoom,x:24,y:25,name:'ScenarioEnemyAttacker',user:enemyId,body:[{type:'attack',hits:100},{type:'move',hits:100}],hits:200,hitsMax:200,fatigue:0,spawning:false,ticksToLive:1500,notifyWhenAttacked:false}); } if(hasScenario('defense-hard-invader')){ const hardEnemy=await ensureUser('ScenarioHardInvader'); const hardEnemyId=''+hardEnemy._id; const defenseRoom=homeRoom; await ensureRoom(defenseRoom); await storage.db['rooms.objects'].update({$and:[{room:defenseRoom},{type:'controller'}]},{$set:{user:userId,level:4,progress:0,downgradeTime:null}}); const extensionPositions=[[24,24],[25,24],[26,24],[24,26],[25,26],[26,26],[27,24],[27,25],[27,26],[23,24]]; for(const [x,y] of extensionPositions){ await upsertObject({type:'extension',room:defenseRoom,user:userId,x,y},{type:'extension',room:defenseRoom,x,y,user:userId,energy:50,energyCapacity:50,store:{energy:50},storeCapacityResource:{energy:50},hits:1000,hitsMax:1000,notifyWhenAttacked:false}); } const hardBodyTypes=[...Array(5).fill('tough'),...Array(25).fill('ranged_attack'),...Array(10).fill('move'),...Array(10).fill('heal')]; const hardBody=hardBodyTypes.map(type=>({type,hits:100})); await upsertObject({type:'creep',room:defenseRoom,name:'ScenarioHardInvader'},{type:'creep',room:defenseRoom,x:23,y:25,name:'ScenarioHardInvader',user:hardEnemyId,body:hardBody,hits:hardBody.length*100,hitsMax:hardBody.length*100,fatigue:0,spawning:false,ticksToLive:5000,notifyWhenAttacked:false}); } if(hasScenario('alliance-safety')){ const ally=await ensureUser('TooAngel'); const allyId=''+ally._id; await ensureRoom(allianceRoom); await upsertObject({type:'creep',room:allianceRoom,name:'TooAngelScenarioAlly'},{type:'creep',room:allianceRoom,x:25,y:25,name:'TooAngelScenarioAlly',user:allyId,body:[{type:'move',hits:100}],hits:100,hitsMax:100,fatigue:0,spawning:false,ticksToLive:1500,notifyWhenAttacked:false}); } if(hasScenario('link-network')){ await storage.db['rooms.objects'].update({$and:[{room:homeRoom},{type:'controller'}]},{$set:{user:userId,level:7,progress:0,downgradeTime:null}}); await upsertObject({type:'storage',room:homeRoom,user:userId},{type:'storage',room:homeRoom,x:24,y:25,user:userId,store:{energy:50000},storeCapacityResource:{energy:1000000},hits:1000000,hitsMax:1000000,notifyWhenAttacked:false}); } if(hasScenario('terminal-market-lab-economy')){ const economyRoom='W2N1'; await ensureRoom(economyRoom); await storage.db['rooms.objects'].update({$and:[{room:homeRoom},{type:'controller'}]},{$set:{user:userId,level:7,progress:0,downgradeTime:null}}); await storage.db['rooms.objects'].update({$and:[{room:economyRoom},{type:'controller'}]},{$set:{user:userId,level:6,progress:0,downgradeTime:null}}); await upsertObject({type:'storage',room:homeRoom,user:userId},{type:'storage',room:homeRoom,x:24,y:25,user:userId,store:{energy:200000,H:12000,O:12000},storeCapacityResource:{energy:1000000,H:1000000,O:1000000},hits:1000000,hitsMax:1000000,notifyWhenAttacked:false}); await upsertObject({type:'terminal',room:homeRoom,user:userId},{type:'terminal',room:homeRoom,x:25,y:26,user:userId,store:{energy:30000,H:6000,O:6000},storeCapacityResource:{energy:300000,H:300000,O:300000},cooldown:0,hits:300000,hitsMax:300000,notifyWhenAttacked:false}); await upsertObject({type:'terminal',room:economyRoom,user:userId},{type:'terminal',room:economyRoom,x:25,y:25,user:userId,store:{energy:5000},storeCapacityResource:{energy:300000},cooldown:0,hits:300000,hitsMax:300000,notifyWhenAttacked:false}); await upsertObject({type:'lab',room:homeRoom,user:userId,x:23,y:25},{type:'lab',room:homeRoom,x:23,y:25,user:userId,mineralType:'H',store:{H:2000},storeCapacityResource:{H:3000},cooldown:0,hits:500,hitsMax:500,notifyWhenAttacked:false}); await upsertObject({type:'lab',room:homeRoom,user:userId,x:23,y:26},{type:'lab',room:homeRoom,x:23,y:26,user:userId,mineralType:'O',store:{O:2000},storeCapacityResource:{O:3000},cooldown:0,hits:500,hitsMax:500,notifyWhenAttacked:false}); await upsertObject({type:'lab',room:homeRoom,user:userId,x:24,y:26},{type:'lab',room:homeRoom,x:24,y:26,user:userId,store:{},storeCapacityResource:{},cooldown:0,hits:500,hitsMax:500,notifyWhenAttacked:false}); await map.openRoom(economyRoom); } const gameTime=typeof common!=='undefined'&&common.getGametime?await common.getGametime():0; const memoryKey=storage.env.keys.MEMORY+userId; const rawMemory=await storage.env.get(memoryKey); let memory={}; try{ memory=rawMemory?JSON.parse(rawMemory):{}; }catch(error){ memory={}; } memory.screepsmodTestingScenarios={names:scenarios,seededAt:gameTime,rooms:{home:homeRoom,remote:remoteRoom,alliance:allianceRoom,economy:'W2N1'},hardInvader:hasScenario('defense-hard-invader')?{room:homeRoom,bodyParts:50}:undefined}; await storage.env.set(memoryKey,JSON.stringify(memory)); await map.updateTerrainData(); }).then(()=>print('__PI_CLI_DONE_OK__')).catch(error=>print('__PI_CLI_DONE_ERR__',error.stack||error.message||String(error)))`;
+  return `Promise.resolve().then(async()=>{ const username=${JSON.stringify(options.username)}; const requestedRoom=${JSON.stringify(options.roomName)}; const scenarios=${JSON.stringify(scenarios)}; if(!scenarios.length) return; const SOURCE_ENERGY=1500; const ENERGY_REGEN_TIME=300; const plainTerrain='0'.repeat(2500); const toArray=async(result)=>Array.isArray(result)?result:(result&&result.toArray?await result.toArray():[]); const hasScenario=name=>scenarios.indexOf(name)>=0; const ensureRoom=async(roomName)=>{ let room=await storage.db.rooms.findOne({_id:roomName}); if(!room){ await storage.db.rooms.insert({_id:roomName,status:'normal',sourceKeepers:false}); } else if(room.status!=='normal'){ await storage.db.rooms.update({_id:roomName},{$set:{status:'normal'}}); } const terrainRecord=await storage.db['rooms.terrain'].findOne({room:roomName}); if(!terrainRecord){ await storage.db['rooms.terrain'].insert({room:roomName,terrain:plainTerrain}); } else if(!terrainRecord.terrain){ await storage.db['rooms.terrain'].update({room:roomName},{$set:{terrain:plainTerrain}}); } let controller=await storage.db['rooms.objects'].findOne({type:'controller',room:roomName}); if(!controller){ await storage.db['rooms.objects'].insert({room:roomName,type:'controller',x:25,y:40,level:0}); controller=await storage.db['rooms.objects'].findOne({type:'controller',room:roomName}); } const sources=await toArray(await storage.db['rooms.objects'].find({type:'source',room:roomName})); if(sources.length===0){ await storage.db['rooms.objects'].insert([[10,10],[40,10]].map(([x,y])=>({room:roomName,type:'source',x,y,energy:SOURCE_ENERGY,energyCapacity:SOURCE_ENERGY,ticksToRegeneration:ENERGY_REGEN_TIME}))); } await map.openRoom(roomName); return controller; }; const ensureUser=async(name)=>{ let user=await storage.db.users.findOne({username:name}); if(!user){ await storage.db.users.insert({username:name}); user=await storage.db.users.findOne({username:name}); } return user; }; const upsertObject=async(query,doc)=>{ const existing=await storage.db['rooms.objects'].findOne(query); if(existing&&existing._id){ await storage.db['rooms.objects'].update({_id:existing._id},{$set:doc}); return existing._id; } await storage.db['rooms.objects'].insert(doc); const created=await storage.db['rooms.objects'].findOne(query); return created&&created._id; }; const botUser=await storage.db.users.findOne({username}); if(!botUser||!botUser._id) throw new Error('No bot user for runtime scenario seeding: '+username); const userId=''+botUser._id; const homeController=await storage.db['rooms.objects'].findOne({type:'controller',user:userId})||await ensureRoom(requestedRoom); const homeRoom=homeController.room||requestedRoom; await ensureRoom(homeRoom); const remoteRoom='W1N2'; const allianceRoom='W1N3'; if(hasScenario('construction-economy')){ await upsertObject({type:'constructionSite',room:homeRoom,x:26,y:25,user:userId},{type:'constructionSite',room:homeRoom,x:26,y:25,user:userId,structureType:'extension',progress:0,progressTotal:300}); } if(hasScenario('remote-mining')){ await ensureRoom(remoteRoom); } if(hasScenario('defense-hostile')){ const enemy=await ensureUser('ScenarioEnemy'); const enemyId=''+enemy._id; const defenseRoom=homeRoom; await ensureRoom(defenseRoom); await upsertObject({type:'creep',room:defenseRoom,name:'ScenarioEnemyAttacker'},{type:'creep',room:defenseRoom,x:24,y:25,name:'ScenarioEnemyAttacker',user:enemyId,body:[{type:'attack',hits:100},{type:'move',hits:100}],hits:200,hitsMax:200,fatigue:0,spawning:false,ticksToLive:1500,notifyWhenAttacked:false}); } if(hasScenario('defense-hard-invader')){ const hardEnemy=await ensureUser('ScenarioHardInvader'); const hardEnemyId=''+hardEnemy._id; const defenseRoom=homeRoom; await ensureRoom(defenseRoom); await storage.db['rooms.objects'].update({$and:[{room:defenseRoom},{type:'controller'}]},{$set:{user:userId,level:4,progress:0,downgradeTime:null,safeMode:null}}); const extensionPositions=[[24,24],[25,24],[26,24],[24,26],[25,26],[26,26],[27,24],[27,25],[27,26],[23,24]]; for(const [x,y] of extensionPositions){ await upsertObject({type:'extension',room:defenseRoom,user:userId,x,y},{type:'extension',room:defenseRoom,x,y,user:userId,energy:50,energyCapacity:50,store:{energy:50},storeCapacityResource:{energy:50},hits:1000,hitsMax:1000,notifyWhenAttacked:false}); } const hardBodyTypes=[...Array(5).fill('tough'),...Array(25).fill('ranged_attack'),...Array(10).fill('move'),...Array(10).fill('heal')]; const hardBody=hardBodyTypes.map(type=>({type,hits:100})); await upsertObject({type:'creep',room:defenseRoom,name:'ScenarioHardInvader'},{type:'creep',room:defenseRoom,x:23,y:25,name:'ScenarioHardInvader',user:hardEnemyId,body:hardBody,hits:hardBody.length*100,hitsMax:hardBody.length*100,fatigue:0,spawning:false,ticksToLive:5000,notifyWhenAttacked:false}); } if(hasScenario('alliance-safety')){ const ally=await ensureUser('TooAngel'); const allyId=''+ally._id; await ensureRoom(allianceRoom); await upsertObject({type:'creep',room:allianceRoom,name:'TooAngelScenarioAlly'},{type:'creep',room:allianceRoom,x:25,y:25,name:'TooAngelScenarioAlly',user:allyId,body:[{type:'move',hits:100}],hits:100,hitsMax:100,fatigue:0,spawning:false,ticksToLive:1500,notifyWhenAttacked:false}); } if(hasScenario('link-network')){ await storage.db['rooms.objects'].update({$and:[{room:homeRoom},{type:'controller'}]},{$set:{user:userId,level:7,progress:0,downgradeTime:null}}); await upsertObject({type:'storage',room:homeRoom,user:userId},{type:'storage',room:homeRoom,x:24,y:25,user:userId,store:{energy:50000},storeCapacityResource:{energy:1000000},hits:1000000,hitsMax:1000000,notifyWhenAttacked:false}); } if(hasScenario('terminal-market-lab-economy')){ const economyRoom='W2N1'; await ensureRoom(economyRoom); await storage.db['rooms.objects'].update({$and:[{room:homeRoom},{type:'controller'}]},{$set:{user:userId,level:7,progress:0,downgradeTime:null}}); await storage.db['rooms.objects'].update({$and:[{room:economyRoom},{type:'controller'}]},{$set:{user:userId,level:6,progress:0,downgradeTime:null}}); await upsertObject({type:'storage',room:homeRoom,user:userId},{type:'storage',room:homeRoom,x:24,y:25,user:userId,store:{energy:200000,H:12000,O:12000},storeCapacityResource:{energy:1000000,H:1000000,O:1000000},hits:1000000,hitsMax:1000000,notifyWhenAttacked:false}); await upsertObject({type:'terminal',room:homeRoom,user:userId},{type:'terminal',room:homeRoom,x:25,y:26,user:userId,store:{energy:30000,H:6000,O:6000},storeCapacityResource:{energy:300000,H:300000,O:300000},cooldown:0,hits:300000,hitsMax:300000,notifyWhenAttacked:false}); await upsertObject({type:'terminal',room:economyRoom,user:userId},{type:'terminal',room:economyRoom,x:25,y:25,user:userId,store:{energy:5000},storeCapacityResource:{energy:300000},cooldown:0,hits:300000,hitsMax:300000,notifyWhenAttacked:false}); await upsertObject({type:'lab',room:homeRoom,user:userId,x:23,y:25},{type:'lab',room:homeRoom,x:23,y:25,user:userId,mineralType:'H',store:{H:2000},storeCapacityResource:{H:3000},cooldown:0,hits:500,hitsMax:500,notifyWhenAttacked:false}); await upsertObject({type:'lab',room:homeRoom,user:userId,x:23,y:26},{type:'lab',room:homeRoom,x:23,y:26,user:userId,mineralType:'O',store:{O:2000},storeCapacityResource:{O:3000},cooldown:0,hits:500,hitsMax:500,notifyWhenAttacked:false}); await upsertObject({type:'lab',room:homeRoom,user:userId,x:24,y:26},{type:'lab',room:homeRoom,x:24,y:26,user:userId,store:{},storeCapacityResource:{},cooldown:0,hits:500,hitsMax:500,notifyWhenAttacked:false}); await map.openRoom(economyRoom); } const gameTime=typeof common!=='undefined'&&common.getGametime?await common.getGametime():0; const memoryKey=storage.env.keys.MEMORY+userId; const rawMemory=await storage.env.get(memoryKey); let memory={}; try{ memory=rawMemory?JSON.parse(rawMemory):{}; }catch(error){ memory={}; } memory.screepsmodTestingScenarios={names:scenarios,seededAt:gameTime,rooms:{home:homeRoom,remote:remoteRoom,alliance:allianceRoom,economy:'W2N1'},hardInvader:hasScenario('defense-hard-invader')?{room:homeRoom,bodyParts:50}:undefined}; await storage.env.set(memoryKey,JSON.stringify(memory)); await map.updateTerrainData(); }).then(()=>print('__PI_CLI_DONE_OK__')).catch(error=>print('__PI_CLI_DONE_ERR__',error.stack||error.message||String(error)))`;
 }
 
 async function seedRuntimeScenarios(options, summary) {
@@ -422,7 +428,7 @@ async function createApi(options, summary, timeoutMs = 300000) {
       options.serverPassword;
 
     try {
-      await ensureBotUser(options, summary);
+      if (!options.liveCloneSnapshot) await ensureBotUser(options, summary);
       const auth = await api.auth();
       if (auth?.ok && auth.token) {
         summary.checks.apiAuthenticated = true;
@@ -468,7 +474,7 @@ async function readMemory(options, summary, api) {
 
 async function inspect(options, summary, api) {
   const memory = await readMemory(options, summary, api);
-  inspectMemorySnapshot(memory, summary);
+  inspectMemorySnapshot(memory, summary, new Date(), options);
 }
 
 async function collectModSummaryFromCli(options, summary) {
@@ -610,6 +616,42 @@ export function shouldContinuePolling({ nowMs, endAtMs, polls, maxTicks, ticksAd
 
 const TASK_BOARD_WARMUP_TICKS = 100;
 
+function getRuntimeWarmed(testSummary, summary) {
+  const testSource = String(testSummary.source ?? "");
+  if (testSource === "screepsmod-testing-merged") return testSummary.runtimeWarmed;
+  if (testSource === "screepsmod-testing-player-sandbox") return testSummary.runtimeWarmed;
+  return summary.metrics.screepsmodTestingBackend?.diagnostics?.botRuntimeWarmed;
+}
+
+export function hasSmokeValidationEvidence(summary, options = {}) {
+  const mode = options.mode ?? summary.mode ?? "smoke";
+  if (mode !== "smoke") return false;
+
+  const testSummary = summary.metrics.screepsmodTesting ?? {};
+  const ticksAdvanced = Number(summary.metrics.ticksAdvanced ?? 0);
+  const taskBoardWarmupTicks = Number.isFinite(Number(options.runtimeWarmupTicks))
+    ? Number(options.runtimeWarmupTicks)
+    : TASK_BOARD_WARMUP_TICKS;
+
+  if (!summary.checks.modResultsPresent) return false;
+  if ((testSummary.total ?? 0) <= 0) return false;
+  if ((testSummary.failed ?? 0) > 0) return false;
+  if ((testSummary.skipped ?? 0) > 0) return false;
+  if ((summary.metrics.criticalConsoleErrors ?? 0) > 0) return false;
+  if (ticksAdvanced < taskBoardWarmupTicks) return false;
+  if ((summary.metrics.taskBoardRooms ?? 0) <= 0) return false;
+  return getRuntimeWarmed(testSummary, summary) !== false;
+}
+
+export function updatePollingProgress(summary, currentGameTime, polls) {
+  const startedGameTime = summary.startedGameTime ?? currentGameTime;
+  const ticksAdvanced = Math.max(0, currentGameTime - startedGameTime);
+  summary.finishedGameTime = currentGameTime;
+  summary.metrics.polls = polls;
+  summary.metrics.ticksAdvanced = ticksAdvanced;
+  return ticksAdvanced;
+}
+
 export function validateSmokeSummary(summary, options = {}) {
   const mode = options.mode ?? "smoke";
   const ticksAdvanced = Number(summary.metrics.ticksAdvanced ?? 0);
@@ -622,28 +664,22 @@ export function validateSmokeSummary(summary, options = {}) {
         ? Number(testSummary.runtimeWarmupTicks)
         : TASK_BOARD_WARMUP_TICKS,
   );
-  const testSource = String(testSummary.source ?? "");
+  const isCpuBenchmark = mode === "cpu-benchmark";
+  const runtimeWarmed = getRuntimeWarmed(testSummary, summary);
 
-  const runtimeWarmed =
-    testSource === "screepsmod-testing-merged"
-      ? testSummary.runtimeWarmed
-      : testSource === "screepsmod-testing-player-sandbox"
-        ? testSummary.runtimeWarmed
-        : summary.metrics.screepsmodTestingBackend?.diagnostics?.botRuntimeWarmed;
-
-  if (!summary.checks.modResultsPresent)
+  if (!summary.checks.modResultsPresent && !isCpuBenchmark)
     throw new Error("screepsmod-testing result missing from Memory");
-  if (String(summary.metrics.screepsmodTesting?.source ?? "").startsWith("ci-harness-"))
+  if (String(summary.metrics.screepsmodTesting?.source ?? "").startsWith("ci-harness-") && !isCpuBenchmark)
     throw new Error("screepsmod-testing result was written by harness, not the server mod");
-  if ((testSummary.total ?? 0) <= 0)
+  if ((testSummary.total ?? 0) <= 0 && !isCpuBenchmark)
     throw new Error("screepsmod-testing did not run any assertions");
-  if ((testSummary.failed ?? 0) > 0)
+  if ((testSummary.failed ?? 0) > 0 && !isCpuBenchmark)
     throw new Error(`screepsmod-testing reported ${testSummary.failed} failed tests`);
   if (ticksAdvanced <= 0)
     throw new Error("server game time did not advance during smoke");
   if ((summary.metrics.criticalConsoleErrors ?? 0) > 0)
     throw new Error(`critical console errors detected: ${summary.metrics.criticalConsoleErrors}`);
-  if (ticksAdvanced >= taskBoardWarmupTicks && (testSummary.skipped ?? 0) > 0 && runtimeWarmed !== false)
+  if (ticksAdvanced >= taskBoardWarmupTicks && (testSummary.skipped ?? 0) > 0 && runtimeWarmed !== false && !isCpuBenchmark)
     throw new Error(`screepsmod-testing skipped ${testSummary.skipped} runtime checks after warmup`);
 
   if (mode === "long") {
@@ -664,7 +700,7 @@ export function validateSmokeSummary(summary, options = {}) {
     throw new Error(`server terrain-data errors in logs: ${logDiagnostics.terrainDataErrors}`);
   if ((logDiagnostics.typeErrors ?? 0) > 0)
     throw new Error(`server type errors in logs: ${logDiagnostics.typeErrors}`);
-  if (summary.metrics.taskBoardRooms === 0 && (
+  if (summary.metrics.taskBoardRooms === 0 && !isCpuBenchmark && (
     mode !== "smoke" || ticksAdvanced >= taskBoardWarmupTicks
   ))
     throw new Error("Memory.creepTaskBoard did not record room task boards");
@@ -731,28 +767,39 @@ export async function runPrivateServerTest(options = parseHarnessArgs()) {
     await controlPlane.waitForHttpReady();
     summary.checks.serverReady = true;
     await ensureTerrainData(summary, controlPlane);
-    await ensureBotUser(options, summary);
-    await seedRuntimeScenarios(options, summary);
-    await restartScreepsRuntime(options, controlPlane, log);
-    summary.checks.runtimeReloadedTerrainData = true;
+    if (options.liveCloneSnapshot) {
+      await seedLiveCloneSnapshot(options, summary, cliEval);
+      await restartScreepsRuntime(options, controlPlane, log);
+      summary.checks.runtimeReloadedTerrainData = true;
+      await ensureTerrainData(summary, controlPlane);
+      summary.checks.postRestartRuntimeDataReady = true;
+      await ensureLiveCloneAuth(options, summary, cliEval);
+    } else {
+      await ensureBotUser(options, summary);
+      await seedRuntimeScenarios(options, summary);
+      await restartScreepsRuntime(options, controlPlane, log);
+      summary.checks.runtimeReloadedTerrainData = true;
+      await ensureTerrainData(summary, controlPlane);
+      summary.checks.postRestartRuntimeDataReady = true;
+    }
 
     const api = await createApi(options, summary);
     await uploadBot(options, summary, api);
 
     summary.startedGameTime = await readGameTime(api, options.shardName);
+    let currentGameTime = summary.startedGameTime;
     const endAt = Date.now() + options.durationMinutes * 60 * 1000;
     let polls = 0;
     let ticksAdvanced = 0;
     while (shouldContinuePolling({ nowMs: Date.now(), endAtMs: endAt, polls, maxTicks: options.maxTicks, ticksAdvanced })) {
+      ticksAdvanced = updatePollingProgress(summary, currentGameTime, polls);
       await inspect(options, summary, api);
+      if (hasSmokeValidationEvidence(summary, options)) break;
       await new Promise((resolve) => setTimeout(resolve, options.tickPollMs));
       polls++;
-      summary.finishedGameTime = await readGameTime(api, options.shardName);
-      ticksAdvanced = Math.max(0, summary.finishedGameTime - summary.startedGameTime);
+      currentGameTime = await readGameTime(api, options.shardName);
     }
-    summary.finishedGameTime = summary.finishedGameTime ?? await readGameTime(api, options.shardName);
-    summary.metrics.polls = polls;
-    summary.metrics.ticksAdvanced = Math.max(0, summary.finishedGameTime - summary.startedGameTime);
+    updatePollingProgress(summary, currentGameTime, polls);
 
     await collectLogs(options, summary, log);
     await collectModSummaryFromCli(options, summary);

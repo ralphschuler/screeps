@@ -7,10 +7,15 @@
 
 import type { SquadMemory, SwarmCreepMemory } from "../memory/schemas";
 import {
+  calculateCombatPower,
   checkAndExecuteRetreat,
   getActualHostileCreeps,
   getActualHostileStructures,
-  isAllyPlayer
+  getVisibleDefenseAssistThreatProfile,
+  isAllyPlayer,
+  isDefenseAssistThreatProfileHard,
+  type CombatPower,
+  type DefenseAssistThreatProfile
 } from "@ralphschuler/screeps-defense";
 import { findCachedClosest } from "../cache";
 import { getNextPatrolWaypoint, getPatrolWaypoints } from "./military/patrolWaypoints";
@@ -25,9 +30,6 @@ const logger = createLogger("MilitaryBehaviors");
 const DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT = 250;
 const DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT = 750;
 const DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM = 5;
-const DEFENSE_ASSIST_HARD_THREAT_MIN_BODY_PARTS = 25;
-const DEFENSE_ASSIST_HARD_THREAT_MIN_RANGED_PARTS = 10;
-const DEFENSE_ASSIST_HARD_THREAT_MIN_HEAL_PARTS = 3;
 const DEFENSE_ASSIST_TASK = "defenseAssist";
 
 type DefenseAssistRole = "guard" | "ranger" | "healer";
@@ -70,24 +72,23 @@ function isDefenseAssistSquadStagingExpired(mem: SwarmCreepMemory, hardThreat: b
   return Game.time - mem.defenseSquadCreatedAt >= timeout;
 }
 
-function countActiveBodyParts(creep: Creep, type?: BodyPartConstant): number {
-  return creep.body.filter(part => part.hits > 0 && (!type || part.type === type)).length;
+function emptyCombatPower(): CombatPower {
+  return { partCount: 0, attack: 0, ranged: 0, heal: 0, dismantle: 0, score: 0 };
+}
+
+function addCombatPower(a: CombatPower, b: CombatPower): CombatPower {
+  return {
+    partCount: a.partCount + b.partCount,
+    attack: a.attack + b.attack,
+    ranged: a.ranged + b.ranged,
+    heal: a.heal + b.heal,
+    dismantle: a.dismantle + b.dismantle,
+    score: a.score + b.score
+  };
 }
 
 function hasVisibleHardDefenseAssistThreat(targetRoom: string): boolean {
-  const room = Game.rooms[targetRoom];
-  if (!room) return false;
-
-  return getActualHostileCreeps(room).some(hostile => {
-    const activeParts = countActiveBodyParts(hostile);
-    const rangedParts = countActiveBodyParts(hostile, RANGED_ATTACK);
-    const healParts = countActiveBodyParts(hostile, HEAL);
-    return (
-      activeParts >= DEFENSE_ASSIST_HARD_THREAT_MIN_BODY_PARTS ||
-      rangedParts >= DEFENSE_ASSIST_HARD_THREAT_MIN_RANGED_PARTS ||
-      (rangedParts > 0 && healParts >= DEFENSE_ASSIST_HARD_THREAT_MIN_HEAL_PARTS)
-    );
-  });
+  return isDefenseAssistThreatProfileHard(getVisibleDefenseAssistThreatProfile(targetRoom));
 }
 
 function getDefenseAssistSquadReleaseQuorum(mem: SwarmCreepMemory, hardThreat: boolean): number {
@@ -153,6 +154,25 @@ function countReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: st
   ).length;
 }
 
+function calculateReadyDefenseAssistTargetPower(assistTarget: string, homeRoom: string): CombatPower {
+  return Object.values(Game.creeps)
+    .filter(creep => isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom))
+    .reduce((total, creep) => {
+      const activeBody = creep.body.filter(part => part.hits > 0);
+      return addCombatPower(total, calculateCombatPower(activeBody));
+    }, emptyCombatPower());
+}
+
+function hasReadyDefenseAssistParity(
+  assistTarget: string,
+  homeRoom: string,
+  threatProfile: DefenseAssistThreatProfile
+): boolean {
+  const readyPower = calculateReadyDefenseAssistTargetPower(assistTarget, homeRoom);
+  const hasDamage = readyPower.attack + readyPower.ranged + readyPower.dismantle > 0;
+  return hasDamage && readyPower.score >= threatProfile.total.score && readyPower.partCount >= threatProfile.total.partCount;
+}
+
 function getActiveDefenseAssistSquadId(homeRoom: string, targetRoom: string): string {
   return `defenseAssist:${homeRoom}:${targetRoom}:active`;
 }
@@ -187,12 +207,11 @@ function tryAcquireDefenseAssistAssignment(ctx: CreepContext, mem: SwarmCreepMem
     mem.task = DEFENSE_ASSIST_TASK;
     mem.targetRoom = request.roomName;
     mem.assistTarget = request.roomName;
-
-    if (hasVisibleHardDefenseAssistThreat(request.roomName)) {
-      mem.defenseSquadId = getActiveDefenseAssistSquadId(ctx.homeRoom, request.roomName);
-      mem.defenseSquadSize = DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM;
-      mem.defenseSquadCreatedAt = Game.time;
-    }
+    mem.defenseSquadId = getActiveDefenseAssistSquadId(ctx.homeRoom, request.roomName);
+    mem.defenseSquadSize = hasVisibleHardDefenseAssistThreat(request.roomName)
+      ? Math.max(DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM, getTotalDefenseAssistRequestNeed(request))
+      : Math.max(1, getTotalDefenseAssistRequestNeed(request));
+    mem.defenseSquadCreatedAt = Game.time;
 
     return request.roomName;
   }
@@ -225,14 +244,19 @@ function getDefenseAssistSquadStagingAction(ctx: CreepContext, mem: SwarmCreepMe
   const assistTarget = getDefenseAssistTargetRoom(mem);
   if (!assistTarget) return null;
 
-  const hardThreat = hasVisibleHardDefenseAssistThreat(assistTarget);
+  const threatProfile = getVisibleDefenseAssistThreatProfile(assistTarget);
+  const hardThreat = isDefenseAssistThreatProfileHard(threatProfile);
   const readyMembers = hardThreat
     ? countReadyDefenseAssistTargetMembers(assistTarget, ctx.homeRoom)
     : countReadyDefenseAssistSquadMembers(mem, ctx.homeRoom);
-  if (readyMembers >= getDefenseAssistSquadReleaseQuorum(mem, hardThreat)) return null;
 
-  if (!hardThreat && isDefenseAssistSquadStagingExpired(mem, false)) return null;
-  if (hardThreat && isDefenseAssistSquadStagingExpired(mem, true)) return null;
+  if (threatProfile) {
+    if (hasReadyDefenseAssistParity(assistTarget, ctx.homeRoom, threatProfile)) return null;
+  } else {
+    if (readyMembers >= getDefenseAssistSquadReleaseQuorum(mem, hardThreat)) return null;
+    if (!hardThreat && isDefenseAssistSquadStagingExpired(mem, false)) return null;
+    if (hardThreat && isDefenseAssistSquadStagingExpired(mem, true)) return null;
+  }
 
   const collectionPoint = getCollectionPoint(ctx.room.name);
   return { type: "wait", position: collectionPoint ?? ctx.creep.pos };

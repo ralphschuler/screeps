@@ -1,69 +1,51 @@
 # @ralphschuler/screeps-clusters
 
-Colony cluster management and inter-room coordination for multi-room operations.
+Framework package for multi-room colony coordination. `packages/screeps-bot` should consume this package instead of reimplementing cluster logic in the runtime layer.
 
-## Status
+## Responsibilities
 
-⚠️ **Work in Progress**: This package is currently being extracted from the monolith and has dependencies that are being resolved.
+- Cluster role/focus-room policy.
+- Inter-room resource sharing and emergency energy routing.
+- Military reservations, rally points, squad formation, and attack target selection.
+- Defense assistance coordination across member rooms.
+- Defense reinforcement spawn planning through `@ralphschuler/screeps-spawn` contracts.
+- Offensive operation planning behind doctrine and alliance-safety checks.
 
-## Planned Features
+## Defense assistance assignment
 
-### Cluster Manager
-Central coordination for multi-room colonies:
-- Colony grouping and hierarchy
-- Resource pooling across rooms
-- Defense coordination
-- Expansion planning
+`ClusterManager` assigns idle military creeps from safe helper rooms to active `defenseRequests` before asking spawn policy to create new reinforcements.
 
-### Military Coordination
-Multi-room military operations:
-- Squad formation and management
-- Rally point coordination
-- Attack target selection
-- Offensive doctrine
+Assignment rules:
 
-### Resource Sharing
-Inter-room resource distribution:
-- Resource pooling
-- Transfer requests
-- Priority-based allocation
+- Recompute candidate defenders separately for each defense request.
+- Never reuse a stale candidate list from another target room.
+- Skip creeps already carrying `memory.assistTarget`.
+- Use only non-spawning creeps with live role parts (`ATTACK`/`RANGED_ATTACK` for guards, `RANGED_ATTACK` for rangers, `HEAL` for healers).
+- Fill requested roles independently (`guard`, `ranger`, `healer`) so extra nearby guards cannot consume ranger/healer demand.
+- Stamp assigned creeps with `assistTarget`, `targetRoom`, `task: "defenseAssist"`, and local squad metadata.
 
-### Offensive Operations
-Coordinated attacks and sieges:
-- Operation planning
-- Squad deployment
-- Target prioritization
+## Public entry points
 
-## Installation
+```ts
+import { clusterManager, buildClusterOperationIntent } from "@ralphschuler/screeps-clusters";
+```
+
+Most implementation helpers stay internal. Add exports from `src/index.ts` only when another package needs a stable contract.
+
+## Validation
 
 ```bash
-npm install @ralphschuler/screeps-clusters
+npm test -w @ralphschuler/screeps-clusters
+npm run build -w @ralphschuler/screeps-clusters
 ```
 
-## Usage (Planned)
+## Key dependencies
 
-```typescript
-import { clusterManager } from '@ralphschuler/screeps-clusters';
-
-// Coordinate cluster operations
-clusterManager.tick();
-```
-
-## Dependencies
-
-This package requires:
-- `@ralphschuler/screeps-core` - For logging and events
-- Additional monolith dependencies (being resolved)
-
-## Development Status
-
-Current extraction progress:
-- [x] Package structure created
-- [x] Source files moved
-- [ ] Dependencies resolved
-- [ ] Tests migrated
-- [ ] Build successful
-- [ ] Documentation complete
+- `@ralphschuler/screeps-core` for logging/alliance-safe utilities.
+- `@ralphschuler/screeps-defense` for threat and defense request analysis.
+- `@ralphschuler/screeps-memory` for cluster memory schema.
+- `@ralphschuler/screeps-spawn` for reinforcement spawn queue contracts.
+- `@ralphschuler/screeps-kernel` and `@ralphschuler/screeps-stats` for process/runtime integration.
 
 ## License
 

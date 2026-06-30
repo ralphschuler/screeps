@@ -1,13 +1,13 @@
 import { logger } from "@ralphschuler/screeps-core";
-import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { emergencyResponseManager, energyFlowPredictor } from "./botIntegration";
-import { optimizeBody } from "./bodyOptimizer";
-import { getBootstrapRole, isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import {
   buildDefenseAssistBody,
   getVisibleDefenseAssistThreatProfile,
   isDefenseAssistMilitaryRole
-} from "./defenseAssistBody";
+} from "@ralphschuler/screeps-defense";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { emergencyResponseManager, energyFlowPredictor } from "./botIntegration";
+import { optimizeBody } from "./bodyOptimizer";
+import { getBootstrapRole, isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { getDefenderPriorityBoost } from "./defenderManager";
 import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
 import { isRemoteEconomyRole } from "./remoteRoleDemand";

@@ -45,6 +45,28 @@ export {
   type DefenseRequest,
 } from "./analysis/defenderNeeds";
 
+export {
+  addCombatPower,
+  analyzeDefenseAssistThreat,
+  buildDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
+  calculateCombatPower,
+  calculateDefenseAssistSquadSize,
+  calculateThreatParitySquadSize,
+  emptyCombatPower,
+  multiplyCombatPower,
+  getVisibleDefenseAssistThreatProfile,
+  isDefenseAssistBodyStrongerThanThreat,
+  isDefenseAssistMilitaryRole,
+  isDefenseAssistThreatProfileHard,
+  type BodyTemplate,
+  type CombatPower,
+  type DefenseAggregateResponsePlan,
+  type DefenseAssistRole,
+  type DefenseAssistThreatProfile,
+  type ExistingDefensePower,
+} from "./analysis/defenseAssistCombat";
+
 // Threat Assessment
 export {
   assessThreat,

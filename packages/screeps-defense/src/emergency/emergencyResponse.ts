@@ -85,6 +85,7 @@ export class EmergencyResponseManager {
 
     // Create or update emergency state
     let state: EmergencyState;
+    const previousLevel = existingState?.level ?? EmergencyLevel.NONE;
     if (existingState) {
       state = existingState;
       state.level = emergencyLevel;
@@ -109,9 +110,9 @@ export class EmergencyResponseManager {
     }
 
     // Log emergency escalation
-    if (existingState && emergencyLevel > existingState.level) {
+    if (existingState && emergencyLevel > previousLevel) {
       logger.warn(
-        `Emergency escalated in ${room.name}: Level ${existingState.level} → ${emergencyLevel}`,
+        `Emergency escalated in ${room.name}: Level ${previousLevel} → ${emergencyLevel}`,
         { subsystem: "Defense" }
       );
       state.lastEscalation = Game.time;
@@ -151,8 +152,11 @@ export class EmergencyResponseManager {
     }
 
     // High: Severely outnumbered or boosted enemies with insufficient defense
-    const boostedHostiles = hostiles.filter(h => h.body.some(p => p.boost));
-    const defenderDeficit = (needs.guards - current.guards) + (needs.rangers - current.rangers);
+    const boostedHostiles = hostiles.filter(h => h.body.some(p => p.hits > 0 && p.boost));
+    const defenderDeficit =
+      Math.max(0, needs.guards - current.guards) +
+      Math.max(0, needs.rangers - current.rangers) +
+      Math.max(0, needs.healers - current.healers);
 
     if (boostedHostiles.length > 0 && defenderDeficit >= 2) {
       return EmergencyLevel.HIGH;
@@ -181,9 +185,9 @@ export class EmergencyResponseManager {
    * Execute emergency response actions
    */
   private executeEmergencyResponse(room: Room, swarm: SwarmState, state: EmergencyState): void {
-    // Response: request multi-room assistance for any visible dangerous attack.
+    // Response: request or refresh multi-room assistance for any visible dangerous attack.
     // needsDefenseAssistance gates out harmless/allied sightings and rooms without a defender deficit.
-    if (state.level >= EmergencyLevel.LOW && !state.assistanceRequested) {
+    if (state.level >= EmergencyLevel.LOW) {
       const requested = this.requestDefenseAssistance(room, swarm);
       if (requested) {
         state.assistanceRequested = true;
@@ -218,26 +222,42 @@ export class EmergencyResponseManager {
       return false;
     }
 
-    // Store request in memory for cluster coordination
+    // Store request in memory for cluster coordination.
+    // Refresh the same room when visible threat composition changes; stale
+    // low estimates cause helper rooms to trickle under-sized defenders.
     const mem = Memory as unknown as Record<string, unknown>;
     const requests = (mem.defenseRequests as DefenseRequest[]) ?? [];
-    
-    // Remove old requests for this room
-    const filtered = requests.filter(
-      (r: DefenseRequest) => r.roomName !== room.name || Game.time - r.createdAt < 500
+    const existing = requests.find(
+      (r: DefenseRequest) => r.roomName === room.name && Game.time - r.createdAt < 500
     );
-    
-    // Add new request
-    filtered.push(request);
-    mem.defenseRequests = filtered;
+    const others = requests.filter(
+      (r: DefenseRequest) => r.roomName !== room.name && Game.time - r.createdAt < 500
+    );
+
+    if (existing && !this.shouldRefreshDefenseRequest(existing, request)) {
+      mem.defenseRequests = [...others, existing];
+      return true;
+    }
+
+    mem.defenseRequests = [...others, request];
 
     logger.warn(
       `Defense assistance requested for ${room.name}: ` +
-        `${request.guardsNeeded} guards, ${request.rangersNeeded} rangers - ${request.threat}`,
+        `${request.guardsNeeded} guards, ${request.rangersNeeded} rangers, ${request.healersNeeded} healers - ${request.threat}`,
       { subsystem: "Defense" }
     );
 
     return true;
+  }
+
+  private shouldRefreshDefenseRequest(existing: DefenseRequest, next: DefenseRequest): boolean {
+    return (
+      next.urgency !== existing.urgency ||
+      next.guardsNeeded !== existing.guardsNeeded ||
+      next.rangersNeeded !== existing.rangersNeeded ||
+      next.healersNeeded !== existing.healersNeeded ||
+      next.threat !== existing.threat
+    );
   }
 
   /**

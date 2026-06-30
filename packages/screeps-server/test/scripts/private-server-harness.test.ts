@@ -8,6 +8,7 @@ import {
   buildSeedRuntimeScenariosCommand,
   createInitialSummary,
   decodeMemoryData,
+  hasSmokeValidationEvidence,
   inspectMemorySnapshot,
   parseHarnessArgs,
   parseRuntimeWarmupTicks,
@@ -18,6 +19,7 @@ import {
   restartScreepsRuntime,
   shouldContinuePolling,
   summarizeServerLogDiagnostics,
+  updatePollingProgress,
   validateSmokeSummary,
 } from "../../scripts/private-server-harness.js";
 
@@ -442,6 +444,43 @@ describe("private-server harness module", () => {
     expect(shouldContinuePolling({ nowMs: 10, endAtMs: 100, polls: 1, maxTicks: 1000, ticksAdvanced: 1000 })).to.equal(false);
   });
 
+  it("can stop smoke polling once warmed runtime assertions and task-board evidence are present", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.checks.modResultsPresent = true;
+    summary.metrics.screepsmodTesting = {
+      source: "screepsmod-testing-merged",
+      total: 49,
+      passed: 49,
+      failed: 0,
+      skipped: 0,
+      runtimeWarmed: true,
+    };
+    summary.metrics.criticalConsoleErrors = 0;
+    summary.metrics.taskBoardRooms = 2;
+    summary.metrics.ticksAdvanced = 892;
+
+    expect(hasSmokeValidationEvidence(summary, { mode: "smoke", runtimeWarmupTicks: 100 })).to.equal(true);
+    expect(hasSmokeValidationEvidence(summary, { mode: "long", runtimeWarmupTicks: 100 })).to.equal(false);
+
+    summary.metrics.screepsmodTesting.skipped = 1;
+    expect(hasSmokeValidationEvidence(summary, { mode: "smoke", runtimeWarmupTicks: 100 })).to.equal(false);
+  });
+
+  it("records the latest observed game time when polling exits", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.startedGameTime = 100;
+    summary.finishedGameTime = 110;
+    summary.metrics.polls = 1;
+    summary.metrics.ticksAdvanced = 10;
+
+    const ticksAdvanced = updatePollingProgress(summary, 150, 4);
+
+    expect(ticksAdvanced).to.equal(50);
+    expect(summary.finishedGameTime).to.equal(150);
+    expect(summary.metrics.polls).to.equal(4);
+    expect(summary.metrics.ticksAdvanced).to.equal(50);
+  });
+
   it("restarts only the Screeps service before post-spawn runtime validation", async () => {
     const options = parseHarnessArgs([], {});
     const calls: unknown[][] = [];
@@ -533,6 +572,7 @@ describe("private-server harness module", () => {
     expect(command).to.include("ScenarioHardInvader");
     expect(command).to.include("type:'extension'");
     expect(command).to.include("level:4");
+    expect(command).to.include("safeMode:null");
     expect(command).to.include("hardInvader:hasScenario('defense-hard-invader')?{room:homeRoom,bodyParts:50}:undefined");
   });
 
