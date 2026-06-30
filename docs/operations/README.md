@@ -9,6 +9,7 @@ Operate the bot with CPU, bucket, spawn health, room survival, and error rate as
 - Grafana dashboards linked from the root README when available.
 - Private-server artifacts under `packages/screeps-server/artifacts/<mode>/`.
 - GitHub Actions validation artifacts for duplication, complexity, coverage, and smoke tests.
+- [Global runtime diagnostics](global-runtime-diagnostics.md) for global resets and stale heap switches.
 
 ## Key health checks
 
@@ -56,6 +57,7 @@ Treat these as failures: no tick progression, bot upload failure, missing test m
 - **Deploy says credentials valid but no upload:** confirm `DEPLOY=true` path via `npm run push`, not `npm run build`.
 - **Private-server ports busy:** harness auto-selects alternate ports; stale containers can be stopped with server package scripts.
 - **Global reset loop:** inspect first thrown error in console/harness logs, then add a regression test around initialization.
+- **Global heap switch:** check `Memory.runtimeDiagnostics.global.switchCount`; repeated increments mean heap globals may be stale.
 - **Bucket drain:** disable expensive visuals/planning first, then profile process metrics and hot path pathfinding.
 - **Allied target risk:** use shared alliance helpers from core/defense and add tests for `TooAngel`/`TedRoastBeef`.
 
