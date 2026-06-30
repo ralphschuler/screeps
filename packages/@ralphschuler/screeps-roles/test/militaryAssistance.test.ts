@@ -21,6 +21,25 @@ function createHardThreatRoom(roomName = "W2N1"): Room {
   ]);
 }
 
+function createAggregateHardThreatRoom(roomName = "W2N1"): Room {
+  const bodies: BodyPartConstant[][] = [
+    [RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, HEAL, MOVE],
+    [RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE],
+    [ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE],
+    [RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, HEAL, MOVE],
+    [ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE],
+    [RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE]
+  ];
+  const hostiles = bodies.map(body => ({
+    owner: { username: "Invader" },
+    body: body.map(type => ({ type, hits: 100 }))
+  })) as unknown as Creep[];
+  const room = createMockRoom(roomName);
+  (room as any).find = (type: number) => (type === FIND_HOSTILE_CREEPS ? hostiles : []);
+  Game.rooms[roomName] = room;
+  return room;
+}
+
 function createAssistContext(
   role: "guard" | "ranger" | "healer",
   hostileStructures: Structure[],
@@ -188,7 +207,7 @@ describe("military assistance behavior", () => {
     expect(action.type).to.not.equal("moveToRoom");
   });
 
-  it("releases hard-threat assistance when same-home defenders from separate waves form a safe quorum", () => {
+  it("keeps hard-threat assistance staged when quorum lacks aggregate parity", () => {
     createHardThreatRoom("W2N1");
     const ctx = createAssistContext("guard", [], {
       roomName: "W1N1",
@@ -216,7 +235,7 @@ describe("military assistance behavior", () => {
 
     const action = guard(ctx);
 
-    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect(action.type).to.equal("wait");
   });
 
   it("stages guard assistance at home until its squad quorum is ready", () => {
@@ -303,7 +322,7 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
-  it("keeps hard-threat defense assists staged after the normal timeout until a safe quorum is ready", () => {
+  it("keeps hard-threat defense assists staged after the normal timeout until parity is ready", () => {
     createHardThreatRoom("W2N1");
     const squadId = "assist:W1N1:W2N1:hard";
     const ctx = createAssistContext("healer", [], {
@@ -381,7 +400,7 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
-  it("releases hard-threat defense assists after the extended hard staging timeout", () => {
+  it("keeps visible hard-threat defense assists staged after the extended timeout without parity", () => {
     createHardThreatRoom("W2N1");
     const ctx = createAssistContext("healer", [], {
       roomName: "W1N1",
@@ -396,7 +415,25 @@ describe("military assistance behavior", () => {
 
     const action = healer(ctx);
 
-    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect(action.type).to.equal("wait");
+  });
+
+  it("keeps expired aggregate hard-threat assists staged until same-home parity is ready", () => {
+    createAggregateHardThreatRoom("W2N1");
+    const ctx = createAssistContext("guard", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        defenseSquadId: "assist:W1N1:W2N1:aggregate-hard-timeout",
+        defenseSquadSize: 1,
+        defenseSquadCreatedAt: Game.time - 760
+      }
+    });
+    Game.creeps[ctx.creep.name] = ctx.creep;
+
+    const action = guard(ctx);
+
+    expect(action.type).to.equal("wait");
   });
 
   it("defends the home room before staging for another room", () => {
@@ -431,7 +468,7 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "attack", target: localHostile });
   });
 
-  it("releases hard-threat defense assists once a safe staged quorum is ready", () => {
+  it("keeps hard-threat defense assists staged when staged quorum lacks parity", () => {
     createHardThreatRoom("W2N1");
     const squadId = "assist:W1N1:W2N1:hard";
     const ctx = createAssistContext("guard", [], {
@@ -452,7 +489,7 @@ describe("military assistance behavior", () => {
 
     const action = guard(ctx);
 
-    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect(action.type).to.equal("wait");
   });
 
   it("releases healer assistance after the squad staging timeout", () => {

@@ -24,6 +24,7 @@ export * from './schemas/utilitySchemas';
 export * from './heap-cache';
 export * from './monitor';
 export * from './segments';
+export * from './rawSegmentStore';
 export * from './compressor';
 export * from './pruner';
 export * from './migrations';

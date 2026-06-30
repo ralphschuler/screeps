@@ -1,7 +1,17 @@
 import { logger } from "@ralphschuler/screeps-core";
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import {
+  buildDefenseAssistBody as buildSharedDefenseAssistBody,
+  calculateAggregateDefenseResponsePlan,
+  calculateCombatPower,
+  getActualHostileCreeps,
+  getVisibleDefenseAssistThreatProfile,
+  type BodyTemplate,
+  type CombatPower,
+  type DefenseAssistThreatProfile,
+  type ExistingDefensePower
+} from "@ralphschuler/screeps-defense";
 import type { CreepRole, SwarmCreepMemory } from "@ralphschuler/screeps-memory";
-import type { BodyTemplate, DefenseAssistThreatProfile, SpawnRequest } from "@ralphschuler/screeps-spawn";
+import type { SpawnRequest } from "@ralphschuler/screeps-spawn";
 import type { ClusterMemory, DefenseAssistanceRequest } from "./types";
 
 export type DefenseReinforcementRole = "guard" | "ranger" | "healer";
@@ -14,6 +24,7 @@ export const DefenseReinforcementPriority = {
 export interface PendingDefenseAssistSpawn {
   role: DefenseReinforcementRole;
   targetRoom: string;
+  power?: CombatPower;
 }
 
 export interface DefenseReinforcementRoomState {
@@ -37,12 +48,18 @@ export interface DefenseReinforcementIntent {
   threatProfile?: DefenseAssistThreatProfile | null;
 }
 
+export interface AssignedDefenseAssistPower {
+  counts: Record<DefenseReinforcementRole, number>;
+  power: ExistingDefensePower;
+}
+
 export interface DefenseReinforcementPlanInput {
   cluster: ClusterMemory;
   rooms: Record<string, DefenseReinforcementRoomState | undefined>;
   now: number;
   maxNewSpawnsPerHelperRoom?: number;
   targetThreats?: Record<string, DefenseAssistThreatProfile | null | undefined>;
+  targetAssigned?: Record<string, AssignedDefenseAssistPower | undefined>;
 }
 
 export interface SpawnQueueForReinforcements {
@@ -53,119 +70,63 @@ export interface SpawnQueueForReinforcements {
 const DEFENSE_ASSIST_TASK = "defenseAssist";
 const DEFAULT_MAX_NEW_SPAWNS_PER_HELPER_ROOM = 2;
 const DISTANT_ROOM_PENALTY = 50;
-const MAX_BODY_PARTS = 50;
-const MAX_DEFENSE_ASSIST_SQUAD_SIZE = 8;
-const PART_SIZE_SCORE = 2;
-
-function calculateBodyCost(parts: BodyPartConstant[]): number {
-  const costs: Record<BodyPartConstant, number> = {
-    [MOVE]: 50,
-    [WORK]: 100,
-    [CARRY]: 50,
-    [ATTACK]: 80,
-    [RANGED_ATTACK]: 150,
-    [HEAL]: 250,
-    [CLAIM]: 600,
-    [TOUGH]: 10
+function createEmptyAssignedDefenseAssistPower(): AssignedDefenseAssistPower {
+  return {
+    counts: { guard: 0, ranger: 0, healer: 0 },
+    power: {}
   };
-  return parts.reduce((sum, part) => sum + costs[part], 0);
 }
 
-function makeBody(parts: BodyPartConstant[]): BodyTemplate | null {
-  if (parts.length === 0 || parts.length > MAX_BODY_PARTS || !parts.includes(MOVE)) return null;
-  const cost = calculateBodyCost(parts);
-  return { parts, cost, minCapacity: cost };
+function hasActiveAssignedRolePart(role: DefenseReinforcementRole, parts: Array<BodyPartConstant | BodyPartDefinition>): boolean {
+  const types = parts.map(part => (typeof part === "string" ? part : part.type));
+  if (role === "guard") return types.includes(ATTACK) || types.includes(RANGED_ATTACK);
+  if (role === "ranger") return types.includes(RANGED_ATTACK);
+  return types.includes(HEAL);
 }
 
-function orderedBody(counts: Partial<Record<BodyPartConstant, number>>): BodyPartConstant[] {
-  const parts: BodyPartConstant[] = [];
-  for (const part of [TOUGH, WORK, ATTACK, RANGED_ATTACK, HEAL, MOVE] as const) {
-    for (let i = 0; i < (counts[part] ?? 0); i++) parts.push(part);
+function addAssignedDefenseAssistPower(
+  assigned: AssignedDefenseAssistPower,
+  role: DefenseReinforcementRole,
+  parts: Array<BodyPartConstant | BodyPartDefinition>
+): void {
+  if (!hasActiveAssignedRolePart(role, parts)) return;
+
+  const power = calculateCombatPower(parts);
+  const existing = assigned.power[role];
+  assigned.counts[role]++;
+  assigned.power[role] = existing
+    ? {
+        partCount: existing.partCount + power.partCount,
+        attack: existing.attack + power.attack,
+        ranged: existing.ranged + power.ranged,
+        heal: existing.heal + power.heal,
+        dismantle: existing.dismantle + power.dismantle,
+        score: existing.score + power.score
+      }
+    : power;
+}
+
+function mergeAssignedDefenseAssistPower(
+  target: AssignedDefenseAssistPower,
+  source: AssignedDefenseAssistPower | undefined
+): void {
+  if (!source) return;
+  for (const role of ["guard", "ranger", "healer"] as const) {
+    target.counts[role] += source.counts[role] ?? 0;
+    const power = source.power[role];
+    if (!power) continue;
+    const existing = target.power[role];
+    target.power[role] = existing
+      ? {
+          partCount: existing.partCount + power.partCount,
+          attack: existing.attack + power.attack,
+          ranged: existing.ranged + power.ranged,
+          heal: existing.heal + power.heal,
+          dismantle: existing.dismantle + power.dismantle,
+          score: existing.score + power.score
+        }
+      : power;
   }
-  return parts;
-}
-
-function addBodyCandidate(candidates: BodyTemplate[], parts: BodyPartConstant[], energyCapacity: number): void {
-  const body = makeBody(parts);
-  if (!body || body.cost > energyCapacity) return;
-  const key = body.parts.join(",");
-  if (!candidates.some(candidate => candidate.parts.join(",") === key)) candidates.push(body);
-}
-
-function calculateCombatScore(parts: Array<BodyPartConstant | BodyPartDefinition>): {
-  partCount: number;
-  attack: number;
-  ranged: number;
-  heal: number;
-  dismantle: number;
-  score: number;
-} {
-  let attack = 0;
-  let ranged = 0;
-  let heal = 0;
-  let dismantle = 0;
-  for (const part of parts) {
-    const type = typeof part === "string" ? part : part.type;
-    if (type === ATTACK) attack += 30;
-    if (type === RANGED_ATTACK) ranged += 10;
-    if (type === HEAL) heal += 12;
-    if (type === WORK) dismantle += 50;
-  }
-  return { partCount: parts.length, attack, ranged, heal, dismantle, score: attack + ranged + heal + dismantle + parts.length * PART_SIZE_SCORE };
-}
-
-function getVisibleDefenseAssistThreatProfile(targetRoom: string): DefenseAssistThreatProfile | null {
-  const room = Game.rooms[targetRoom];
-  if (!room) return null;
-  const hostiles = getActualHostileCreeps(room);
-  if (hostiles.length === 0) return null;
-
-  let strongest: DefenseAssistThreatProfile["strongest"] = null;
-  const total = { partCount: 0, attack: 0, ranged: 0, heal: 0, dismantle: 0, score: 0 };
-  for (const hostile of hostiles) {
-    const power = calculateCombatScore(hostile.body);
-    total.partCount += power.partCount;
-    total.attack += power.attack;
-    total.ranged += power.ranged;
-    total.heal += power.heal;
-    total.dismantle += power.dismantle;
-    total.score += power.score;
-    if (!strongest || power.score > strongest.score) strongest = power;
-  }
-
-  return { hostileCount: hostiles.length, strongest, total };
-}
-
-function isDefenseAssistBodyStrongerThanThreat(
-  parts: BodyPartConstant[],
-  threat: DefenseAssistThreatProfile["strongest"] | undefined
-): boolean {
-  if (!threat || threat.score <= 0) return true;
-  const power = calculateCombatScore(parts);
-  return power.partCount > threat.partCount && power.score > threat.score;
-}
-
-function generateDefenseAssistBodies(role: DefenseReinforcementRole, energyCapacity: number): BodyTemplate[] {
-  const candidates: BodyTemplate[] = [];
-  for (let parts = 1; parts <= 25; parts++) {
-    if (role === "guard") {
-      addBodyCandidate(candidates, orderedBody({ [ATTACK]: parts, [MOVE]: parts }), energyCapacity);
-      addBodyCandidate(candidates, orderedBody({ [TOUGH]: parts, [ATTACK]: parts, [MOVE]: parts }), energyCapacity);
-    } else if (role === "ranger") {
-      addBodyCandidate(candidates, orderedBody({ [RANGED_ATTACK]: parts, [MOVE]: parts }), energyCapacity);
-      addBodyCandidate(candidates, orderedBody({ [TOUGH]: Math.ceil(parts / 2), [RANGED_ATTACK]: parts, [MOVE]: parts }), energyCapacity);
-    } else {
-      addBodyCandidate(candidates, orderedBody({ [HEAL]: parts, [MOVE]: parts }), energyCapacity);
-      addBodyCandidate(candidates, orderedBody({ [TOUGH]: Math.ceil(parts / 2), [HEAL]: parts, [MOVE]: parts }), energyCapacity);
-    }
-  }
-  return candidates;
-}
-
-function compareByPowerThenCost(a: BodyTemplate, b: BodyTemplate): number {
-  const powerDelta = calculateCombatScore(b.parts).score - calculateCombatScore(a.parts).score;
-  if (powerDelta !== 0) return powerDelta;
-  return b.cost - a.cost;
 }
 
 function buildDefenseAssistBody(
@@ -173,34 +134,7 @@ function buildDefenseAssistBody(
   energyCapacity: number,
   threatProfile?: DefenseAssistThreatProfile | null
 ): BodyTemplate | null {
-  const candidates = generateDefenseAssistBodies(role, energyCapacity);
-  if (candidates.length === 0) return null;
-
-  const threat = threatProfile?.strongest;
-  if (threat?.score) {
-    const outmatching = candidates
-      .filter(candidate => isDefenseAssistBodyStrongerThanThreat(candidate.parts, threat))
-      .sort((a, b) => a.cost - b.cost || compareByPowerThenCost(a, b));
-    if (outmatching.length > 0) return outmatching[0]!;
-  }
-
-  return [...candidates].sort(compareByPowerThenCost)[0] ?? null;
-}
-
-function calculateDefenseAssistSquadSize(
-  role: DefenseReinforcementRole,
-  energyCapacity: number,
-  threatProfile?: DefenseAssistThreatProfile | null
-): number {
-  const body = buildDefenseAssistBody(role, energyCapacity, null);
-  const threat = threatProfile?.strongest;
-  if (!body) return 0;
-  if (!threat || isDefenseAssistBodyStrongerThanThreat(body.parts, threat)) return 1;
-
-  const bodyPower = calculateCombatScore(body.parts);
-  const powerSquadSize = Math.ceil((threat.score + 1) / Math.max(1, bodyPower.score));
-  const sizeSquadSize = Math.ceil((threat.partCount + 1) / Math.max(1, bodyPower.partCount));
-  return Math.min(MAX_DEFENSE_ASSIST_SQUAD_SIZE, Math.max(2, powerSquadSize, sizeSquadSize));
+  return buildSharedDefenseAssistBody(role, energyCapacity, threatProfile);
 }
 
 function getRequestNeed(request: DefenseAssistanceRequest, role: DefenseReinforcementRole): number {
@@ -212,19 +146,6 @@ function getRequestNeed(request: DefenseAssistanceRequest, role: DefenseReinforc
     case "healer":
       return Math.max(0, request.healersNeeded);
   }
-}
-
-function getPendingCount(
-  rooms: Record<string, DefenseReinforcementRoomState | undefined>,
-  targetRoom: string,
-  role: DefenseReinforcementRole
-): number {
-  let count = 0;
-  for (const room of Object.values(rooms)) {
-    if (!room?.pendingAssist) continue;
-    count += room.pendingAssist.filter(pending => pending.role === role && pending.targetRoom === targetRoom).length;
-  }
-  return count;
 }
 
 function getPriority(urgency: number): number {
@@ -257,7 +178,11 @@ function canHelperOutmatchThreat(
   threatProfile: DefenseAssistThreatProfile | null | undefined
 ): boolean {
   const body = buildDefenseAssistBody(role, helper.energyCapacityAvailable, threatProfile);
-  return Boolean(body && isDefenseAssistBodyStrongerThanThreat(body.parts, threatProfile?.strongest));
+  if (!body) return false;
+  const threat = threatProfile?.strongest;
+  if (!threat || threat.score <= 0) return true;
+  const power = calculateCombatPower(body.parts);
+  return power.partCount >= threat.partCount && power.score >= threat.score;
 }
 
 function rankHelpersForRole(
@@ -279,32 +204,47 @@ function rankHelpersForRole(
   });
 }
 
-function getRequestedSquadSize(
+function getAssignedDefenseAssistForTarget(
+  input: DefenseReinforcementPlanInput,
+  targetRoom: string
+): AssignedDefenseAssistPower {
+  const assigned = createEmptyAssignedDefenseAssistPower();
+  mergeAssignedDefenseAssistPower(assigned, input.targetAssigned?.[targetRoom]);
+  for (const room of Object.values(input.rooms)) {
+    for (const pending of room?.pendingAssist ?? []) {
+      if (pending.targetRoom !== targetRoom) continue;
+      assigned.counts[pending.role]++;
+      if (pending.power) {
+        const existing = assigned.power[pending.role];
+        assigned.power[pending.role] = existing
+          ? {
+              partCount: existing.partCount + pending.power.partCount,
+              attack: existing.attack + pending.power.attack,
+              ranged: existing.ranged + pending.power.ranged,
+              heal: existing.heal + pending.power.heal,
+              dismantle: existing.dismantle + pending.power.dismantle,
+              score: existing.score + pending.power.score
+            }
+          : pending.power;
+      }
+    }
+  }
+  return assigned;
+}
+
+function getRemainingRequestNeeds(
   request: DefenseAssistanceRequest,
-  role: DefenseReinforcementRole,
-  helpers: DefenseReinforcementRoomState[],
-  threatProfile: DefenseAssistThreatProfile | null | undefined
-): number {
-  const requestedNeed = getRequestNeed(request, role);
-  if (requestedNeed <= 0) return 0;
-  const bestHelperEnergy = Math.max(...helpers.map(helper => helper.energyCapacityAvailable));
-  return Math.max(requestedNeed, calculateDefenseAssistSquadSize(role, bestHelperEnergy, threatProfile));
+  assigned: AssignedDefenseAssistPower
+): Partial<Record<DefenseReinforcementRole, number>> {
+  return {
+    guard: Math.max(0, getRequestNeed(request, "guard") - assigned.counts.guard),
+    ranger: Math.max(0, getRequestNeed(request, "ranger") - assigned.counts.ranger),
+    healer: Math.max(0, getRequestNeed(request, "healer") - assigned.counts.healer)
+  };
 }
 
 function createDefenseSquadId(helperRoom: string, targetRoom: string, now: number): string {
   return `defenseAssist:${helperRoom}:${targetRoom}:${now}`;
-}
-
-function getLocalWaveSize(
-  request: DefenseAssistanceRequest,
-  helper: DefenseReinforcementRoomState,
-  threatProfile: DefenseAssistThreatProfile | null | undefined
-): number {
-  const roles = (["guard", "ranger", "healer"] as const).filter(role => {
-    if (getRequestNeed(request, role) <= 0) return false;
-    return Boolean(buildDefenseAssistBody(role, helper.energyCapacityAvailable, threatProfile));
-  });
-  return Math.max(1, Math.min(DEFAULT_MAX_NEW_SPAWNS_PER_HELPER_ROOM, roles.length));
 }
 
 /**
@@ -324,10 +264,18 @@ export function planDefenseReinforcementSpawns(input: DefenseReinforcementPlanIn
     if (helpers.length === 0) continue;
 
     const threatProfile = input.targetThreats?.[request.roomName];
+    const assigned = getAssignedDefenseAssistForTarget(input, request.roomName);
+    const bestHelperEnergy = Math.max(...helpers.map(helper => helper.energyCapacityAvailable));
+    const aggregatePlan = calculateAggregateDefenseResponsePlan(
+      bestHelperEnergy,
+      threatProfile,
+      getRemainingRequestNeeds(request, assigned),
+      assigned.power
+    );
+    const plannedSquadSize = Math.max(1, aggregatePlan.counts.guard + aggregatePlan.counts.ranger + aggregatePlan.counts.healer);
 
     for (const role of ["guard", "ranger", "healer"] as const) {
-      const pendingCount = getPendingCount(input.rooms, request.roomName, role);
-      const needed = Math.max(0, getRequestedSquadSize(request, role, helpers, threatProfile) - pendingCount);
+      const needed = aggregatePlan.counts[role];
       const rankedHelpers = rankHelpersForRole(helpers, role, request.roomName, threatProfile);
 
       for (let i = 0; i < needed; i++) {
@@ -351,7 +299,7 @@ export function planDefenseReinforcementSpawns(input: DefenseReinforcementPlanIn
             targetRoom: request.roomName,
             task: DEFENSE_ASSIST_TASK,
             defenseSquadId: createDefenseSquadId(helper.roomName, request.roomName, input.now),
-            defenseSquadSize: getLocalWaveSize(request, helper, threatProfile),
+            defenseSquadSize: plannedSquadSize,
             defenseSquadCreatedAt: input.now
           },
           threatProfile
@@ -373,9 +321,25 @@ function getPendingAssistSpawns(roomName: string, queue: SpawnQueueForReinforcem
     .filter((request: SpawnRequest) => isDefenseReinforcementRole(request.role))
     .map((request: SpawnRequest) => ({
       role: request.role as DefenseReinforcementRole,
-      targetRoom: request.additionalMemory?.assistTarget ?? request.targetRoom ?? ""
+      targetRoom: request.additionalMemory?.assistTarget ?? request.targetRoom ?? "",
+      power: calculateCombatPower(request.body.parts)
     }))
     .filter((pending: PendingDefenseAssistSpawn) => pending.targetRoom.length > 0);
+}
+
+function getDefenseAssistTarget(memory: Partial<SwarmCreepMemory>): string | undefined {
+  return memory.assistTarget ?? (memory.task === DEFENSE_ASSIST_TASK ? memory.targetRoom : undefined);
+}
+
+function getActiveAssignedDefenseAssist(targetRoom: string): AssignedDefenseAssistPower {
+  const assigned = createEmptyAssignedDefenseAssistPower();
+  for (const creep of Object.values(Game.creeps ?? {})) {
+    const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
+    const role = memory.role ?? "";
+    if (!isDefenseReinforcementRole(role) || getDefenseAssistTarget(memory) !== targetRoom || creep.spawning) continue;
+    addAssignedDefenseAssistPower(assigned, role, creep.body.filter(part => part.hits > 0));
+  }
+  return assigned;
 }
 
 function buildRoomState(
@@ -455,14 +419,16 @@ export function queueDefenseReinforcementSpawns(cluster: ClusterMemory, queue: S
   const targetRooms = Array.from(new Set(cluster.defenseRequests.map(request => request.roomName)));
   const rooms: Record<string, DefenseReinforcementRoomState | undefined> = {};
   const targetThreats: Record<string, DefenseAssistThreatProfile | null> = {};
+  const targetAssigned: Record<string, AssignedDefenseAssistPower> = {};
   for (const targetRoom of targetRooms) {
     targetThreats[targetRoom] = getVisibleDefenseAssistThreatProfile(targetRoom);
+    targetAssigned[targetRoom] = getActiveAssignedDefenseAssist(targetRoom);
   }
   for (const roomName of cluster.memberRooms) {
     rooms[roomName] = buildRoomState(roomName, targetRooms, queue);
   }
 
-  const intents = planDefenseReinforcementSpawns({ cluster, rooms, now: Game.time, targetThreats });
+  const intents = planDefenseReinforcementSpawns({ cluster, rooms, now: Game.time, targetThreats, targetAssigned });
   let queued = 0;
 
   for (const intent of intents) {

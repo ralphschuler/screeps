@@ -1,18 +1,18 @@
 import { logger } from "@ralphschuler/screeps-core";
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
-import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
-import { optimizeBody } from "./bodyOptimizer";
-import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import {
   addCombatPower,
   analyzeDefenseAssistThreat,
   buildDefenseAssistBody,
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
+  getActualHostileCreeps,
   type DefenseAssistRole,
   type ExistingDefensePower
-} from "./defenseAssistBody";
+} from "@ralphschuler/screeps-defense";
+import type { SwarmState } from "@ralphschuler/screeps-memory";
+import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
+import { optimizeBody } from "./bodyOptimizer";
+import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";

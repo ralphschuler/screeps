@@ -70,6 +70,14 @@ function installScreepsConstants(): void {
   (globalThis as any).Memory = {};
 }
 
+function aggregateTiggaThreat() {
+  return {
+    hostileCount: 6,
+    strongest: { partCount: 10, attack: 150, ranged: 0, heal: 0, dismantle: 0, score: 170 },
+    total: { partCount: 48, attack: 300, ranged: 80, heal: 72, dismantle: 0, score: 548 }
+  };
+}
+
 function clusterWithAttack(): ClusterMemory {
   return {
     id: "cluster_W1N1",
@@ -225,6 +233,107 @@ describe("defense reinforcements", () => {
     expect(cluster.defenseRequests[0]!.guardsNeeded).to.equal(3);
   });
 
+  it("accounts for active assigned assist power before planning more reinforcements", async () => {
+    const { planDefenseReinforcementSpawns } = await import("../src/defenseReinforcements.ts");
+    const cluster = clusterWithAttack();
+    cluster.defenseRequests[0]!.guardsNeeded = 1;
+    cluster.defenseRequests[0]!.rangersNeeded = 0;
+    cluster.defenseRequests[0]!.healersNeeded = 0;
+
+    const intents = planDefenseReinforcementSpawns({
+      cluster,
+      now: 1235,
+      targetThreats: {
+        W1N1: {
+          hostileCount: 1,
+          strongest: { partCount: 2, attack: 30, ranged: 0, heal: 0, dismantle: 0, score: 34 },
+          total: { partCount: 2, attack: 30, ranged: 0, heal: 0, dismantle: 0, score: 34 }
+        }
+      },
+      targetAssigned: {
+        W1N1: {
+          counts: { guard: 1, ranger: 0, healer: 0 },
+          power: { guard: { partCount: 10, attack: 150, ranged: 0, heal: 0, dismantle: 0, score: 170 } }
+        }
+      },
+      rooms: {
+        W1N1: { roomName: "W1N1", owned: true, safe: false, availableSpawns: 1, energyCapacityAvailable: 800, distances: {} },
+        W2N1: {
+          roomName: "W2N1",
+          owned: true,
+          safe: true,
+          availableSpawns: 1,
+          energyCapacityAvailable: 800,
+          distances: { W1N1: 1 }
+        },
+        W4N1: {
+          roomName: "W4N1",
+          owned: true,
+          safe: true,
+          availableSpawns: 1,
+          energyCapacityAvailable: 1800,
+          distances: { W1N1: 3 }
+        }
+      }
+    });
+
+    expect(intents).to.deep.equal([]);
+  });
+
+  it("does not let disarmed assigned assists suppress replacement reinforcement spawns", async () => {
+    const { queueDefenseReinforcementSpawns } = await import("../src/defenseReinforcements.ts");
+    const cluster = clusterWithAttack();
+    cluster.defenseRequests[0]!.guardsNeeded = 1;
+    cluster.defenseRequests[0]!.rangersNeeded = 0;
+    cluster.defenseRequests[0]!.healersNeeded = 0;
+    const spawn = { spawning: false };
+    const queued: unknown[] = [];
+
+    (globalThis as any).Game = {
+      time: 1236,
+      creeps: {
+        disarmedAssist: {
+          name: "disarmedAssist",
+          spawning: false,
+          body: [
+            { type: MOVE, hits: 100 },
+            { type: ATTACK, hits: 0 }
+          ],
+          memory: { family: "military", role: "guard", assistTarget: "W1N1" }
+        }
+      },
+      map: { getRoomLinearDistance: () => 1 },
+      rooms: {
+        W1N1: {
+          name: "W1N1",
+          controller: { my: true },
+          energyCapacityAvailable: 800,
+          find: (type: FindConstant) => (type === FIND_MY_SPAWNS ? [spawn] : [])
+        },
+        W2N1: {
+          name: "W2N1",
+          controller: { my: true },
+          energyCapacityAvailable: 800,
+          find: (type: FindConstant) => (type === FIND_MY_SPAWNS ? [spawn] : [])
+        },
+        W4N1: {
+          name: "W4N1",
+          controller: { my: true },
+          energyCapacityAvailable: 800,
+          find: (type: FindConstant) => (type === FIND_MY_SPAWNS ? [spawn] : [])
+        }
+      }
+    };
+
+    const count = queueDefenseReinforcementSpawns(cluster, {
+      getPendingRequests: () => [],
+      addRequest: request => queued.push(request)
+    });
+
+    expect(count).to.equal(1);
+    expect(queued.map((request: any) => request.role)).to.deep.equal(["guard"]);
+  });
+
   it("builds affordable guard bodies for low-RCL helper rooms", async () => {
     const { buildDefenseReinforcementBody } = await import("../src/defenseReinforcements.ts");
 
@@ -233,6 +342,49 @@ describe("defense reinforcements", () => {
     expect(body?.cost).to.be.at.most(300);
     expect(body?.parts).to.include(ATTACK);
     expect(body?.parts).to.include(MOVE);
+  });
+
+  it("does not build tiny low-RCL rangers for aggregate hard-threat rooms", async () => {
+    const { buildDefenseReinforcementBody } = await import("../src/defenseReinforcements.ts");
+
+    const body = buildDefenseReinforcementBody("ranger", 300, aggregateTiggaThreat());
+
+    expect(body).to.equal(null);
+  });
+
+  it("does not plan 300hp solo rangers into aggregate hard-threat rooms", async () => {
+    const { planDefenseReinforcementSpawns } = await import("../src/defenseReinforcements.ts");
+    const cluster = clusterWithAttack();
+    cluster.defenseRequests[0]!.guardsNeeded = 0;
+    cluster.defenseRequests[0]!.rangersNeeded = 1;
+    cluster.defenseRequests[0]!.healersNeeded = 0;
+
+    const intents = planDefenseReinforcementSpawns({
+      cluster,
+      now: 1236,
+      targetThreats: { W1N1: aggregateTiggaThreat() },
+      rooms: {
+        W1N1: { roomName: "W1N1", owned: true, safe: false, availableSpawns: 1, energyCapacityAvailable: 300, distances: {} },
+        W2N1: {
+          roomName: "W2N1",
+          owned: true,
+          safe: true,
+          availableSpawns: 1,
+          energyCapacityAvailable: 300,
+          distances: { W1N1: 1 }
+        },
+        W4N1: {
+          roomName: "W4N1",
+          owned: true,
+          safe: true,
+          availableSpawns: 1,
+          energyCapacityAvailable: 300,
+          distances: { W1N1: 3 }
+        }
+      }
+    });
+
+    expect(intents.some(intent => intent.role === "ranger")).to.equal(false);
   });
 
   it("plans squad fallback across helper rooms when no single defender can overpower the attacker", async () => {

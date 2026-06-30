@@ -16,6 +16,10 @@
  */
 
 import { assert } from 'chai';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 describe('Framework Package Tests', () => {
   describe('Package Loading', () => {
@@ -101,8 +105,9 @@ describe('Framework Package Tests', () => {
   describe('Peer Dependencies', () => {
     it('should have compatible TypeScript types', async function() {
       // Verify that @types/screeps is installed; type-only packages do not expose runtime modules.
-      const packageJson = await import('@types/screeps/package.json', { with: { type: 'json' } });
-      assert.isString(packageJson.default.version, '@types/screeps should be available');
+      const packageJsonPath = require.resolve('@types/screeps/package.json');
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as { version?: string };
+      assert.isString(packageJson.version, '@types/screeps should be available');
     });
   });
 

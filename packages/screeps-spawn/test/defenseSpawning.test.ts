@@ -4,7 +4,7 @@ import {
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
   calculateThreatParitySquadSize
-} from "../src/defenseAssistBody.ts";
+} from "@ralphschuler/screeps-defense";
 import { analyzeDefenderNeeds } from "../src/defenderManager.ts";
 import {
   canSpawnIdleLocalMilitary,
@@ -188,6 +188,43 @@ describe("defense spawn throttling", () => {
       assert.equal(request.additionalMemory?.defenseSquadSize, 3);
       assert.equal(request.additionalMemory?.defenseSquadCreatedAt, Game.time);
     }
+  });
+
+  it("uses aggregate parity squad size instead of role count for hard defense assists", () => {
+    const helper = createRoom([], "W17S29", 800, 800);
+    const attacked = createRoom([
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, HEAL, MOVE]),
+      createHostile([RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE]),
+      createHostile([ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE]),
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, MOVE, HEAL, MOVE]),
+      createHostile([ATTACK, ATTACK, ATTACK, ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, MOVE]),
+      createHostile([RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE])
+    ], "W19S28", 0, 0);
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 1,
+        healersNeeded: 0,
+        urgency: 1.5,
+        createdAt: Game.time,
+        threat: "stale low estimate"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const assistRequests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .filter(request => request.additionalMemory?.task === "defenseAssist");
+
+    assert.isNotEmpty(assistRequests);
+    assert.isTrue(assistRequests.every(request => (request.additionalMemory?.defenseSquadSize ?? 0) > 3));
   });
 
   it("prunes stale defense-assist requests instead of spawning for old invisible attacks", () => {
@@ -588,5 +625,44 @@ describe("defense spawn throttling", () => {
     const plan = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any);
 
     assert.exists(plan.requests.find(request => request.role === "healer"));
+  });
+
+  it("does not keep adding defense assists once assigned pending power exceeds visible threat", () => {
+    const helper = createRoom([], "W17S29", 800, 800);
+    const attacked = createRoom([createHostile([ATTACK, MOVE])], "W19S28");
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 0,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "single melee attacker"
+      }
+    ];
+    spawnQueue.addRequest({
+      id: "pending_assist_guard",
+      roomName: "W17S29",
+      role: "guard",
+      family: "military",
+      body: { parts: [ATTACK, ATTACK, MOVE, MOVE], cost: 260, minCapacity: 260 },
+      priority: SpawnPriority.EMERGENCY,
+      targetRoom: "W19S28",
+      createdAt: Game.time,
+      additionalMemory: { task: "defenseAssist", assistTarget: "W19S28", targetRoom: "W19S28" }
+    });
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const plan = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any);
+
+    assert.isUndefined(plan.requests.find(request => request.additionalMemory?.assistTarget === "W19S28"));
   });
 });

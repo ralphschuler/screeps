@@ -20,6 +20,21 @@ function cleanEnv(value) {
   return value.trim();
 }
 
+function stripTrailingBundleWhitespace() {
+  return {
+    name: "strip-trailing-bundle-whitespace",
+    generateBundle(_options, bundle) {
+      for (const artifact of Object.values(bundle)) {
+        if (artifact.type === "chunk") {
+          artifact.code = artifact.code.replace(/[ \t]+$/gm, "");
+        } else if (typeof artifact.source === "string") {
+          artifact.source = artifact.source.replace(/[ \t]+$/gm, "");
+        }
+      }
+    }
+  };
+}
+
 const shouldDeploy = process.env.DEPLOY === "true";
 const explicitHostname = cleanEnv(process.env.SCREEPS_HOSTNAME);
 const explicitBranch = cleanEnv(process.env.SCREEPS_BRANCH);
@@ -226,6 +241,7 @@ export default {
         wrap_func_args: false
       }
     }),
+    stripTrailingBundleWhitespace(),
 
     ...(shouldDeploy
       ? [

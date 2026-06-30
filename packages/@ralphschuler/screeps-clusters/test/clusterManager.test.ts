@@ -446,3 +446,272 @@ describe("Cluster Performance", () => {
     expect(highCPURooms).to.have.lengthOf(2);
   });
 });
+
+function installClusterAssignmentGlobals(): void {
+  Object.assign(globalThis, {
+    MOVE: "move",
+    WORK: "work",
+    CARRY: "carry",
+    ATTACK: "attack",
+    RANGED_ATTACK: "ranged_attack",
+    HEAL: "heal",
+    TOUGH: "tough",
+    CLAIM: "claim",
+    FIND_MY_CREEPS: 101,
+    FIND_HOSTILE_CREEPS: 102,
+    FIND_MY_SPAWNS: 103,
+    FIND_MY_STRUCTURES: 104,
+    FIND_SOURCES: 105,
+    FIND_SOURCES_ACTIVE: 106,
+    FIND_MINERALS: 107,
+    FIND_MY_CONSTRUCTION_SITES: 108,
+    FIND_STRUCTURES: 109,
+    FIND_HOSTILE_POWER_CREEPS: 110,
+    FIND_HOSTILE_STRUCTURES: 111,
+    FIND_NUKES: 112,
+    FIND_DEPOSITS: 113,
+    FIND_CONSTRUCTION_SITES: 114,
+    FIND_CREEPS: 115,
+    FIND_DROPPED_RESOURCES: 116,
+    FIND_TOMBSTONES: 117,
+    FIND_RUINS: 118,
+    FIND_FLAGS: 119,
+    FIND_POWER_CREEPS: 120,
+    FIND_MY_POWER_CREEPS: 121,
+    RESOURCE_ENERGY: "energy",
+    RESOURCE_POWER: "power",
+    RESOURCE_OPS: "ops",
+    RESOURCE_UTRIUM: "U",
+    RESOURCE_LEMERGIUM: "L",
+    RESOURCE_KEANIUM: "K",
+    RESOURCE_ZYNTHIUM: "Z",
+    RESOURCE_CATALYST: "X",
+    RESOURCE_GHODIUM: "G",
+    RESOURCE_CATALYZED_GHODIUM_ACID: "XGH2O",
+    RESOURCE_CATALYZED_UTRIUM_ACID: "XUH2O",
+    RESOURCE_CATALYZED_LEMERGIUM_ACID: "XLH2O",
+    RESOURCE_CATALYZED_KEANIUM_ACID: "XKH2O",
+    RESOURCE_CATALYZED_ZYNTHIUM_ACID: "XZH2O",
+    STRUCTURE_SPAWN: "spawn",
+    STRUCTURE_STORAGE: "storage",
+    STRUCTURE_TERMINAL: "terminal",
+    STRUCTURE_EXTENSION: "extension",
+    STRUCTURE_ROAD: "road",
+    STRUCTURE_TOWER: "tower",
+    STRUCTURE_RAMPART: "rampart",
+    STRUCTURE_WALL: "constructedWall",
+    STRUCTURE_CONTAINER: "container",
+    STRUCTURE_LINK: "link",
+    STRUCTURE_LAB: "lab",
+    STRUCTURE_FACTORY: "factory",
+    STRUCTURE_POWER_SPAWN: "powerSpawn",
+    STRUCTURE_NUKER: "nuker",
+    STRUCTURE_OBSERVER: "observer",
+    STRUCTURE_EXTRACTOR: "extractor",
+    OK: 0,
+    ERR_NOT_FOUND: -5,
+    ERR_INVALID_ARGS: -10
+  });
+}
+
+describe("Cluster defense assistance assignments", () => {
+  beforeEach(() => {
+    installClusterAssignmentGlobals();
+  });
+
+  it("does not carry stale defender candidates into later role-specific defense requests", async () => {
+    const { assignDefendersToDefenseRequests } = await import("../src/defenderAssignments.ts");
+    const spareGuard = { name: "spareGuard", body: [{ type: ATTACK, hits: 100 }], memory: { family: "military", role: "guard" } };
+    const firstGuard = { name: "firstGuard", body: [{ type: ATTACK, hits: 100 }], memory: { family: "military", role: "guard" } };
+    const emptyRoom = { find: () => [] };
+    const helperRoom = {
+      name: "W2N1",
+      find: (type: FindConstant) => (type === FIND_MY_CREEPS ? [firstGuard, spareGuard] : [])
+    };
+    const rooms = {
+      W1N1: emptyRoom,
+      W2N1: helperRoom,
+      W3N1: emptyRoom
+    } as unknown as Game["rooms"];
+
+    const cluster = {
+      id: "cluster_W1N1",
+      coreRoom: "W1N1",
+      memberRooms: ["W1N1", "W2N1", "W3N1"],
+      remoteRooms: [],
+      forwardBases: [],
+      role: "mixed",
+      metrics: {
+        energyIncome: 0,
+        energyConsumption: 0,
+        energyBalance: 0,
+        warIndex: 0,
+        economyIndex: 0,
+        militaryReadiness: 0,
+        roomCount: 3,
+        averageRCL: 4
+      },
+      rallyPoints: [],
+      squads: [],
+      defenseRequests: [
+        {
+          roomName: "W1N1",
+          guardsNeeded: 1,
+          rangersNeeded: 0,
+          healersNeeded: 0,
+          urgency: 10,
+          createdAt: 4000,
+          threat: "guard needed",
+          assignedCreeps: []
+        },
+        {
+          roomName: "W3N1",
+          guardsNeeded: 0,
+          rangersNeeded: 0,
+          healersNeeded: 1,
+          urgency: 9,
+          createdAt: 4000,
+          threat: "healer needed",
+          assignedCreeps: []
+        }
+      ],
+      resourceRequests: [],
+      lastUpdate: 4000
+    };
+
+    assignDefendersToDefenseRequests(cluster, {
+      rooms,
+      now: 4242,
+      getDistance: () => 1
+    });
+
+    expect(cluster.defenseRequests[0]!.assignedCreeps).to.deep.equal(["firstGuard"]);
+    expect(cluster.defenseRequests[1]!.assignedCreeps).to.deep.equal([]);
+    expect(spareGuard.memory).to.not.have.property("assistTarget");
+    expect(cluster.defenseRequests[1]!.healersNeeded).to.equal(1);
+  });
+
+  it("fills each requested defender role instead of letting closer extra guards consume ranger demand", async () => {
+    const { assignDefendersToDefenseRequests } = await import("../src/defenderAssignments.ts");
+    const firstGuard = { name: "firstGuard", body: [{ type: ATTACK, hits: 100 }], memory: { family: "military", role: "guard" } };
+    const spareGuard = { name: "spareGuard", body: [{ type: ATTACK, hits: 100 }], memory: { family: "military", role: "guard" } };
+    const ranger = { name: "ranger", body: [{ type: RANGED_ATTACK, hits: 100 }], memory: { family: "military", role: "ranger" } };
+    const helperRoom = {
+      name: "W2N1",
+      find: (type: FindConstant) => (type === FIND_MY_CREEPS ? [firstGuard, spareGuard, ranger] : [])
+    };
+    const rooms = {
+      W1N1: { find: () => [] },
+      W2N1: helperRoom
+    } as unknown as Game["rooms"];
+    const cluster = {
+      memberRooms: ["W1N1", "W2N1"],
+      defenseRequests: [
+        {
+          roomName: "W1N1",
+          guardsNeeded: 1,
+          rangersNeeded: 1,
+          healersNeeded: 0,
+          urgency: 10,
+          createdAt: 4000,
+          threat: "mixed defenders needed",
+          assignedCreeps: []
+        }
+      ]
+    };
+
+    assignDefendersToDefenseRequests(cluster, {
+      rooms,
+      now: 4243,
+      getDistance: () => 1
+    });
+
+    expect(cluster.defenseRequests[0]!.assignedCreeps).to.deep.equal(["firstGuard", "ranger"]);
+    expect(spareGuard.memory).to.not.have.property("assistTarget");
+    expect(cluster.defenseRequests[0]!).to.include({ guardsNeeded: 0, rangersNeeded: 0, healersNeeded: 0 });
+  });
+
+  it("does not pull defenders from unsafe helper rooms", async () => {
+    const { assignDefendersToDefenseRequests } = await import("../src/defenderAssignments.ts");
+    const guard = { name: "guard", body: [{ type: ATTACK, hits: 100 }], memory: { family: "military", role: "guard" } };
+    const rooms = {
+      W1N1: { find: () => [] },
+      W2N1: { name: "W2N1", find: (type: FindConstant) => (type === FIND_MY_CREEPS ? [guard] : []) }
+    } as unknown as Game["rooms"];
+    const cluster = {
+      memberRooms: ["W1N1", "W2N1"],
+      defenseRequests: [
+        {
+          roomName: "W1N1",
+          guardsNeeded: 1,
+          rangersNeeded: 0,
+          healersNeeded: 0,
+          urgency: 10,
+          createdAt: 4000,
+          threat: "guard needed",
+          assignedCreeps: []
+        }
+      ]
+    };
+
+    assignDefendersToDefenseRequests(cluster, {
+      rooms,
+      now: 4244,
+      getDistance: () => 1,
+      isRoomSafe: (_room, roomName) => roomName !== "W2N1"
+    });
+
+    expect(cluster.defenseRequests[0]!.assignedCreeps).to.deep.equal([]);
+    expect(guard.memory).to.not.have.property("assistTarget");
+    expect(cluster.defenseRequests[0]!.guardsNeeded).to.equal(1);
+  });
+
+  it("ignores spawning and disarmed military creeps before decrementing demand", async () => {
+    const { assignDefendersToDefenseRequests } = await import("../src/defenderAssignments.ts");
+    const spawningGuard = {
+      name: "spawningGuard",
+      spawning: true,
+      body: [{ type: ATTACK, hits: 100 }],
+      memory: { family: "military", role: "guard" }
+    };
+    const disarmedGuard = {
+      name: "disarmedGuard",
+      body: [{ type: ATTACK, hits: 0 }],
+      memory: { family: "military", role: "guard" }
+    };
+    const activeGuard = { name: "activeGuard", body: [{ type: ATTACK, hits: 100 }], memory: { family: "military", role: "guard" } };
+    const rooms = {
+      W1N1: { find: () => [] },
+      W2N1: {
+        name: "W2N1",
+        find: (type: FindConstant) => (type === FIND_MY_CREEPS ? [spawningGuard, disarmedGuard, activeGuard] : [])
+      }
+    } as unknown as Game["rooms"];
+    const cluster = {
+      memberRooms: ["W1N1", "W2N1"],
+      defenseRequests: [
+        {
+          roomName: "W1N1",
+          guardsNeeded: 1,
+          rangersNeeded: 0,
+          healersNeeded: 0,
+          urgency: 10,
+          createdAt: 4000,
+          threat: "guard needed",
+          assignedCreeps: []
+        }
+      ]
+    };
+
+    assignDefendersToDefenseRequests(cluster, {
+      rooms,
+      now: 4245,
+      getDistance: () => 1
+    });
+
+    expect(cluster.defenseRequests[0]!.assignedCreeps).to.deep.equal(["activeGuard"]);
+    expect(spawningGuard.memory).to.not.have.property("assistTarget");
+    expect(disarmedGuard.memory).to.not.have.property("assistTarget");
+    expect(cluster.defenseRequests[0]!.guardsNeeded).to.equal(0);
+  });
+});

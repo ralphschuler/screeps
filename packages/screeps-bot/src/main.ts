@@ -1,6 +1,7 @@
 import "./visuals/roomVisualExtensions";
 import { getConfig } from "./config";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
+import { runGlobalRuntimeDiagnostics } from "./core/globalRuntimeDiagnostics";
 import { createLogger } from "./core/logger";
 import { loop as swarmLoop } from "./SwarmBot";
 
@@ -146,6 +147,7 @@ registerAllConsoleCommands(config.lazyLoadConsoleCommands);
 
 export const loop = (): void => {
   try {
+    runGlobalRuntimeDiagnostics({ logger });
     swarmLoop();
   } catch (error) {
     logger.error(`Critical error in main loop: ${String(error)}`, {

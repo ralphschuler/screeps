@@ -17,6 +17,13 @@ function hasVisibleDefenseThreat(room: Room): boolean {
   );
 }
 
+function hasBootstrapDefenseGap(room: Room): boolean {
+  const rcl = room.controller?.level ?? 0;
+  const spawns = room.find(FIND_MY_SPAWNS);
+  const hostiles = getActualHostileCreeps(room);
+  return rcl <= 3 && spawns.length === 0 && hostiles.length > 0;
+}
+
 /**
  * Defender requirement analysis
  */
@@ -66,15 +73,17 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   };
 
   const rcl = room.controller?.level ?? 1;
-  if (rcl >= 3) {
-    result.guards = 1;
-    result.rangers = 1;
-    result.reasons.push(`Baseline defense force for RCL ${rcl}`);
-  }
-
   const hostiles = getActualHostileCreeps(room);
   if (hostiles.length === 0) {
     return result;
+  }
+
+  const bootstrapDefenseGap = hasBootstrapDefenseGap(room);
+
+  if (bootstrapDefenseGap) {
+    result.guards = Math.max(1, result.guards);
+    result.urgency = Math.max(result.urgency, 1.5);
+    result.reasons.push(`Hostile present in bootstrap defense gap (RCL ${rcl})`);
   }
 
   let meleeCount = 0;
@@ -84,10 +93,11 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   let boostedCount = 0;
 
   for (const hostile of hostiles) {
-    const isBoosted = hostile.body.some(part => part.boost !== undefined);
+    const activeBody = hostile.body.filter(part => part.hits > 0);
+    const isBoosted = activeBody.some(part => part.boost !== undefined);
     if (isBoosted) boostedCount++;
 
-    for (const part of hostile.body) {
+    for (const part of activeBody) {
       if (part.type === ATTACK) meleeCount++;
       if (part.type === RANGED_ATTACK) rangedCount++;
       if (part.type === HEAL) healerCount++;
@@ -159,16 +169,35 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   return result;
 }
 
+function hasActivePart(creep: Creep, parts: BodyPartConstant[]): boolean {
+  return (creep.body ?? []).some(part => part.hits > 0 && parts.includes(part.type));
+}
+
 /**
- * Get current defender count in room
+ * Get current active defender count in room.
+ *
+ * Spawning creeps and creeps with destroyed combat/heal parts cannot defend the
+ * room yet, so they must not mask emergency deficits.
  */
 export function getCurrentDefenders(room: Room): { guards: number; rangers: number; healers: number } {
   const creeps = room.find(FIND_MY_CREEPS);
 
   return {
-    guards: creeps.filter(c => (c.memory as { role?: string }).role === "guard").length,
-    rangers: creeps.filter(c => (c.memory as { role?: string }).role === "ranger").length,
-    healers: creeps.filter(c => (c.memory as { role?: string }).role === "healer").length
+    guards: creeps.filter(c =>
+      !(c as { spawning?: boolean }).spawning &&
+      (c.memory as { role?: string }).role === "guard" &&
+      hasActivePart(c, [ATTACK, RANGED_ATTACK])
+    ).length,
+    rangers: creeps.filter(c =>
+      !(c as { spawning?: boolean }).spawning &&
+      (c.memory as { role?: string }).role === "ranger" &&
+      hasActivePart(c, [RANGED_ATTACK])
+    ).length,
+    healers: creeps.filter(c =>
+      !(c as { spawning?: boolean }).spawning &&
+      (c.memory as { role?: string }).role === "healer" &&
+      hasActivePart(c, [HEAL])
+    ).length
   };
 }
 
@@ -201,7 +230,7 @@ export function getDefenderPriorityBoost(room: Room, _swarm: SwarmState, role: s
 /**
  * Check if emergency defender spawning is needed
  */
-export function needsEmergencyDefenders(room: Room, _swarm: SwarmState): boolean {
+export function needsEmergencyDefenders(room: Room, swarm: SwarmState): boolean {
   const needs = analyzeDefenderNeeds(room);
   const current = getCurrentDefenders(room);
 
@@ -209,7 +238,7 @@ export function needsEmergencyDefenders(room: Room, _swarm: SwarmState): boolean
   const needsRangers = needs.rangers > 0 && current.rangers === 0;
   const criticalUrgency = needs.urgency >= 2.0;
 
-  return (needsGuards || needsRangers) && criticalUrgency;
+  return (needsGuards || needsRangers) && (criticalUrgency || swarm.danger >= 3);
 }
 
 /**
@@ -217,7 +246,8 @@ export function needsEmergencyDefenders(room: Room, _swarm: SwarmState): boolean
  */
 export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
   const visibleDefenseThreat = hasVisibleDefenseThreat(room);
-  if (swarm.danger < 2 && !visibleDefenseThreat) {
+  const hasBootstrapDefenseNeed = hasBootstrapDefenseGap(room);
+  if (swarm.danger < 2 && !visibleDefenseThreat && !hasBootstrapDefenseNeed) {
     return false;
   }
 

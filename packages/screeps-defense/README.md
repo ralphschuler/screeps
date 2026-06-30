@@ -129,9 +129,10 @@ safeModeManager.checkSafeMode(room, swarmState);
 
 // Get current emergency state
 const emergency = emergencyResponseManager.getEmergencyState(room.name);
-if (emergency.level >= EmergencyLevel.HIGH) {
+if (emergency && emergency.level >= EmergencyLevel.HIGH) {
   console.log(`Emergency in ${room.name}!`);
-  console.log(`Assistance requests sent: ${emergency.assistanceRequestsSent}`);
+  console.log(`Assistance requested: ${emergency.assistanceRequested}`);
+  console.log(`Last escalation tick: ${emergency.lastEscalation}`);
 }
 ```
 
@@ -215,6 +216,17 @@ The coordinator:
 4. Tracks assignments and releases creeps when threat clears
 5. Prevents helper room depletion (max 2 defenders per room)
 
+### Defender Requirements and Defense-Assist Combat Planning
+
+`@ralphschuler/screeps-defense` owns defender requirement sizing and defense-assist combat math used by spawn and cluster packages:
+
+- `analyzeDefenderNeeds()` sizes guards/rangers/healers only from visible real threats; peaceful RCL3+ rooms do not get high-priority defender requirements here.
+- `getCurrentDefenders()` counts only active, non-spawning defenders with live combat/heal parts so damaged or still-spawning creeps cannot mask emergency deficits.
+- `calculateCombatPower()` scores only active `BodyPartDefinition` entries (`hits > 0`) while treating body constants as generated active bodies.
+- `buildDefenseAssistBody()` selects guard/ranger/healer bodies that outclass visible attackers when affordable.
+- `calculateAggregateDefenseResponsePlan()` sizes multi-creep friendly power, including healer coverage, above visible hostile power.
+- Permanent allies are still filtered through `getActualHostileCreeps()` before threat profiles are built.
+
 ### Emergency Response
 
 5-tier emergency escalation system:
@@ -232,6 +244,9 @@ enum EmergencyLevel {
 Emergency manager:
 - Monitors threat levels continuously
 - Escalates defense based on danger
+- Records `lastEscalation` only when an existing emergency increases in severity
+- Uses per-role positive defender deficits so surplus guards do not hide missing rangers or healers
+- Ignores destroyed boosted parts when deciding whether boosted attackers require high response
 - Triggers emergency defender spawning
 - Requests cluster assistance
 - Activates safe mode for critical threats
@@ -239,17 +254,17 @@ Emergency manager:
 
 ## Dependencies
 
-This package has tight coupling to the bot's core infrastructure and **cannot be used standalone**. It requires:
+This package is a framework package in the screeps monorepo. It should not depend on `packages/screeps-bot` implementation details.
 
-1. **Bot Core Systems** (via TypeScript path mapping `@bot/*`):
-   - `@bot/core/*` - Kernel, logger, process decorators
-   - `@bot/memory/*` - Memory manager and schemas
-   - `@bot/spawning/*` - Defender spawning and role definitions
-   - `@bot/utils/*` - Utility functions
+Current direct workspace dependencies:
 
-2. **Peer Dependencies**:
-   - The bot package must be present at `../screeps-bot` for compilation
-   - This package is designed exclusively for use within the ralphschuler/screeps bot project
+- `@ralphschuler/screeps-core` — logging and shared primitives
+- `@ralphschuler/screeps-kernel` — process infrastructure where needed
+- `@ralphschuler/screeps-layouts` — defense placement helpers
+- `@ralphschuler/screeps-memory` — typed swarm state interfaces
+- `@ralphschuler/screeps-stats` — telemetry integration
+
+The bot consumes this package as a public defense API and should remain a thin runtime composition layer.
 
 ## Development
 

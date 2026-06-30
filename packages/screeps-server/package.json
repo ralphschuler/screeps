@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "npm run test:smoke",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "server:ci:up": "docker compose -f docker-compose.ci.yml -p screeps-ci up --build -d",
     "server:ci:down": "docker compose -f docker-compose.ci.yml -p screeps-ci down -v --remove-orphans",
     "server:local:up": "node scripts/start-local-server.js",
@@ -23,6 +24,9 @@
     "test:packages": "mocha --no-config --require tsx \"test/packages/**/*.test.ts\" \"test/scripts/**/*.test.ts\"",
     "test:watch": "mocha --watch --require tsx test/**/*.test.ts",
     "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm run test:smoke",
+    "cpu:snapshot": "node scripts/export-live-structural-snapshot.js",
+    "cpu:benchmark": "node scripts/run-cpu-benchmark.js",
+    "cpu:arena": "node scripts/run-arena-benchmark.js",
     "posttest": "node scripts/analyze-tests.js"
   },
   "keywords": [
