@@ -12,7 +12,7 @@ import {
   getActualHostileCreeps,
   getActualHostileStructures,
   getVisibleDefenseAssistThreatProfile,
-  isAllyPlayer,
+  isKnownAllyPlayer,
   isDefenseAssistThreatProfileHard,
   type CombatPower,
   type DefenseAssistThreatProfile
@@ -266,8 +266,8 @@ function isAllyControlledRoom(room: Room): boolean {
   const controllerOwner = room.controller?.owner?.username;
   const controllerReserver = room.controller?.reservation?.username;
   return Boolean(
-    (controllerOwner && isAllyPlayer(controllerOwner)) ||
-      (controllerReserver && isAllyPlayer(controllerReserver))
+    (controllerOwner && isKnownAllyPlayer(controllerOwner)) ||
+      (controllerReserver && isKnownAllyPlayer(controllerReserver))
   );
 }
 

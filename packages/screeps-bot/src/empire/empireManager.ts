@@ -37,7 +37,6 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory, ExpansionCandidate, RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
@@ -429,19 +428,6 @@ export class EmpireManager {
     for (const roomName in recoveryRooms) {
       if (Game.time - recoveryRooms[roomName].lostAt > 200000) {
         delete recoveryRooms[roomName];
-      }
-    }
-
-    for (const roomName in empire.knownRooms) {
-      const intel = empire.knownRooms[roomName];
-      if (!intel) continue;
-
-      if (intel.owner && isAllyPlayer(intel.owner) && !ownedRoomNames.has(roomName)) {
-        delete intel.owner;
-      }
-
-      if (intel.reserver && isAllyPlayer(intel.reserver) && !ownedRoomNames.has(roomName)) {
-        delete intel.reserver;
       }
     }
 

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { isKnownAllyPlayer } from "@ralphschuler/screeps-core";
 import { mergeCrossShardEnemyIntel } from "../../src/empire/crossShardIntelMerge";
 
 describe("Cross-shard intel merge protocol Module", () => {
@@ -54,6 +55,20 @@ describe("Cross-shard intel merge protocol Module", () => {
 
     expect(intent.enemies).to.deep.equal([]);
     expect(intent.skippedAllies).to.deep.equal(["TedRoastBeef", "TooAngel"]);
+  });
+
+  it("filters runtime configured allies from stale enemies, war targets, and room intel", () => {
+    const empire = { diplomacy: { allies: ["FriendlyNeighbor"] } };
+    const intent = mergeCrossShardEnemyIntel({
+      existingEnemies: [{ username: "FriendlyNeighbor", rooms: ["W1N1"], threatLevel: 3, lastSeen: 10, isAlly: false }],
+      warTargets: ["FriendlyNeighbor", "W2N2"],
+      knownRooms: [{ roomName: "W2N2", owner: "FriendlyNeighbor", threatLevel: 3, lastSeen: 20 }],
+      now: 30,
+      isAlly: username => isKnownAllyPlayer(username, { empire })
+    });
+
+    expect(intent.enemies).to.deep.equal([]);
+    expect(intent.skippedAllies).to.deep.equal(["FriendlyNeighbor"]);
   });
 
   it("skips Source Keeper ownership records", () => {

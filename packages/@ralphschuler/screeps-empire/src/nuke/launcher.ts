@@ -5,7 +5,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { EmpireMemory, NukeInFlight, NukeEconomics } from "../types";
+import type { EmpireMemory, NukeInFlight } from "../types";
+import { isKnownAllyNukeTarget } from "./allySafety";
 import type { NukeConfig } from "./types";
 import { NUKE_COST } from "./types";
 import { predictNukeImpact, calculateNukeROI } from "./targeting";
@@ -48,6 +49,10 @@ export function launchNukes(
   // Launch at top candidates
   for (const candidate of empire.nukeCandidates) {
     if (candidate.launched) continue;
+    if (isKnownAllyNukeTarget(candidate.roomName, empire)) {
+      logger.warn(`Skipping nuke launch on allied candidate: ${candidate.roomName}`, { subsystem: "Nuke" });
+      continue;
+    }
 
     // Find a nuker in range
     for (const nuker of nukers) {

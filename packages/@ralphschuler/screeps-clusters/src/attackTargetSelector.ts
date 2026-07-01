@@ -12,8 +12,7 @@
  * Addresses ROADMAP Section 12: Attack target selection
  */
 
-import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { isKnownAllyPlayer, logger } from "@ralphschuler/screeps-core";
 import type { ClusterMemory, RoomIntel } from "./types";
 import { memoryManager } from "./adapters/memoryAdapter";
 import type { OffensiveDoctrine } from "./offensiveDoctrine";
@@ -86,11 +85,12 @@ export function findAttackTargets(
   const targets: AttackTarget[] = [];
   
   const empire = memoryManager.getEmpire();
+  const allyOptions = { empire };
   const roomIntel = empire.knownRooms || {};
-  const warTargets = new Set((empire.warTargets || []).filter(target => !isAllyPlayer(target)));
+  const warTargets = new Set((empire.warTargets || []).filter(target => !isKnownAllyPlayer(target, allyOptions)));
   const hostilePosturePlayers = new Set(
     Object.values(empire.playerPostures?.players ?? {})
-      .filter(entry => entry.state === "war" && !isAllyPlayer(entry.username))
+      .filter(entry => entry.state === "war" && !isKnownAllyPlayer(entry.username, allyOptions))
       .map(entry => entry.username)
   );
 
@@ -105,8 +105,11 @@ export function findAttackTargets(
     const myUsername = Object.values(Game.spawns)[0]?.owner.username ?? "";
     if (intel.owner === myUsername) continue;
     
-    // Permanent allies are never attack targets, even if stale intel marked them dangerous.
-    if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
+    // Permanent/runtime-configured allies are never attack targets, even if stale intel marked them dangerous.
+    if (
+      (intel.owner && isKnownAllyPlayer(intel.owner, allyOptions)) ||
+      (intel.reserver && isKnownAllyPlayer(intel.reserver, allyOptions))
+    ) {
       continue;
     }
 

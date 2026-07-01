@@ -22,7 +22,7 @@
  * - Memory-efficient storage in global object
  */
 
-import { filterAllyCreeps } from "@ralphschuler/screeps-core";
+import { filterKnownAllyCreeps } from "@ralphschuler/screeps-core";
 
 // =============================================================================
 // Types
@@ -341,7 +341,7 @@ export function cachedFindSources(room: Room): Source[] {
  * @returns Array of hostile creeps
  */
 export function cachedFindHostileCreeps(room: Room): Creep[] {
-  return filterAllyCreeps(cachedRoomFind<Creep>(room, FIND_HOSTILE_CREEPS));
+  return filterKnownAllyCreeps(cachedRoomFind<Creep>(room, FIND_HOSTILE_CREEPS));
 }
 
 /**

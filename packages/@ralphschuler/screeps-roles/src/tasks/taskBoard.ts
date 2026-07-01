@@ -1,4 +1,4 @@
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, isKnownAllyOwned } from "@ralphschuler/screeps-defense";
 import type { CreepAction, CreepContext } from "../behaviors/types";
 import { getTerminalEnergyExportRequest } from "./energyExport";
 import { TaskPriority, type CreepTask, type RoomTaskBoardMemory, type TaskBoardMemory, type TaskBoardStats, type TaskType, type TaskAssignmentOptions } from "./types";
@@ -310,6 +310,10 @@ function recomputeReservationTotals(task: CreepTask): void {
   task.status = task.assignedCreeps.length > 0 ? "assigned" : "open";
 }
 
+function isKnownAllyDefendTarget(target: unknown): boolean {
+  return Boolean(target && typeof target === "object" && "owner" in target && isKnownAllyOwned(target as Creep | Structure));
+}
+
 function isTargetStillValid(task: CreepTask): boolean {
   if (!task.targetId) return true;
   const target = Game.getObjectById(task.targetId);
@@ -335,7 +339,7 @@ function isTargetStillValid(task: CreepTask): boolean {
     case "heal":
       return "hits" in target && (target as Creep).hits < (target as Creep).hitsMax;
     case "defend":
-      return true;
+      return !isKnownAllyDefendTarget(target);
     default:
       return true;
   }
@@ -484,6 +488,8 @@ function getTaskDistance(creep: Creep, task: CreepTask): number {
 }
 
 function createDefendAction(ctx: CreepContext, target: Creep | Structure): CreepAction | null {
+  if (isKnownAllyDefendTarget(target)) return null;
+
   const hasMelee = ctx.creep.getActiveBodyparts(ATTACK) > 0;
   const hasRanged = ctx.creep.getActiveBodyparts(RANGED_ATTACK) > 0;
 

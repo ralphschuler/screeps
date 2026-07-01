@@ -2,8 +2,12 @@ import { expect } from "chai";
 import {
   filterAllyCreeps,
   filterAllyStructures,
+  filterKnownAllyCreeps,
   getActualHostileCreeps,
+  getConfiguredAllyPlayers,
+  getKnownHostileCreeps,
   isAllyPlayer,
+  isKnownAllyPlayer,
   NON_AGGRESSION_PACT_PLAYERS
 } from "../src/alliance";
 
@@ -29,6 +33,51 @@ describe("alliance safety helpers", () => {
     const allyStructure = { owner: { username: "TooAngel" } } as Structure;
     const hostileStructure = { owner: { username: "Invader" } } as Structure;
     expect(filterAllyStructures([allyStructure, hostileStructure])).to.deep.equal([hostileStructure]);
+  });
+
+  it("includes runtime configured allies in known ally policy", () => {
+    const globals = global as unknown as { Memory?: unknown };
+    const previousMemory = globals.Memory;
+
+    try {
+      globals.Memory = { empire: { diplomacy: { allies: ["FriendlyNeighbor"] } } };
+
+      expect(getConfiguredAllyPlayers()).to.deep.equal(["FriendlyNeighbor"]);
+      expect(isKnownAllyPlayer("TooAngel")).to.equal(true);
+      expect(isKnownAllyPlayer("FriendlyNeighbor")).to.equal(true);
+      expect(isKnownAllyPlayer("Invader")).to.equal(false);
+    } finally {
+      if (previousMemory === undefined) {
+        delete globals.Memory;
+      } else {
+        globals.Memory = previousMemory;
+      }
+    }
+  });
+
+  it("filters runtime configured allies from known hostile creep lists", () => {
+    const globals = global as unknown as { Memory?: unknown };
+    const previousMemory = globals.Memory;
+
+    try {
+      globals.Memory = { diplomacy: { allies: ["FriendlyNeighbor"] } };
+      const configuredAlly = { owner: { username: "FriendlyNeighbor" } } as Creep;
+      const hostile = { owner: { username: "Invader" } } as Creep;
+
+      expect(filterKnownAllyCreeps([configuredAlly, hostile])).to.deep.equal([hostile]);
+
+      const room = {
+        find: (type: FindConstant) => (type === FIND_HOSTILE_CREEPS ? [configuredAlly, hostile] : [])
+      } as Room;
+      expect(getKnownHostileCreeps(room)).to.deep.equal([hostile]);
+      expect(getActualHostileCreeps(room)).to.deep.equal([hostile]);
+    } finally {
+      if (previousMemory === undefined) {
+        delete globals.Memory;
+      } else {
+        globals.Memory = previousMemory;
+      }
+    }
   });
 
   it("preserves the original array reference when no allies are present", () => {

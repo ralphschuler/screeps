@@ -113,14 +113,45 @@ process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 import Module from 'module';
 const originalResolveFilename = Module._resolveFilename;
 
-function isAlliedTestEntity(entity) {
-  const username = entity?.owner?.username;
+function isPermanentAllyTestUsername(username) {
   return username === 'TooAngel' || username === 'TedRoastBeef';
+}
+
+function normalizeTestAllyList(value) {
+  return Array.isArray(value) ? value.filter(ally => typeof ally === 'string' && ally.length > 0) : [];
+}
+
+function getConfiguredTestAllies(options = {}) {
+  const memory = global.Memory ?? {};
+  const empire = options.empire ?? {};
+  return [...new Set([
+    ...normalizeTestAllyList(options.configuredAllies),
+    ...normalizeTestAllyList(empire.diplomacy?.allies),
+    ...normalizeTestAllyList(memory.diplomacy?.allies),
+    ...normalizeTestAllyList(memory.empire?.diplomacy?.allies)
+  ])];
+}
+
+function isKnownAllyTestUsername(username, options = {}) {
+  return typeof username === 'string' && (isPermanentAllyTestUsername(username) || getConfiguredTestAllies(options).includes(username));
+}
+
+function isPermanentAllyTestEntity(entity) {
+  return isPermanentAllyTestUsername(entity?.owner?.username);
+}
+
+function isAlliedTestEntity(entity) {
+  return isKnownAllyTestUsername(entity?.owner?.username);
 }
 
 function filterAlliedTestEntities(entities) {
   const firstAllyIndex = entities.findIndex(isAlliedTestEntity);
   return firstAllyIndex === -1 ? entities : entities.filter(entity => !isAlliedTestEntity(entity));
+}
+
+function filterPermanentAllyTestEntities(entities) {
+  const firstAllyIndex = entities.findIndex(isPermanentAllyTestEntity);
+  return firstAllyIndex === -1 ? entities : entities.filter(entity => !isPermanentAllyTestEntity(entity));
 }
 
 const defenseAssistRoles = new Set(['guard', 'ranger', 'healer']);
@@ -460,41 +491,34 @@ const stubs = {
   // Stub @ralphschuler scoped packages
   '@ralphschuler/screeps-defense': {
     NON_AGGRESSION_PACT_PLAYERS: ['TooAngel', 'TedRoastBeef'],
-    isAllyPlayer: (username) => username === 'TooAngel' || username === 'TedRoastBeef',
-    isAllyCreep: (creep) => {
-      const username = creep?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    isAllyPowerCreep: (powerCreep) => {
-      const username = powerCreep?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    isAllyStructure: (structure) => {
-      const username = structure?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    filterAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
-    filterAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
-    filterAllyStructures: (structures) => filterAlliedTestEntities(structures),
-    getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
-      const username = creep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => {
-      const username = powerCreep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => {
-      const username = structure?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    hasActualHostiles: (room) => {
-      const hostiles = room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
-        const username = creep?.owner?.username;
-        return username !== 'TooAngel' && username !== 'TedRoastBeef';
-      });
-      return hostiles.length > 0;
-    },
+    getConfiguredAllyPlayers: getConfiguredTestAllies,
+    getKnownAllyPlayers: (options = {}) => [...new Set(['TooAngel', 'TedRoastBeef', ...getConfiguredTestAllies(options)])],
+    isAllyPlayer: isPermanentAllyTestUsername,
+    isConfiguredAllyPlayer: (username, options = {}) => typeof username === 'string' && getConfiguredTestAllies(options).includes(username),
+    isKnownAllyPlayer: isKnownAllyTestUsername,
+    isAllyOwned: isPermanentAllyTestEntity,
+    isConfiguredAllyOwned: (entity, options = {}) => typeof entity?.owner?.username === 'string' && getConfiguredTestAllies(options).includes(entity.owner.username),
+    isKnownAllyOwned: isAlliedTestEntity,
+    isAllyCreep: isPermanentAllyTestEntity,
+    isAllyPowerCreep: isPermanentAllyTestEntity,
+    isAllyStructure: isPermanentAllyTestEntity,
+    isKnownAllyCreep: isAlliedTestEntity,
+    isKnownAllyPowerCreep: isAlliedTestEntity,
+    isKnownAllyStructure: isAlliedTestEntity,
+    filterAllyCreeps: (creeps) => filterPermanentAllyTestEntities(creeps),
+    filterAllyPowerCreeps: (powerCreeps) => filterPermanentAllyTestEntities(powerCreeps),
+    filterAllyStructures: (structures) => filterPermanentAllyTestEntities(structures),
+    filterKnownAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
+    filterKnownAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
+    filterKnownAllyStructures: (structures) => filterAlliedTestEntities(structures),
+    getActualHostileCreeps: getTestHostileCreeps,
+    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => !isAlliedTestEntity(powerCreep)),
+    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => !isAlliedTestEntity(structure)),
+    getKnownHostileCreeps: getTestHostileCreeps,
+    getKnownHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => !isAlliedTestEntity(powerCreep)),
+    getKnownHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => !isAlliedTestEntity(structure)),
+    hasActualHostiles: (room) => getTestHostileCreeps(room).length > 0,
+    hasKnownHostiles: (room) => getTestHostileCreeps(room).length > 0,
     analyzeDefenderNeeds: analyzeTestDefenderNeeds,
     createDefenseRequest: createTestDefenseRequest,
     getCurrentDefenders: getTestCurrentDefenders,
@@ -592,45 +616,34 @@ const stubs = {
       debug: () => {}
     }),
     NON_AGGRESSION_PACT_PLAYERS: ['TooAngel', 'TedRoastBeef'],
-    isAllyPlayer: (username) => username === 'TooAngel' || username === 'TedRoastBeef',
-    isAllyOwned: (entity) => {
-      const username = entity?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    isAllyCreep: (creep) => {
-      const username = creep?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    isAllyPowerCreep: (powerCreep) => {
-      const username = powerCreep?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    isAllyStructure: (structure) => {
-      const username = structure?.owner?.username;
-      return username === 'TooAngel' || username === 'TedRoastBeef';
-    },
-    filterAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
-    filterAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
-    filterAllyStructures: (structures) => filterAlliedTestEntities(structures),
-    getActualHostileCreeps: (room) => room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
-      const username = creep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => {
-      const username = powerCreep?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => {
-      const username = structure?.owner?.username;
-      return username !== 'TooAngel' && username !== 'TedRoastBeef';
-    }),
-    hasActualHostiles: (room) => {
-      const hostiles = room.find(global.FIND_HOSTILE_CREEPS).filter(creep => {
-        const username = creep?.owner?.username;
-        return username !== 'TooAngel' && username !== 'TedRoastBeef';
-      });
-      return hostiles.length > 0;
-    },
+    getConfiguredAllyPlayers: getConfiguredTestAllies,
+    getKnownAllyPlayers: (options = {}) => [...new Set(['TooAngel', 'TedRoastBeef', ...getConfiguredTestAllies(options)])],
+    isAllyPlayer: isPermanentAllyTestUsername,
+    isConfiguredAllyPlayer: (username, options = {}) => typeof username === 'string' && getConfiguredTestAllies(options).includes(username),
+    isKnownAllyPlayer: isKnownAllyTestUsername,
+    isAllyOwned: isPermanentAllyTestEntity,
+    isConfiguredAllyOwned: (entity, options = {}) => typeof entity?.owner?.username === 'string' && getConfiguredTestAllies(options).includes(entity.owner.username),
+    isKnownAllyOwned: isAlliedTestEntity,
+    isAllyCreep: isPermanentAllyTestEntity,
+    isAllyPowerCreep: isPermanentAllyTestEntity,
+    isAllyStructure: isPermanentAllyTestEntity,
+    isKnownAllyCreep: isAlliedTestEntity,
+    isKnownAllyPowerCreep: isAlliedTestEntity,
+    isKnownAllyStructure: isAlliedTestEntity,
+    filterAllyCreeps: (creeps) => filterPermanentAllyTestEntities(creeps),
+    filterAllyPowerCreeps: (powerCreeps) => filterPermanentAllyTestEntities(powerCreeps),
+    filterAllyStructures: (structures) => filterPermanentAllyTestEntities(structures),
+    filterKnownAllyCreeps: (creeps) => filterAlliedTestEntities(creeps),
+    filterKnownAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
+    filterKnownAllyStructures: (structures) => filterAlliedTestEntities(structures),
+    getActualHostileCreeps: getTestHostileCreeps,
+    getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => !isAlliedTestEntity(powerCreep)),
+    getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => !isAlliedTestEntity(structure)),
+    getKnownHostileCreeps: getTestHostileCreeps,
+    getKnownHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => !isAlliedTestEntity(powerCreep)),
+    getKnownHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => !isAlliedTestEntity(structure)),
+    hasActualHostiles: (room) => getTestHostileCreeps(room).length > 0,
+    hasKnownHostiles: (room) => getTestHostileCreeps(room).length > 0,
     EventBus: class {},
     CommandRegistry: class {},
     CPUBudgetManager: class {}

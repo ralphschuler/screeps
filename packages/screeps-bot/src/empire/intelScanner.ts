@@ -10,17 +10,17 @@
  * Addresses Issue: Intelligence & Coordination (continuous enemy scanning)
  */
 
-import { logger } from "@ralphschuler/screeps-core";
+import {
+  isConfiguredAllyOwned as isConfiguredAllyOwnedByPolicy,
+  isKnownAllyPlayer,
+  logger
+} from "@ralphschuler/screeps-core";
 import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
-import {
-  isConfiguredAllyOwned as isConfiguredAllyOwnedByPolicy,
-  isKnownAllyUsername
-} from "./allyPolicy";
 import { planEnemyTrackingIntent, planIntelScanIntent, type EnemySightingSnapshot } from "./intelIntent";
 import { isHighwayRoom, isSourceKeeperRoom } from "./roomGeometry";
 
@@ -364,7 +364,7 @@ export class IntelScanner {
   }
 
   private isAllyUsername(username: string, empire?: ReturnType<typeof memoryManager.getEmpire>): boolean {
-    return isKnownAllyUsername(username, this.getAllyPolicyOptions(empire));
+    return isKnownAllyPlayer(username, this.getAllyPolicyOptions(empire));
   }
 
   /**

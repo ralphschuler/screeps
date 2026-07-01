@@ -5,8 +5,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
-import type { EmpireMemory, RoomIntel, SwarmState } from "../types";
+import type { EmpireMemory, SwarmState } from "../types";
+import { isKnownAllyNukeTarget } from "./allySafety";
 import type { NukeConfig, NukeScore, NukeImpactPrediction } from "./types";
 import { NUKE_DAMAGE, NUKE_COST, STRUCTURE_VALUES, INTEL_DAMAGE_WEIGHTS } from "./types";
 
@@ -28,8 +28,7 @@ export function evaluateNukeCandidates(
 
   // Score all war targets
   for (const roomName of empire.warTargets) {
-    const intel = empire.knownRooms[roomName];
-    if (isAllyPlayer(roomName) || (intel?.owner && isAllyPlayer(intel.owner)) || (intel?.reserver && isAllyPlayer(intel.reserver))) {
+    if (isKnownAllyNukeTarget(roomName, empire)) {
       logger.warn(`Skipping allied nuke target candidate: ${roomName}`, { subsystem: "Nuke" });
       continue;
     }
@@ -70,7 +69,7 @@ export function scoreNukeCandidate(
     return { roomName, score: 0, reasons: ["No intel"] };
   }
 
-  if ((intel.owner && isAllyPlayer(intel.owner)) || (intel.reserver && isAllyPlayer(intel.reserver))) {
+  if (isKnownAllyNukeTarget(roomName, empire)) {
     return { roomName, score: 0, reasons: ["Allied room"] };
   }
 

@@ -8,11 +8,13 @@ import {
   filterAllyCreeps,
   filterAllyPowerCreeps,
   filterAllyStructures,
+  getConfiguredAllyPlayers,
   getActualHostileCreeps,
   getActualHostilePowerCreeps,
   getActualHostileStructures,
   isAllyCreep,
   isAllyPlayer,
+  isKnownAllyPlayer,
   isAllyPowerCreep,
   isAllyStructure
 } from '../src/index';
@@ -68,6 +70,37 @@ describe('Non-Aggression Alliance System', () => {
       } as Room;
 
       expect(getActualHostileCreeps(mockRoom)).to.deep.equal([hostileCreep]);
+    });
+
+    it('filters runtime configured allies from room hostile detection', () => {
+      const previousMemory = (global as any).Memory;
+      const configuredAlly = {
+        name: 'friendly1',
+        owner: { username: 'FriendlyNeighbor' },
+        room: { name: 'W1N1' }
+      } as Creep;
+      const mockRoom = {
+        find: (findConstant: FindConstant) => {
+          if (findConstant === FIND_HOSTILE_CREEPS) {
+            return [configuredAlly, hostileCreep];
+          }
+          return [];
+        }
+      } as Room;
+
+      try {
+        (global as any).Memory = { empire: { diplomacy: { allies: ['FriendlyNeighbor'] } } };
+
+        expect(getConfiguredAllyPlayers()).to.deep.equal(['FriendlyNeighbor']);
+        expect(isKnownAllyPlayer('FriendlyNeighbor')).to.equal(true);
+        expect(getActualHostileCreeps(mockRoom)).to.deep.equal([hostileCreep]);
+      } finally {
+        if (previousMemory === undefined) {
+          delete (global as any).Memory;
+        } else {
+          (global as any).Memory = previousMemory;
+        }
+      }
     });
   });
 

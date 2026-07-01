@@ -10,7 +10,9 @@ import {
   coordinateWithSieges,
   detectIncomingNukes,
   estimateSquadEta,
+  evaluateNukeCandidates,
   initializeNukeTracking,
+  launchNukes,
   manageNukeResources,
   predictNukeImpact,
   processCounterNukeStrategies,
@@ -201,6 +203,33 @@ describe("Nuke Manager", () => {
 
       const score = scoreNukeCandidate("W10N10", empire as any, nukeManager.getConfig(), getSwarmStateStub as any);
       expect(score.reasons.some((r: string) => r.includes("rooms away"))).to.be.true;
+    });
+
+    it("skips runtime configured allies when scoring and evaluating nuke candidates", () => {
+      const empire = createDefaultEmpireMemory();
+      empire.objectives.warMode = true;
+      empire.warTargets = ["W2N2"];
+      (empire as any).diplomacy = { allies: ["FriendlyNeighbor"] };
+      empire.knownRooms["W2N2"] = {
+        roomName: "W2N2",
+        lastSeen: Game.time,
+        sources: 2,
+        controllerLevel: 8,
+        owner: "FriendlyNeighbor",
+        threatLevel: 3,
+        scouted: true,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false,
+        towerCount: 6,
+        spawnCount: 3
+      };
+
+      const score = scoreNukeCandidate("W2N2", empire as any, { ...nukeManager.getConfig(), minScore: 0 }, getSwarmStateStub as any);
+      expect(score).to.deep.equal({ roomName: "W2N2", score: 0, reasons: ["Allied room"] });
+
+      evaluateNukeCandidates(empire as any, { ...nukeManager.getConfig(), minScore: 0 }, getSwarmStateStub as any);
+      expect(empire.nukeCandidates).to.deep.equal([]);
     });
   });
 
@@ -521,6 +550,151 @@ describe("Nuke Manager", () => {
 
       // Should add enemy to war targets
       expect(empire.warTargets).to.include("W2N2");
+    });
+
+    it("does not add runtime configured ally nuke sources as counter-nuke targets", () => {
+      const empire = createDefaultEmpireMemory();
+      (empire as any).diplomacy = { allies: ["FriendlyNeighbor"] };
+      empire.incomingNukes = [
+        {
+          roomName: "W1N1",
+          landingPos: { x: 25, y: 25 },
+          impactTick: 51000,
+          timeToLand: 40000,
+          detectedAt: 11000,
+          evacuationTriggered: false,
+          sourceRoom: "W2N2"
+        }
+      ];
+      empire.knownRooms["W2N2"] = {
+        roomName: "W2N2",
+        lastSeen: Game.time,
+        sources: 2,
+        controllerLevel: 8,
+        owner: "FriendlyNeighbor",
+        threatLevel: 3,
+        scouted: true,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false
+      };
+      const swarm = createDefaultSwarmState();
+      swarm.pheromones.war = 100;
+      getSwarmStateStub.withArgs("W1N1").returns(swarm);
+
+      processCounterNukeStrategies(empire as any, nukeManager.getConfig(), getSwarmStateStub as any, () => true);
+
+      expect(empire.warTargets).to.not.include("W2N2");
+    });
+  });
+
+  describe("Nuke Launch Safety", () => {
+    it("refuses to launch stale nuke candidates against runtime configured allies", () => {
+      const empire = createDefaultEmpireMemory();
+      empire.objectives.warMode = true;
+      (empire as any).diplomacy = { allies: ["FriendlyNeighbor"] };
+      empire.nukeCandidates = [{ roomName: "W2N2", score: 100, launched: false, launchTick: 0 }];
+      empire.knownRooms["W2N2"] = {
+        roomName: "W2N2",
+        lastSeen: Game.time,
+        sources: 2,
+        controllerLevel: 8,
+        owner: "FriendlyNeighbor",
+        threatLevel: 3,
+        scouted: true,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false,
+        towerCount: 6,
+        spawnCount: 3
+      };
+
+      const launchNuke = sinon.stub().returns(OK);
+      const mockNuker = {
+        structureType: STRUCTURE_NUKER,
+        room: { name: "W1N1" },
+        store: {
+          getUsedCapacity: (resource: ResourceConstant) => {
+            if (resource === RESOURCE_ENERGY) return 300000;
+            if (resource === RESOURCE_GHODIUM) return 5000;
+            return 0;
+          }
+        },
+        launchNuke
+      };
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: (type: FindConstant, opts?: FilterOptions<Structure>) => {
+          if (type !== FIND_MY_STRUCTURES) return [];
+          const structures = [mockNuker];
+          return opts?.filter ? structures.filter(opts.filter as any) : structures;
+        }
+      } as unknown as Room;
+      // @ts-ignore
+      global.Game.rooms["W1N1"] = mockRoom;
+
+      launchNukes(empire as any, { ...nukeManager.getConfig(), roiThreshold: 0 });
+
+      expect(launchNuke.called).to.equal(false);
+      expect(empire.nukeCandidates[0].launched).to.equal(false);
+    });
+
+    it("refuses to launch when visible controller ownership shows a runtime configured ally", () => {
+      const empire = createDefaultEmpireMemory();
+      empire.objectives.warMode = true;
+      (empire as any).diplomacy = { allies: ["FriendlyNeighbor"] };
+      empire.nukeCandidates = [{ roomName: "W2N2", score: 100, launched: false, launchTick: 0 }];
+      empire.knownRooms["W2N2"] = {
+        roomName: "W2N2",
+        lastSeen: Game.time - 1000,
+        sources: 2,
+        controllerLevel: 8,
+        owner: "OldEnemy",
+        threatLevel: 3,
+        scouted: true,
+        terrain: "mixed",
+        isHighway: false,
+        isSK: false,
+        towerCount: 6,
+        spawnCount: 3
+      };
+
+      const launchNuke = sinon.stub().returns(OK);
+      const mockNuker = {
+        structureType: STRUCTURE_NUKER,
+        room: { name: "W1N1" },
+        store: {
+          getUsedCapacity: (resource: ResourceConstant) => {
+            if (resource === RESOURCE_ENERGY) return 300000;
+            if (resource === RESOURCE_GHODIUM) return 5000;
+            return 0;
+          }
+        },
+        launchNuke
+      };
+      const launchRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: (type: FindConstant, opts?: FilterOptions<Structure>) => {
+          if (type !== FIND_MY_STRUCTURES) return [];
+          const structures = [mockNuker];
+          return opts?.filter ? structures.filter(opts.filter as any) : structures;
+        }
+      } as unknown as Room;
+      const targetRoom = {
+        name: "W2N2",
+        controller: { owner: { username: "FriendlyNeighbor" } }
+      } as unknown as Room;
+      // @ts-ignore
+      global.Game.rooms["W1N1"] = launchRoom;
+      // @ts-ignore
+      global.Game.rooms["W2N2"] = targetRoom;
+
+      launchNukes(empire as any, { ...nukeManager.getConfig(), roiThreshold: 0 });
+
+      expect(launchNuke.called).to.equal(false);
+      expect(empire.nukeCandidates[0].launched).to.equal(false);
     });
   });
 

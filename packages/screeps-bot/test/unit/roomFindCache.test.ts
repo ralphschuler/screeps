@@ -23,6 +23,8 @@ describe("roomFindCache", () => {
     // Reset Game
     // @ts-ignore: Setting up test environment
     global.Game = { time: 1000 };
+    // @ts-ignore: Setting up test environment
+    global.Memory = {};
 
     clearRoomFindCache();
   });
@@ -247,6 +249,20 @@ describe("roomFindCache", () => {
       const hostiles2 = cachedFindHostileCreeps(room);
       assert.equal(room._getFindCallCount(), 1); // Cached
       assert.strictEqual(hostiles1, hostiles2);
+    });
+
+    it("filters runtime configured allies from cached hostile creeps", () => {
+      const ally = { owner: { username: "FriendlyNeighbor" } } as Creep;
+      const hostile = { owner: { username: "Invader" } } as Creep;
+      const room = {
+        name: "W1N1",
+        find: (type: FindConstant) => type === FIND_HOSTILE_CREEPS ? [ally, hostile] : [],
+        _getFindCallCount: () => 1
+      } as unknown as MockRoom;
+      // @ts-ignore: Setting up test diplomacy memory
+      global.Memory = { empire: { diplomacy: { allies: ["FriendlyNeighbor"] } } };
+
+      assert.deepEqual(cachedFindHostileCreeps(room), [hostile]);
     });
 
     it("should cache structures with type filter", () => {

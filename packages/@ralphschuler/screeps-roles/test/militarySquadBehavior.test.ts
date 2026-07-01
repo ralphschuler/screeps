@@ -211,4 +211,44 @@ describe("military squad behavior", () => {
     expect((action as { target: RoomPosition }).target.x).to.equal(21);
     expect((action as { target: RoomPosition }).target.y).to.equal(20);
   });
+
+  it("does not dismantle neutral walls in runtime configured ally rooms", () => {
+    const wall = {
+      id: "wall1",
+      structureType: STRUCTURE_WALL,
+      hits: 50000,
+      hitsMax: 100000,
+      pos: new RoomPosition(24, 25, "W2N1")
+    } as unknown as StructureWall;
+    const room = createMockRoom("W2N1", {
+      controller: { owner: { username: "FriendlyNeighbor" } }
+    });
+    (room as any).find = (type: number, opts?: FilterOptions<Structure>) => {
+      if (type !== FIND_STRUCTURES) return [];
+      const structures = [wall];
+      return opts?.filter ? structures.filter(opts.filter as (structure: Structure) => boolean) : structures;
+    };
+    (room as any).getTerrain = () => ({ get: () => 0 });
+    const siegeCreep = createMockCreep("siege1", {
+      room,
+      memory: { role: "siegeUnit", family: "military", homeRoom: "W1N1", targetRoom: "W2N1" },
+      body: [{ type: WORK, hits: 100 }, { type: MOVE, hits: 100 }],
+      pos: {
+        ...new RoomPosition(25, 25, "W2N1"),
+        getRangeTo: () => 1,
+        findClosestByRange: (targets: unknown) => Array.isArray(targets) ? targets[0] : null
+      }
+    });
+    (Memory as any).empire = { diplomacy: { allies: ["FriendlyNeighbor"] } };
+    Game.rooms[room.name] = room;
+    Game.creeps[siegeCreep.name] = siegeCreep;
+
+    try {
+      const action = siege(makeContext(siegeCreep, room));
+
+      expect(action.type).to.not.equal("dismantle");
+    } finally {
+      delete (Memory as any).empire;
+    }
+  });
 });

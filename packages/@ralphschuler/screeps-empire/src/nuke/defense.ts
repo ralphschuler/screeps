@@ -5,8 +5,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
-import type { IncomingNukeAlert, EmpireMemory, SwarmState, RoomIntel } from "../types";
+import type { IncomingNukeAlert, EmpireMemory, SwarmState } from "../types";
+import { isKnownAllyNukeTarget } from "./allySafety";
 import type { NukeConfig } from "./types";
 import { NUKE_COST } from "./types";
 
@@ -63,11 +63,7 @@ export function processCounterNukeStrategies(
     const sourceRoomIntel = empire.knownRooms[alert.sourceRoom];
     if (!sourceRoomIntel) continue;
 
-    if (
-      isAllyPlayer(alert.sourceRoom) ||
-      (sourceRoomIntel.owner && isAllyPlayer(sourceRoomIntel.owner)) ||
-      (sourceRoomIntel.reserver && isAllyPlayer(sourceRoomIntel.reserver))
-    ) {
+    if (isKnownAllyNukeTarget(alert.sourceRoom, empire)) {
       logger.warn(`Ignoring allied nuke source ${alert.sourceRoom}; no counter-nuke target will be created`, {
         subsystem: "Nuke"
       });

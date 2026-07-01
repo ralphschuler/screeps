@@ -180,4 +180,34 @@ describe("Attack target selector confirmed enemy policy", () => {
 
     expect(findAttackTargets(makeCluster())).to.deep.equal([]);
   });
+
+  it("never targets configured allies even when warTargets contain stale ally entries", () => {
+    (Memory as any).empire = {
+      diplomacy: { allies: ["FriendlyNeighbor"] },
+      knownRooms: {
+        W2N1: {
+          name: "W2N1",
+          scouted: true,
+          lastSeen: Game.time,
+          sources: 2,
+          controllerLevel: 4,
+          owner: "FriendlyNeighbor",
+          towerCount: 0,
+          spawnCount: 1,
+          threatLevel: 3,
+          isHighway: false,
+          isSK: false
+        }
+      },
+      clusters: [],
+      warTargets: ["FriendlyNeighbor", "W2N1"],
+      ownedRooms: {},
+      claimQueue: [],
+      nukeCandidates: [],
+      powerBanks: [],
+      objectives: { expansion: [], military: [], economic: [] }
+    };
+
+    expect(findAttackTargets(makeCluster())).to.deep.equal([]);
+  });
 });

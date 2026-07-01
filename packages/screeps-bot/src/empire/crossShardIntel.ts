@@ -9,8 +9,7 @@
  * Addresses Issue: Intelligence & Coordination (cross-shard coordination)
  */
 
-import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { isKnownAllyPlayer, logger } from "@ralphschuler/screeps-core";
 import { deserializeInterShardMemory, serializeInterShardMemory } from "@ralphschuler/screeps-intershard";
 import type { SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
 import { memoryManager } from "@ralphschuler/screeps-memory";
@@ -95,7 +94,7 @@ export class CrossShardIntelCoordinator {
       warTargets: empire.warTargets ?? [],
       knownRooms,
       now: Game.time,
-      isAlly: isAllyPlayer
+      isAlly: username => isKnownAllyPlayer(username, { empire })
     });
 
     interShardMemory.globalTargets.enemies = intent.enemies;
