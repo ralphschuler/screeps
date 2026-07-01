@@ -5,8 +5,23 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { ScreepsAPI } from 'screeps-api';
+
+const legacyApiRequire = createRequire(new URL('../../../package.json', import.meta.url));
+const ScreepsAPI = resolveScreepsApiConstructor(legacyApiRequire('screeps-api'));
+
+function resolveScreepsApiConstructor(moduleNamespace) {
+  const candidates = [
+    moduleNamespace?.ScreepsAPI,
+    moduleNamespace?.default?.ScreepsAPI,
+    moduleNamespace?.default,
+    moduleNamespace
+  ];
+  const constructor = candidates.find((candidate) => typeof candidate === 'function');
+  if (!constructor) throw new TypeError('screeps-api module did not expose a ScreepsAPI constructor');
+  return constructor;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
