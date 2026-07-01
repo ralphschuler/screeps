@@ -16711,28 +16711,19 @@ if (t) throw t.error;
 }
 }
 }, e.prototype.balanceMinerals = function(e) {
-var t, r, o, n, s, c, u = new Map;
+var t, r, o, n, i, s, c = new Set;
 try {
-for (var l = a(e), m = l.next(); !m.done; m = l.next()) {
-var d = m.value, p = d.terminal, f = Object.keys(p.store);
+for (var u = a(e), l = u.next(); !l.done; l = u.next()) {
+var m = l.value.terminal, d = Object.keys(m.store);
 try {
-for (var y = (o = void 0, a(f)), v = y.next(); !v.done; v = y.next()) {
-var g = v.value;
-if (g !== RESOURCE_ENERGY) {
-var h = p.store.getUsedCapacity(g);
-0 !== h && (u.has(g) || u.set(g, []), u.get(g).push({
-room: d,
-amount: h
-}));
-}
-}
+for (var p = (o = void 0, a(d)), f = p.next(); !f.done; f = p.next()) (R = f.value) !== RESOURCE_ENERGY && m.store.getUsedCapacity(R) > 0 && c.add(R);
 } catch (e) {
 o = {
 error: e
 };
 } finally {
 try {
-v && !v.done && (n = y.return) && n.call(y);
+f && !f.done && (n = p.return) && n.call(p);
 } finally {
 if (o) throw o.error;
 }
@@ -16744,47 +16735,53 @@ error: e
 };
 } finally {
 try {
-m && !m.done && (r = l.return) && r.call(l);
+l && !l.done && (r = u.return) && r.call(u);
 } finally {
 if (t) throw t.error;
 }
 }
-var R = function(e, t) {
-if (t.length < 2) return "continue";
-t.sort(function(e, t) {
+var y = function(t) {
+var r = e.map(function(e) {
+return {
+room: e,
+amount: e.terminal.store.getUsedCapacity(t)
+};
+});
+if (r.length < 2) return "continue";
+r.sort(function(e, t) {
 return t.amount - e.amount;
 });
-var r = t[0], o = t[t.length - 1], n = r.amount - o.amount;
-if (n < 5e3) return "continue";
-if (E.transferQueue.some(function(t) {
-return t.fromRoom === r.room.name && t.toRoom === o.room.name && t.resourceType === e;
+var o = r[0], n = r[r.length - 1], a = o.amount - n.amount;
+if (a < 5e3) return "continue";
+if (v.transferQueue.some(function(e) {
+return e.fromRoom === o.room.name && e.toRoom === n.room.name && e.resourceType === t;
 })) return "continue";
-var a = Math.min(Math.floor(n / 2), r.amount - 1e3);
-if (a < 1e3) return "continue";
-E.transferQueue.push({
-fromRoom: r.room.name,
-toRoom: o.room.name,
-resourceType: e,
-amount: a,
+var i = Math.min(Math.floor(a / 2), o.amount - 1e3);
+if (i < 1e3) return "continue";
+v.transferQueue.push({
+fromRoom: o.room.name,
+toRoom: n.room.name,
+resourceType: t,
+amount: i,
 priority: 1
-}), A.info("Queued mineral transfer: ".concat(a, " ").concat(e, " from ").concat(r.room.name, " to ").concat(o.room.name), {
+}), A.info("Queued mineral transfer: ".concat(i, " ").concat(t, " from ").concat(o.room.name, " to ").concat(n.room.name), {
 subsystem: "Terminal"
 });
-}, E = this;
+}, v = this;
 try {
-for (var T = a(u.entries()), C = T.next(); !C.done; C = T.next()) {
-var S = i(C.value, 2);
-R(S[0], S[1]);
+for (var g = a(c), h = g.next(); !h.done; h = g.next()) {
+var R;
+y(R = h.value);
 }
 } catch (e) {
-s = {
+i = {
 error: e
 };
 } finally {
 try {
-C && !C.done && (c = T.return) && c.call(T);
+h && !h.done && (s = g.return) && s.call(g);
 } finally {
-if (s) throw s.error;
+if (i) throw i.error;
 }
 }
 }, e.prototype.executeTransfers = function(e) {
