@@ -42256,20 +42256,20 @@ i === TERRAIN_MASK_SWAMP ? o++ : 0 === i && r++;
 }
 return o > 2 * r ? "swamp" : r > 2 * o ? "plains" : "mixed";
 }, e.prototype.updateEnemyTracking = function() {
-var e, t, r, o, n, c, u, l, m, d, p, f, y = [], v = [];
-for (var g in Game.rooms) {
-var h = Game.rooms[g];
-if (h) {
-var R = V(h);
+var e, t, r, o, n, c, u, l, m, d, p, f, y, v, g = [], h = [];
+for (var R in Game.rooms) {
+var E = Game.rooms[R];
+if (E) {
+var T = V(E);
 try {
-for (var E = (e = void 0, a(R)), T = E.next(); !T.done; T = E.next()) {
-var C = T.value, S = C.owner.username, x = this.isAllyUsername(S);
-y.push({
-username: S,
-roomName: g,
-isAlly: x,
-hostileBodyParts: C.body.length
-}), !x && this.isAggressiveCreep(C) && v.push(S);
+for (var C = (e = void 0, a(T)), S = C.next(); !S.done; S = C.next()) {
+var x = S.value, w = x.owner.username, b = this.isAllyUsername(w);
+g.push({
+username: w,
+roomName: R,
+isAlly: b,
+hostileBodyParts: x.body.length
+}), !b && this.isAggressiveCreep(x) && h.push(w);
 }
 } catch (t) {
 e = {
@@ -42277,21 +42277,21 @@ error: t
 };
 } finally {
 try {
-T && !T.done && (t = E.return) && t.call(E);
+S && !S.done && (t = C.return) && t.call(C);
 } finally {
 if (e) throw e.error;
 }
 }
-(null === (p = h.controller) || void 0 === p ? void 0 : p.owner) && !h.controller.my && (S = h.controller.owner.username,
-y.push({
-username: S,
-roomName: g,
-isAlly: this.isAllyUsername(S),
+(null === (y = E.controller) || void 0 === y ? void 0 : y.owner) && !E.controller.my && (w = E.controller.owner.username,
+g.push({
+username: w,
+roomName: R,
+isAlly: this.isAllyUsername(w),
 hostileBodyParts: 0
 }));
 }
 }
-var w = function(e, t) {
+var O = function(e, t) {
 var r, o, n, c = new Map;
 try {
 for (var u = a(t), l = u.next(); !l.done; l = u.next()) {
@@ -42324,33 +42324,33 @@ enemies: s([], i(c.values()), !1).sort(function(e, t) {
 return e.username.localeCompare(t.username);
 })
 };
-}(Game.time, y);
+}(Game.time, g);
 try {
-for (var b = a(w.enemies), O = b.next(); !O.done; O = b.next()) {
-var M = O.value;
-(I = null !== (f = this.enemyPlayers.get(M.username)) && void 0 !== f ? f : {
-username: M.username,
+for (var M = a(O.enemies), k = M.next(); !k.done; k = M.next()) {
+var U = k.value;
+(B = null !== (v = this.enemyPlayers.get(U.username)) && void 0 !== v ? v : {
+username: U.username,
 lastSeen: Game.time,
 rooms: [],
 threatLevel: 0,
 aggressionCount: 0,
 isAlly: !1
-}).lastSeen = M.lastSeen;
+}).lastSeen = U.lastSeen;
 try {
-for (var k = (n = void 0, a(M.rooms)), U = k.next(); !U.done; U = k.next()) g = U.value,
-I.rooms.includes(g) || I.rooms.push(g);
+for (var A = (n = void 0, a(U.rooms)), _ = A.next(); !_.done; _ = A.next()) R = _.value,
+B.rooms.includes(R) || B.rooms.push(R);
 } catch (e) {
 n = {
 error: e
 };
 } finally {
 try {
-U && !U.done && (c = k.return) && c.call(k);
+_ && !_.done && (c = A.return) && c.call(A);
 } finally {
 if (n) throw n.error;
 }
 }
-I.isAlly = M.isAlly, this.enemyPlayers.set(I.username, I);
+B.isAlly = U.isAlly, this.enemyPlayers.set(B.username, B);
 }
 } catch (e) {
 r = {
@@ -42358,38 +42358,54 @@ error: e
 };
 } finally {
 try {
-O && !O.done && (o = b.return) && o.call(b);
+k && !k.done && (o = M.return) && o.call(M);
 } finally {
 if (r) throw r.error;
 }
 }
 try {
-for (var A = a(v), _ = A.next(); !_.done; _ = A.next()) S = _.value, (I = this.enemyPlayers.get(S)) && I.aggressionCount++;
+for (var N = a(Array.from(this.enemyPlayers.keys())), P = N.next(); !P.done; P = N.next()) {
+var I = P.value;
+this.isAllyUsername(I) && this.enemyPlayers.delete(I);
+}
 } catch (e) {
 u = {
 error: e
 };
 } finally {
 try {
-_ && !_.done && (l = A.return) && l.call(A);
+P && !P.done && (l = N.return) && l.call(N);
 } finally {
 if (u) throw u.error;
 }
 }
 try {
-for (var N = a(this.enemyPlayers.values()), P = N.next(); !P.done; P = N.next()) {
-var I;
-(I = P.value).aggressionCount >= 3 * this.config.aggressionThreshold ? I.threatLevel = 3 : I.aggressionCount >= 2 * this.config.aggressionThreshold ? I.threatLevel = 2 : I.aggressionCount >= this.config.aggressionThreshold ? I.threatLevel = 1 : I.threatLevel = 0;
-}
+for (var G = a(h), L = G.next(); !L.done; L = G.next()) w = L.value, (B = this.enemyPlayers.get(w)) && B.aggressionCount++;
 } catch (e) {
 m = {
 error: e
 };
 } finally {
 try {
-P && !P.done && (d = N.return) && d.call(N);
+L && !L.done && (d = G.return) && d.call(G);
 } finally {
 if (m) throw m.error;
+}
+}
+try {
+for (var D = a(this.enemyPlayers.values()), F = D.next(); !F.done; F = D.next()) {
+var B;
+(B = F.value).aggressionCount >= 3 * this.config.aggressionThreshold ? B.threatLevel = 3 : B.aggressionCount >= 2 * this.config.aggressionThreshold ? B.threatLevel = 2 : B.aggressionCount >= this.config.aggressionThreshold ? B.threatLevel = 1 : B.threatLevel = 0;
+}
+} catch (e) {
+p = {
+error: e
+};
+} finally {
+try {
+F && !F.done && (f = D.return) && f.call(D);
+} finally {
+if (p) throw p.error;
 }
 }
 }, e.prototype.getAllyPolicyOptions = function(e) {
