@@ -40,8 +40,8 @@ const scanner = new IntelScanner();
 const enemy = scanner.getEnemyPlayer("username");
 const allEnemies = scanner.getAllEnemies();
 
-// Note: Allies must be configured at initialization time
-// via the config.allies array (manual whitelist)
+// Note: Allies may be configured at initialization time via config.allies,
+// or live through Memory.empire.diplomacy.allies / Memory.diplomacy.allies.
 ```
 
 ### 2. Threat Predictor (`ThreatPredictor`)
@@ -226,12 +226,13 @@ global.market.getOpportunities()
 global.market.getSupplyDemand(RESOURCE_ENERGY)
 
 // Note: Alliance management methods have been removed
-// Configure allies at initialization time via config.allies array
+// Configure allies via config.allies or live Memory diplomacy allies
 ```
 
 ## Configuration
 
-All components can be configured via their constructors:
+Components can be configured via constructors. Intel ally whitelists can also be changed live by setting
+`Memory.empire.diplomacy.allies` or `Memory.diplomacy.allies` to an array of usernames.
 
 ```typescript
 // In SwarmBot.ts or main initialization

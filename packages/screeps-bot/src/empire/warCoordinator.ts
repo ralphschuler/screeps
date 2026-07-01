@@ -9,8 +9,8 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
+import { isKnownAllyUsername } from "./allyPolicy";
 
 /** Maximum linear distance to auto-add enemy rooms as war targets */
 const MAX_WAR_TARGET_DISTANCE = 10;
@@ -27,7 +27,22 @@ interface CandidateWarRoom {
   score: number;
 }
 
+export interface WarCoordinatorConfig {
+  /** Additional manual allies beyond permanent non-aggression allies. */
+  allies: string[];
+}
+
+const DEFAULT_CONFIG: WarCoordinatorConfig = {
+  allies: []
+};
+
 export class WarCoordinator {
+  private config: WarCoordinatorConfig;
+
+  public constructor(config: Partial<WarCoordinatorConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
   /** Update war targets based on threats and strategic goals */
   public updateWarTargets(empire: EmpireMemory): void {
     const myUsername = this.getMyUsername();
@@ -55,7 +70,7 @@ export class WarCoordinator {
   }
 
   private shouldKeepTarget(target: string, empire: EmpireMemory, myUsername: string): boolean {
-    if (target === myUsername || isAllyPlayer(target)) {
+    if (target === myUsername || this.isAllyUsername(target, empire)) {
       return false;
     }
 
@@ -79,7 +94,7 @@ export class WarCoordinator {
       return false;
     }
 
-    if (isAllyPlayer(intel.owner)) {
+    if (this.isAllyUsername(intel.owner, empire)) {
       return false;
     }
 
@@ -92,13 +107,13 @@ export class WarCoordinator {
     }
 
     for (const [username, posture] of Object.entries(empire.playerPostures?.players ?? {})) {
-      if (posture.state !== "war" || username === myUsername || isAllyPlayer(username)) {
+      if (posture.state !== "war" || username === myUsername || this.isAllyUsername(username, empire)) {
         continue;
       }
 
       for (const roomName in empire.knownRooms) {
         const intel = empire.knownRooms[roomName];
-        if (intel?.owner !== username || intel.scouted === false || this.shouldIgnoreRoomForWar(myUsername, intel)) {
+        if (intel?.owner !== username || intel.scouted === false || this.shouldIgnoreRoomForWar(myUsername, intel, empire)) {
           continue;
         }
 
@@ -116,7 +131,7 @@ export class WarCoordinator {
 
     for (const roomName in empire.knownRooms) {
       const intel = empire.knownRooms[roomName];
-      if (!intel?.owner || this.isInvalidWarCandidate(intel, isWarMode, myUsername)) {
+      if (!intel?.owner || this.isInvalidWarCandidate(intel, isWarMode, myUsername, empire)) {
         continue;
       }
 
@@ -166,8 +181,8 @@ export class WarCoordinator {
         intel.scouted !== true ||
         intel.owner === myUsername ||
         !intel.owner ||
-        isAllyPlayer(intel.owner) ||
-        (intel.reserver && isAllyPlayer(intel.reserver))
+        this.isAllyUsername(intel.owner, empire) ||
+        (intel.reserver && this.isAllyUsername(intel.reserver, empire))
       ) {
         continue;
       }
@@ -179,7 +194,12 @@ export class WarCoordinator {
     }
   }
 
-  private isInvalidWarCandidate(intel: RoomIntel, isWarMode: boolean, myUsername: string): boolean {
+  private isInvalidWarCandidate(
+    intel: RoomIntel,
+    isWarMode: boolean,
+    myUsername: string,
+    empire: EmpireMemory
+  ): boolean {
     if (intel.scouted !== true) {
       return true;
     }
@@ -189,7 +209,7 @@ export class WarCoordinator {
     }
 
     const owner = intel.owner;
-    if (!owner || owner === myUsername || isAllyPlayer(owner)) {
+    if (!owner || owner === myUsername || this.isAllyUsername(owner, empire)) {
       return true;
     }
 
@@ -200,21 +220,23 @@ export class WarCoordinator {
     return false;
   }
 
-  private shouldIgnoreRoomForWar(myUsername: string, intel: RoomIntel): boolean {
-    return this.isInvalidWarCandidate(intel, true, myUsername);
+  private shouldIgnoreRoomForWar(myUsername: string, intel: RoomIntel, empire: EmpireMemory): boolean {
+    return this.isInvalidWarCandidate(intel, true, myUsername, empire);
   }
 
   private normalizeWarTargets(empire: EmpireMemory, ownedRooms: string[]): void {
     const myUsername = this.getMyUsername();
     const isWarMode = empire.objectives.warMode;
 
-    const userTargets = empire.warTargets.filter(target => !this.isRoomName(target));
+    const userTargets = empire.warTargets.filter(
+      target => !this.isRoomName(target) && !this.isAllyUsername(target, empire)
+    );
     const roomTargets = [...new Set(empire.warTargets.filter(target => this.isRoomName(target)))];
 
     const rankedTargets = roomTargets
       .filter(roomName => {
         const intel = empire.knownRooms[roomName];
-        return intel !== undefined && !this.isInvalidWarCandidate(intel, isWarMode, myUsername);
+        return intel !== undefined && !this.isInvalidWarCandidate(intel, isWarMode, myUsername, empire);
       })
       .map((roomName): CandidateWarRoom => ({
         roomName,
@@ -234,6 +256,10 @@ export class WarCoordinator {
       .filter(target => !userTargets.includes(target));
 
     empire.warTargets = [...userTargets, ...topRoomTargets];
+  }
+
+  private isAllyUsername(username: string | undefined, empire: EmpireMemory): boolean {
+    return isKnownAllyUsername(username, { configuredAllies: this.config.allies, empire });
   }
 
   private isRoomName(target: string): boolean {
