@@ -5,7 +5,7 @@
  * Provides room analysis, distance calculation, and pathfinding callbacks.
  */
 
-import { getActualHostileStructures } from "@ralphschuler/screeps-core";
+import { getActualHostileStructures, isHighwayRoom } from "@ralphschuler/screeps-core";
 import type { ILogger } from "../types";
 
 /**
@@ -54,15 +54,8 @@ export function getRemoteMiningRoomCallback(roomName: string, logger?: ILogger):
     return true;
   }
   
-  // Avoid rooms with hostile structures (unless it's a highway)
-  // Highway rooms have either X or Y coordinate divisible by 10 (e.g., W0N5, W10N5, W5N10)
-  const coords = roomName.match(/\d+/g);
-  const isHighway = /^[WE]\d+[NS]\d+$/.test(roomName) && 
-    coords !== null &&
-    coords.length === 2 &&
-    (parseInt(coords[0], 10) % 10 === 0 || parseInt(coords[1], 10) % 10 === 0);
-  
-  if (!isHighway) {
+  // Avoid rooms with hostile structures unless the room is a highway corridor.
+  if (!isHighwayRoom(roomName)) {
     const hostileStructures = getActualHostileStructures(room).filter(
       s => s.structureType !== STRUCTURE_CONTROLLER && s.structureType !== STRUCTURE_KEEPER_LAIR
     );

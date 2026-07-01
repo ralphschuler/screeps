@@ -68,3 +68,12 @@ export {
   hasActualHostiles,
   type AlliedPlayer
 } from "./alliance";
+
+// Room geometry
+export {
+  classifyRoomName,
+  isHighwayRoom,
+  isSourceKeeperRoom,
+  parseRoomName,
+  type SignedRoomCoordinate
+} from "./roomGeometry";

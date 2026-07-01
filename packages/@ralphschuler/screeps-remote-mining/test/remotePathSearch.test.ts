@@ -135,6 +135,56 @@ describe("remotePathSearch", () => {
     assert.equal((costs as CostMatrix).get(5, 6), 255);
   });
 
+  it("avoids hostile signed-edge rooms that are not raw-index highways", () => {
+    const from = new RoomPosition(10, 10, "W1N1");
+    const to = new RoomPosition(20, 20, "W2N2");
+    let capturedOptions: PathFinderOpts | undefined;
+
+    (global as unknown as Record<string, number>).FIND_STRUCTURES = 107;
+    (global as unknown as Record<string, number>).FIND_CREEPS = 101;
+    (global as unknown as Record<string, number>).FIND_HOSTILE_STRUCTURES = 108;
+    (global as unknown as Record<string, string>).STRUCTURE_ROAD = "road";
+    (global as unknown as Record<string, string>).STRUCTURE_TOWER = "tower";
+    (global as unknown as Record<string, string>).STRUCTURE_CONTROLLER = "controller";
+    (global as unknown as Record<string, string>).STRUCTURE_KEEPER_LAIR = "keeperLair";
+
+    // @ts-expect-error: Setting up test environment
+    global.Game.rooms = {
+      W9N1: {
+        find: (type: FindConstant) => {
+          if (type === FIND_STRUCTURES) {
+            return [{ structureType: STRUCTURE_ROAD, pos: { x: 2, y: 3 } }];
+          }
+          if (type === FIND_CREEPS) {
+            return [];
+          }
+          if (type === FIND_HOSTILE_STRUCTURES) {
+            return [{ structureType: STRUCTURE_TOWER, owner: { username: "Enemy" }, pos: { x: 10, y: 10 } }];
+          }
+          return [];
+        }
+      }
+    };
+
+    (global as unknown as Record<string, unknown>).PathFinder = {
+      search: (_origin: RoomPosition, _goal: { pos: RoomPosition; range: number }, options: PathFinderOpts) => {
+        capturedOptions = options;
+
+        return {
+          path: [to],
+          ops: 50,
+          cost: 2,
+          incomplete: false
+        };
+      },
+      CostMatrix: TestCostMatrix
+    };
+
+    searchRemotePath(from, to, new MockLogger());
+
+    assert.equal(capturedOptions?.roomCallback?.("W9N1"), false);
+  });
+
   it("treats only non-empty complete searches as cacheable", () => {
     const pos = new RoomPosition(1, 1, "W1N1");
     const complete = { path: [pos], ops: 1, cost: 1, incomplete: false };
