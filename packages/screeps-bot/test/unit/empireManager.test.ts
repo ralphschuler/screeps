@@ -327,7 +327,7 @@ describe("Empire Manager Automation", () => {
       });
     });
 
-    it("should clear stale allied ownership when room is no longer ally-owned", () => {
+    it("preserves allied ownership intel for downstream safety gates", () => {
       const manager = new EmpireManager();
       empire.ownedRooms.W1N1 = {
         name: "W1N1",
@@ -356,9 +356,9 @@ describe("Empire Manager Automation", () => {
 
       (manager as any).updateObjectives(empire);
 
-      expect(empire.knownRooms.W2N1.owner).to.be.undefined;
-      expect(empire.knownRooms.W2N1.reserver).to.be.undefined;
-      expect(empire.knownRooms.W3N1.owner).to.be.undefined;
+      expect(empire.knownRooms.W2N1.owner).to.equal("TooAngel");
+      expect(empire.knownRooms.W2N1.reserver).to.equal("TooAngel");
+      expect(empire.knownRooms.W3N1.owner).to.equal("TedRoastBeef");
       expect(empire.knownRooms.W4N1.owner).to.equal("EnemyPlayer");
     });
   });

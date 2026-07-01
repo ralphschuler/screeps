@@ -5,7 +5,7 @@
  * EmpireManager and ExpansionManager to maintain consistency and avoid duplication.
  */
 
-import { isAllyPlayer } from "@ralphschuler/screeps-core";
+import { isKnownAllyPlayer } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { calculateRemoteHaulerRequirement } from "./remoteHaulerDimensioning";
@@ -236,13 +236,13 @@ export function getAdjacentRoomNames(roomName: string): string[] {
 }
 
 /**
- * Check if a player is covered by the permanent non-aggression pact.
+ * Check if a player is covered by the permanent or runtime-configured ally policy.
  *
  * @param username - The username to check for alliance status
  * @returns True when the player must never be treated as hostile
  */
 export function isAlly(username: string): boolean {
-  return isAllyPlayer(username);
+  return isKnownAllyPlayer(username, { empire: memoryManager.getEmpire() });
 }
 
 /**

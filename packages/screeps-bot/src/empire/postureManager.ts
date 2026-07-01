@@ -1,5 +1,4 @@
-import { logger } from "@ralphschuler/screeps-core";
-import { isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { isKnownAllyPlayer, logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory } from "@ralphschuler/screeps-memory";
 
@@ -45,7 +44,7 @@ function getPostureMemory(empire: EmpireMemory): PlayerPostureMemory {
 }
 
 function isQualifyingHostile(creep: Creep): boolean {
-  if (isAllyPlayer(creep.owner.username)) return false;
+  if (isKnownAllyPlayer(creep.owner.username)) return false;
   return creep.body.some(part =>
     part.hits > 0 &&
     (part.type === ATTACK || part.type === RANGED_ATTACK || part.type === WORK || part.type === HEAL)
@@ -67,9 +66,10 @@ export function recordPlayerAttack(
   roomName: string,
   severity: AttackIncidentSeverity = "hostileCombat"
 ): PlayerPostureEntry | null {
-  if (!username || isAllyPlayer(username)) return null;
+  if (!username) return null;
 
   const empire = memoryManager.getEmpire();
+  if (isKnownAllyPlayer(username, { empire })) return null;
   const posture = getPostureMemory(empire);
   const cutoff = Game.time - posture.windowTicks;
   const existing = posture.players[username];

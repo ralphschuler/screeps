@@ -45,6 +45,20 @@ describe("player posture attack memory", () => {
     expect((Memory as any).empire.playerPostures).to.equal(undefined);
   });
 
+  it("ignores runtime configured allied attackers", () => {
+    (Memory as any).empire.diplomacy = { allies: ["FriendlyNeighbor"] };
+
+    recordPlayerAttack("FriendlyNeighbor", "W1N1");
+    const attackers = getQualifyingAttackers([
+      hostile("FriendlyNeighbor", [ATTACK]),
+      hostile("Invader", [ATTACK])
+    ]);
+
+    expect((Memory as any).empire.warTargets).to.deep.equal([]);
+    expect((Memory as any).empire.playerPostures).to.equal(undefined);
+    expect(attackers).to.deep.equal(["Invader"]);
+  });
+
   it("declares war after three attacks inside the rolling window", () => {
     recordPlayerAttack("Enemy", "W1N1");
     (global as any).Game.time += 100;

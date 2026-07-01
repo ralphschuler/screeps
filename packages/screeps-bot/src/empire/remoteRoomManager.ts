@@ -11,7 +11,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { getActualHostileCreeps, isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, isKnownAllyPlayer } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
@@ -53,7 +53,7 @@ export type RemoteRoomLossReason = "enemyOwned" | "enemyReserved" | "hostile" | 
  */
 export function isRemoteRoomLost(room: Room, _homeRoomName: string): { lost: boolean; reason?: RemoteRoomLossReason } {
   // Check if room is owned by someone else
-  if (room.controller?.owner && !room.controller.my && !isAllyPlayer(room.controller.owner.username)) {
+  if (room.controller?.owner && !room.controller.my && !isKnownAllyPlayer(room.controller.owner.username)) {
     return { lost: true, reason: "enemyOwned" };
   }
 
@@ -62,7 +62,7 @@ export function isRemoteRoomLost(room: Room, _homeRoomName: string): { lost: boo
   if (
     room.controller?.reservation &&
     room.controller.reservation.username !== myUsername &&
-    !isAllyPlayer(room.controller.reservation.username)
+    !isKnownAllyPlayer(room.controller.reservation.username)
   ) {
     return { lost: true, reason: "enemyReserved" };
   }
@@ -106,12 +106,12 @@ export function getRemoteRoomStatus(roomName: string, _homeRoomName: string): Re
 
   // Check if room is owned or reserved by enemy
   const enemyOwned = Boolean(
-    controller?.owner && controller.owner.username !== myUsername && !isAllyPlayer(controller.owner.username)
+    controller?.owner && controller.owner.username !== myUsername && !isKnownAllyPlayer(controller.owner.username)
   );
   const enemyReserved = Boolean(
     controller?.reservation &&
     controller.reservation.username !== myUsername &&
-    !isAllyPlayer(controller.reservation.username)
+    !isKnownAllyPlayer(controller.reservation.username)
   );
 
   // Get reservation status

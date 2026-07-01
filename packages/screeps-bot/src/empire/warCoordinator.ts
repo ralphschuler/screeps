@@ -8,9 +8,8 @@
  * 3. High-threat rooms (reactive, defensively triggered)
  */
 
-import { logger } from "@ralphschuler/screeps-core";
+import { isKnownAllyPlayer, logger } from "@ralphschuler/screeps-core";
 import type { EmpireMemory, RoomIntel } from "@ralphschuler/screeps-memory";
-import { isKnownAllyUsername } from "./allyPolicy";
 
 /** Maximum linear distance to auto-add enemy rooms as war targets */
 const MAX_WAR_TARGET_DISTANCE = 10;
@@ -259,7 +258,7 @@ export class WarCoordinator {
   }
 
   private isAllyUsername(username: string | undefined, empire: EmpireMemory): boolean {
-    return isKnownAllyUsername(username, { configuredAllies: this.config.allies, empire });
+    return isKnownAllyPlayer(username, { configuredAllies: this.config.allies, empire });
   }
 
   private isRoomName(target: string): boolean {

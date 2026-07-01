@@ -54,19 +54,37 @@ export {
 // Alliance safety
 export {
   NON_AGGRESSION_PACT_PLAYERS,
+  getConfiguredAllyPlayers,
+  getKnownAllyPlayers,
   isAllyPlayer,
+  isConfiguredAllyPlayer,
+  isKnownAllyPlayer,
   isAllyOwned,
+  isConfiguredAllyOwned,
+  isKnownAllyOwned,
   isAllyCreep,
   isAllyPowerCreep,
   isAllyStructure,
+  isKnownAllyCreep,
+  isKnownAllyPowerCreep,
+  isKnownAllyStructure,
   filterAllyCreeps,
   filterAllyPowerCreeps,
   filterAllyStructures,
+  filterKnownAllyCreeps,
+  filterKnownAllyPowerCreeps,
+  filterKnownAllyStructures,
   getActualHostileCreeps,
   getActualHostilePowerCreeps,
   getActualHostileStructures,
+  getKnownHostileCreeps,
+  getKnownHostilePowerCreeps,
+  getKnownHostileStructures,
   hasActualHostiles,
-  type AlliedPlayer
+  hasKnownHostiles,
+  type AlliedPlayer,
+  type AllyPolicyMemorySource,
+  type AllyPolicyOptions
 } from "./alliance";
 
 // Room geometry

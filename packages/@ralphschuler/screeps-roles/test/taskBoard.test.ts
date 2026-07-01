@@ -428,6 +428,84 @@ describe("TaskBoard", () => {
     expect(taskBoard.getStats(room.name)).to.include({ open: 0, assigned: 0, reservations: 0 });
   });
 
+  it("does not create defend assignments for runtime configured allies", () => {
+    const ally = makeHostile("ally1" as Id<Creep>, 20, 20, "FriendlyNeighbor");
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_HOSTILE_CREEPS ? [ally] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === ally.id ? ally : null;
+    (Memory as any).empire = { diplomacy: { allies: ["FriendlyNeighbor"] } };
+
+    try {
+      const ranger = createMockCreep("ranger1", {
+        room,
+        memory: { role: "ranger", family: "military", homeRoom: room.name, version: 1 },
+        body: [{ type: RANGED_ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+      });
+      MockGame.creeps[ranger.name] = ranger;
+
+      expect(taskBoard.getAssignedAction(makeContext(ranger, room))).to.equal(null);
+      expect(taskBoard.getStats(room.name)).to.include({ open: 0, assigned: 0, reservations: 0 });
+    } finally {
+      delete (Memory as any).empire;
+    }
+  });
+
+  it("invalidates stale defend tasks when the target becomes a runtime configured ally", () => {
+    const ally = makeHostile("ally1" as Id<Creep>, 20, 20, "FriendlyNeighbor");
+    const room = createMockRoom("W1N1");
+    (room as any).find = () => [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === ally.id ? ally : null;
+    (Memory as any).empire = { diplomacy: { allies: ["FriendlyNeighbor"] } };
+
+    try {
+      const ranger = createMockCreep("ranger1", {
+        room,
+        memory: { role: "ranger", family: "military", homeRoom: room.name, version: 1 },
+        body: [{ type: RANGED_ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+      });
+      MockGame.creeps[ranger.name] = ranger;
+      (Memory as any).creepTaskBoard = {
+        enabled: true,
+        rooms: {
+          [room.name]: {
+            roomName: room.name,
+            tasks: {
+              [`${room.name}:defend:${ally.id}`]: {
+                id: `${room.name}:defend:${ally.id}`,
+                roomName: room.name,
+                type: "defend",
+                priority: TaskPriority.CRITICAL,
+                targetId: ally.id,
+                targetPos: { x: 20, y: 20, roomName: room.name },
+                amount: ally.hits,
+                reservedAmount: 0,
+                maxAssignments: 3,
+                allowedRoles: ["ranger"],
+                status: "open",
+                assignedCreeps: [],
+                reservations: {},
+                createdTick: Game.time - 1,
+                updatedTick: Game.time - 1,
+                expiresTick: Game.time + 50
+              }
+            },
+            lastGeneratedTick: Game.time,
+            lastCleanedTick: Game.time - 1,
+            stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+          }
+        }
+      };
+
+      expect(taskBoard.getAssignedAction(makeContext(ranger, room))).to.equal(null);
+      expect((Memory as any).creepTaskBoard.rooms[room.name].tasks).to.deep.equal({});
+      expect(taskBoard.getStats(room.name)).to.include({ open: 0, assigned: 0, reservations: 0 });
+    } finally {
+      delete (Memory as any).empire;
+    }
+  });
+
   it("can be disabled as rollback", () => {
     taskBoard.setEnabled(false);
     const room = createMockRoom("W1N1");
