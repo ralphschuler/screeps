@@ -71,6 +71,49 @@ describe("RoomConstructionManager", () => {
       } as unknown as Room;
     }
 
+    function createRoomWithExistingSites(
+      record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] },
+      existingStructures: Structure[],
+      existingSites: ConstructionSite[]
+    ): Room {
+      const controller = {
+        my: true,
+        level: 2,
+        pos: new RoomPosition(40, 38, "W2N1")
+      } as unknown as StructureController;
+      const spawn = existingStructures.find(
+        (structure): structure is StructureSpawn => structure.structureType === STRUCTURE_SPAWN
+      ) ?? ({
+        id: "spawn1" as Id<StructureSpawn>,
+        structureType: STRUCTURE_SPAWN,
+        pos: new RoomPosition(31, 25, "W2N1")
+      } as StructureSpawn);
+      const sources = [
+        { pos: new RoomPosition(33, 8, "W2N1") } as Source,
+        { pos: new RoomPosition(21, 30, "W2N1") } as Source
+      ];
+      const minerals = [{ pos: new RoomPosition(37, 31, "W2N1") } as Mineral];
+
+      return {
+        name: "W2N1",
+        controller,
+        getTerrain: () => ({ get: () => 0 }),
+        find: (type: FindConstant, options?: { filter?: (obj: Structure | ConstructionSite) => boolean }) => {
+          if (type === FIND_MY_CONSTRUCTION_SITES) return options?.filter ? existingSites.filter(options.filter) : existingSites;
+          if (type === FIND_MY_STRUCTURES) return options?.filter ? existingStructures.filter(options.filter) : existingStructures;
+          if (type === FIND_MY_SPAWNS) return [spawn];
+          if (type === FIND_STRUCTURES) return existingStructures;
+          if (type === FIND_SOURCES) return sources;
+          if (type === FIND_MINERALS) return minerals;
+          return [];
+        },
+        createConstructionSite: (x: number, y: number, structureType: BuildableStructureConstant) => {
+          record.calls.push({ x, y, structureType });
+          return OK;
+        }
+      } as unknown as Room;
+    }
+
     it("should place the first spawn site in a spawnless RCL1 room even when other sites exist", () => {
       const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
       const room = createSpawnlessRoom(record);
@@ -178,9 +221,85 @@ describe("RoomConstructionManager", () => {
       );
     });
 
-    it("should place construction sites based on blueprint", () => {
-      // Placeholder for future tests when we have mock room objects
-      assert.exists(manager);
+    it("should place extension sites in RCL2 when mandatory demand exists despite existing backlog", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const existingStructures: Structure[] = [
+        {
+          id: "spawn1" as Id<StructureSpawn>,
+          structureType: STRUCTURE_SPAWN,
+          pos: new RoomPosition(31, 25, "W2N1")
+        } as StructureSpawn
+      ];
+      const existingSites: ConstructionSite[] = [
+        ...Array.from({ length: 4 }, (_, index) => ({
+          structureType: STRUCTURE_CONTAINER,
+          pos: new RoomPosition(10 + index, 10, "W2N1")
+        } as ConstructionSite)),
+        ...Array.from({ length: 8 }, (_, index) => ({
+          structureType: STRUCTURE_ROAD,
+          pos: new RoomPosition(20 + index, 20, "W2N1")
+        } as ConstructionSite))
+      ];
+
+      const room = createRoomWithExistingSites(record, existingStructures, existingSites);
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {} } as any;
+      const oldGame = (globalThis as { Game?: unknown }).Game;
+      (globalThis as { Game?: unknown }).Game = { constructionSites: {} };
+
+      try {
+        manager.runConstruction(room, swarm, existingSites, existingStructures as StructureSpawn[]);
+      } finally {
+        (globalThis as { Game?: unknown }).Game = oldGame;
+      }
+
+      assert.exists(
+        record.calls.find((call) => call.structureType === STRUCTURE_EXTENSION),
+        "RCL2 rooms with extension demand should keep blueprint placement even when backlog is high"
+      );
+    });
+
+    it("should skip blueprint queue when per-room site cap is hit and no mandatory demand remains", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const extensionPositions = Array.from({ length: 5 }, (_, index) => ({
+        id: `ext${index}` as Id<StructureExtension>,
+        structureType: STRUCTURE_EXTENSION,
+        pos: new RoomPosition(10 + index, 20, "W2N1")
+      } as StructureExtension));
+      const existingStructures: Structure[] = [
+        {
+          id: "spawn1" as Id<StructureSpawn>,
+          structureType: STRUCTURE_SPAWN,
+          pos: new RoomPosition(31, 25, "W2N1")
+        } as StructureSpawn,
+        ...extensionPositions
+      ];
+      const existingSites: ConstructionSite[] = [
+        ...Array.from({ length: 4 }, (_, index) => ({
+          structureType: STRUCTURE_CONTAINER,
+          pos: new RoomPosition(10 + index, 10, "W2N1")
+        } as ConstructionSite)),
+        ...Array.from({ length: 8 }, (_, index) => ({
+          structureType: STRUCTURE_ROAD,
+          pos: new RoomPosition(20 + index, 20, "W2N1")
+        } as ConstructionSite))
+      ];
+
+      const room = createRoomWithExistingSites(record, existingStructures, existingSites);
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {} } as any;
+      const oldGame = (globalThis as { Game?: unknown }).Game;
+      (globalThis as { Game?: unknown }).Game = { constructionSites: {} };
+
+      try {
+        manager.runConstruction(room, swarm, existingSites, existingStructures as StructureSpawn[]);
+      } finally {
+        (globalThis as { Game?: unknown }).Game = oldGame;
+      }
+
+      assert.equal(
+        record.calls.filter((call) => call.structureType === STRUCTURE_EXTENSION).length,
+        0,
+        "No additional extension sites should be created when RCL2 mandatory demand is already met"
+      );
     });
 
     it("should destroy misplaced structures in non-combat postures", () => {

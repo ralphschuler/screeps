@@ -14,6 +14,7 @@ import {
   blueprintFromPlan,
   buildConstructionQueue,
   destroyMisplacedStructures,
+  getMandatoryStructureTargets,
   issueConstructionSites,
   placeLabClusterConstructionSites,
   placeLinkConstructionSites,
@@ -138,6 +139,31 @@ function isEarlyGameDefense(rcl: number): boolean {
 
 function countOwnedStructures(room: Room, structureType: StructureConstant): number {
   return room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType === structureType }).length;
+}
+
+function countBuildsForType(room: Room, structureType: BuildableStructureConstant): number {
+  const ownedStructures = room.find(FIND_MY_STRUCTURES, {
+    filter: structure => structure.structureType === structureType
+  });
+  const ownedSites = room.find(FIND_MY_CONSTRUCTION_SITES, {
+    filter: site => site.structureType === structureType
+  });
+
+  return ownedStructures.length + ownedSites.length;
+}
+
+function hasOutstandingMandatoryBlueprintDemand(room: Room, rcl: number): boolean {
+  const targets = getMandatoryStructureTargets(rcl);
+
+  for (const structureType of Object.keys(targets) as BuildableStructureConstant[]) {
+    const target = targets[structureType] ?? 0;
+    if (target <= 0) continue;
+    if (countBuildsForType(room, structureType) < target) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function placeCriticalDefenseConstructionSites(room: Room, stampPlan: ReturnType<typeof planRoomBlueprintFromRoom>, maxSites: number): number {
@@ -282,9 +308,15 @@ export class RoomConstructionManager {
     }
 
     // Check per-room construction site throttle after first-spawn/bootstrap, priority economy sites,
-    // and survival-critical defense sites.
-    if (existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced >= 10) {
-      swarm.metrics.constructionSites = existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced;
+    // and survival-critical defense sites. Keep bypass open for rooms still lacking mandatory
+    // blueprint structures (e.g., RCL2 rooms still missing extensions).
+    const hasMandatoryDemand = hasOutstandingMandatoryBlueprintDemand(room, rcl);
+    if (
+      existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced >= 10 &&
+      !hasMandatoryDemand
+    ) {
+      swarm.metrics.constructionSites =
+        existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced;
       return;
     }
 
