@@ -2,12 +2,27 @@ import net from "node:net";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
-import { ScreepsAPI } from "screeps-api";
 import { appendCpuBenchmarkSample } from "./cpu-benchmark-model.js";
 import { ensureLiveCloneAuth, seedLiveCloneSnapshot } from "./live-clone-seeder.js";
 import { createServerControlPlane, parseTickRate } from "./server-control-plane.js";
+
+const legacyApiRequire = createRequire(new URL("../../../package.json", import.meta.url));
+const ScreepsAPI = resolveScreepsApiConstructor(legacyApiRequire("screeps-api"));
+
+export function resolveScreepsApiConstructor(moduleNamespace) {
+  const candidates = [
+    moduleNamespace?.ScreepsAPI,
+    moduleNamespace?.default?.ScreepsAPI,
+    moduleNamespace?.default,
+    moduleNamespace
+  ];
+  const constructor = candidates.find((candidate) => typeof candidate === "function");
+  if (!constructor) throw new TypeError("screeps-api module did not expose a ScreepsAPI constructor");
+  return constructor;
+}
 
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
 const DEFAULT_SMOKE_DURATION_MINUTES = 15;

@@ -16,6 +16,7 @@ import {
   parseTickRate,
   prepareArtifactsDir,
   resolveAvailablePorts,
+  resolveScreepsApiConstructor,
   restartScreepsRuntime,
   shouldContinuePolling,
   summarizeServerLogDiagnostics,
@@ -24,6 +25,18 @@ import {
 } from "../../scripts/private-server-harness.js";
 
 describe("private-server harness module", () => {
+  it("resolves screeps-api constructors from CommonJS and ESM namespace shapes", () => {
+    class Api {}
+
+    expect(resolveScreepsApiConstructor({ ScreepsAPI: Api })).to.equal(Api);
+    expect(resolveScreepsApiConstructor({ default: { ScreepsAPI: Api } })).to.equal(Api);
+    expect(resolveScreepsApiConstructor({ default: Api })).to.equal(Api);
+    expect(resolveScreepsApiConstructor(Api)).to.equal(Api);
+    expect(() => resolveScreepsApiConstructor({ ScreepsAPI: {} })).to.throw(
+      "screeps-api module did not expose a ScreepsAPI constructor",
+    );
+  });
+
   it("parses smoke defaults into a stable run contract", () => {
     const options = parseHarnessArgs([], {});
 
