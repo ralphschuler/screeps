@@ -129,11 +129,13 @@ export function issueConstructionSites(room: Room, plan: BlueprintPlan, maxSites
   if (globalExistingSites >= globalSiteCap) return 0;
 
   const existing = roomExistingKeys(room);
+  // Build the full queue: the highest-scoring planned tiles can be rejected by
+  // live Screeps validation, so slicing to maxSitesPerTick candidates can starve
+  // lower-scored mandatory structures such as extension fallback sites.
   const queue = buildConstructionQueue(plan, {
     existingStructureKeys: existing.structures,
     existingSiteKeys: existing.sites,
-    currentRcl: room.controller?.level ?? plan.rcl,
-    maxItems: Math.min(maxSitesPerTick, globalSiteCap - globalExistingSites)
+    currentRcl: room.controller?.level ?? plan.rcl
   });
 
   let created = 0;
