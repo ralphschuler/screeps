@@ -121,4 +121,31 @@ describe("TerminalManager", () => {
 
     expect(sendCount).to.equal(0);
   });
+
+  it("balances minerals to an owned terminal that currently has zero stock", () => {
+    const sends: Array<{ resource: ResourceConstant; amount: number; destination: string }> = [];
+    (Game.market as Market).calcTransactionCost = () => 100;
+    const source = createRoom(
+      "W1N1",
+      createStore({ [RESOURCE_ENERGY]: 10000, [RESOURCE_HYDROGEN]: 12000 }),
+      ((resource, amount, destination) => {
+        sends.push({ resource, amount, destination });
+        return OK;
+      }) as StructureTerminal["send"]
+    );
+    const target = createRoom("W2N2", createStore({ [RESOURCE_ENERGY]: 10000 }));
+    (Game.rooms as Record<string, Room>).W1N1 = source;
+    (Game.rooms as Record<string, Room>).W2N2 = target;
+
+    new TerminalManager({
+      minBucket: 0,
+      energySendThreshold: 999999,
+      energyRequestThreshold: 0,
+      capacityClearanceThreshold: 1.1
+    }).run();
+
+    expect(sends).to.deep.equal([
+      { resource: RESOURCE_HYDROGEN, amount: 6000, destination: "W2N2" }
+    ]);
+  });
 });
