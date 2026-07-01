@@ -56,7 +56,7 @@ cat > "${PACKAGE_DIR}/package.json" << EOF
   "devDependencies": {
     "@types/chai": "^4.1.6",
     "@types/mocha": "^5.2.5",
-    "@types/node": "^20.14.9",
+    "@types/node": "^24.13.2",
     "@types/screeps": "^3.3.8",
     "chai": "^4.2.0",
     "mocha": "^11.7.5",

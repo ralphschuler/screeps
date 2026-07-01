@@ -13,11 +13,12 @@
  * TODO(P3): STYLE - Convert to TypeScript for consistency with the rest of the codebase
  * All other source files are TypeScript
  * TODO(P3): FEATURE - Add support for more complex semver ranges (e.g., ^, ~, ||)
- * Current implementation only handles >= and <= operators
+ * Current implementation handles simple whitespace-separated comparators: >=, >, <=, <, and exact.
  */
 
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { engines } = require('../package.json');
@@ -34,40 +35,52 @@ const colors = {
  * Simple version comparison function
  * Returns true if current satisfies the requirement
  */
-function satisfiesVersion(current, required) {
+export function satisfiesVersion(current, required) {
   // Remove 'v' prefix if present
   current = current.replace(/^v/, '');
-  
-  // Parse requirement (e.g., ">=16.0.0 <=20.x")
-  const parts = required.split(/\s+/);
-  
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
-    if (part.startsWith('>=')) {
-      const minVersion = part.substring(2);
-      if (!compareVersions(current, minVersion, '>=')) return false;
-    } else if (part.startsWith('<=')) {
-      const maxVersion = part.substring(2).replace(/\.x$/, '.999');
-      if (!compareVersions(current, maxVersion, '<=')) return false;
+
+  // Parse requirement (e.g., ">=24 <25" or ">=16.0.0 <=20.x")
+  const parts = required.trim().split(/\s+/).filter(Boolean);
+
+  for (const part of parts) {
+    const match = /^(>=|<=|>|<|=)?(.+)$/.exec(part);
+    if (!match) {
+      continue;
     }
+
+    const operator = match[1] || '=';
+    const requiredVersion = match[2];
+    if (!compareVersions(current, requiredVersion, operator)) return false;
   }
-  
+
   return true;
 }
 
-function compareVersions(version1, version2, operator) {
-  const v1Parts = version1.split('.').map(Number);
-  const v2Parts = version2.split('.').map(Number);
-  
+export function compareVersions(version1, version2, operator) {
+  const v1Parts = parseVersionParts(version1, 0);
+  const v2Parts = parseVersionParts(version2, operator === '<=' ? 999 : 0);
+
   for (let i = 0; i < 3; i++) {
     const v1 = v1Parts[i] || 0;
     const v2 = v2Parts[i] || 0;
-    
+
     if (v1 > v2) return operator === '>=' || operator === '>';
     if (v1 < v2) return operator === '<=' || operator === '<';
   }
-  
-  return operator === '>=' || operator === '<=';
+
+  return operator === '>=' || operator === '<=' || operator === '=';
+}
+
+function parseVersionParts(version, wildcardValue) {
+  return version
+    .replace(/^v/, '')
+    .split('.')
+    .slice(0, 3)
+    .map((part) => {
+      if (part === 'x' || part === 'X' || part === '*') return wildcardValue;
+      const match = /^\d+/.exec(part);
+      return match ? Number(match[0]) : 0;
+    });
 }
 
 function checkVersion(name, current, required) {
@@ -127,4 +140,6 @@ ${colors.reset}`);
   console.log(`${colors.green}✅ All version checks passed!${colors.reset}\n`);
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
