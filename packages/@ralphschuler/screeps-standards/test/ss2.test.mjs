@@ -8,6 +8,10 @@ function resetScreepsState(incomingTransactions = []) {
     time: 1000,
     market: { incomingTransactions }
   };
+  simulateGlobalReset();
+}
+
+function simulateGlobalReset() {
   SS2TerminalComms._messageBuffers = null;
   SS2TerminalComms._nextMessageId = null;
   SS2TerminalComms._stateInitialized = false;
@@ -156,6 +160,63 @@ test('processIncomingTransactions keeps processed ids while transactions remain 
 
   Game.time = 2001;
   assert.deepEqual(SS2TerminalComms.processIncomingTransactions(), []);
+});
+
+test('processIncomingTransactions keeps processed ids across global resets', () => {
+  resetScreepsState([
+    {
+      transactionId: 'tx-processed-before-reset',
+      time: 1000,
+      description: 'abc|0|0|Hello World',
+      sender: { username: 'ally' }
+    }
+  ]);
+
+  assert.deepEqual(SS2TerminalComms.processIncomingTransactions(), [
+    { sender: 'ally', message: 'Hello World' }
+  ]);
+  assert.equal(Memory.ss2TerminalComms.processedTransactions['tx-processed-before-reset'], 1000);
+
+  simulateGlobalReset();
+
+  assert.deepEqual(SS2TerminalComms.processIncomingTransactions(), []);
+});
+
+test('processIncomingTransactions restores partial buffers across global resets', () => {
+  const firstPacket = {
+    transactionId: 'tx-buffer-before-reset-first',
+    time: 1000,
+    description: 'abc|0|1|Hello ',
+    sender: { username: 'ally' }
+  };
+  resetScreepsState([firstPacket]);
+
+  assert.deepEqual(SS2TerminalComms.processIncomingTransactions(), []);
+  assert.deepEqual(Memory.ss2TerminalComms.messageBuffers['ally:abc'], {
+    msgId: 'abc',
+    sender: 'ally',
+    finalPacket: 1,
+    packets: { 0: 'Hello ' },
+    receivedAt: 1000,
+    firstPacketTime: 1000
+  });
+
+  simulateGlobalReset();
+  Game.time = 1001;
+  Game.market.incomingTransactions = [
+    firstPacket,
+    {
+      transactionId: 'tx-buffer-after-reset-continuation',
+      time: 1001,
+      description: 'abc|1|World',
+      sender: { username: 'ally' }
+    }
+  ];
+
+  assert.deepEqual(SS2TerminalComms.processIncomingTransactions(), [
+    { sender: 'ally', message: 'Hello World' }
+  ]);
+  assert.deepEqual(Memory.ss2TerminalComms.messageBuffers, {});
 });
 
 test('processIncomingTransactions ignores stale continuations from the packet-zero tick', () => {
