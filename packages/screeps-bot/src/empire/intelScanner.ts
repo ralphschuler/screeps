@@ -331,6 +331,12 @@ export class IntelScanner {
       this.enemyPlayers.set(enemy.username, enemy);
     }
 
+    for (const username of Array.from(this.enemyPlayers.keys())) {
+      if (this.isAllyUsername(username)) {
+        this.enemyPlayers.delete(username);
+      }
+    }
+
     for (const owner of aggressiveOwners) {
       const enemy = this.enemyPlayers.get(owner);
       if (enemy) enemy.aggressionCount++;
