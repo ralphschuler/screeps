@@ -78,6 +78,20 @@ if (result === null) {
 }
 ```
 
+### Room Geometry
+Shared helpers for room-name parsing and world-geometry classification:
+- Signed coordinate parsing for distance/adjacency math
+- Highway detection using raw Screeps room-name indices
+- Source Keeper room detection using raw Screeps room-name indices
+
+```typescript
+import { isHighwayRoom, isSourceKeeperRoom, parseRoomName } from '@ralphschuler/screeps-core';
+
+isHighwayRoom('W10N1'); // true
+isSourceKeeperRoom('W16S24'); // true
+parseRoomName('W0N0'); // { x: -1, y: -1, xDir: 'W', yDir: 'N' }
+```
+
 ## Installation
 
 This package is part of the screeps-ant-swarm monorepo and uses npm workspaces.
@@ -95,7 +109,8 @@ import {
   createLogger, 
   eventBus, 
   commandRegistry,
-  cpuBudgetManager
+  cpuBudgetManager,
+  isHighwayRoom
 } from '@ralphschuler/screeps-core';
 ```
 
@@ -130,6 +145,13 @@ import {
 - `cpuBudgetManager.getViolationsSummary()` - Return budget violations sorted by repeat offenders
 - `cpuBudgetManager.resetViolations()` - Clear violation counters
 - `cpuBudgetManager.getConfig()` / `cpuBudgetManager.updateConfig(config)` - Read or merge runtime budget config
+
+### Room Geometry
+
+- `parseRoomName(roomName)` - Parse a room name into signed coordinates plus directions
+- `isHighwayRoom(roomName)` - Return true when raw X or Y room-name index is divisible by 10
+- `isSourceKeeperRoom(roomName)` - Return true when raw X and Y room-name indices are in the 4..6 Source Keeper band
+- `classifyRoomName(roomName)` - Return `{ isHighway, isSK }` for room intel snapshots
 
 ## License
 

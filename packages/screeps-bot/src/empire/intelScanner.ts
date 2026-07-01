@@ -11,7 +11,7 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { getActualHostileCreeps, isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, getActualHostileStructures, isAllyPlayer } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
@@ -213,12 +213,12 @@ export class IntelScanner {
       intel.mineralType = minerals[0].mineralType;
     }
 
-    // Update structures
-    const towers = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_TOWER });
-    intel.towerCount = towers.length;
-
-    const spawns = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_SPAWN });
-    intel.spawnCount = spawns.length;
+    // Update hostile-owned defensive structures only. Permanent/configured allies
+    // must not inflate threat/offense intel even though Screeps exposes their
+    // structures through FIND_HOSTILE_STRUCTURES relative to us.
+    const hostileStructures = getActualHostileStructures(room).filter(s => !this.isConfiguredAllyStructure(s));
+    intel.towerCount = hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER).length;
+    intel.spawnCount = hostileStructures.filter(s => s.structureType === STRUCTURE_SPAWN).length;
 
     // Check for portals
     const portals = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_PORTAL });
@@ -344,6 +344,14 @@ export class IntelScanner {
         enemy.threatLevel = 0; // No threat
       }
     }
+  }
+
+  /**
+   * Check whether a structure belongs to a configured (non-permanent) ally.
+   */
+  private isConfiguredAllyStructure(structure: Structure): boolean {
+    const owner = (structure as { owner?: { username?: string } }).owner?.username;
+    return typeof owner === "string" && this.config.allies.includes(owner);
   }
 
   /**

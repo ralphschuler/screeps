@@ -4,9 +4,11 @@ import { buildStubRoomIntel, buildVisibleRoomIntel, classifyRoomName } from "../
 describe("Visible room intel snapshot Module", () => {
   it("classifies highway and Source Keeper rooms from room names", () => {
     expect(classifyRoomName("W10N1")).to.deep.equal({ isHighway: true, isSK: false });
-    expect(classifyRoomName("W9N1")).to.deep.equal({ isHighway: true, isSK: false });
+    expect(classifyRoomName("W9N1")).to.deep.equal({ isHighway: false, isSK: false });
+    expect(classifyRoomName("W19S26")).to.deep.equal({ isHighway: false, isSK: false });
     expect(classifyRoomName("W0N0")).to.deep.equal({ isHighway: true, isSK: false });
-    expect(classifyRoomName("W6N6")).to.deep.equal({ isHighway: false, isSK: false });
+    expect(classifyRoomName("W6N6")).to.deep.equal({ isHighway: false, isSK: true });
+    expect(classifyRoomName("W16S24")).to.deep.equal({ isHighway: false, isSK: true });
     expect(classifyRoomName("W5N5")).to.deep.equal({ isHighway: false, isSK: true });
     expect(classifyRoomName("W4N1")).to.deep.equal({ isHighway: false, isSK: false });
     expect(classifyRoomName("W2N2")).to.deep.equal({ isHighway: false, isSK: false });
