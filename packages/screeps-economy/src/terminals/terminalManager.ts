@@ -505,29 +505,31 @@ export class TerminalManager {
    * Balance minerals between rooms with terminals
    */
   private balanceMinerals(rooms: Room[]): void {
-    // Get mineral distribution across rooms
-    const mineralMap = new Map<MineralConstant, { room: Room; amount: number }[]>();
+    // Discover non-energy resources with stock anywhere, then include every terminal room.
+    // Rooms without that resource are valid deficit targets with amount 0.
+    const resourceTypes = new Set<ResourceConstant>();
 
     for (const room of rooms) {
       const terminal = room.terminal!;
-      
-      // Check each mineral type - only iterate over resources actually in the terminal
       const resources = Object.keys(terminal.store) as ResourceConstant[];
+
       for (const resourceType of resources) {
         if (resourceType === RESOURCE_ENERGY) continue;
-        
-        const amount = terminal.store.getUsedCapacity(resourceType);
-        if (amount === 0) continue;
 
-        if (!mineralMap.has(resourceType as MineralConstant)) {
-          mineralMap.set(resourceType as MineralConstant, []);
+        const amount = terminal.store.getUsedCapacity(resourceType);
+        if (amount > 0) {
+          resourceTypes.add(resourceType);
         }
-        mineralMap.get(resourceType as MineralConstant)!.push({ room, amount });
       }
     }
 
-    // Balance each mineral type
-    for (const [mineralType, roomList] of mineralMap.entries()) {
+    // Balance each resource type
+    for (const resourceType of resourceTypes) {
+      const roomList = rooms.map(room => ({
+        room,
+        amount: room.terminal!.store.getUsedCapacity(resourceType)
+      }));
+
       if (roomList.length < 2) continue;
 
       // Sort by amount
@@ -544,7 +546,7 @@ export class TerminalManager {
       const alreadyQueued = this.transferQueue.some(
         req => req.fromRoom === richest.room.name && 
                req.toRoom === poorest.room.name && 
-               req.resourceType === mineralType
+               req.resourceType === resourceType
       );
       if (alreadyQueued) continue;
 
@@ -560,13 +562,13 @@ export class TerminalManager {
       this.transferQueue.push({
         fromRoom: richest.room.name,
         toRoom: poorest.room.name,
-        resourceType: mineralType,
+        resourceType,
         amount: transferAmount,
         priority: 1
       });
 
       logger.info(
-        `Queued mineral transfer: ${transferAmount} ${mineralType} from ${richest.room.name} to ${poorest.room.name}`,
+        `Queued mineral transfer: ${transferAmount} ${resourceType} from ${richest.room.name} to ${poorest.room.name}`,
         { subsystem: "Terminal" }
       );
     }
