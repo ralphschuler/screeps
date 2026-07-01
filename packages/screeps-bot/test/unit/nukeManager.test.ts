@@ -640,6 +640,100 @@ describe("Nuke Manager", () => {
       expect(empire.nukeCandidates[0].launched).to.equal(false);
     });
 
+    for (const { label, findConstant, alliedEntity } of [
+      {
+        label: "creeps",
+        findConstant: FIND_CREEPS,
+        alliedEntity: { owner: { username: "FriendlyNeighbor" }, pos: { x: 10, y: 10, roomName: "W2N2" } }
+      },
+      {
+        label: "power creeps",
+        findConstant: FIND_POWER_CREEPS,
+        alliedEntity: { owner: { username: "FriendlyNeighbor" }, pos: { x: 11, y: 11, roomName: "W2N2" } }
+      },
+      {
+        label: "structures",
+        findConstant: FIND_STRUCTURES,
+        alliedEntity: {
+          owner: { username: "FriendlyNeighbor" },
+          pos: { x: 25, y: 25, roomName: "W2N2" },
+          hits: 5000,
+          structureType: STRUCTURE_SPAWN
+        }
+      },
+      {
+        label: "construction sites",
+        findConstant: FIND_CONSTRUCTION_SITES,
+        alliedEntity: {
+          owner: { username: "FriendlyNeighbor" },
+          pos: { x: 12, y: 12, roomName: "W2N2" },
+          structureType: STRUCTURE_EXTENSION
+        }
+      }
+    ] as const) {
+      it(`refuses to launch when visible target room contains runtime configured ally ${label}`, () => {
+        const empire = createDefaultEmpireMemory();
+        empire.objectives.warMode = true;
+        (empire as any).diplomacy = { allies: ["FriendlyNeighbor"] };
+        empire.nukeCandidates = [{ roomName: "W2N2", score: 100, launched: false, launchTick: 0 }];
+        empire.knownRooms["W2N2"] = {
+          roomName: "W2N2",
+          lastSeen: Game.time - 1000,
+          sources: 2,
+          controllerLevel: 8,
+          owner: "OldEnemy",
+          threatLevel: 3,
+          scouted: true,
+          terrain: "mixed",
+          isHighway: false,
+          isSK: false,
+          towerCount: 6,
+          spawnCount: 3
+        };
+
+        const launchNuke = sinon.stub().returns(OK);
+        const mockNuker = {
+          structureType: STRUCTURE_NUKER,
+          room: { name: "W1N1" },
+          store: {
+            getUsedCapacity: (resource: ResourceConstant) => {
+              if (resource === RESOURCE_ENERGY) return 300000;
+              if (resource === RESOURCE_GHODIUM) return 5000;
+              return 0;
+            }
+          },
+          launchNuke
+        };
+        const launchRoom = {
+          name: "W1N1",
+          controller: { my: true },
+          find: (type: FindConstant, opts?: FilterOptions<Structure>) => {
+            if (type !== FIND_MY_STRUCTURES) return [];
+            const structures = [mockNuker];
+            return opts?.filter ? structures.filter(opts.filter as any) : structures;
+          }
+        } as unknown as Room;
+        const targetRoom = {
+          name: "W2N2",
+          controller: { owner: { username: "OldEnemy" } },
+          find: (type: FindConstant) => {
+            if (type === findConstant) return [alliedEntity];
+            return [];
+          },
+          lookForAtArea: () => findConstant === FIND_STRUCTURES ? [{ structure: alliedEntity }] : []
+        } as unknown as Room;
+        // @ts-ignore
+        global.Game.rooms["W1N1"] = launchRoom;
+        // @ts-ignore
+        global.Game.rooms["W2N2"] = targetRoom;
+
+        launchNukes(empire as any, { ...nukeManager.getConfig(), roiThreshold: 0 });
+
+        expect(launchNuke.called).to.equal(false);
+        expect(empire.nukeCandidates[0].launched).to.equal(false);
+      });
+    }
+
     it("refuses to launch when visible controller ownership shows a runtime configured ally", () => {
       const empire = createDefaultEmpireMemory();
       empire.objectives.warMode = true;
