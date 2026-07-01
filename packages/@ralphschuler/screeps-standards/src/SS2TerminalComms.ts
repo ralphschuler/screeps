@@ -11,8 +11,8 @@ import { parseSS2TransactionDescription } from "./ss2/description.js";
 const logger = createLogger("SS2TerminalComms");
 
 export class SS2TerminalComms {
-  private static readonly MAX_DESCRIPTION_LENGTH = 100;
-  private static readonly MESSAGE_CHUNK_SIZE = 91; // Max 100 - 9 bytes header
+  private static readonly MESSAGE_CHUNK_SIZE = 91; // Max 100 - 9 character header
+  private static readonly MAX_PACKET_COUNT = 100; // Packet IDs are 0-99
   private static readonly MESSAGE_TIMEOUT = 1000; // Ticks before incomplete message expires
   private static readonly QUEUE_TIMEOUT = 1000; // Ticks before queued packets expire
   private static readonly MESSAGE_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -50,7 +50,8 @@ export class SS2TerminalComms {
           sender: serialized.sender,
           finalPacket: serialized.finalPacket,
           packets: packetsMap,
-          receivedAt: serialized.receivedAt
+          receivedAt: serialized.receivedAt,
+          firstPacketTime: serialized.firstPacketTime
         });
       }
     }
@@ -85,7 +86,8 @@ export class SS2TerminalComms {
           sender: buffer.sender,
           finalPacket: buffer.finalPacket,
           packets: packetsObject,
-          receivedAt: buffer.receivedAt
+          receivedAt: buffer.receivedAt,
+          firstPacketTime: buffer.firstPacketTime
         };
       });
     }
@@ -163,14 +165,17 @@ export class SS2TerminalComms {
   }> {
     const completedMessages: Array<{ sender: string; message: string }> = [];
 
-    // Clean up expired message buffers
+    // Clean up expired message buffers and transaction dedupe markers
     this.cleanupExpiredBuffers();
 
-    if (!Game.market.incomingTransactions) {
+    const incomingTransactions = Game.market.incomingTransactions;
+    if (!incomingTransactions) {
+      this.cleanupProcessedTransactions([]);
       return completedMessages;
     }
+    this.cleanupProcessedTransactions(incomingTransactions);
 
-    for (const transaction of Game.market.incomingTransactions) {
+    for (const transaction of incomingTransactions) {
       // Ignore market orders (only process direct terminal sends)
       if (transaction.order) {
         continue;
@@ -181,6 +186,10 @@ export class SS2TerminalComms {
         continue;
       }
 
+      if (this.isProcessedTransaction(transaction)) {
+        continue;
+      }
+
       const parsed = this.parseTransaction(transaction.description);
       if (!parsed) {
         continue;
@@ -188,31 +197,50 @@ export class SS2TerminalComms {
 
       const bufferKey = `${transaction.sender.username}:${parsed.msgId}`;
       let buffer = this.messageBuffers.get(bufferKey);
+      const finalPacket = parsed.finalPacket ?? (parsed.packetId === 0 ? 0 : undefined);
 
-      // Create new buffer if needed
-      if (!buffer) {
-        if (parsed.finalPacket === undefined) {
-          // Not first packet and no buffer exists - skip
-          continue;
-        }
-
+      // Create a buffer for packet zero. If another packet-zero arrives for an
+      // active sender/message id, restart the buffer so short id collisions do
+      // not mix old packet metadata with a new message payload.
+      if (
+        finalPacket !== undefined &&
+        (!buffer || (parsed.packetId === 0 && !this.isTransactionStaleForBuffer(transaction, parsed.packetId, buffer)))
+      ) {
         buffer = {
           msgId: parsed.msgId,
           sender: transaction.sender.username,
-          finalPacket: parsed.finalPacket,
+          finalPacket,
           packets: new Map(),
           receivedAt: Game.time,
+          firstPacketTime: transaction.time,
         };
         this.messageBuffers.set(bufferKey, buffer);
         this.saveStateToMemory();
       }
 
-      // Store packet
+      if (!buffer) {
+        // Not first packet and no buffer exists - skip
+        continue;
+      }
+
+      // Ignore older packets with the same sender/message id. Message ids are
+      // short and can collide while old transactions are still in history.
+      if (this.isTransactionStaleForBuffer(transaction, parsed.packetId, buffer)) {
+        this.markTransactionProcessed(transaction);
+        continue;
+      }
+
+      // Store packet and mark only stored transactions as processed. Continuation
+      // packets that arrive before packet zero remain available in the last-100
+      // transaction history for a later processing pass.
       buffer.packets.set(parsed.packetId, parsed.messageChunk);
+      this.markTransactionProcessed(transaction);
       this.saveStateToMemory();
 
-      // Check if message is complete
-      if (buffer.packets.size === buffer.finalPacket + 1) {
+      // Check if message is complete. Do not rely on Map.size: malformed
+      // out-of-range packets must not prevent completion after required
+      // packet IDs arrive.
+      if (this.hasAllPackets(buffer)) {
         // Reconstruct message
         const chunks: string[] = [];
         for (let i = 0; i <= buffer.finalPacket; i++) {
@@ -251,7 +279,7 @@ export class SS2TerminalComms {
     }
 
     if (completedMessages.length > 0) {
-      logger.debug(`Processed ${Game.market.incomingTransactions.length} terminal transactions, completed ${completedMessages.length} messages`);
+      logger.debug(`Processed ${incomingTransactions.length} terminal transactions, completed ${completedMessages.length} messages`);
     }
 
     return completedMessages;
@@ -260,11 +288,11 @@ export class SS2TerminalComms {
   /**
    * Split message into packets for transmission
    * @param message Message to split
-   * @returns Array of packet descriptions
+   * @returns Array of packet descriptions, or [] when the message is empty or exceeds SS2 packet limits
    */
   public static splitMessage(message: string): string[] {
-    if (message.length <= this.MAX_DESCRIPTION_LENGTH) {
-      return [message];
+    if (message.length === 0 || message.length > this.MESSAGE_CHUNK_SIZE * this.MAX_PACKET_COUNT) {
+      return [];
     }
 
     const msgId = this.generateMessageId();
@@ -298,7 +326,7 @@ export class SS2TerminalComms {
    * @param resourceType Resource to send (typically energy)
    * @param amount Amount to send per packet
    * @param message Message to include
-   * @returns OK for queued multi-packet messages or terminal.send() result for single packets
+   * @returns OK for queued multi-packet messages, ERR_INVALID_ARGS for empty/oversized messages, or terminal.send() result for single packets
    */
   public static sendMessage(
     terminal: StructureTerminal,
@@ -308,6 +336,16 @@ export class SS2TerminalComms {
     message: string
   ): ScreepsReturnCode {
     const packets = this.splitMessage(message);
+
+    if (packets.length === 0) {
+      logger.error("Message is empty or exceeds SS2 packet limit", {
+        meta: {
+          length: message.length,
+          maxLength: this.MESSAGE_CHUNK_SIZE * this.MAX_PACKET_COUNT,
+        },
+      });
+      return ERR_INVALID_ARGS;
+    }
 
     if (packets.length === 1) {
       // Single packet - send directly
@@ -544,6 +582,105 @@ export class SS2TerminalComms {
       chunks.push(message.substring(i, i + chunkSize));
     }
     return chunks;
+  }
+
+  /**
+   * Return true when all required packet IDs have arrived. Extra packet IDs are
+   * ignored so malformed/noisy transactions cannot poison a valid buffer.
+   */
+  private static hasAllPackets(buffer: SS2MessageBuffer): boolean {
+    for (let packetId = 0; packetId <= buffer.finalPacket; packetId++) {
+      if (!buffer.packets.has(packetId)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Return true when a transaction belongs to an older generation than this
+   * buffer. Packet zero can restart same-tick buffers; continuation packets
+   * must be strictly newer than packet zero because a terminal cannot send the
+   * first and continuation packets for one queued message in the same tick.
+   */
+  private static isTransactionStaleForBuffer(
+    transaction: Transaction,
+    packetId: number,
+    buffer: SS2MessageBuffer
+  ): boolean {
+    if (buffer.firstPacketTime === undefined) {
+      return false;
+    }
+
+    return packetId === 0
+      ? transaction.time < buffer.firstPacketTime
+      : transaction.time <= buffer.firstPacketTime;
+  }
+
+  /**
+   * Build a stable transaction dedupe key. Screeps transactions provide a
+   * transactionId; the fallback keeps lightweight tests and old mocks safe.
+   */
+  private static getTransactionKey(transaction: Transaction): string {
+    if (transaction.transactionId) {
+      return transaction.transactionId;
+    }
+
+    const sender = transaction.sender?.username ?? "unknown";
+    const time = typeof transaction.time === "number" ? transaction.time : "unknown";
+    const description = transaction.description ?? "";
+    return `${time}:${sender}:${description}`;
+  }
+
+  /**
+   * Check whether an incoming transaction has already been consumed from the
+   * rolling Game.market.incomingTransactions history.
+   */
+  private static isProcessedTransaction(transaction: Transaction): boolean {
+    const processed = Memory.ss2TerminalComms?.processedTransactions;
+    if (!processed) {
+      return false;
+    }
+
+    return processed[this.getTransactionKey(transaction)] !== undefined;
+  }
+
+  /**
+   * Remember consumed transactions so completed SS2 messages emit once even
+   * though Screeps exposes the last 100 incoming transactions every tick.
+   */
+  private static markTransactionProcessed(transaction: Transaction): void {
+    if (!Memory.ss2TerminalComms) {
+      Memory.ss2TerminalComms = {};
+    }
+    if (!Memory.ss2TerminalComms.processedTransactions) {
+      Memory.ss2TerminalComms.processedTransactions = {};
+    }
+
+    const processedAt = typeof transaction.time === "number" ? transaction.time : Game.time;
+    Memory.ss2TerminalComms.processedTransactions[this.getTransactionKey(transaction)] = processedAt;
+  }
+
+  /**
+   * Clean up transaction dedupe markers after the same retention window as
+   * incomplete message buffers.
+   */
+  private static cleanupProcessedTransactions(activeTransactions: Transaction[]): void {
+    const processed = Memory.ss2TerminalComms?.processedTransactions;
+    if (!processed) {
+      return;
+    }
+
+    const activeTransactionIds = new Set(
+      activeTransactions.map(transaction => this.getTransactionKey(transaction))
+    );
+    const now = Game.time;
+    for (const [transactionId, processedAt] of Object.entries(processed)) {
+      if (!activeTransactionIds.has(transactionId) && now - processedAt > this.MESSAGE_TIMEOUT) {
+        delete processed[transactionId];
+      }
+    }
   }
 
   /**

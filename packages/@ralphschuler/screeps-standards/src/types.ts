@@ -22,6 +22,7 @@ export interface SS2MessageBuffer {
   finalPacket: number;
   packets: Map<number, string>; // packetId -> messageChunk
   receivedAt: number; // First packet received tick
+  firstPacketTime?: number; // Transaction tick for packet zero, used to reject stale same-id packets
 }
 
 export interface SS2PacketQueueItem {
@@ -47,6 +48,7 @@ declare global {
     ss2TerminalComms?: {
       messageBuffers?: { [key: string]: SS2MessageBufferSerialized };
       nextMessageId?: number;
+      processedTransactions?: { [transactionId: string]: number };
     };
   }
 }
@@ -60,4 +62,5 @@ export interface SS2MessageBufferSerialized {
   finalPacket: number;
   packets: { [packetId: number]: string }; // Converted from Map for serialization
   receivedAt: number;
+  firstPacketTime?: number;
 }

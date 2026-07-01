@@ -53,16 +53,17 @@ for (const { sender, message } of incomingMessages) {
 
 - `parseTransaction(description: string)` - Parse SS2 transaction description
 - `processIncomingTransactions()` - Process all incoming transactions and return complete messages
-- `splitMessage(message: string)` - Split message into chunks for multi-packet transmission
-- `sendMessage(terminal, targetRoom, resourceType, amount, message)` - Send message (single or multi-packet)
+- `splitMessage(message: string)` - Frame a non-empty message as one or more SS2 packet descriptions; returns `[]` when the payload is empty or exceeds the SS2 packet limit
+- `sendMessage(terminal, targetRoom, resourceType, amount, message)` - Send message (single SS2 packet direct, multi-packet queued; empty/oversized payloads return `ERR_INVALID_ARGS`)
 - `processQueue()` - Send next queued packets for multi-packet messages
 - `parseJSON<T>(message: string)` - Parse JSON message content
 - `formatJSON<T>(data: T)` - Format data as JSON string
 
 **Internal Limits:**
 
-- `MAX_DESCRIPTION_LENGTH = 100` - Maximum terminal description length
-- `MESSAGE_CHUNK_SIZE = 91` - Bytes per packet (100 - 9 header bytes)
+- Terminal description max = `100` characters
+- `MESSAGE_CHUNK_SIZE = 91` - Payload characters per packet (100 - 9 header characters)
+- Maximum generated packet count = `100` (`packet_id` 0-99), maximum payload length = `9100` characters
 - `MESSAGE_TIMEOUT = 1000` - Ticks before incomplete message expires
 - `QUEUE_TIMEOUT = 1000` - Ticks before queued packets expire
 
@@ -78,10 +79,10 @@ msg_id|packet_id|{final_packet|}message_chunk
 
 - `msg_id`: 3-character alphanumeric message identifier generated for outgoing packets; incoming parsing preserves the existing 1-3 character acceptance
 - `packet_id`: Packet sequence number (0-99)
-- `final_packet`: Final packet index, present only in packet `0`
-- `message_chunk`: Piece of the message content; pipe characters are allowed inside the payload
+- `final_packet`: Final packet index, present only in packet `0`; generated single-packet messages use `0`
+- `message_chunk`: Non-empty piece of the message content; pipe characters are allowed inside the payload
 
-The public `parseTransaction()` façade delegates to a pure parser module so protocol syntax stays isolated from Screeps state, packet queues, and terminal side effects.
+The public `parseTransaction()` façade delegates to a pure parser module so protocol syntax stays isolated from Screeps state, packet queues, and terminal side effects. Incoming packet-zero descriptions without a final-packet marker are treated as complete single-packet messages when no buffer exists. Empty payloads are rejected because they cannot produce a parseable SS2 packet. Payloads longer than `91` characters are queued as multi-packet sends, so `sendMessage()` returns `OK` after queueing rather than a synchronous `terminal.send()` result.
 
 ## Memory Usage
 
@@ -93,6 +94,7 @@ interface Memory {
   ss2TerminalComms?: {
     messageBuffers?: { [key: string]: SS2MessageBufferSerialized };
     nextMessageId?: number;
+    processedTransactions?: { [transactionId: string]: number };
   };
 }
 ```

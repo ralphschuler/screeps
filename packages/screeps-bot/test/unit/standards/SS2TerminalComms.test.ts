@@ -6,6 +6,11 @@ describe("SS2TerminalComms", () => {
   beforeEach(() => {
     // @ts-ignore: allow adding Game to global
     global.Game = { time: 1000 };
+    // @ts-ignore: allow adding Memory to global
+    global.Memory = {};
+    (SS2TerminalComms as any)._messageBuffers = null;
+    (SS2TerminalComms as any)._nextMessageId = null;
+    (SS2TerminalComms as any)._stateInitialized = false;
   });
 
   describe("parseTransaction", () => {
@@ -59,12 +64,22 @@ describe("SS2TerminalComms", () => {
   });
 
   describe("splitMessage", () => {
-    it("should not split short messages", () => {
+    it("should emit parseable single-packet messages", () => {
       const message = "Short message";
       const packets = SS2TerminalComms.splitMessage(message);
 
       expect(packets.length).to.equal(1);
-      expect(packets[0]).to.equal(message);
+      expect(packets[0].length).to.be.at.most(100);
+      expect(SS2TerminalComms.parseTransaction(packets[0])).to.deep.equal({
+        msgId: "000",
+        packetId: 0,
+        finalPacket: 0,
+        messageChunk: message
+      });
+    });
+
+    it("should reject empty messages", () => {
+      expect(SS2TerminalComms.splitMessage("")).to.deep.equal([]);
     });
 
     it("should split long messages into multiple packets", () => {
@@ -99,7 +114,7 @@ describe("SS2TerminalComms", () => {
   describe("JSON helpers", () => {
     it("should parse valid JSON", () => {
       const json = '{"type":"test","value":123}';
-      const parsed = SS2TerminalComms.parseJSON(json);
+      const parsed = SS2TerminalComms.parseJSON<{ type: string; value: number }>(json);
 
       expect(parsed).to.not.be.null;
       expect(parsed?.type).to.equal("test");
@@ -119,13 +134,64 @@ describe("SS2TerminalComms", () => {
     });
   });
 
+  describe("processIncomingTransactions", () => {
+    it("should not emit the same transaction twice", () => {
+      // @ts-ignore: partial Screeps Game mock
+      global.Game = {
+        time: 1000,
+        market: {
+          incomingTransactions: [
+            {
+              transactionId: "tx-single-repeat",
+              time: 1000,
+              description: "abc|0|0|Hello World",
+              sender: { username: "ally" }
+            }
+          ]
+        }
+      } as any;
+
+      expect(SS2TerminalComms.processIncomingTransactions()).to.deep.equal([
+        { sender: "ally", message: "Hello World" }
+      ]);
+      expect(SS2TerminalComms.processIncomingTransactions()).to.deep.equal([]);
+    });
+
+    it("should not re-emit old processed transactions that remain in history", () => {
+      // @ts-ignore: partial Screeps Game mock
+      global.Game = {
+        time: 1000,
+        market: {
+          incomingTransactions: [
+            {
+              transactionId: "tx-old-still-visible",
+              time: 1000,
+              description: "abc|0|0|Hello World",
+              sender: { username: "ally" }
+            }
+          ]
+        }
+      } as any;
+
+      expect(SS2TerminalComms.processIncomingTransactions()).to.deep.equal([
+        { sender: "ally", message: "Hello World" }
+      ]);
+
+      Game.time = 2001;
+      expect(SS2TerminalComms.processIncomingTransactions()).to.deep.equal([]);
+    });
+  });
+
   describe("Queue Management", () => {
     let mockTerminal: any;
 
     beforeEach(() => {
-      // Reset Memory and Game
+      // Reset Memory, Game, and SS2 lazy static state
       // @ts-ignore: allow adding Memory to global
       global.Memory = { ss2PacketQueue: {} };
+      (SS2TerminalComms as any)._messageBuffers = null;
+      (SS2TerminalComms as any)._nextMessageId = null;
+      (SS2TerminalComms as any)._stateInitialized = false;
       // @ts-ignore: allow adding Game to global
       global.Game = {
         time: 1000,
@@ -158,8 +224,10 @@ describe("SS2TerminalComms", () => {
         const message = "Short message";
         let sendCalled = false;
 
-        mockTerminal.send = () => {
+        let sentDescription = "";
+        mockTerminal.send = (_resource: ResourceConstant, _amount: number, _target: string, desc: string) => {
           sendCalled = true;
+          sentDescription = desc;
           return OK;
         };
 
@@ -173,6 +241,32 @@ describe("SS2TerminalComms", () => {
 
         expect(result).to.equal(OK);
         expect(sendCalled).to.be.true;
+        expect(SS2TerminalComms.parseTransaction(sentDescription)).to.deep.equal({
+          msgId: "000",
+          packetId: 0,
+          finalPacket: 0,
+          messageChunk: message
+        });
+        expect(Memory.ss2PacketQueue).to.be.empty;
+      });
+
+      it("should reject empty messages", () => {
+        let sendCalled = false;
+        mockTerminal.send = () => {
+          sendCalled = true;
+          return OK;
+        };
+
+        const result = SS2TerminalComms.sendMessage(
+          mockTerminal as StructureTerminal,
+          "W1N1",
+          RESOURCE_ENERGY,
+          100,
+          ""
+        );
+
+        expect(result).to.equal(ERR_INVALID_ARGS);
+        expect(sendCalled).to.be.false;
         expect(Memory.ss2PacketQueue).to.be.empty;
       });
 
