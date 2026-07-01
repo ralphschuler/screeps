@@ -50,12 +50,12 @@ Required environment variables/secrets:
 - `SCREEPS_PASS` (secret, when using password auth)
 - `SCREEPS_TOKEN` (secret, preferred)
 - `SCREEPS_PROTOCOL`
-- `SCREEPS_HOSTNAME`
+- `SCREEPS_HOSTNAME` (optional in GitHub Actions; the workflow falls back to its target hostname)
 - `SCREEPS_PORT`
 - `SCREEPS_PATH`
 - `SCREEPS_BRANCH`
 
-Configured environments include official and private servers such as `screeps.com`, `season.screeps.com`, `ptr.screeps.com`, and private-server targets.
+Configured environments include official and private servers such as `screeps.com`, `season.screeps.com`, `ptr.screeps.com`, and private-server targets. The deploy workflow provides a non-empty default hostname for each matrix target (`sim.screeps.com` uses `screeps.com` as the API host); environment variables can still override that hostname when needed.
 
 ## Branch/environment mapping
 

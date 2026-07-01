@@ -14,25 +14,31 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy (${{ matrix.environment }})
+    name: Deploy (${{ matrix.target.environment }})
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    environment: ${{ matrix.environment }}
+    environment: ${{ matrix.target.environment }}
     strategy:
       fail-fast: false
       matrix:
-        environment:
-          - sim.screeps.com
-          - season.screeps.com
-          - ptr.screeps.com
-          - screeps.com
-          - screeps.nyphon.de
-          - screeps.newbieland.net
+        target:
+          - environment: sim.screeps.com
+            hostname: screeps.com
+          - environment: season.screeps.com
+            hostname: season.screeps.com
+          - environment: ptr.screeps.com
+            hostname: ptr.screeps.com
+          - environment: screeps.com
+            hostname: screeps.com
+          - environment: screeps.nyphon.de
+            hostname: screeps.nyphon.de
+          - environment: screeps.newbieland.net
+            hostname: screeps.newbieland.net
     env:
       CI: true
       SCREEPS_USER: ${{ vars.SCREEPS_USER }}
       SCREEPS_PROTOCOL: ${{ vars.SCREEPS_PROTOCOL }}
-      SCREEPS_HOSTNAME: ${{ vars.SCREEPS_HOSTNAME }}
+      SCREEPS_HOSTNAME: ${{ vars.SCREEPS_HOSTNAME || matrix.target.hostname }}
       SCREEPS_PORT: ${{ vars.SCREEPS_PORT }}
       SCREEPS_PATH: ${{ vars.SCREEPS_PATH }}
       SCREEPS_BRANCH: ${{ vars.SCREEPS_BRANCH }}
