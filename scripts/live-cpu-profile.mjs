@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const require = createRequire(import.meta.url);
 const { ScreepsAPI } = require("screeps-api");
@@ -44,6 +45,13 @@ function parseArgs(argv) {
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const isFiniteNumber = value => typeof value === "number" && Number.isFinite(value);
+
+export function redactScreepsApiMessage(message) {
+  return String(message)
+    .replace(/([?&](?:token|access_token|auth)=)[^&#\s)]+/gi, "$1<redacted>")
+    .replace(/(\bX-Token:\s*)[^\s)]+/gi, "$1<redacted>")
+    .replace(/(\bSCREEPS_TOKEN=)[^\s)]+/g, "$1<redacted>");
+}
 
 function addMetric(bucket, key, value, meta = {}) {
   if (!isFiniteNumber(value)) return;
@@ -176,7 +184,8 @@ async function main() {
         const stats = await fetchStats(api, shard);
         if (stats) byShard[shard].push(stats);
       } catch (error) {
-        console.warn(`WARN ${shard}: ${error instanceof Error ? error.message : String(error)}`);
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`WARN ${shard}: ${redactScreepsApiMessage(message)}`);
       }
     }));
     if (sample < args.samples && args.interval > 0) await sleep(args.interval);
@@ -197,7 +206,10 @@ async function main() {
   console.log(`\nWrote ${outPath}`);
 }
 
-main().catch(error => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch(error => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(redactScreepsApiMessage(message));
+    process.exit(1);
+  });
+}
