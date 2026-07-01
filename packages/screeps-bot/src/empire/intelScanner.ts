@@ -288,7 +288,7 @@ export class IntelScanner {
       const hostileCreeps = getActualHostileCreeps(room);
       for (const creep of hostileCreeps) {
         const owner: string = creep.owner.username;
-        const isAlly = this.config.allies.includes(owner) || isAllyPlayer(owner);
+        const isAlly = this.isAllyUsername(owner);
         sightings.push({ username: owner, roomName, isAlly, hostileBodyParts: creep.body.length });
 
         if (!isAlly && this.isAggressiveCreep(creep)) {
@@ -302,7 +302,7 @@ export class IntelScanner {
         sightings.push({
           username: owner,
           roomName,
-          isAlly: this.config.allies.includes(owner) || isAllyPlayer(owner),
+          isAlly: this.isAllyUsername(owner),
           hostileBodyParts: 0
         });
       }
@@ -344,6 +344,13 @@ export class IntelScanner {
         enemy.threatLevel = 0; // No threat
       }
     }
+  }
+
+  /**
+   * Check whether a username is covered by permanent or configured ally policy.
+   */
+  private isAllyUsername(username: string): boolean {
+    return this.config.allies.includes(username) || isAllyPlayer(username);
   }
 
   /**
@@ -429,7 +436,7 @@ export class IntelScanner {
     // Update war targets based on enemy tracking
     const warTargets: string[] = [];
     for (const [username, enemy] of this.enemyPlayers) {
-      if (isAllyPlayer(username)) continue;
+      if (enemy.isAlly || this.isAllyUsername(username)) continue;
       if (enemy.threatLevel >= 2) {
         warTargets.push(username);
       }

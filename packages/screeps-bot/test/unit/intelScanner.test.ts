@@ -153,4 +153,45 @@ describe("IntelScanner", () => {
       }
     }
   });
+
+  it("does not add configured allies to war targets", () => {
+    const globals = global as unknown as Record<string, unknown>;
+    const previousGlobals = { Game: globals.Game, Memory: globals.Memory };
+
+    try {
+      const empire = createDefaultEmpireMemory();
+      (global as unknown as { Game: Partial<Game> }).Game = { time: 100, rooms: {} };
+      (global as unknown as { Memory: Memory }).Memory = { empire } as Memory;
+      const scanner = new IntelScanner({ allies: ["FriendlyNeighbor"] });
+      const enemyPlayers = (scanner as unknown as { enemyPlayers: Map<string, unknown> }).enemyPlayers;
+      enemyPlayers.set("FriendlyNeighbor", {
+        username: "FriendlyNeighbor",
+        lastSeen: Game.time,
+        rooms: ["W2N2"],
+        threatLevel: 3,
+        aggressionCount: 99,
+        isAlly: false
+      });
+      enemyPlayers.set("Enemy", {
+        username: "Enemy",
+        lastSeen: Game.time,
+        rooms: ["W3N3"],
+        threatLevel: 3,
+        aggressionCount: 99,
+        isAlly: false
+      });
+
+      (scanner as unknown as { updateRoomThreatLevels(): void }).updateRoomThreatLevels();
+
+      expect(empire.warTargets).to.deep.equal(["Enemy"]);
+    } finally {
+      for (const [key, value] of Object.entries(previousGlobals)) {
+        if (value === undefined) {
+          delete globals[key];
+        } else {
+          globals[key] = value;
+        }
+      }
+    }
+  });
 });
