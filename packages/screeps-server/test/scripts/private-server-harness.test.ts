@@ -33,8 +33,66 @@ describe("private-server harness module", () => {
     expect(resolveScreepsApiConstructor({ default: Api })).to.equal(Api);
     expect(resolveScreepsApiConstructor(Api)).to.equal(Api);
     expect(() => resolveScreepsApiConstructor({ ScreepsAPI: {} })).to.throw(
-      "screeps-api module did not expose a ScreepsAPI constructor",
+      "screeps-api module did not expose a supported Screeps API constructor",
     );
+  });
+
+  it("adapts screeps-api v2 ScreepsHttpClient to the legacy harness contract", async () => {
+    class ScreepsHttpClient {
+      config: unknown;
+      _http = { defaults: { headers: { common: {} } } };
+
+      constructor(config: unknown) {
+        this.config = config;
+      }
+
+      auth() {
+        return Promise.resolve({ ok: 1, token: "token" });
+      }
+
+      gameTime(shard: string) {
+        return Promise.resolve({ time: 123, shard });
+      }
+
+      userCodeSet(params: unknown) {
+        return Promise.resolve({ ok: 1, params });
+      }
+
+      userMemoryGet(path: string, shard: string) {
+        return Promise.resolve({ data: { path, shard } });
+      }
+    }
+
+    const Api = resolveScreepsApiConstructor({ ScreepsHttpClient });
+    const api = new Api({
+      email: "swarm-bot",
+      password: "ci-password",
+      protocol: "http",
+      hostname: "127.0.0.1",
+      port: 21025,
+      path: "/",
+    });
+
+    api.http.defaults.headers.common["X-Server-Password"] = "server-password";
+
+    expect(api.client.config).to.deep.include({
+      email: "swarm-bot",
+      password: "ci-password",
+      protocol: "http",
+      hostname: "127.0.0.1",
+      port: 21025,
+      path: "/",
+    });
+    expect(api.http.defaults.headers.common["X-Server-Password"]).to.equal("server-password");
+    expect(await api.auth()).to.deep.equal({ ok: 1, token: "token" });
+    expect(await api.raw.game.time("shard0")).to.deep.equal({ time: 123, shard: "shard0" });
+    expect(await api.raw.user.code.set("$activeWorld", { main: "code" })).to.deep.equal({
+      ok: 1,
+      params: { branch: "$activeWorld", modules: { main: "code" } },
+    });
+    expect(await api.memory.get("", "shard0")).to.deep.equal({
+      data: { path: "", shard: "shard0" },
+    });
   });
 
   it("parses smoke defaults into a stable run contract", () => {

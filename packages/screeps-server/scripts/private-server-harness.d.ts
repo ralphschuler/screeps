@@ -22,6 +22,8 @@ export interface HarnessOptions {
   repoRoot?: string;
 }
 
+export function resolveScreepsApiConstructor(moduleNamespace: any): any;
+export function createLegacyScreepsApiAdapter(ScreepsHttpClient: any): any;
 export function parseScenarioList(rawValue?: unknown, defaults?: string[]): string[];
 export function parseTickRate(rawValue: unknown): number;
 export function parseRuntimeWarmupTicks(rawValue?: unknown, configPath?: string | URL, env?: Record<string, string | undefined>): number;
