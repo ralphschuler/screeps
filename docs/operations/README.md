@@ -31,6 +31,22 @@ Operate the bot with CPU, bucket, spawn health, room survival, and error rate as
 - Avoid pathfinding every tick; prefer cached paths/routes and stable room data.
 - Keep expensive logging throttled and structured.
 
+## Live CPU profiling
+
+Use the bounded root script for read-only live CPU, bucket, process, room, role, and CPU-detail samples from `Memory.stats`:
+
+```bash
+SCREEPS_TOKEN=<read-only-or-no-rate-limit-token> npm run profile:live:cpu
+```
+
+Override the target safely with CLI flags or env vars when profiling a private server:
+
+```bash
+SCREEPS_TOKEN=<token> npm run profile:live:cpu -- --samples 5 --interval 1000 --shards shard0 --hostname 127.0.0.1 --protocol http --port 21025
+```
+
+Supported environment variables: `SCREEPS_TOKEN` (required), `SCREEPS_HOSTNAME`, `SCREEPS_PROTOCOL`, `SCREEPS_PORT`, and `SCREEPS_PATH`. The profiler only reads `Memory.stats`; do not paste token-bearing Screeps URLs into issues or logs.
+
 ## Runtime triage
 
 1. Check recent console errors and global reset frequency.

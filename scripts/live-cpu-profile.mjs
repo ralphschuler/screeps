@@ -4,12 +4,32 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const require = createRequire(import.meta.url);
-const { ScreepsAPI } = require("screeps-api");
-
 const DEFAULT_SHARDS = ["shard0", "shard1", "shard2", "shard3"];
 
-function parseArgs(argv) {
+export function formatHelp() {
+  return `Usage: node scripts/live-cpu-profile.mjs [options]
+
+Options:
+  --samples <n>              Number of samples (default 20)
+  --interval <ms>            Delay between samples (default 3000)
+  --shards <list>            Comma-separated shards (default shard0,shard1,shard2,shard3)
+  --out-dir <path>           Output directory (default artifacts/cpu-profile)
+  --hostname <host>          Screeps hostname (default SCREEPS_HOSTNAME or screeps.com)
+  --protocol <http|https>    Screeps API protocol (default SCREEPS_PROTOCOL or https)
+  --port <n>                 Screeps API port (default SCREEPS_PORT or 443)
+  --help, -h                 Show this help
+
+Environment:
+  SCREEPS_TOKEN              Required API token; read-only Memory.stats access is enough
+  SCREEPS_HOSTNAME           Default hostname override
+  SCREEPS_PROTOCOL           Default protocol override
+  SCREEPS_PORT               Default port override
+  SCREEPS_PATH               API path override (default /)
+
+Read-only: only fetches Memory.stats.`;
+}
+
+export function parseArgs(argv) {
   const args = {
     samples: 20,
     interval: 3000,
@@ -31,7 +51,7 @@ function parseArgs(argv) {
     else if (arg === "--protocol" && next) args.protocol = next, i++;
     else if (arg === "--port" && next) args.port = Number(next), i++;
     else if (arg === "--help" || arg === "-h") {
-      console.log(`Usage: node scripts/live-cpu-profile.mjs [options]\n\nOptions:\n  --samples <n>       Number of samples (default 20)\n  --interval <ms>     Delay between samples (default 3000)\n  --shards <list>     Comma-separated shards (default shard0,shard1,shard2,shard3)\n  --out-dir <path>    Output directory (default artifacts/cpu-profile)\n  --hostname <host>   Screeps hostname (default screeps.com)\n\nRequires SCREEPS_TOKEN. Read-only: only fetches Memory.stats.`);
+      console.log(formatHelp());
       process.exit(0);
     } else {
       throw new Error(`Unknown or incomplete argument: ${arg}`);
@@ -40,6 +60,12 @@ function parseArgs(argv) {
 
   if (!Number.isFinite(args.samples) || args.samples < 1) throw new Error("--samples must be >= 1");
   if (!Number.isFinite(args.interval) || args.interval < 0) throw new Error("--interval must be >= 0");
+  if (args.shards.length === 0) throw new Error("--shards must include at least one shard");
+  if (args.protocol !== "http" && args.protocol !== "https") throw new Error("--protocol must be http or https");
+  if (!Number.isFinite(args.port)) throw new Error("--port must be a number");
+  if (!Number.isInteger(args.port) || args.port < 1 || args.port > 65535) {
+    throw new Error("--port must be between 1 and 65535");
+  }
   return args;
 }
 
@@ -70,7 +96,7 @@ function top(bucket, limit) {
     .slice(0, limit);
 }
 
-function summarizeShard(samples) {
+export function summarizeShard(samples) {
   const cpu = [];
   const bucket = [];
   const skipped = [];
@@ -169,6 +195,7 @@ async function main() {
   const args = parseArgs(process.argv);
   if (!process.env.SCREEPS_TOKEN) throw new Error("SCREEPS_TOKEN is required");
 
+  const { ScreepsAPI } = createRequire(import.meta.url)("screeps-api");
   const api = new ScreepsAPI({
     token: process.env.SCREEPS_TOKEN,
     protocol: args.protocol,
