@@ -13,15 +13,48 @@ const legacyApiRequire = createRequire(new URL("../../../package.json", import.m
 const ScreepsAPI = resolveScreepsApiConstructor(legacyApiRequire("screeps-api"));
 
 export function resolveScreepsApiConstructor(moduleNamespace) {
-  const candidates = [
+  const legacyCandidates = [
     moduleNamespace?.ScreepsAPI,
     moduleNamespace?.default?.ScreepsAPI,
     moduleNamespace?.default,
     moduleNamespace
   ];
-  const constructor = candidates.find((candidate) => typeof candidate === "function");
-  if (!constructor) throw new TypeError("screeps-api module did not expose a ScreepsAPI constructor");
-  return constructor;
+  const legacyConstructor = legacyCandidates.find((candidate) => typeof candidate === "function");
+  if (legacyConstructor) return legacyConstructor;
+
+  const httpClientConstructor = [
+    moduleNamespace?.ScreepsHttpClient,
+    moduleNamespace?.default?.ScreepsHttpClient,
+  ].find((candidate) => typeof candidate === "function");
+  if (httpClientConstructor) return createLegacyScreepsApiAdapter(httpClientConstructor);
+
+  throw new TypeError("screeps-api module did not expose a supported Screeps API constructor");
+}
+
+export function createLegacyScreepsApiAdapter(ScreepsHttpClient) {
+  return class LegacyScreepsApiAdapter {
+    constructor(options) {
+      this.client = new ScreepsHttpClient(options);
+      this.http = this.client._http;
+      this.raw = {
+        game: {
+          time: (shard) => this.client.gameTime(shard),
+        },
+        user: {
+          code: {
+            set: (branch, modules) => this.client.userCodeSet({ branch, modules }),
+          },
+        },
+      };
+      this.memory = {
+        get: (path, shard) => this.client.userMemoryGet(path, shard),
+      };
+    }
+
+    auth() {
+      return this.client.auth();
+    }
+  };
 }
 
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
