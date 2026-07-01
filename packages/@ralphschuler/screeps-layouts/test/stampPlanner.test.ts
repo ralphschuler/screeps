@@ -33,7 +33,9 @@ function installScreepsConstants(): void {
     STRUCTURE_EXTRACTOR: EXTRACTOR,
     STRUCTURE_CONTAINER: "container",
     TERRAIN_MASK_WALL: 1,
-    MAX_CONSTRUCTION_SITES: 100
+    MAX_CONSTRUCTION_SITES: 100,
+    OK: 0,
+    ERR_INVALID_TARGET: -7
   });
 }
 
@@ -250,6 +252,51 @@ describe("stamp blueprint planner", () => {
 
     try {
       expect(issueConstructionSites(room, plan, 3)).to.equal(0);
+    } finally {
+      (globalThis as { Game?: unknown }).Game = oldGame;
+    }
+  });
+
+  it("continues past rejected high-priority construction candidates", async () => {
+    const { issueConstructionSites } = await import("../src/blueprints/constructionQueue.ts");
+    const oldGame = (globalThis as { Game?: unknown }).Game;
+    const calls: Array<{ x: number; y: number; structureType: BuildableStructureConstant }> = [];
+    const plan: BlueprintPlan = {
+      roomName: "W1N1",
+      rcl: 5,
+      anchor: { x: 25, y: 25 },
+      structures: [
+        { x: 10, y: 10, structureType: EXTENSION, minRcl: 2, priority: 300, source: "blocked-1", placedBy: "stamp" },
+        { x: 11, y: 10, structureType: EXTENSION, minRcl: 2, priority: 299, source: "blocked-2", placedBy: "stamp" },
+        { x: 12, y: 10, structureType: EXTENSION, minRcl: 2, priority: 298, source: "blocked-3", placedBy: "stamp" },
+        { x: 13, y: 10, structureType: EXTENSION, minRcl: 2, priority: 297, source: "valid-extension", placedBy: "stamp" }
+      ],
+      roads: [],
+      ramparts: [],
+      unplaced: [],
+      errors: [],
+      stamps: [],
+      version: "test"
+    };
+    const room = {
+      controller: { level: 5 },
+      find: () => [],
+      createConstructionSite: (x: number, y: number, structureType: BuildableStructureConstant) => {
+        calls.push({ x, y, structureType });
+        return x === 13 && y === 10 ? OK : ERR_INVALID_TARGET;
+      }
+    } as unknown as Room;
+
+    (globalThis as { Game?: unknown }).Game = { constructionSites: {} };
+
+    try {
+      expect(issueConstructionSites(room, plan, 1)).to.equal(1);
+      expect(calls.map(call => `${call.structureType}:${call.x},${call.y}`)).to.deep.equal([
+        "extension:10,10",
+        "extension:11,10",
+        "extension:12,10",
+        "extension:13,10"
+      ]);
     } finally {
       (globalThis as { Game?: unknown }).Game = oldGame;
     }

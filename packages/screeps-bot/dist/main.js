@@ -34428,8 +34428,7 @@ sites: s
 }(e), d = ma(t, {
 existingStructureKeys: m.structures,
 existingSiteKeys: m.sites,
-currentRcl: null !== (i = null === (n = e.controller) || void 0 === n ? void 0 : n.level) && void 0 !== i ? i : t.rcl,
-maxItems: Math.min(3, u - l)
+currentRcl: null !== (i = null === (n = e.controller) || void 0 === n ? void 0 : n.level) && void 0 !== i ? i : t.rcl
 }), p = 0;
 try {
 for (var f = a(d), y = f.next(); !y.done; y = f.next()) {
