@@ -347,11 +347,19 @@ export class IntelScanner {
   }
 
   /**
-   * Check whether a structure belongs to a configured (non-permanent) ally.
+   * Check whether an owned entity belongs to a configured (non-permanent) ally.
    */
-  private isConfiguredAllyStructure(structure: Structure): boolean {
-    const owner = (structure as { owner?: { username?: string } }).owner?.username;
+  private isConfiguredAllyOwned(entity: { owner?: { username?: string } }): boolean {
+    const owner = entity.owner?.username;
     return typeof owner === "string" && this.config.allies.includes(owner);
+  }
+
+  private isConfiguredAllyStructure(structure: Structure): boolean {
+    return this.isConfiguredAllyOwned(structure as { owner?: { username?: string } });
+  }
+
+  private isConfiguredAllyCreep(creep: Creep): boolean {
+    return this.isConfiguredAllyOwned(creep);
   }
 
   /**
@@ -378,7 +386,7 @@ export class IntelScanner {
       const intel = empire.knownRooms[roomName];
       if (!intel) continue;
 
-      const hostileCreeps = getActualHostileCreeps(room);
+      const hostileCreeps = getActualHostileCreeps(room).filter(c => !this.isConfiguredAllyCreep(c));
       const aggressiveHostiles = hostileCreeps.filter(c => this.isAggressiveCreep(c));
 
       // Detect incoming nukes

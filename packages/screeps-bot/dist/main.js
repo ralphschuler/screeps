@@ -5065,7 +5065,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -42363,9 +42363,13 @@ P && !P.done && (d = N.return) && d.call(N);
 if (m) throw m.error;
 }
 }
-}, e.prototype.isConfiguredAllyStructure = function(e) {
+}, e.prototype.isConfiguredAllyOwned = function(e) {
 var t, r = null === (t = e.owner) || void 0 === t ? void 0 : t.username;
 return "string" == typeof r && this.config.allies.includes(r);
+}, e.prototype.isConfiguredAllyStructure = function(e) {
+return this.isConfiguredAllyOwned(e);
+}, e.prototype.isConfiguredAllyCreep = function(e) {
+return this.isConfiguredAllyOwned(e);
 }, e.prototype.isAggressiveCreep = function(e) {
 return e.getActiveBodyparts(ATTACK) > 0 || e.getActiveBodyparts(RANGED_ATTACK) > 0 || e.getActiveBodyparts(WORK) > 2;
 }, e.prototype.detectThreats = function() {
@@ -42375,7 +42379,9 @@ var o = Game.rooms[r];
 if (o) {
 var n = t.knownRooms[r];
 if (n) {
-var a = V(o), i = a.filter(function(t) {
+var a = V(o).filter(function(t) {
+return !e.isConfiguredAllyCreep(t);
+}), i = a.filter(function(t) {
 return e.isAggressiveCreep(t);
 }), s = o.find(FIND_NUKES), c = 0;
 s.length > 0 ? (c = 3, A.warn("Nuke detected in ".concat(r, ", ").concat(s.length, " incoming"), {

@@ -6,6 +6,14 @@ function ownedStructure(structureType: StructureConstant, owner: string): Struct
   return { structureType, owner: { username: owner } } as unknown as Structure;
 }
 
+function aggressiveCreep(owner: string): Creep {
+  return {
+    owner: { username: owner },
+    body: [{ type: ATTACK }],
+    getActiveBodyparts: (part: BodyPartConstant) => (part === ATTACK ? 1 : 0)
+  } as unknown as Creep;
+}
+
 function createVisibleRoom(
   structures: Structure[],
   hostileStructures: Structure[],
@@ -86,5 +94,63 @@ describe("IntelScanner", () => {
       towerCount: 0,
       spawnCount: 0
     });
+  });
+
+  it("does not raise room threat for configured ally creeps", () => {
+    const globals = global as unknown as Record<string, unknown>;
+    const previousGlobals = {
+      ATTACK: globals.ATTACK,
+      RANGED_ATTACK: globals.RANGED_ATTACK,
+      WORK: globals.WORK,
+      FIND_HOSTILE_CREEPS: globals.FIND_HOSTILE_CREEPS,
+      FIND_NUKES: globals.FIND_NUKES,
+      Game: globals.Game,
+      Memory: globals.Memory
+    };
+
+    try {
+      globals.ATTACK = "attack";
+      globals.RANGED_ATTACK = "ranged_attack";
+      globals.WORK = "work";
+      globals.FIND_HOSTILE_CREEPS = 103;
+      globals.FIND_NUKES = 117;
+
+      const empire = createDefaultEmpireMemory();
+      empire.knownRooms.W2N2 = {
+        name: "W2N2",
+        lastSeen: 1,
+        sources: 2,
+        controllerLevel: 8,
+        threatLevel: 0,
+        scouted: true,
+        terrain: "plains",
+        isHighway: false,
+        isSK: false
+      };
+      const configuredAlly = aggressiveCreep("FriendlyNeighbor");
+      const room = {
+        name: "W2N2",
+        find: (type: FindConstant) => {
+          if (type === FIND_HOSTILE_CREEPS) return [configuredAlly];
+          if (type === FIND_NUKES) return [];
+          return [];
+        }
+      } as unknown as Room;
+      (global as unknown as { Game: Partial<Game> }).Game = { rooms: { W2N2: room }, time: 100 };
+      (global as unknown as { Memory: Memory }).Memory = { empire } as Memory;
+      const scanner = new IntelScanner({ allies: ["FriendlyNeighbor"] });
+
+      (scanner as unknown as { detectThreats(): void }).detectThreats();
+
+      expect(empire.knownRooms.W2N2.threatLevel).to.equal(0);
+    } finally {
+      for (const [key, value] of Object.entries(previousGlobals)) {
+        if (value === undefined) {
+          delete globals[key];
+        } else {
+          globals[key] = value;
+        }
+      }
+    }
   });
 });
