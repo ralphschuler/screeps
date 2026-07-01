@@ -18,13 +18,19 @@ import { SpawnPriority, spawnQueue } from "../src/spawnQueue.ts";
 
 declare const require: NodeRequire;
 
-function createRoom(hostiles: Creep[] = [], name = "W1N1", energyCapacity = 800, energyAvailable = energyCapacity): Room {
+function createRoom(
+  hostiles: Creep[] = [],
+  name = "W1N1",
+  energyCapacity = 800,
+  energyAvailable = energyCapacity,
+  controllerLevel = 3
+): Room {
   const spawn = { id: `${name}-spawn`, spawning: false };
   return {
     name,
     energyAvailable,
     energyCapacityAvailable: energyCapacity,
-    controller: { my: true, level: 3 },
+    controller: { my: true, level: controllerLevel },
     find: (type: number) => {
       if (type === FIND_HOSTILE_CREEPS) return hostiles;
       if (type === FIND_MY_SPAWNS) return [spawn];
@@ -117,6 +123,38 @@ describe("defense spawn throttling", () => {
     assert.equal(countLocalMilitaryCreeps(counts), 0);
     assert.isTrue(shouldLimitIdleLocalMilitary(ROLE_DEFINITIONS.guard, 0));
     assert.isTrue(canSpawnIdleLocalMilitary("guard", counts));
+  });
+
+  it("suppresses peaceful idle guard demand in RCL2 bootstrap rooms", () => {
+    const room = createRoom([], "W19S26", 300, 300, 2);
+    Game.rooms.W19S26 = room;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W19S26" } },
+      harvester2: { spawning: false, memory: { role: "harvester", homeRoom: "W19S26" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W19S26" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W19S26" } }
+    } as unknown as typeof Game.creeps;
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const plan = createSpawnPlan(room, { danger: 0, posture: "eco" } as any);
+
+    assert.isUndefined(plan.requests.find(request => request.role === "guard"));
+  });
+
+  it("keeps one peaceful idle guard reserve after early bootstrap", () => {
+    const room = createRoom([], "W1N1", 800, 800, 3);
+    Game.rooms.W1N1 = room;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W1N1" } },
+      harvester2: { spawning: false, memory: { role: "harvester", homeRoom: "W1N1" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W1N1" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W1N1" } }
+    } as unknown as typeof Game.creeps;
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const plan = createSpawnPlan(room, { danger: 0, posture: "eco" } as any);
+
+    assert.exists(plan.requests.find(request => request.role === "guard"));
   });
 
   it("spawns helper-room defense assists for visible attacked rooms even when the helper is peaceful", () => {

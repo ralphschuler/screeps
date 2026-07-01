@@ -13,7 +13,11 @@ import { type CrossShardTransferRequest, resourceTransferCoordinator } from "./b
 import { countCreepsByRole, countCreepsOfRole, countRemoteCreepsByTargetRoom } from "./creepCounts";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
-import { canSpawnIdleLocalMilitary, shouldLimitIdleLocalMilitary } from "./militarySpawnPolicy";
+import {
+  canSpawnIdleLocalMilitary,
+  IDLE_MILITARY_RESERVE,
+  shouldLimitIdleLocalMilitary
+} from "./militarySpawnPolicy";
 import { ROLE_DEFINITIONS } from "./roleDefinitions";
 import {
   getRemoteRoleMaxPerRemote,
@@ -86,6 +90,16 @@ function isRemoteEligibleForDefense(roomName: string): boolean {
 }
 
 export { countCreepsByRole, countCreepsOfRole, countRemoteCreepsByTargetRoom } from "./creepCounts";
+
+/** Peaceful early rooms should spend spawn time on economy before idle deterrence. */
+function getPeacefulIdleLocalMilitaryReserve(room: Room | undefined, swarm: SwarmState, isBootstrapMode: boolean): number {
+  const isCalmEconomy = swarm.danger === 0 && swarm.posture !== "war" && swarm.posture !== "siege";
+  const rcl = room?.controller?.level ?? 0;
+  if (isCalmEconomy && (isBootstrapMode || (rcl > 0 && rcl <= 2))) {
+    return 0;
+  }
+  return IDLE_MILITARY_RESERVE;
+}
 
 /** Return the target creep count for one home-room role under the current swarm state. */
 export function getRoleTargetCount(roomName: string, role: string, swarm: SwarmState): number {
@@ -192,8 +206,11 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   // are exempt because they are gated by visible remote-room threats below.
   const room = Game.rooms[roomName];
   const visibleHostiles = room ? getActualHostileCreeps(room).length : 0;
-  if (shouldLimitIdleLocalMilitary(def, visibleHostiles) && !canSpawnIdleLocalMilitary(role, countCreepsByRole(roomName))) {
-    return false;
+  if (shouldLimitIdleLocalMilitary(def, visibleHostiles)) {
+    const reserveLimit = getPeacefulIdleLocalMilitaryReserve(room, swarm, isBootstrapMode);
+    if (!canSpawnIdleLocalMilitary(role, countCreepsByRole(roomName), reserveLimit)) {
+      return false;
+    }
   }
 
   // SPECIAL: larvaWorker should ONLY be spawned during bootstrap/emergency

@@ -13,7 +13,12 @@ export function shouldLimitIdleLocalMilitary(def: Pick<RoleSpawnDef, "family" | 
   return def.family === "military" && visibleHostiles === 0 && !def.remoteRole;
 }
 
-export function canSpawnIdleLocalMilitary(role: string, counts: Map<string, number>): boolean {
-  if (countLocalMilitaryCreeps(counts) >= IDLE_MILITARY_RESERVE) return false;
+export function canSpawnIdleLocalMilitary(
+  role: string,
+  counts: Map<string, number>,
+  reserveLimit = IDLE_MILITARY_RESERVE
+): boolean {
+  if (reserveLimit <= 0) return false;
+  if (countLocalMilitaryCreeps(counts) >= reserveLimit) return false;
   return role === "guard";
 }
