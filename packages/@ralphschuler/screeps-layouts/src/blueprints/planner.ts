@@ -39,6 +39,12 @@ import {
 } from "./definitions/stamps";
 
 const PLAN_VERSION = "stamp-v1";
+const BUILDABLE_ROOM_MIN = 1;
+const BUILDABLE_ROOM_MAX = 48;
+// Extension pods can place members up to eight tiles from the core anchor.
+const MAX_CORE_STAMP_OFFSET = 8;
+const SAFE_ANCHOR_MIN = BUILDABLE_ROOM_MIN + MAX_CORE_STAMP_OFFSET;
+const SAFE_ANCHOR_MAX = BUILDABLE_ROOM_MAX - MAX_CORE_STAMP_OFFSET;
 
 export interface BlueprintPlannerOptions {
   anchor?: BlueprintPoint;
@@ -60,8 +66,15 @@ export interface StampPlacementResult {
   missing: UnplacedDemand[];
 }
 
-function clampRoomCoordinate(value: number): number {
-  return Math.max(5, Math.min(44, Math.round(value)));
+function clampAnchorCoordinate(value: number): number {
+  return Math.max(SAFE_ANCHOR_MIN, Math.min(SAFE_ANCHOR_MAX, Math.round(value)));
+}
+
+function clampAnchor(point: BlueprintPoint): BlueprintPoint {
+  return {
+    x: clampAnchorCoordinate(point.x),
+    y: clampAnchorCoordinate(point.y)
+  };
 }
 
 function pointRange(a: BlueprintPoint, b: BlueprintPoint): number {
@@ -69,13 +82,13 @@ function pointRange(a: BlueprintPoint, b: BlueprintPoint): number {
 }
 
 function createDefaultAnchor(facts: BlueprintRoomFacts): BlueprintPoint {
-  if (facts.anchor) return { x: facts.anchor.x, y: facts.anchor.y };
+  if (facts.anchor) return clampAnchor(facts.anchor);
 
   const existingStorage = facts.existingStructures?.find(structure => structure.structureType === STRUCTURE_TYPES.storage);
-  if (existingStorage) return { x: existingStorage.x, y: existingStorage.y };
+  if (existingStorage) return clampAnchor(existingStorage);
 
   const existingSpawn = facts.existingStructures?.find(structure => structure.structureType === STRUCTURE_TYPES.spawn);
-  if (existingSpawn) return { x: existingSpawn.x + 2, y: existingSpawn.y };
+  if (existingSpawn) return clampAnchor({ x: existingSpawn.x + 2, y: existingSpawn.y });
 
   const points = [...(facts.sources ?? [])];
   if (facts.controller) points.push(facts.controller);
@@ -84,7 +97,7 @@ function createDefaultAnchor(facts: BlueprintRoomFacts): BlueprintPoint {
   if (points.length === 0) return { x: 25, y: 25 };
 
   const total = points.reduce((sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }), { x: 0, y: 0 });
-  return { x: clampRoomCoordinate(total.x / points.length), y: clampRoomCoordinate(total.y / points.length) };
+  return clampAnchor({ x: total.x / points.length, y: total.y / points.length });
 }
 
 function countStructure(state: MutablePlanState, structureType: BuildableStructureConstant): number {
