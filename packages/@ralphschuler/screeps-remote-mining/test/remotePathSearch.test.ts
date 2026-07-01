@@ -142,7 +142,7 @@ describe("remotePathSearch", () => {
 
     (global as unknown as Record<string, number>).FIND_STRUCTURES = 107;
     (global as unknown as Record<string, number>).FIND_CREEPS = 101;
-    (global as unknown as Record<string, number>).FIND_HOSTILE_STRUCTURES = 108;
+    (global as unknown as Record<string, number>).FIND_HOSTILE_STRUCTURES = 109;
     (global as unknown as Record<string, string>).STRUCTURE_ROAD = "road";
     (global as unknown as Record<string, string>).STRUCTURE_TOWER = "tower";
     (global as unknown as Record<string, string>).STRUCTURE_CONTROLLER = "controller";
