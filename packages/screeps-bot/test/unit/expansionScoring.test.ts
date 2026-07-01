@@ -193,6 +193,11 @@ describe("Multi-Factor Expansion Scoring", () => {
       // In real code, score would be 0 for highway rooms
     });
 
+    it("detects highway proximity using raw room-name indices on western rooms", () => {
+      expect(ExpansionScoring.isNearHighway("W11N2")).to.equal(true);
+      expect(ExpansionScoring.isNearHighway("W8N2")).to.equal(false);
+    });
+
     it("should heavily penalize SK rooms", () => {
       const intel = createMockRoomIntel("E5N5", { isSK: true });
       expect(intel.isSK).to.be.true;

@@ -18161,10 +18161,7 @@ return "plains" === e ? 15 : "swamp" === e ? -10 : 0;
 function Qs(e) {
 var t, r, o = $s(e);
 try {
-for (var n = a(o), i = n.next(); !i.done; i = n.next()) {
-var s = z(i.value);
-if (s && (s.x % 10 == 0 || s.y % 10 == 0)) return !0;
-}
+for (var n = a(o), i = n.next(); !i.done; i = n.next()) if (J(i.value)) return !0;
 } catch (e) {
 t = {
 error: e
