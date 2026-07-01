@@ -9,7 +9,7 @@ import { isAllyPlayer } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { calculateRemoteHaulerRequirement } from "./remoteHaulerDimensioning";
-import { parseRoomName } from "./roomGeometry";
+import { isHighwayRoom, parseRoomName } from "./roomGeometry";
 
 export { parseRoomName } from "./roomGeometry";
 
@@ -118,11 +118,7 @@ export function getTerrainBonus(terrain: "plains" | "swamp" | "mixed"): number {
 export function isNearHighway(roomName: string): boolean {
   const adjacentRooms = getAdjacentRoomNames(roomName);
   for (const adjRoom of adjacentRooms) {
-    const parsed = parseRoomName(adjRoom);
-    if (!parsed) continue;
-
-    // Highway rooms have coordinates divisible by 10
-    if (parsed.x % 10 === 0 || parsed.y % 10 === 0) {
+    if (isHighwayRoom(adjRoom)) {
       return true;
     }
   }
