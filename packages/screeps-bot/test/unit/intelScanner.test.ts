@@ -154,6 +154,57 @@ describe("IntelScanner", () => {
     }
   });
 
+  it("uses runtime configured allies when tracking visible creeps", () => {
+    const globals = global as unknown as Record<string, unknown>;
+    const previousGlobals = {
+      ATTACK: globals.ATTACK,
+      RANGED_ATTACK: globals.RANGED_ATTACK,
+      WORK: globals.WORK,
+      FIND_HOSTILE_CREEPS: globals.FIND_HOSTILE_CREEPS,
+      Game: globals.Game,
+      Memory: globals.Memory
+    };
+
+    try {
+      globals.ATTACK = "attack";
+      globals.RANGED_ATTACK = "ranged_attack";
+      globals.WORK = "work";
+      globals.FIND_HOSTILE_CREEPS = 103;
+
+      const empire = createDefaultEmpireMemory();
+      (empire as EmpireMemory & { diplomacy: { allies: string[] } }).diplomacy = { allies: ["FriendlyNeighbor"] };
+      const configuredAlly = aggressiveCreep("FriendlyNeighbor");
+      const room = {
+        name: "W2N2",
+        controller: { level: 8, owner: { username: "FriendlyNeighbor" }, my: false },
+        find: (type: FindConstant) => {
+          if (type === FIND_HOSTILE_CREEPS) return [configuredAlly];
+          return [];
+        }
+      } as unknown as Room;
+      (global as unknown as { Game: Partial<Game> }).Game = { time: 100, rooms: { W2N2: room } };
+      (global as unknown as { Memory: Memory }).Memory = { empire } as Memory;
+      const scanner = new IntelScanner({ aggressionThreshold: 1 });
+      const internals = scanner as unknown as { updateEnemyTracking(): void; updateRoomThreatLevels(): void };
+
+      internals.updateEnemyTracking();
+      (global as unknown as { Game: { time: number } }).Game.time = 101;
+      internals.updateEnemyTracking();
+      internals.updateRoomThreatLevels();
+
+      expect(scanner.getEnemyPlayer("FriendlyNeighbor")).to.equal(undefined);
+      expect(empire.warTargets).to.deep.equal([]);
+    } finally {
+      for (const [key, value] of Object.entries(previousGlobals)) {
+        if (value === undefined) {
+          delete globals[key];
+        } else {
+          globals[key] = value;
+        }
+      }
+    }
+  });
+
   it("does not add configured allies to war targets", () => {
     const globals = global as unknown as Record<string, unknown>;
     const previousGlobals = { Game: globals.Game, Memory: globals.Memory };

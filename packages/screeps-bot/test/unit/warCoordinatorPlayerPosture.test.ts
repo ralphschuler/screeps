@@ -123,6 +123,44 @@ describe("WarCoordinator player posture targets", () => {
     expect(mem.warTargets).to.not.include("W9N9");
   });
 
+  it("uses runtime configured allies when pruning and adding war targets", () => {
+    const mem = empire();
+    (mem as EmpireMemory & { diplomacy: { allies: string[] } }).diplomacy = { allies: ["FriendlyNeighbor"] };
+    mem.warTargets = ["FriendlyNeighbor", "W8N8", "W9N9"];
+    mem.knownRooms = {
+      W8N8: createRoomIntel({
+        name: "W8N8",
+        owner: "Enemy",
+        threatLevel: 3,
+        controllerLevel: 8,
+        towerCount: 2,
+        spawnCount: 1
+      }),
+      W9N9: createRoomIntel({
+        name: "W9N9",
+        owner: "FriendlyNeighbor",
+        threatLevel: 3,
+        controllerLevel: 8,
+        towerCount: 6,
+        spawnCount: 3
+      })
+    };
+    mem.playerPostures!.players.FriendlyNeighbor = {
+      username: "FriendlyNeighbor",
+      incidents: [],
+      lastIncidentTick: Game.time,
+      attackCount: 3,
+      state: "war",
+      warDeclaredAt: Game.time
+    };
+
+    new WarCoordinator().updateWarTargets(mem);
+
+    expect(mem.warTargets).to.include("W8N8");
+    expect(mem.warTargets).to.not.include("FriendlyNeighbor");
+    expect(mem.warTargets).to.not.include("W9N9");
+  });
+
   it("requires visible threat before adding proactive war targets outside war mode", () => {
     const mem = empire();
     mem.objectives.warMode = false;

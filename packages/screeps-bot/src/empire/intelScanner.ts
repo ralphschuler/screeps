@@ -11,12 +11,16 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { getActualHostileCreeps, getActualHostileStructures, isAllyPlayer } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { RoomIntel } from "@ralphschuler/screeps-memory";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
+import {
+  isConfiguredAllyOwned as isConfiguredAllyOwnedByPolicy,
+  isKnownAllyUsername
+} from "./allyPolicy";
 import { planEnemyTrackingIntent, planIntelScanIntent, type EnemySightingSnapshot } from "./intelIntent";
 import { isHighwayRoom, isSourceKeeperRoom } from "./roomGeometry";
 
@@ -216,7 +220,7 @@ export class IntelScanner {
     // Update hostile-owned defensive structures only. Permanent/configured allies
     // must not inflate threat/offense intel even though Screeps exposes their
     // structures through FIND_HOSTILE_STRUCTURES relative to us.
-    const hostileStructures = getActualHostileStructures(room).filter(s => !this.isConfiguredAllyStructure(s));
+    const hostileStructures = getActualHostileStructures(room).filter(s => !this.isConfiguredAllyStructure(s, empire));
     intel.towerCount = hostileStructures.filter(s => s.structureType === STRUCTURE_TOWER).length;
     intel.spawnCount = hostileStructures.filter(s => s.structureType === STRUCTURE_SPAWN).length;
 
@@ -349,24 +353,30 @@ export class IntelScanner {
   /**
    * Check whether a username is covered by permanent or configured ally policy.
    */
-  private isAllyUsername(username: string): boolean {
-    return this.config.allies.includes(username) || isAllyPlayer(username);
+  private getAllyPolicyOptions(empire?: ReturnType<typeof memoryManager.getEmpire>) {
+    return { configuredAllies: this.config.allies, empire };
+  }
+
+  private isAllyUsername(username: string, empire?: ReturnType<typeof memoryManager.getEmpire>): boolean {
+    return isKnownAllyUsername(username, this.getAllyPolicyOptions(empire));
   }
 
   /**
    * Check whether an owned entity belongs to a configured (non-permanent) ally.
    */
-  private isConfiguredAllyOwned(entity: { owner?: { username?: string } }): boolean {
-    const owner = entity.owner?.username;
-    return typeof owner === "string" && this.config.allies.includes(owner);
+  private isConfiguredAllyOwned(
+    entity: { owner?: { username?: string } },
+    empire?: ReturnType<typeof memoryManager.getEmpire>
+  ): boolean {
+    return isConfiguredAllyOwnedByPolicy(entity, this.getAllyPolicyOptions(empire));
   }
 
-  private isConfiguredAllyStructure(structure: Structure): boolean {
-    return this.isConfiguredAllyOwned(structure as { owner?: { username?: string } });
+  private isConfiguredAllyStructure(structure: Structure, empire?: ReturnType<typeof memoryManager.getEmpire>): boolean {
+    return this.isConfiguredAllyOwned(structure as { owner?: { username?: string } }, empire);
   }
 
-  private isConfiguredAllyCreep(creep: Creep): boolean {
-    return this.isConfiguredAllyOwned(creep);
+  private isConfiguredAllyCreep(creep: Creep, empire?: ReturnType<typeof memoryManager.getEmpire>): boolean {
+    return this.isConfiguredAllyOwned(creep, empire);
   }
 
   /**
@@ -393,7 +403,7 @@ export class IntelScanner {
       const intel = empire.knownRooms[roomName];
       if (!intel) continue;
 
-      const hostileCreeps = getActualHostileCreeps(room).filter(c => !this.isConfiguredAllyCreep(c));
+      const hostileCreeps = getActualHostileCreeps(room).filter(c => !this.isConfiguredAllyCreep(c, empire));
       const aggressiveHostiles = hostileCreeps.filter(c => this.isAggressiveCreep(c));
 
       // Detect incoming nukes
@@ -436,7 +446,7 @@ export class IntelScanner {
     // Update war targets based on enemy tracking
     const warTargets: string[] = [];
     for (const [username, enemy] of this.enemyPlayers) {
-      if (enemy.isAlly || this.isAllyUsername(username)) continue;
+      if (enemy.isAlly || this.isAllyUsername(username, empire)) continue;
       if (enemy.threatLevel >= 2) {
         warTargets.push(username);
       }
