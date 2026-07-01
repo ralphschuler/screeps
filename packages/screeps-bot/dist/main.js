@@ -5065,7 +5065,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -42231,7 +42231,7 @@ if (h) {
 var R = V(h);
 try {
 for (var E = (e = void 0, a(R)), T = E.next(); !T.done; T = E.next()) {
-var C = T.value, S = C.owner.username, x = this.config.allies.includes(S) || B(S);
+var C = T.value, S = C.owner.username, x = this.isAllyUsername(S);
 y.push({
 username: S,
 roomName: g,
@@ -42254,7 +42254,7 @@ if (e) throw e.error;
 y.push({
 username: S,
 roomName: g,
-isAlly: this.config.allies.includes(S) || B(S),
+isAlly: this.isAllyUsername(S),
 hostileBodyParts: 0
 }));
 }
@@ -42360,6 +42360,8 @@ P && !P.done && (d = N.return) && d.call(N);
 if (m) throw m.error;
 }
 }
+}, e.prototype.isAllyUsername = function(e) {
+return this.config.allies.includes(e) || B(e);
 }, e.prototype.isConfiguredAllyOwned = function(e) {
 var t, r = null === (t = e.owner) || void 0 === t ? void 0 : t.username;
 return "string" == typeof r && this.config.allies.includes(r);
@@ -42397,7 +42399,7 @@ var c = [];
 try {
 for (var u = a(this.enemyPlayers), l = u.next(); !l.done; l = u.next()) {
 var m = i(l.value, 2), d = m[0], p = m[1];
-B(d) || p.threatLevel >= 2 && c.push(d);
+p.isAlly || this.isAllyUsername(d) || p.threatLevel >= 2 && c.push(d);
 }
 } catch (t) {
 e = {
