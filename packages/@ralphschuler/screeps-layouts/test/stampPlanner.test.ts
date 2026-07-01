@@ -69,6 +69,15 @@ function positionsOf(plan: BlueprintPlan, structureType: BuildableStructureConst
     .map(structure => `${structure.x},${structure.y}`);
 }
 
+function expectPlanPositionsInsidePlannerBounds(plan: BlueprintPlan): void {
+  for (const collection of [plan.structures, plan.roads, plan.ramparts]) {
+    for (const position of collection) {
+      expect(position.x).to.be.within(1, 48);
+      expect(position.y).to.be.within(1, 48);
+    }
+  }
+}
+
 describe("stamp blueprint planner", () => {
   before(installScreepsConstants);
 
@@ -171,6 +180,27 @@ describe("stamp blueprint planner", () => {
 
     expect(plan.anchor).to.deep.equal({ x: 30, y: 31 });
     expect(plan.structures.some(structure => structure.source.startsWith("HUB_CORE") && structure.x === 30 && structure.y === 31)).to.equal(true);
+  });
+
+  it("clamps explicit planner anchors into the safe buildable stamp area", async () => {
+    const { planRoomBlueprint } = await import("../src/blueprints/planner.ts");
+    const plan = planRoomBlueprint(makeFacts(8, { anchor: { x: 25, y: 25 } }), 8, { anchor: { x: 1, y: 1 } });
+
+    expect(plan.anchor).to.deep.equal({ x: 9, y: 9 });
+    expect(plan.errors).to.deep.equal([]);
+    expect(count(plan, EXTENSION)).to.equal(60);
+    expectPlanPositionsInsidePlannerBounds(plan);
+  });
+
+  it("clamps existing-spawn-derived anchors near room edges", async () => {
+    const { planRoomBlueprint } = await import("../src/blueprints/planner.ts");
+    const existingStructures = [{ x: 47, y: 47, structureType: SPAWN }];
+    const plan = planRoomBlueprint(makeFacts(8, { anchor: undefined, existingStructures }));
+
+    expect(plan.anchor).to.deep.equal({ x: 40, y: 40 });
+    expect(count(plan, SPAWN)).to.equal(3);
+    expect(plan.structures.some(structure => structure.structureType === SPAWN && structure.x === 47 && structure.y === 47 && structure.placedBy === "fixed")).to.equal(true);
+    expectPlanPositionsInsidePlannerBounds(plan);
   });
 
   it("adopts an existing offset spawn instead of requiring duplicate spawn1 placement", async () => {
