@@ -8,6 +8,7 @@ import {
   safeObject,
   writeJson,
 } from "./cpu-benchmark-model.js";
+import { formatScreepsApiError } from "../../../scripts/live-redaction.mjs";
 
 const require = createRequire(import.meta.url);
 const { ScreepsAPI } = require("screeps-api");
@@ -42,6 +43,10 @@ function unwrapMemory(response) {
   return response;
 }
 
+export function redactedSnapshotError(fields, error) {
+  return { ...fields, message: formatScreepsApiError(error) };
+}
+
 async function fetchMemory(api, shard) {
   const paths = ["stats", "creeps", "rooms", "creepTaskBoard", "defenseRequests", "clusters", "empire"];
   const memory = {};
@@ -50,7 +55,7 @@ async function fetchMemory(api, shard) {
       memory[memoryPath] = unwrapMemory(await api.memory.get(memoryPath, shard));
     } catch (error) {
       memory[memoryPath] = {};
-      memory.__errors = [...(memory.__errors ?? []), { type: "memory", path: memoryPath, message: error instanceof Error ? error.message : String(error) }];
+      memory.__errors = [...(memory.__errors ?? []), redactedSnapshotError({ type: "memory", path: memoryPath }, error)];
     }
   }
   return memory;
@@ -82,14 +87,15 @@ async function exportSnapshot(options) {
     try {
       roomStatus[roomName] = await api.raw.game.roomStatus(roomName, options.shard);
     } catch (error) {
-      roomStatus[roomName] = { ok: 0, error: error instanceof Error ? error.message : String(error) };
-      errors.push({ type: "roomStatus", room: roomName, message: error instanceof Error ? error.message : String(error) });
+      const message = formatScreepsApiError(error);
+      roomStatus[roomName] = { ok: 0, error: message };
+      errors.push(redactedSnapshotError({ type: "roomStatus", room: roomName }, error));
     }
     try {
       roomResponses[roomName] = await api.raw.game.roomObjects(roomName, options.shard);
     } catch (error) {
       roomResponses[roomName] = { objects: [], users: {} };
-      errors.push({ type: "roomObjects", room: roomName, message: error instanceof Error ? error.message : String(error) });
+      errors.push(redactedSnapshotError({ type: "roomObjects", room: roomName }, error));
     }
   }
 
