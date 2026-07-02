@@ -36656,6 +36656,7 @@ cost: 50,
 minCapacity: 50
 };
 
+case "claimer":
 case "interShardClaimer":
 return {
 parts: [ CLAIM, MOVE ],
@@ -37090,18 +37091,23 @@ return s([], i(a), !1);
 }
 
 function qy(e, t) {
-var r, o;
-if (Object.values(Game.creeps).some(function(r) {
+var r, o, n = Object.values(Game.creeps).some(function(r) {
 var o = r.memory;
-return "claimer" === o.role && o.targetRoom === e && o.task === t;
-})) return !0;
-try {
-for (var n = a(Vy()), i = n.next(); !i.done; i = n.next()) {
-var s = i.value, c = Ty.getPendingRequests(s).some(function(r) {
-var o;
-return "claimer" === r.role && r.targetRoom === e && (null === (o = r.additionalMemory) || void 0 === o ? void 0 : o.task) === t;
+return "claimer" === o.role && o.targetRoom === e && o.task === t && function(e) {
+var t, r;
+return "function" == typeof e.getActiveBodyparts ? e.getActiveBodyparts(CLAIM) > 0 : null !== (r = null === (t = e.body) || void 0 === t ? void 0 : t.some(function(e) {
+return e.type === CLAIM && e.hits > 0;
+})) && void 0 !== r && r;
+}(r);
 });
-if (c) return !0;
+if (n) return !0;
+try {
+for (var i = a(Vy()), s = i.next(); !s.done; s = i.next()) {
+var c = s.value, u = Ty.getPendingRequests(c).some(function(r) {
+var o;
+return "claimer" === r.role && r.targetRoom === e && (null === (o = r.additionalMemory) || void 0 === o ? void 0 : o.task) === t && r.body.parts.includes(CLAIM);
+});
+if (u) return !0;
 }
 } catch (e) {
 r = {
@@ -37109,7 +37115,7 @@ error: e
 };
 } finally {
 try {
-i && !i.done && (o = n.return) && o.call(n);
+s && !s.done && (o = i.return) && o.call(i);
 } finally {
 if (r) throw r.error;
 }
@@ -38038,7 +38044,9 @@ return n;
 maxEnergy: m,
 role: t.roleName
 }), g = t.bodyOverride || y ? s : m;
-if (!v || v.cost > g) return null;
+if (!v) return null;
+if ("claimer" === t.roleName && !v.parts.includes(CLAIM)) return null;
+if (v.cost > g) return null;
 var h = o(o(o(o(o({}, t.task ? {
 task: t.task
 } : {}), t.assistTarget ? {
