@@ -37,10 +37,18 @@ function isRoomRecoveryReclaimEnabled(): boolean {
   return mem.spawnSettings?.roomRecoveryReclaim !== false;
 }
 
+function hasActiveClaimPart(creep: Creep): boolean {
+  if (typeof creep.getActiveBodyparts === "function") {
+    return creep.getActiveBodyparts(CLAIM) > 0;
+  }
+
+  return creep.body?.some(part => part.type === CLAIM && part.hits > 0) ?? false;
+}
+
 function hasAssignedClaimer(targetRoom: string, task: ClaimerTask): boolean {
   const activeClaimer = Object.values(Game.creeps).some(creep => {
     const memory = creep.memory as unknown as SwarmCreepMemory;
-    return memory.role === "claimer" && memory.targetRoom === targetRoom && memory.task === task;
+    return memory.role === "claimer" && memory.targetRoom === targetRoom && memory.task === task && hasActiveClaimPart(creep);
   });
   if (activeClaimer) return true;
 
@@ -48,7 +56,8 @@ function hasAssignedClaimer(targetRoom: string, task: ClaimerTask): boolean {
     const queuedClaimer = spawnQueue.getPendingRequests(roomName).some(request =>
       request.role === "claimer" &&
       request.targetRoom === targetRoom &&
-      request.additionalMemory?.task === task
+      request.additionalMemory?.task === task &&
+      request.body.parts.includes(CLAIM)
     );
     if (queuedClaimer) return true;
   }

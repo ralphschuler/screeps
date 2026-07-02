@@ -266,7 +266,9 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
       });
     const maxBodyEnergy = demand.bodyOverride || defenseAssistBody ? maxEnergy : effectiveMaxEnergy;
 
-    if (!body || body.cost > maxBodyEnergy) return null;
+    if (!body) return null;
+    if (demand.roleName === "claimer" && !body.parts.includes(CLAIM)) return null;
+    if (body.cost > maxBodyEnergy) return null;
 
     const additionalMemory = {
       ...(demand.task ? { task: demand.task } : {}),

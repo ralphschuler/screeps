@@ -67,6 +67,14 @@ function createDangerousHostile(username = "Invader"): Creep {
   } as Creep;
 }
 
+function createClaimerCreep(targetRoom: string, parts: BodyPartConstant[]): Creep {
+  return {
+    memory: { role: "claimer", targetRoom, task: "claim" },
+    body: parts.map(type => ({ type, hits: 100 })),
+    getActiveBodyparts: (part: BodyPartConstant) => parts.filter(type => type === part).length
+  } as unknown as Creep;
+}
+
 function setEmpireMemory(overrides: Record<string, unknown> = {}): void {
   (global as any).Memory = {
     rooms: {},
@@ -149,6 +157,52 @@ describe("claimer and pioneer demand", () => {
     const assignment = getClaimerSpawnAssignment("E1N1", createSwarm({ remoteAssignments: ["E2N1"] }));
 
     expect(assignment).to.deep.equal({ targetRoom: "E2N1", task: "reserve" });
+  });
+
+  it("ignores active claimers without CLAIM parts when de-duplicating claim targets", () => {
+    Game.rooms.E3N1 = createRoom("E3N1");
+    Game.creeps.invalidClaimer = createClaimerCreep("E3N1", [WORK, CARRY, MOVE]);
+    setEmpireMemory({
+      recoveryRooms: {
+        E3N1: { roomName: "E3N1", lostAt: 10, rcl: 3, role: "core", clusterId: "c1" }
+      }
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E3N1", task: "claim" });
+  });
+
+  it("treats active CLAIM-bodied claimers as assigned claim targets", () => {
+    Game.rooms.E3N1 = createRoom("E3N1");
+    Game.creeps.validClaimer = createClaimerCreep("E3N1", [CLAIM, MOVE]);
+    setEmpireMemory({
+      recoveryRooms: {
+        E3N1: { roomName: "E3N1", lostAt: 10, rcl: 3, role: "core", clusterId: "c1" }
+      }
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
+  });
+
+  it("ignores queued claimers without CLAIM parts when de-duplicating claim targets", () => {
+    Game.rooms.E3N1 = createRoom("E3N1");
+    spawnQueue.addRequest({
+      id: "invalid_queued_claimer",
+      roomName: "E1N1",
+      role: "claimer",
+      family: "utility",
+      body: { parts: [WORK, CARRY, MOVE], cost: 200, minCapacity: 200 },
+      priority: 100,
+      targetRoom: "E3N1",
+      additionalMemory: { task: "claim" },
+      createdAt: Game.time
+    });
+    setEmpireMemory({
+      recoveryRooms: {
+        E3N1: { roomName: "E3N1", lostAt: 10, rcl: 3, role: "core", clusterId: "c1" }
+      }
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E3N1", task: "claim" });
   });
 
   it("skips unsafe recovery and remote reservation targets", () => {

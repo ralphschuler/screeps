@@ -357,7 +357,12 @@ describe("spawn intent compiler", () => {
       Harvester1: { memory: { role: "harvester", homeRoom: "W1N1" }, spawning: false },
       Hauler1: { memory: { role: "hauler", homeRoom: "W1N1" }, spawning: false },
       Upgrader1: { memory: { role: "upgrader", homeRoom: "W1N1" }, spawning: false },
-      Claimer1: { memory: { role: "claimer", homeRoom: "W1N1", targetRoom: "W2N1", task: "claim" }, spawning: false }
+      Claimer1: {
+        memory: { role: "claimer", homeRoom: "W1N1", targetRoom: "W2N1", task: "claim" },
+        spawning: false,
+        body: [{ type: CLAIM, hits: 100 }, { type: MOVE, hits: 100 }],
+        getActiveBodyparts: (part: BodyPartConstant) => (part === CLAIM ? 1 : 0)
+      }
     } as unknown as typeof Game.creeps;
 
     const request = createSpawnPlan(room, createSwarm(["W2N1"]))

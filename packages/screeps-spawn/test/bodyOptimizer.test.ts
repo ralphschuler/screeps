@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { calculateBodyCost } from "../src/bodyUtils";
-import { optimizeBuilderBody, optimizeUpgraderBody } from "../src/bodyOptimizer";
+import { optimizeBody, optimizeBuilderBody, optimizeUpgraderBody } from "../src/bodyOptimizer";
 
 function expectTemplate(parts: BodyPartConstant[], expectedParts: BodyPartConstant[]): void {
   expect(parts).to.deep.equal(expectedParts);
@@ -24,6 +24,16 @@ describe("Body Optimizer", () => {
       expectTemplate(template.parts, [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE]);
       expect(template.cost).to.equal(calculateBodyCost(template.parts));
       expect(template.minCapacity).to.equal(template.cost);
+    });
+  });
+
+  describe("optimizeBody", () => {
+    it("keeps claimers on a CLAIM-capable body instead of falling back to a worker body", () => {
+      const template = optimizeBody({ role: "claimer", maxEnergy: 300 });
+
+      expectTemplate(template.parts, [CLAIM, MOVE]);
+      expect(template.cost).to.equal(650);
+      expect(template.minCapacity).to.equal(650);
     });
   });
 });
