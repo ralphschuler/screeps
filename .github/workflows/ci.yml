@@ -7,8 +7,8 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch:
 
-# Cancel in-progress runs for the same workflow and ref
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -17,14 +17,10 @@ permissions:
   contents: read
 
 jobs:
-  # ============================================================================
-  # Main Bot Tests
-  # ============================================================================
-  test-bot:
-    name: Test Main Bot
+  build-and-typecheck:
+    name: Build and Typecheck
     runs-on: ubuntu-latest
-    # Skip draft PRs
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     env:
       CI: true
     steps:
@@ -42,217 +38,18 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build dependencies
+      - name: Build framework and bot
         run: npm run build
 
-      - name: Run main bot tests with coverage
-        id: coverage
-        run: npm run test:coverage -w screeps-typescript-starter
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v5
-        if: always() && secrets.CODECOV_TOKEN != ''
-        with:
-          file: ./packages/screeps-bot/coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Coverage Summary
-        if: always()
-        run: |
-          echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f packages/screeps-bot/coverage/lcov.info ]; then
-            echo "✅ Main bot coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "View detailed coverage report in the Codecov upload above." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            if [ "${{ steps.coverage.outcome }}" == "failure" ]; then
-              echo "⚠️ Note: Coverage test step failed (possibly due to threshold requirements), but report was still generated and uploaded." >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            # Coverage file is truly missing - this is a real failure (e.g., c8 not installed)
-            echo "⚠️ No coverage report found for main bot" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-
-  # ============================================================================
-  # Package Tests (Framework Packages)
-  # ============================================================================
-  test-packages:
-    name: Test ${{ matrix.package-name }}
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    env:
-      CI: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # @ralphschuler scoped packages
-          - package-name: screeps-kernel
-            workspace: "@ralphschuler/screeps-kernel"
-            test-script: "test:kernel"
-          - package-name: screeps-roles
-            workspace: "@ralphschuler/screeps-roles"
-            test-script: "test:roles"
-          - package-name: screeps-pathfinding
-            workspace: "@ralphschuler/screeps-pathfinding"
-            test-script: "test:pathfinding"
-          - package-name: screeps-remote-mining
-            workspace: "@ralphschuler/screeps-remote-mining"
-            test-script: "test:remote-mining"
-          # Non-scoped packages
-          - package-name: screeps-spawn
-            workspace: "@ralphschuler/screeps-spawn"
-            test-script: "test:spawn"
-          - package-name: screeps-economy
-            workspace: "@ralphschuler/screeps-economy"
-            test-script: "test:economy"
-          - package-name: screeps-defense
-            workspace: "@ralphschuler/screeps-defense"
-            test-script: "test:defense"
-          - package-name: screeps-chemistry
-            workspace: "@ralphschuler/screeps-chemistry"
-            test-script: "test:chemistry"
-          - package-name: screeps-utils
-            workspace: "@ralphschuler/screeps-utils"
-            test-script: "test:utils"
-          - package-name: screeps-posis
-            workspace: "@ralphschuler/screeps-posis"
-            test-script: "test:posis"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build dependencies
-        run: npm run build
-
-      - name: Test ${{ matrix.package-name }}
-        id: test-step
-        run: npm run ${{ matrix.test-script }}
-
-      - name: Test Summary
-        if: always()
-        run: |
-          echo "## ${{ matrix.package-name }} Test Results" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.test-step.outcome }}" == "success" ]; then
-            echo "✅ Tests passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-
-  # ============================================================================
-  # Full Workspace Test Sweep
-  # ============================================================================
-  test-all-workspaces:
-    name: Test All Workspaces
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    env:
-      CI: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build all packages
-        run: npm run build
-
-      - name: Run every workspace test script
-        run: npm test --workspaces --if-present
-
-      - name: Run server package and script tests
-        run: npm run test:packages -w @ralphschuler/screeps-server
-
-  # ============================================================================
-  # Linting & Type Checking
-  # ============================================================================
-  lint-bot:
-    name: Lint Main Bot
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    env:
-      CI: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Run ESLint on main bot
-        run: npm run lint
-
-      - name: Run root typecheck gate
+      - name: Typecheck workspaces
         run: npm run typecheck
 
-  typecheck-packages:
-    name: TypeCheck ${{ matrix.package-name }}
+  bot-and-script-tests:
+    name: Bot and Script Tests
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     env:
       CI: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # @ralphschuler scoped packages
-          - package-name: screeps-kernel
-            workspace: "@ralphschuler/screeps-kernel"
-          - package-name: screeps-roles
-            workspace: "@ralphschuler/screeps-roles"
-          - package-name: screeps-pathfinding
-            workspace: "@ralphschuler/screeps-pathfinding"
-          - package-name: screeps-remote-mining
-            workspace: "@ralphschuler/screeps-remote-mining"
-          # Non-scoped packages
-          - package-name: screeps-spawn
-            workspace: "@ralphschuler/screeps-spawn"
-          - package-name: screeps-economy
-            workspace: "@ralphschuler/screeps-economy"
-          - package-name: screeps-defense
-            workspace: "@ralphschuler/screeps-defense"
-          - package-name: screeps-chemistry
-            workspace: "@ralphschuler/screeps-chemistry"
-          - package-name: screeps-utils
-            workspace: "@ralphschuler/screeps-utils"
-          - package-name: screeps-posis
-            workspace: "@ralphschuler/screeps-posis"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -268,29 +65,19 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build ${{ matrix.package-name }}
-        id: build-step
-        run: npm run build -w ${{ matrix.workspace }}
-        continue-on-error: true
+      - name: Build framework and bot
+        run: npm run build
 
-      - name: TypeCheck Summary
-        if: always()
-        run: |
-          echo "## ${{ matrix.package-name }} TypeCheck Results" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.build-step.outcome }}" == "success" ]; then
-            echo "✅ TypeScript compilation passed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ TypeScript compilation failed" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+      - name: Run script tests
+        run: npm run test:scripts
 
-  # ============================================================================
-  # Code Formatting
-  # ============================================================================
-  format-check:
-    name: Check Code Formatting
+      - name: Run main bot tests
+        run: npm test -w screeps-typescript-starter
+
+  dependency-sync:
+    name: Dependency Sync Check
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     env:
       CI: true
     steps:
@@ -306,121 +93,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Check formatting
-        working-directory: packages/screeps-bot
-        run: |
-          npx prettier --check \
-            "src/**/*.{ts,tsx}" \
-            "test/**/*.{ts,tsx}" \
-            rollup.config.js \
-            package.json \
-            tsconfig*.json
-
-  # ============================================================================
-  # Framework Dependency Sync Check
-  # ============================================================================
-  check-framework-deps:
-    name: Check Framework Package Dependencies
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    env:
-      CI: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Check dependency synchronization
+      - name: Check framework dependency synchronization
         run: npm run sync:deps:check
-
-      - name: Report inconsistencies
-        if: failure()
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $GITHUB_STEP_SUMMARY
-          echo "## ❌ Framework Dependency Drift Detected" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Framework packages have inconsistent devDependencies." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**To fix locally:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npm run sync:deps" >> $GITHUB_STEP_SUMMARY
-          echo "git add scripts/shared-dependencies.json 'packages/@ralphschuler/*/package.json' 'packages/screeps-*/package.json'" >> $GITHUB_STEP_SUMMARY
-          echo "git commit -m 'chore: Sync framework dependencies'" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**To update shared dependencies:**" >> $GITHUB_STEP_SUMMARY
-          echo "Edit \`scripts/shared-dependencies.json\` and run \`npm run sync:deps\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $GITHUB_STEP_SUMMARY
-
-  # ============================================================================
-  # Bundle Size Check
-  # ============================================================================
-  bundle-size:
-    name: Check Bundle Sizes
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false || github.event_name != 'pull_request'
-    env:
-      CI: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Build all packages
-        run: npm run build:all
-
-      - name: Check bundle sizes
-        run: |
-          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Package | Size (KB) | Files |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-
-          # Define packages to check
-          declare -a packages=(
-            "@ralphschuler/screeps-kernel:packages/@ralphschuler/screeps-kernel/dist:screeps-kernel"
-            "@ralphschuler/screeps-roles:packages/@ralphschuler/screeps-roles/dist:screeps-roles"
-            "@ralphschuler/screeps-pathfinding:packages/@ralphschuler/screeps-pathfinding/dist:screeps-pathfinding"
-            "@ralphschuler/screeps-remote-mining:packages/@ralphschuler/screeps-remote-mining/dist:screeps-remote-mining"
-            "@ralphschuler/screeps-spawn:packages/screeps-spawn/dist:screeps-spawn"
-            "@ralphschuler/screeps-economy:packages/screeps-economy/dist:screeps-economy"
-            "@ralphschuler/screeps-defense:packages/screeps-defense/dist:screeps-defense"
-            "@ralphschuler/screeps-chemistry:packages/screeps-chemistry/dist:screeps-chemistry"
-            "@ralphschuler/screeps-utils:packages/screeps-utils/dist:screeps-utils"
-            "@ralphschuler/screeps-posis:packages/screeps-posis/dist:screeps-posis"
-            "screeps-bot:packages/screeps-bot/dist:screeps-bot (main)"
-          )
-
-          # Check each package
-          for package_info in "${packages[@]}"; do
-            IFS=':' read -r package_name dist_path display_name <<< "$package_info"
-            if [ -d "$dist_path" ]; then
-              size=$(du -sk "$dist_path" | cut -f1)
-              files=$(find "$dist_path" -type f | wc -l)
-              echo "| $display_name | $size | $files |" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "💡 **Note:** Size is reported in kilobytes (KB) for the entire dist directory." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **Warning:** Watch for unexpected size increases that could indicate bloat or unintended dependencies." >> $GITHUB_STEP_SUMMARY

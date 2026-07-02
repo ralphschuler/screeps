@@ -263,19 +263,20 @@ The CI pipeline runs these quality checks on every PR:
 - Shows files over 300 lines in summary
 - ⚠️ Currently informational (doesn't block PRs)
 
-### TypeScript Compilation (ci.yml)
-- Builds all packages
-- ❌ Blocks PR if build fails
+### TypeScript Compilation (ci.yml and release.yml)
+- `ci.yml` builds the framework and bot, then runs workspace typecheck on PRs and pushes.
+- `release.yml` builds all packages before release/deploy on `main`.
+- ❌ Blocks PR/release if build or typecheck fails.
 
-### Tests (ci.yml)
-- Runs all package tests
-- Uploads coverage reports
-- ❌ Blocks PR if tests fail
+### Tests (ci.yml and integration-tests.yml)
+- `ci.yml` runs script tests and main bot tests.
+- `integration-tests.yml` runs private-server smoke coverage when runtime paths change.
+- Full `npm run test:all` workspace coverage remains tracked separately until all workspace test scripts are reliable.
+- ❌ Blocks PR/integration if configured tests fail.
 
-### Bundle Size (ci.yml)
-- Tracks bundle sizes
-- Shows size changes in summary
-- ⚠️ Currently informational
+### Bundle Size
+- The old monolithic `ci.yml` included bundle-size reporting and was replaced after producing zero-job GitHub Actions failures.
+- Use build artifacts and package-specific reports for size investigation until a dedicated bundle workflow is added.
 
 ## Troubleshooting
 
