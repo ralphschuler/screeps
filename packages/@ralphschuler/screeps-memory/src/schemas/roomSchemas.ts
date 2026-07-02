@@ -53,6 +53,21 @@ export interface LayoutAnchorMemory {
   selectedAt?: number;
 }
 
+/** Remembered per-room construction cadence.
+ *
+ * Room processes may be skipped by the kernel and miss exact `Game.time % interval`
+ * ticks. Storing the next due tick lets construction run once when the room process
+ * executes late instead of silently waiting for another exact modulo hit.
+ */
+export interface ConstructionScheduleMemory {
+  /** Last tick that attempted room construction. */
+  lastRunTick?: number;
+  /** Next game tick where construction is due. */
+  nextRunTick?: number;
+  /** Construction interval used when scheduling `nextRunTick`. */
+  interval?: number;
+}
+
 /**
  * Room role
  */
@@ -98,6 +113,8 @@ export interface SwarmState {
   collectionPoint?: { x: number; y: number };
   /** Stable construction/layout anchor; prevents destructive cleanup around moving anchors. */
   layoutAnchor?: LayoutAnchorMemory;
+  /** Remembered construction cadence for skipped room process ticks. */
+  constructionSchedule?: ConstructionScheduleMemory;
   /** Metrics */
   metrics: {
     energyHarvested: number;
