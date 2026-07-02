@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { executeAction, executePowerCreepAction, type CreepContext } from "../src/index";
+import { executeAction, executePowerCreepAction, type CreepAction, type CreepContext } from "../src/index";
 import { createMockCreep, createMockRoom, resetMockGame } from "./setup";
 
 describe("Action execution ally-safety guard", () => {
@@ -105,6 +105,43 @@ describe("Action execution ally-safety guard", () => {
     executeAction(creep, { type: "attack", target: hostileCreep }, createTestContext(creep, room));
 
     expect(attackCalled).to.equal(true);
+  });
+
+  it("clears stale controller-action state when the creep has no active CLAIM parts", () => {
+    const room = createMockRoom("W1N1");
+    const controller = {
+      id: "controller1" as Id<StructureController>,
+      pos: new RoomPosition(10, 10, room.name),
+    } as StructureController;
+    const cases: Array<{
+      action: "claim" | "reserve" | "attackController";
+      method: "claimController" | "reserveController" | "attackController";
+    }> = [
+      { action: "claim", method: "claimController" },
+      { action: "reserve", method: "reserveController" },
+      { action: "attackController", method: "attackController" },
+    ];
+
+    for (const { action, method } of cases) {
+      const creep = createMockCreep(`claimer-${action}`, {
+        room,
+        memory: {
+          role: "claimer",
+          homeRoom: room.name,
+          working: false,
+          state: { action, targetId: controller.id, startTick: Game.time, timeout: 25 },
+        },
+        body: [{ type: MOVE, hits: 100 }],
+      });
+      (creep as unknown as Record<typeof method, () => ScreepsReturnCode>)[method] = () => ERR_NO_BODYPART;
+
+      Game.creeps[creep.name] = creep;
+      Game.rooms[room.name] = room;
+
+      executeAction(creep, { type: action, target: controller } as CreepAction, createTestContext(creep, room));
+
+      expect(creep.memory.state, action).to.equal(undefined);
+    }
   });
 
   it("blocks disruptive power actions against known allies", () => {

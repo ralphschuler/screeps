@@ -324,7 +324,7 @@ export function executeAction(
 
     // Controller actions
     case "claim":
-      executeWithRange(
+      shouldClearState = executeWithRange(
         creep,
         () => creep.claimController(optimizedAction.target),
         optimizedAction.target,
@@ -334,7 +334,7 @@ export function executeAction(
       break;
 
     case "reserve":
-      executeWithRange(
+      shouldClearState = executeWithRange(
         creep,
         () => creep.reserveController(optimizedAction.target),
         optimizedAction.target,
@@ -349,7 +349,7 @@ export function executeAction(
         break;
       }
 
-      executeWithRange(
+      shouldClearState = executeWithRange(
         creep,
         () => creep.attackController(optimizedAction.target),
         optimizedAction.target,

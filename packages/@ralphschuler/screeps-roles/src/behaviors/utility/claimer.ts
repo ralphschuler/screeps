@@ -3,6 +3,28 @@ import { isExit } from "screeps-cartographer";
 import type { CreepAction, CreepContext } from "../types";
 import { moveToRoomCenter } from "./navigation";
 
+function retireInvalidClaimer(ctx: CreepContext): CreepAction {
+  delete ctx.memory.state;
+  delete (ctx.memory as typeof ctx.memory & { task?: string }).task;
+
+  const spawn = ctx.spawnStructures.find(
+    (structure): structure is StructureSpawn => structure.structureType === STRUCTURE_SPAWN,
+  );
+  if (!spawn) {
+    ctx.creep.suicide();
+    return { type: "idle" };
+  }
+
+  const recycleResult = spawn.recycleCreep(ctx.creep);
+  if (recycleResult === ERR_NOT_IN_RANGE) {
+    return { type: "moveTo", target: spawn };
+  }
+  if (recycleResult !== OK && recycleResult !== ERR_BUSY) {
+    ctx.creep.suicide();
+  }
+  return { type: "idle" };
+}
+
 /**
  * Claimer - claim, reserve, or attack room controllers.
  *
@@ -10,6 +32,10 @@ import { moveToRoomCenter } from "./navigation";
  * travel/off-exit movement and the final controller action.
  */
 export function claimer(ctx: CreepContext): CreepAction {
+  if (ctx.creep.getActiveBodyparts(CLAIM) === 0) {
+    return retireInvalidClaimer(ctx);
+  }
+
   const targetRoom = ctx.memory.targetRoom;
 
   if (!targetRoom) {
