@@ -36,7 +36,8 @@
     "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-cache": "*",
     "@ralphschuler/screeps-defense": "*",
-    "@ralphschuler/screeps-utils": "*"
+    "@ralphschuler/screeps-utils": "*",
+    "@ralphschuler/screeps-memory": "*"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",

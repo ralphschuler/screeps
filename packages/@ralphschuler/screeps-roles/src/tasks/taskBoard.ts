@@ -410,7 +410,12 @@ function releaseReservation(board: RoomTaskBoardMemory, task: CreepTask, creepNa
   if (task.reservations[creepName]) {
     delete task.reservations[creepName];
     const creep = Game.creeps[creepName];
-    if (creep) delete (creep.memory as { assignedTaskId?: string }).assignedTaskId;
+    if (creep) {
+      const memory = creep.memory as Record<string, unknown>;
+      if ("assignedTaskId" in memory) {
+        delete memory.assignedTaskId;
+      }
+    }
     recomputeReservationTotals(task);
   }
 }

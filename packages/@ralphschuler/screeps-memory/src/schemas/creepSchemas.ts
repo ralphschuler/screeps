@@ -105,6 +105,8 @@ export interface SwarmCreepMemory {
   lastExploredRoom?: string;
   /** Current task */
   task?: string;
+  /** Persistent task-board assignment ID */
+  assignedTaskId?: string;
   /** Source ID (for harvesters) */
   sourceId?: Id<Source>;
   /** Target ID (for various tasks) */
