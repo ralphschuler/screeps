@@ -12,7 +12,7 @@
 
 import { prefetchRoomObjects } from "@ralphschuler/screeps-cache";
 import { emergencyResponseManager, safeModeManager } from "@ralphschuler/screeps-defense";
-import { memoryManager } from "@ralphschuler/screeps-memory";
+import { memoryManager, type ConstructionScheduleMemory } from "@ralphschuler/screeps-memory";
 import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
 import { evolutionManager, postureManager } from "../logic/evolution";
@@ -61,6 +61,45 @@ interface RoomStructureCache {
 }
 
 const structureCache = new Map<string, RoomStructureCache>();
+
+export interface RoomConstructionScheduleOwner {
+  constructionSchedule?: ConstructionScheduleMemory;
+}
+
+function normalizeConstructionInterval(interval: number): number {
+  return Number.isFinite(interval) && interval >= 1 ? Math.floor(interval) : 1;
+}
+
+function getConstructionSchedule(swarm: RoomConstructionScheduleOwner): ConstructionScheduleMemory {
+  if (!swarm.constructionSchedule || typeof swarm.constructionSchedule !== "object") {
+    swarm.constructionSchedule = {};
+  }
+  return swarm.constructionSchedule;
+}
+
+/**
+ * Construction cadence must be state-based, not exact-modulo based.
+ * Room processes can be skipped under scheduler pressure; if the remembered due tick
+ * was 1000 and the room next runs at 1003, construction should still execute once.
+ */
+export function isRoomConstructionDue(swarm: RoomConstructionScheduleOwner, time: number, interval: number): boolean {
+  const normalizedInterval = normalizeConstructionInterval(interval);
+  const schedule = getConstructionSchedule(swarm);
+  if (typeof schedule.nextRunTick !== "number" || !Number.isFinite(schedule.nextRunTick)) {
+    schedule.nextRunTick = time;
+    schedule.interval = normalizedInterval;
+  }
+
+  return time >= schedule.nextRunTick;
+}
+
+export function recordRoomConstructionRun(swarm: RoomConstructionScheduleOwner, time: number, interval: number): void {
+  const normalizedInterval = normalizeConstructionInterval(interval);
+  const schedule = getConstructionSchedule(swarm);
+  schedule.lastRunTick = time;
+  schedule.nextRunTick = time + normalizedInterval;
+  schedule.interval = normalizedInterval;
+}
 
 /**
  * Get or create structure cache for a room
@@ -170,10 +209,14 @@ export class RoomNode {
       const allowFullConstruction = postureManager.allowsBuilding(swarm.posture);
       const allowCriticalDefenseConstruction = !allowFullConstruction && swarm.danger >= 2;
 
-      if (Game.time % constructionInterval === 0 && (allowFullConstruction || allowCriticalDefenseConstruction)) {
+      if (
+        (allowFullConstruction || allowCriticalDefenseConstruction) &&
+        isRoomConstructionDue(swarm, Game.time, constructionInterval)
+      ) {
         roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns, {
           criticalOnly: allowCriticalDefenseConstruction
         });
+        recordRoomConstructionRun(swarm, Game.time, constructionInterval);
       }
     }
 
