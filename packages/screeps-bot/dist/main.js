@@ -25049,13 +25049,13 @@ e.rangedHeal(a.target), cl(Uu.moveTo(e, a.target)) && (i = !0);
 break;
 
 case "claim":
-yl(e, function() {
+i = yl(e, function() {
 return e.claimController(a.target);
 }, a.target, 0, a.type);
 break;
 
 case "reserve":
-yl(e, function() {
+i = yl(e, function() {
 return e.reserveController(a.target);
 }, a.target, 0, a.type);
 break;
@@ -25065,7 +25065,7 @@ if (dl(r, a.type, a.target)) {
 i = !0;
 break;
 }
-yl(e, function() {
+i = yl(e, function() {
 return e.attackController(a.target);
 }, a.target, 0, a.type);
 break;
@@ -31094,6 +31094,22 @@ type: "idle"
 var _p = {
 scout: Op,
 claimer: function(e) {
+if (0 === e.creep.getActiveBodyparts(CLAIM)) return function(e) {
+delete e.memory.state, delete e.memory.task;
+var t = e.spawnStructures.find(function(e) {
+return e.structureType === STRUCTURE_SPAWN;
+});
+if (!t) return e.creep.suicide(), {
+type: "idle"
+};
+var r = t.recycleCreep(e.creep);
+return r === ERR_NOT_IN_RANGE ? {
+type: "moveTo",
+target: t
+} : (r !== OK && r !== ERR_BUSY && e.creep.suicide(), {
+type: "idle"
+});
+}(e);
 var t = e.memory.targetRoom;
 if (!t) {
 var r = e.spawnStructures.filter(function(e) {
