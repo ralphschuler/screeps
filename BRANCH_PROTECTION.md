@@ -30,43 +30,36 @@ Enable the following:
 
 ### Step 3: Add Required Status Checks
 
-Under "Require status checks to pass before merging", search for and add the following checks:
+Under "Require status checks to pass before merging", search for and add the current modular checks after they have appeared on at least one PR:
 
 #### Core Checks (Required)
-- `test-bot` - Main bot tests with coverage
-- `lint-bot` - ESLint checks for main bot
+- `Build and Typecheck` - Builds framework/bot and runs workspace typecheck (`ci.yml`).
+- `Bot and Script Tests` - Runs script tests and main bot tests (`ci.yml`).
+- `Dependency Sync Check` - Verifies framework dependency synchronization (`ci.yml`).
+- `Check Alliance Safety` - Guards against hostile behavior toward configured allies (`quality.yml`).
 
-#### Package Test Matrix (All Required)
-- `Test screeps-kernel`
-- `Test screeps-roles`
-- `Test screeps-pathfinding`
-- `Test screeps-remote-mining`
-- `Test screeps-spawn`
-- `Test screeps-economy`
-- `Test screeps-defense`
-- `Test screeps-chemistry`
-- `Test screeps-utils`
-- `Test screeps-roles`
-- `Test screeps-posis`
-- `Test screeps-server`
+#### Package Lint Matrix (Required)
+- `Lint screeps-kernel`
+- `Lint screeps-roles`
+- `Lint screeps-pathfinding`
+- `Lint screeps-remote-mining`
+- `Lint screeps-spawn`
+- `Lint screeps-economy`
+- `Lint screeps-defense`
+- `Lint screeps-chemistry`
+- `Lint screeps-utils`
+- `Lint screeps-posis`
+- `Lint screeps-bot`
 
-#### TypeCheck Matrix (All Required)
-- `TypeCheck screeps-kernel`
-- `TypeCheck screeps-roles`
-- `TypeCheck screeps-pathfinding`
-- `TypeCheck screeps-remote-mining`
-- `TypeCheck screeps-spawn`
-- `TypeCheck screeps-economy`
-- `TypeCheck screeps-defense`
-- `TypeCheck screeps-chemistry`
-- `TypeCheck screeps-utils`
-- `TypeCheck screeps-roles`
-- `TypeCheck screeps-posis`
+#### Runtime Checks (Required for runtime-changing PRs)
+- `Real private-server smoke` - Private-server smoke test (`integration-tests.yml`).
+- `Check for Code Divergence` - Framework-first role ownership guard (`framework-sync-check.yml`).
 
 #### Optional Checks
-- `Check Bundle Sizes` - Informational only, can be non-blocking
+- `Check Code Duplication` - Transitional informational quality gate.
+- `Check Code Complexity` - Transitional informational quality gate.
 
-**Total Required Checks**: 25 (2 core + 12 test + 11 typecheck)
+**Total Required Checks**: 15 when all modular workflows apply (4 core + 11 lint), plus runtime checks for path-matched PRs.
 
 ### Step 4: Additional Recommended Settings
 
@@ -81,19 +74,21 @@ Enable the following for maximum protection:
 
 1. Click **Create** (or **Save changes**)
 2. Create a test PR to verify all checks are required
-3. Verify that the PR shows all 25 status checks
-4. Confirm that merge is blocked until all checks pass
+3. Verify that the PR shows the configured modular status checks
+4. Confirm that merge is blocked until all required checks pass
 
 ## Expected Behavior
 
 Once configured, pull requests will:
 
 1. **Show all required checks** in the PR status section
-2. **Block merging** until all checks pass:
-   - Main bot tests must pass
-   - All 12 package tests must pass
-   - All 11 package TypeScript builds must pass
-   - Main bot linting must pass
+2. **Block merging** until all required checks pass:
+   - Build/typecheck must pass
+   - Bot and script tests must pass
+   - Dependency sync must pass
+   - Alliance safety must pass
+   - Package lint checks must pass
+   - Runtime smoke/divergence checks must pass when their path filters apply
 3. **Display clear status** for each check with links to CI logs
 4. **Require branch to be up to date** with main before merging
 
@@ -110,18 +105,17 @@ Once configured, pull requests will:
 
 ### Too Many Checks Required
 
-**Problem**: 25 required checks seems like a lot
+**Problem**: The modular required checks feel noisy.
 
 **Rationale**:
-- Each check runs in parallel (fast)
-- Each check tests a specific package (isolated)
-- Failures are easy to debug (know exactly which package failed)
-- Prevents broken packages from being merged
+- Core build/test/dependency checks catch repo-wide breakage.
+- Package lint checks keep failures easy to localize.
+- Runtime smoke checks only run for path-matched runtime changes.
 
 **Alternative**: If you prefer fewer checks, you could:
-1. Make package tests informational only (not recommended)
-2. Create a single "all packages" job that depends on the matrix
-3. Require only that summary job (loses per-package visibility)
+1. Require only `Build and Typecheck`, `Bot and Script Tests`, `Dependency Sync Check`, and `Check Alliance Safety`.
+2. Leave package lint and transitional quality reports informational.
+3. Add a dedicated summary job later if branch protection needs one stable required context.
 
 ### Checks Sometimes Don't Run
 
@@ -163,27 +157,18 @@ When adding a new package with tests:
    "test:new-package": "npm test -w @ralphschuler/new-package"
    ```
 
-2. **Update test.yml** matrix:
+2. **Confirm `ci.yml` still covers the package** through `npm run build` and `npm run typecheck`. Add package-specific root scripts when the package needs targeted test coverage before `npm run test:all` is fully reliable.
+
+3. **Update `quality.yml` lint matrix** if the package has a standalone lint script:
    ```yaml
    - package-name: new-package
      workspace: "@ralphschuler/new-package"
-     test-script: "test:new-package"
+     lint-script: "lint:new-package"
    ```
 
-3. **Update lint.yml** matrix (if package has TypeScript):
-   ```yaml
-   - package-name: new-package
-     workspace: "@ralphschuler/new-package"
-   ```
+4. **Update `integration-tests.yml` path filters** if the package affects runtime behavior and should trigger private-server smoke tests.
 
-4. **Update bundle-size.yml** array:
-   ```bash
-   "@ralphschuler/new-package:packages/@ralphschuler/new-package/dist:new-package"
-   ```
-
-5. **Update branch protection**:
-   - Add `Test new-package` as required check
-   - Add `TypeCheck new-package` as required check
+5. **Update branch protection** if new job names are added. The shared `Build and Typecheck` job usually covers new packages without adding per-package required checks; add targeted test jobs only when needed.
 
 ### Removing Packages
 
@@ -195,12 +180,12 @@ When removing a package:
 
 ## Security Considerations
 
-All workflows use minimal permissions (`contents: read`) to follow the principle of least privilege. This means:
+Validation workflows should use minimal permissions (`contents: read`) whenever possible. Workflows that deploy, release, or comment on PRs may need explicit write scopes. This means:
 
-- ✅ Workflows can read repository contents
-- ❌ Workflows cannot write to repository
-- ❌ Workflows cannot modify issues/PRs
-- ❌ Workflows cannot trigger other workflows
+- ✅ Validation workflows can read repository contents
+- ✅ Release/deploy/automation workflows may write only where explicitly configured
+- ❌ New workflows should not gain issue/PR/check write permissions by default
+- ❌ Workflows should not trigger other workflows unless that is a documented requirement
 
 If you need additional permissions for future workflows, add them explicitly:
 

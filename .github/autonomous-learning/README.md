@@ -124,7 +124,7 @@ This database contains:
 
 ### Post-Deployment Monitoring
 
-The `post-deployment-monitoring.yml` workflow automatically records outcomes after each PR merge.
+The legacy `post-deployment-monitoring.yml` workflow was retired after producing zero-job GitHub Actions failures. Deployment is handled by `deploy.yml`; post-deploy evidence is currently collected by autonomous read-only Screeps API observations. A future metric-backed monitor should be added as a dedicated workflow.
 
 ### Autonomous Improvement
 
