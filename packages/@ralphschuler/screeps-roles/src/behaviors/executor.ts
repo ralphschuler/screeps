@@ -28,6 +28,7 @@ import { moveTo, clearCachedPath, isExit } from "screeps-cartographer";
 import { clearClosestCache as clearAllCachedTargets } from "../cache";
 import { createLogger } from "@ralphschuler/screeps-core";
 import * as metrics from "@ralphschuler/screeps-stats";
+import { isKnownAllyOwned } from "@ralphschuler/screeps-defense";
 import { applyOpportunisticActions } from "../economy/opportunisticActions";
 import { getCollectionPoint } from "../utils/common";
 import { taskBoard } from "../tasks";
@@ -53,6 +54,34 @@ export type RemoteMoveHandler = (
 type MetricsCreepMemory = CreepMemory & { _metrics?: metrics.CreepMetrics };
 
 let remoteMoveHandler: RemoteMoveHandler | undefined;
+
+function shouldBlockHarmfulActionAgainstAlly(
+  ctx: CreepContext,
+  actionType: string,
+  target: RoomObject,
+): boolean {
+  if (!isKnownAllyOwned(target as unknown as Structure)) {
+    return false;
+  }
+
+  logger.warn("Refusing harmful action against known ally target", {
+    room: ctx.creep.pos.roomName,
+    creep: ctx.creep.name,
+    meta: {
+      action: actionType,
+      target: (target as { id?: string }).id,
+      owner: (target as { owner?: { username?: string } }).owner?.username,
+    },
+  });
+
+  delete ctx.memory.state;
+  if ((ctx.creep as Creep).id) {
+    clearCachedPath(ctx.creep);
+    clearAllCachedTargets(ctx.creep);
+  }
+  taskBoard.releaseCreep(ctx.creep.name, ctx.creep.room.name);
+  return true;
+}
 
 export function setRemoteMoveHandler(
   handler: RemoteMoveHandler | undefined,
@@ -221,7 +250,12 @@ export function executeAction(
       );
       break;
 
-    case "dismantle":
+    case "dismantle": {
+      if (shouldBlockHarmfulActionAgainstAlly(ctx, optimizedAction.type, optimizedAction.target)) {
+        shouldClearState = true;
+        break;
+      }
+
       shouldClearState = executeWithRange(
         creep,
         () => creep.dismantle(optimizedAction.target),
@@ -230,9 +264,15 @@ export function executeAction(
         optimizedAction.type,
       );
       break;
+    }
 
     // Combat
-    case "attack":
+    case "attack": {
+      if (shouldBlockHarmfulActionAgainstAlly(ctx, optimizedAction.type, optimizedAction.target)) {
+        shouldClearState = true;
+        break;
+      }
+
       executeWithRange(
         creep,
         () => creep.attack(optimizedAction.target),
@@ -241,8 +281,14 @@ export function executeAction(
         optimizedAction.type,
       );
       break;
+    }
 
-    case "rangedAttack":
+    case "rangedAttack": {
+      if (shouldBlockHarmfulActionAgainstAlly(ctx, optimizedAction.type, optimizedAction.target)) {
+        shouldClearState = true;
+        break;
+      }
+
       executeWithRange(
         creep,
         () => creep.rangedAttack(optimizedAction.target),
@@ -251,6 +297,7 @@ export function executeAction(
         optimizedAction.type,
       );
       break;
+    }
 
     case "heal":
       executeWithRange(
@@ -296,7 +343,12 @@ export function executeAction(
       );
       break;
 
-    case "attackController":
+    case "attackController": {
+      if (shouldBlockHarmfulActionAgainstAlly(ctx, optimizedAction.type, optimizedAction.target)) {
+        shouldClearState = true;
+        break;
+      }
+
       executeWithRange(
         creep,
         () => creep.attackController(optimizedAction.target),
@@ -305,6 +357,7 @@ export function executeAction(
         optimizedAction.type,
       );
       break;
+    }
 
     // Movement
     case "moveTo": {

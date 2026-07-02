@@ -6,14 +6,21 @@
  */
 
 import type { SwarmCreepMemory } from "../memory/schemas";
-import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
+import {
+  getActualHostileCreeps,
+  getActualHostileStructures,
+  isKnownAllyOwned,
+} from "@ralphschuler/screeps-defense";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { moveTo } from "screeps-cartographer";
 import type { CreepAction, CreepContext } from "./types";
 import {
   cachedRoomFind,
   cachedFindMyStructures,
-  cachedFindDroppedResources
+  cachedFindDroppedResources,
 } from "../cache";
+
+const logger = createLogger("PowerExecutor");
 
 // =============================================================================
 // Regular Creep Power Roles
@@ -487,12 +494,35 @@ export function powerWarrior(ctx: PowerCreepContext): PowerCreepAction {
   return { type: "idle" };
 }
 
+const DISRUPT_POWER_ACTIONS: ReadonlySet<PowerConstant> = new Set([
+  PWR_DISRUPT_SPAWN,
+  PWR_DISRUPT_TOWER,
+  PWR_DISRUPT_TERMINAL,
+]);
+
+function isDisruptivePowerAgainstAlly(power: PowerConstant, target?: RoomObject): boolean {
+  return Boolean(target && DISRUPT_POWER_ACTIONS.has(power) && isKnownAllyOwned(target as unknown as Structure));
+}
+
 /**
  * Execute a Power Creep action.
  */
 export function executePowerCreepAction(powerCreep: PowerCreep, action: PowerCreepAction): void {
   switch (action.type) {
     case "usePower": {
+      if (isDisruptivePowerAgainstAlly(action.power, action.target)) {
+        logger.warn("Refusing disruptive power action against known ally target", {
+          creep: powerCreep.name,
+          room: powerCreep.pos?.roomName,
+          meta: {
+            power: action.power,
+            target: action.target && (action.target as { id?: string }).id,
+            owner: (action.target as { owner?: { username?: string } } | undefined)?.owner?.username,
+          },
+        });
+        break;
+      }
+
       const result = action.target
         ? powerCreep.usePower(action.power, action.target)
         : powerCreep.usePower(action.power);
