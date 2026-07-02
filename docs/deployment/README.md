@@ -55,7 +55,7 @@ Required environment variables/secrets:
 - `SCREEPS_PATH`
 - `SCREEPS_BRANCH`
 
-Configured environments include official and private servers such as `screeps.com`, `season.screeps.com`, `ptr.screeps.com`, and private-server targets. The deploy workflow provides a non-empty default hostname for each matrix target (`sim.screeps.com` uses `screeps.com` as the API host); environment variables can still override that hostname when needed.
+Configured environments include official and private servers such as `screeps.com`, `season.screeps.com`, `ptr.screeps.com`, and private-server targets. The deploy workflow provides a non-empty default hostname for each matrix target (`sim.screeps.com` uses `screeps.com` as the API host); environment variables can still override that hostname when needed. Only the production `screeps.com` matrix target is required to pass; optional simulation/community targets are allowed to fail without marking a successful production upload failed.
 
 ## Branch/environment mapping
 

@@ -18,22 +18,32 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     environment: ${{ matrix.target.environment }}
+    # Only the official production target gates the workflow result. Optional
+    # community/simulation targets are useful when configured, but DNS/auth
+    # outages there must not mark a successful screeps.com upload as failed.
+    continue-on-error: ${{ matrix.target.required != true }}
     strategy:
       fail-fast: false
       matrix:
         target:
           - environment: sim.screeps.com
             hostname: screeps.com
+            required: false
           - environment: season.screeps.com
             hostname: season.screeps.com
+            required: false
           - environment: ptr.screeps.com
             hostname: ptr.screeps.com
+            required: false
           - environment: screeps.com
             hostname: screeps.com
+            required: true
           - environment: screeps.nyphon.de
             hostname: screeps.nyphon.de
+            required: false
           - environment: screeps.newbieland.net
             hostname: screeps.newbieland.net
+            required: false
     env:
       CI: true
       SCREEPS_USER: ${{ vars.SCREEPS_USER }}

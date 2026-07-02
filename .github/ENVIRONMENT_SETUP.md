@@ -6,16 +6,18 @@ This document explains how to configure GitHub Environments for deploying the Sc
 
 The deploy workflow (`deploy.yml`) uses GitHub Environments to manage server-specific credentials and configuration. Each Screeps server (screeps.com, sim.screeps.com, etc.) needs its own environment configuration.
 
-## Required Environments
+## Deploy Environments
 
 The deploy workflow targets these environments:
 
-- `sim.screeps.com` - Simulation server
-- `season.screeps.com` - Seasonal server
-- `ptr.screeps.com` - Public Test Realm
-- `screeps.com` - Main production server
-- `screeps.nyphon.de` - Private server
-- `screeps.newbieland.net` - Private server
+- `screeps.com` - Main production server (required; gates deploy workflow success)
+- `sim.screeps.com` - Simulation server (optional; non-blocking)
+- `season.screeps.com` - Seasonal server (optional; non-blocking)
+- `ptr.screeps.com` - Public Test Realm (optional; non-blocking)
+- `screeps.nyphon.de` - Private server (optional; non-blocking)
+- `screeps.newbieland.net` - Private server (optional; non-blocking)
+
+Optional targets are still useful when configured, but DNS/auth/server failures there are allowed to fail without marking a successful `screeps.com` production upload as failed.
 
 ## Setting Up an Environment
 
