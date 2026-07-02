@@ -4,6 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { redactScreepsApiMessage } from "./live-redaction.mjs";
+
+export { redactScreepsApiMessage };
+
 const DEFAULT_SHARDS = ["shard0", "shard1", "shard2", "shard3"];
 
 export function formatHelp() {
@@ -71,13 +75,6 @@ export function parseArgs(argv) {
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const isFiniteNumber = value => typeof value === "number" && Number.isFinite(value);
-
-export function redactScreepsApiMessage(message) {
-  return String(message)
-    .replace(/([?&](?:token|access_token|auth)=)[^&#\s)]+/gi, "$1<redacted>")
-    .replace(/(\bX-Token:\s*)[^\s)]+/gi, "$1<redacted>")
-    .replace(/(\bSCREEPS_TOKEN=)[^\s)]+/g, "$1<redacted>");
-}
 
 function addMetric(bucket, key, value, meta = {}) {
   if (!isFiniteNumber(value)) return;
