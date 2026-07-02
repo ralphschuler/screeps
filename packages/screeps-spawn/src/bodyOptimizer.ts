@@ -318,6 +318,7 @@ export function optimizeBody(options: BodyOptimizationOptions): BodyTemplate {
     case "interShardScout":
       return { parts: [MOVE], cost: 50, minCapacity: 50 };
 
+    case "claimer":
     case "interShardClaimer":
       return { parts: [CLAIM, MOVE], cost: 650, minCapacity: 650 };
 
