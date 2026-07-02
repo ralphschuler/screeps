@@ -24576,7 +24576,11 @@ function $u(e, t, r) {
 if (t.reservations[r]) {
 delete t.reservations[r];
 var o = Game.creeps[r];
-o && delete o.memory.assignedTaskId, Qu(t);
+if (o) {
+var n = o.memory;
+"assignedTaskId" in n && delete n.assignedTaskId;
+}
+Qu(t);
 }
 }
 
