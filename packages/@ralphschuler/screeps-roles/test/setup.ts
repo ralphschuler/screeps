@@ -83,6 +83,11 @@
 (global as any).RESOURCE_KEANIUM_BAR = 'keanium_bar';
 (global as any).RESOURCE_OXIDANT = 'oxidant';
 
+// Power constants
+(global as any).PWR_DISRUPT_SPAWN = 9;
+(global as any).PWR_DISRUPT_TOWER = 11;
+(global as any).PWR_DISRUPT_TERMINAL = 15;
+
 // Return codes
 (global as any).OK = 0;
 (global as any).ERR_NOT_OWNER = -1;
@@ -201,6 +206,8 @@ export const MockMemory: {
 /**
  * Create a mock creep for testing
  */
+let mockCreepIdCounter = 0;
+
 export function createMockCreep(name: string, options: {
   room?: any;
   memory?: any;
@@ -211,6 +218,7 @@ export function createMockCreep(name: string, options: {
   const mockRoom = options.room || createMockRoom('W1N1');
   
   const creep = {
+    id: (++mockCreepIdCounter).toString(16).padStart(24, "0"),
     name,
     room: mockRoom,
     pos: options.pos || {
