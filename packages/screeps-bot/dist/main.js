@@ -5091,7 +5091,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch {}
+} catch (e) {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
