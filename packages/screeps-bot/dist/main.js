@@ -5091,7 +5091,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -5913,6 +5913,7 @@ y > 0 && (c.guards = Math.ceil(1.5 * c.guards), c.rangers = Math.ceil(1.5 * c.ra
 c.healers = Math.ceil(1.5 * c.healers), c.urgency = 2, c.reasons.push("".concat(y, " boosted enemies (high threat)"))),
 (l.length >= 2 || y > 0 || p > 0 || f > 0) && (c.guards = Math.max(c.guards, 2),
 c.rangers = Math.max(c.rangers, 2)), l.length >= 3 && (c.healers = Math.max(c.healers, 1)),
+l.length >= 2 && d >= 8 && p >= 4 && (c.urgency = Math.max(c.urgency, 2), c.reasons.push("".concat(l.length, " hostiles with ").concat(d, " ranged/").concat(p, " heal parts (coordinated ranged-heal attack)"))),
 l.length >= 5 && (c.urgency = Math.max(c.urgency, 1.5), c.reasons.push("".concat(l.length, " hostiles (large attack)"))),
 e.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
@@ -12072,18 +12073,18 @@ subsystem: "Defense"
 }, e.prototype.calculateEmergencyLevel = function(e, t) {
 var r = j(e);
 if (0 === t.danger && 0 === r.length) return Pa.NONE;
-var o = fr(e), n = vr(e);
+var o = fr(e), n = vr(e), a = Br(e);
 if (e.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return (e.structureType === STRUCTURE_SPAWN || e.structureType === STRUCTURE_STORAGE || e.structureType === STRUCTURE_TERMINAL) && e.hits < .3 * e.hitsMax;
 }
 }).length > 0) return Pa.CRITICAL;
-var a = r.filter(function(e) {
+var i = r.filter(function(e) {
 return e.body.some(function(e) {
 return e.hits > 0 && e.boost;
 });
-}), i = Math.max(0, o.guards - n.guards) + Math.max(0, o.rangers - n.rangers) + Math.max(0, o.healers - n.healers);
-return a.length > 0 && i >= 2 || r.length >= 5 && 0 === n.guards && 0 === n.rangers ? Pa.HIGH : t.danger >= 2 && i >= 1 ? Pa.MEDIUM : t.danger >= 1 || r.length > 0 ? Pa.LOW : Pa.NONE;
+}), s = Math.max(0, o.guards - n.guards) + Math.max(0, o.rangers - n.rangers) + Math.max(0, o.healers - n.healers);
+return i.length > 0 && s >= 2 || r.length >= 5 && 0 === n.guards && 0 === n.rangers || a.dangerLevel >= 2 && s >= 2 ? Pa.HIGH : (t.danger >= 2 || a.dangerLevel >= 2) && s >= 1 ? Pa.MEDIUM : t.danger >= 1 || r.length > 0 ? Pa.LOW : Pa.NONE;
 }, e.prototype.executeEmergencyResponse = function(e, t, r) {
 r.level >= Pa.LOW && this.requestDefenseAssistance(e, t) && (r.assistanceRequested = !0),
 r.level >= Pa.MEDIUM && !r.boostsAllocated && e.controller && e.controller.level >= 6 && (this.allocateBoostsForDefense(e, t),

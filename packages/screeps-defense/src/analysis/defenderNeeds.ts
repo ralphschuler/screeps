@@ -10,6 +10,9 @@ import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 
 const DEFENSE_ASSIST_THREAT_PARTS = new Set<BodyPartConstant>([ATTACK, RANGED_ATTACK, WORK, HEAL, CLAIM]);
+const COORDINATED_RANGED_HEAL_MIN_HOSTILES = 2;
+const COORDINATED_RANGED_HEAL_MIN_RANGED_PARTS = 8;
+const COORDINATED_RANGED_HEAL_MIN_HEAL_PARTS = 4;
 
 function hasVisibleDefenseThreat(room: Room): boolean {
   return getActualHostileCreeps(room).some(hostile =>
@@ -141,6 +144,17 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
 
   if (hostiles.length >= 3) {
     result.healers = Math.max(result.healers, 1);
+  }
+
+  if (
+    hostiles.length >= COORDINATED_RANGED_HEAL_MIN_HOSTILES &&
+    rangedCount >= COORDINATED_RANGED_HEAL_MIN_RANGED_PARTS &&
+    healerCount >= COORDINATED_RANGED_HEAL_MIN_HEAL_PARTS
+  ) {
+    result.urgency = Math.max(result.urgency, 2.0);
+    result.reasons.push(
+      `${hostiles.length} hostiles with ${rangedCount} ranged/${healerCount} heal parts (coordinated ranged-heal attack)`
+    );
   }
 
   if (hostiles.length >= 5) {
