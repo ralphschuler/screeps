@@ -26,6 +26,8 @@ const PREEMPTABLE_QUEUED_ROLES = new Set<SpawnRequest["role"]>([
   "scout"
 ]);
 const PREEMPTIVE_REPLAN_INTERVAL = 5;
+const AFFORDABLE_EMERGENCY_DEFENDER_FALLBACK_LIMIT = 3;
+const LOCAL_DEFENSE_ROLES = new Set<SpawnRequest["role"]>(["guard", "ranger", "healer"]);
 
 interface SpawnPipelineCpuMemory {
   spawnPipeline?: {
@@ -303,12 +305,82 @@ function addDefenderRequests(
     }
   }
 
+  addAffordableEmergencyDefenderFallback(room, priority, emergencyEnergy, threatProfile);
+
   if (guardsNeeded > 0 || rangersNeeded > 0 || healersNeeded > 0) {
     logger.info(
       `Added defender spawn requests: ${guardsNeeded} guards, ${rangersNeeded} rangers, ${healersNeeded} healers (priority: ${priority})`,
       { subsystem: "SpawnPipeline" }
     );
   }
+}
+
+function addAffordableEmergencyDefenderFallback(
+  room: Room,
+  priority: SpawnPriority,
+  availableEnergy: number,
+  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
+): void {
+  if (priority < SpawnPriority.EMERGENCY) return;
+  if (countAffordableEmergencyLocalDefenders(room, availableEnergy) >= AFFORDABLE_EMERGENCY_DEFENDER_FALLBACK_LIMIT) return;
+
+  const fallback = getAffordableEmergencyDefenderFallback(availableEnergy, threatProfile);
+  if (!fallback) return;
+
+  addOptimizedRequest(
+    room,
+    fallback.role,
+    "military",
+    SpawnPriority.EMERGENCY,
+    availableEnergy,
+    `${fallback.role}_defense_affordable_${Game.time}`,
+    fallback.body
+  );
+}
+
+function getAffordableEmergencyDefenderFallback(
+  availableEnergy: number,
+  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
+): { role: "guard" | "ranger"; body: SpawnRequest["body"] } | null {
+  const candidates = (["guard", "ranger"] as const)
+    .map(role => {
+      try {
+        const body = optimizeBody({ maxEnergy: availableEnergy, role });
+        return body.cost <= availableEnergy ? { role, body } : null;
+      } catch {
+        return null;
+      }
+    })
+    .filter((candidate): candidate is { role: "guard" | "ranger"; body: SpawnRequest["body"] } => Boolean(candidate));
+
+  if (candidates.length === 0) return null;
+
+  const strongestThreat = threatProfile?.strongest;
+  return candidates.sort((a, b) => {
+    const powerDelta = calculateCombatPower(b.body.parts).score - calculateCombatPower(a.body.parts).score;
+    if (powerDelta !== 0) return powerDelta;
+    if (strongestThreat?.ranged && a.role !== b.role) return a.role === "ranger" ? -1 : 1;
+    return a.body.cost - b.body.cost;
+  })[0] ?? null;
+}
+
+function countAffordableEmergencyLocalDefenders(room: Room, availableEnergy: number): number {
+  let count = room.find(FIND_MY_CREEPS).filter(creep => {
+    if ((creep as { spawning?: boolean }).spawning) return false;
+    const role = (creep.memory as { role?: SpawnRequest["role"] }).role;
+    if (!role || !LOCAL_DEFENSE_ROLES.has(role)) return false;
+    return (creep.body ?? []).some(part => part.hits > 0 && (part.type === ATTACK || part.type === RANGED_ATTACK));
+  }).length;
+
+  for (const request of spawnQueue.getPendingRequests(room.name)) {
+    if (request.priority < SpawnPriority.EMERGENCY) continue;
+    if (!LOCAL_DEFENSE_ROLES.has(request.role)) continue;
+    if (request.targetRoom && request.targetRoom !== room.name) continue;
+    if (request.additionalMemory?.assistTarget) continue;
+    if (request.body.cost <= availableEnergy) count++;
+  }
+
+  return count;
 }
 
 function getThreatParityDefenderBody(

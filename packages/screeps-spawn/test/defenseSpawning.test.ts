@@ -579,8 +579,31 @@ describe("defense spawn throttling", () => {
       .filter(request => request.role === "guard" || request.role === "ranger" || request.role === "healer");
 
     assert.isAbove(defenderRequests.length, 0);
-    assert.isTrue(defenderRequests.every(request => request.body.parts.length >= 6));
-    assert.isTrue(defenderRequests.every(request => request.body.cost > room.energyAvailable));
+    assert.isTrue(defenderRequests.some(request => request.body.parts.length >= 6));
+    assert.isTrue(defenderRequests.some(request => request.body.cost > room.energyAvailable));
+  });
+
+  it("adds an affordable emergency local defender when hard-threat bodies exceed current room energy", () => {
+    const hardInvaders = [
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11]))
+    ];
+    const room = createRoom(hardInvaders, "W18S28", 350, 185, 5);
+    Game.rooms.W18S28 = room;
+    Game.creeps = {
+      worker1: { spawning: false, memory: { role: "harvester", homeRoom: "W18S28" } }
+    } as unknown as typeof Game.creeps;
+
+    populateSpawnQueue(room, { danger: 3, posture: "war" } as any);
+
+    const next = spawnQueue.getNextRequest("W18S28", room.energyAvailable);
+
+    assert.equal(next?.role, "guard");
+    assert.equal(next?.priority, SpawnPriority.EMERGENCY);
+    assert.isAtMost(next!.body.cost, room.energyAvailable);
+    assert.includeMembers(next!.body.parts, [ATTACK, MOVE]);
   });
 
   it("plans aggregate friendly fight power strictly above visible hostile power", () => {
