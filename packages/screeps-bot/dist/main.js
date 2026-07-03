@@ -37547,21 +37547,7 @@ var t;
 return !!(null === (t = e.controller) || void 0 === t ? void 0 : t.my) && 0 !== e.find(FIND_MY_SPAWNS).length && 0 === j(e).length;
 }
 
-function gv(e, t) {
-var r = function(e, t) {
-return function(e, t) {
-var r = function() {
-var e, t = Memory;
-return null !== (e = t.defenseAssistWaves) && void 0 !== e ? e : t.defenseAssistWaves = {};
-}(), o = function(e, t) {
-return "".concat(e, ":").concat(t);
-}(e, t.roomName), n = Game.time, a = "number" == typeof t.createdAt && Number.isFinite(t.createdAt) ? t.createdAt : n, i = r[o];
-return i && n - i.seenAt <= 1200 ? (i.seenAt = n, i.createdAt) : (r[o] = {
-createdAt: a,
-seenAt: n
-}, a);
-}(e, t);
-}(e, t);
+function gv(e, t, r) {
 return "defenseAssist:".concat(e, ":").concat(t.roomName, ":").concat(r);
 }
 
@@ -37626,14 +37612,27 @@ var f = null !== (s = null === (i = null === (a = Game.map) || void 0 === a ? vo
 return f !== y ? f - y : (null !== (m = t.request.createdAt) && void 0 !== m ? m : 0) - (null !== (d = r.request.createdAt) && void 0 !== d ? d : 0);
 }), u = null === (r = c[0]) || void 0 === r ? void 0 : r.request;
 return u ? function(e, t, r) {
-var o;
+var o, n = function(e, t) {
+var r = function() {
+var e, t = Memory;
+return null !== (e = t.defenseAssistWaves) && void 0 !== e ? e : t.defenseAssistWaves = {};
+}(), o = function(e, t) {
+return "".concat(e, ":").concat(t);
+}(e, t.roomName), n = Game.time, a = "number" == typeof t.createdAt && Number.isFinite(t.createdAt) ? t.createdAt : n, i = r[o];
+if (i && n - i.seenAt <= 1200) return i.seenAt = n, i;
+var s = {
+createdAt: a,
+seenAt: n
+};
+return r[o] = s, s;
+}(e, r);
 return {
 targetRoom: r.roomName,
 task: iv,
 priority: (null !== (o = r.urgency) && void 0 !== o ? o : 1) >= 2 ? my.EMERGENCY : my.HIGH,
-defenseSquadId: gv(e, r),
+defenseSquadId: gv(e, r, n.createdAt),
 defenseSquadSize: dv(r, t),
-defenseSquadCreatedAt: Game.time
+defenseSquadCreatedAt: n.createdAt
 };
 }(e, o, u) : null;
 }
