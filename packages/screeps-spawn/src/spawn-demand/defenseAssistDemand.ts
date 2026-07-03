@@ -18,6 +18,8 @@ import {
   type ExistingDefensePower
 } from "@ralphschuler/screeps-defense";
 import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
+import { getAffordableEmergencyDefenseAssistBody } from "../emergencyDefenseBody";
+import { getEffectiveRoomEnergyAvailable } from "../roomEnergy";
 import { spawnQueue, SpawnPriority } from "../spawnQueue";
 
 const DEFENSE_ASSIST_REQUEST_TTL = 500;
@@ -215,6 +217,20 @@ function createDefenseAssistSpawnAssignment(
   };
 }
 
+function getAffordableEmergencyAssistFallbackNeed(
+  request: DefenseAssistRequestMemory,
+  role: string,
+  helperRoom: Room,
+  threatProfile: ReturnType<typeof getVisibleDefenseAssistThreatProfile>
+): number {
+  if (role !== "guard") return 0;
+  if ((request.urgency ?? 1) < 2) return 0;
+  if (!threatProfile) return 0;
+
+  const availableEnergy = getEffectiveRoomEnergyAvailable(helperRoom);
+  return getAffordableEmergencyDefenseAssistBody("guard", availableEnergy, threatProfile) ? 1 : 0;
+}
+
 function getActiveDefenseAssistRequests(memory: { defenseRequests?: DefenseAssistRequestMemory[] }): DefenseAssistRequestMemory[] {
   const requests = memory.defenseRequests ?? [];
   const activeRequests = requests.filter(hasCurrentDefenseThreat);
@@ -241,7 +257,16 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
   const memory = Memory as unknown as { defenseRequests?: DefenseAssistRequestMemory[] };
   const candidates = getActiveDefenseAssistRequests(memory)
     .filter(request => request.roomName !== homeRoom)
-    .map(request => ({ request, helperNeed: getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity) }))
+    .map(request => {
+      const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
+      return {
+        request,
+        helperNeed: Math.max(
+          getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity, threatProfile),
+          getAffordableEmergencyAssistFallbackNeed(request, role, home, threatProfile)
+        )
+      };
+    })
     .filter(candidate => candidate.helperNeed > 0)
     .filter(candidate => hasCurrentDefenseThreat(candidate.request))
     .filter(candidate => countAssignedDefenseAssist(candidate.request.roomName, role) < candidate.helperNeed)

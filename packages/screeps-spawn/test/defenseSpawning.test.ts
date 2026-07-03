@@ -583,6 +583,51 @@ describe("defense spawn throttling", () => {
     assert.isTrue(defenderRequests.some(request => request.body.cost > room.energyAvailable));
   });
 
+  it("adds an affordable emergency helper-room assist when hard-threat bodies exceed current helper energy", () => {
+    const hardInvaders = [
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
+      createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11]))
+    ];
+    const helper = createRoom([], "W18S29", 2300, 293, 6);
+    const attacked = createRoom(hardInvaders, "W18S28", 350, 185, 5);
+    Game.rooms.W18S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W18S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W18S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W18S28",
+        guardsNeeded: 0,
+        rangersNeeded: 1,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "hard ranged healer attack"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const assistRequests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .filter(request => request.additionalMemory?.task === "defenseAssist");
+    const affordableAssist = assistRequests.find(request => request.body.cost <= helper.energyAvailable);
+
+    assert.isOk(affordableAssist);
+    assert.equal(affordableAssist!.role, "guard");
+    assert.equal(affordableAssist!.targetRoom, "W18S28");
+    assert.equal(affordableAssist!.priority, SpawnPriority.EMERGENCY);
+    assert.isAtMost(affordableAssist!.body.cost, helper.energyAvailable);
+    assert.includeMembers(affordableAssist!.body.parts, [ATTACK, MOVE]);
+    assert.include(affordableAssist!.additionalMemory, { task: "defenseAssist", assistTarget: "W18S28" });
+    assert.equal(affordableAssist!.additionalMemory?.defenseSquadId, "defenseAssist:W18S29:W18S28:1000");
+    assert.equal(affordableAssist!.additionalMemory?.defenseSquadCreatedAt, Game.time);
+    assert.isFalse(assistRequests.some(request => request.body.cost > helper.energyAvailable));
+  });
+
   it("adds an affordable emergency local defender when hard-threat bodies exceed current room energy", () => {
     const hardInvaders = [
       createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),
