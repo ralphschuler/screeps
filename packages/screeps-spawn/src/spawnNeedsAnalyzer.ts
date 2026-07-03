@@ -36,6 +36,8 @@ export { getClaimerSpawnAssignment } from "./spawn-demand/claimerDemand";
 export type { ClaimerSpawnAssignment, ClaimerTask } from "./spawn-demand/claimerDemand";
 export { getDefenseAssistSpawnAssignment } from "./spawn-demand/defenseAssistDemand";
 export type { DefenseAssistSpawnAssignment } from "./spawn-demand/defenseAssistDemand";
+export { getDefenseRefuelSpawnAssignment } from "./spawn-demand/defenseRefuelDemand";
+export type { DefenseRefuelSpawnAssignment } from "./spawn-demand/defenseRefuelDemand";
 export { getPioneerSpawnAssignment } from "./spawn-demand/pioneerDemand";
 export type { PioneerSpawnAssignment } from "./spawn-demand/pioneerDemand";
 

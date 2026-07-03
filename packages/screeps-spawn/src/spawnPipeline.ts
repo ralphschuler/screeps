@@ -29,6 +29,8 @@ const PREEMPTABLE_QUEUED_ROLES = new Set<SpawnRequest["role"]>([
 const PREEMPTIVE_REPLAN_INTERVAL = 5;
 const AFFORDABLE_EMERGENCY_DEFENDER_FALLBACK_LIMIT = 3;
 const LOCAL_DEFENSE_ROLES = new Set<SpawnRequest["role"]>(["guard", "ranger", "healer"]);
+const DEFENSE_ASSIST_TASK = "defenseAssist";
+const DEFENSE_REFUEL_TASK = "defenseRefuel";
 
 interface SpawnPipelineCpuMemory {
   spawnPipeline?: {
@@ -207,11 +209,13 @@ function addPreemptiveRequestsWhenMissing(room: Room, swarm: SwarmState): void {
     const isPriorityUpgrader = request.role === "upgrader" && request.priority >= SpawnPriority.HIGH;
     const isClaimerPreemption = request.role === "claimer" && isClaimerPreemptionEnabled();
     const isDefenseAssistPreemption = isDefenseAssistRequest(request);
+    const isDefenseRefuelPreemption = isDefenseRefuelRequest(request);
     if (
       !PREEMPTABLE_QUEUED_ROLES.has(request.role) &&
       !isPriorityUpgrader &&
       !isClaimerPreemption &&
-      !isDefenseAssistPreemption
+      !isDefenseAssistPreemption &&
+      !isDefenseRefuelPreemption
     ) continue;
 
     const requestKey = getSpawnRequestDedupeKey(request);
@@ -230,7 +234,15 @@ function getSpawnRequestDedupeKey(request: SpawnRequest): string {
 function isDefenseAssistRequest(request: SpawnRequest): boolean {
   return (
     request.priority >= SpawnPriority.HIGH &&
-    (request.additionalMemory as { task?: string; assistTarget?: string } | undefined)?.task === "defenseAssist"
+    (request.additionalMemory as { task?: string; assistTarget?: string } | undefined)?.task === DEFENSE_ASSIST_TASK
+  );
+}
+
+function isDefenseRefuelRequest(request: SpawnRequest): boolean {
+  return (
+    request.priority >= SpawnPriority.EMERGENCY &&
+    request.role === "hauler" &&
+    (request.additionalMemory as { task?: string } | undefined)?.task === DEFENSE_REFUEL_TASK
   );
 }
 

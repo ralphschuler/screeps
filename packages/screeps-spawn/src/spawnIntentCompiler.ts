@@ -17,6 +17,7 @@ import {
   countCreepsByRole,
   getClaimerSpawnAssignment,
   getDefenseAssistSpawnAssignment,
+  getDefenseRefuelSpawnAssignment,
   getPioneerSpawnAssignment,
   getRemoteRoomNeedingWorkers,
   getRoleTargetCount,
@@ -153,6 +154,21 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
 
   for (const [roleName, def] of Object.entries(ROLE_DEFINITIONS)) {
     const current = counts.get(roleName) ?? 0;
+    const defenseRefuelAssignment = getDefenseRefuelSpawnAssignment(room.name, roleName);
+    if (defenseRefuelAssignment) {
+      demands.push({
+        roleName,
+        def,
+        current,
+        target: current + 1,
+        missing: 1,
+        priority: defenseRefuelAssignment.priority,
+        task: defenseRefuelAssignment.task,
+        bodyOverride: defenseRefuelAssignment.body
+      });
+      continue;
+    }
+
     const defenseAssistAssignment = getDefenseAssistSpawnAssignment(room.name, roleName);
     if (defenseAssistAssignment) {
       demands.push({
