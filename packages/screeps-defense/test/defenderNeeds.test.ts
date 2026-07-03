@@ -81,6 +81,37 @@ describe("defense assistance needs", () => {
     expect((Memory as any).defenseRequests?.[0]?.roomName).to.equal("W1N1");
   });
 
+  it("escalates clustered ranged-heal owned-room attacks above low alert", () => {
+    const manager = new EmergencyResponseManager();
+    const swarm = {
+      danger: 0,
+      posture: "eco",
+      pheromones: { defense: 0, war: 0, siege: 0 }
+    } as any;
+    const rangedHealBody = [
+      ...repeatedParts(RANGED_ATTACK, 14),
+      ...repeatedParts(MOVE, 25),
+      ...repeatedParts(HEAL, 11),
+    ];
+    const room = createRoom([
+      createHostile(rangedHealBody),
+      createHostile(rangedHealBody),
+      createHostile(rangedHealBody),
+      createHostile(rangedHealBody),
+    ], 5, 1);
+
+    const needs = analyzeDefenderNeeds(room);
+    const state = manager.assess(room, swarm);
+    const request = (Memory as any).defenseRequests?.[0];
+
+    expect(needs.urgency).to.be.at.least(2);
+    expect(needs.reasons.join("; ")).to.include("coordinated ranged-heal attack");
+    expect(state.level).to.equal(EmergencyLevel.HIGH);
+    expect(request?.urgency).to.be.at.least(2);
+    expect(request?.rangersNeeded).to.be.greaterThan(0);
+    expect(request?.healersNeeded).to.be.greaterThan(0);
+  });
+
   it("refreshes an active defense request when the visible attack force grows", () => {
     const manager = new EmergencyResponseManager();
     const swarm = {

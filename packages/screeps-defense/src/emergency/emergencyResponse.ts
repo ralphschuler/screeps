@@ -29,6 +29,7 @@ import {
   needsDefenseAssistance
 } from "../analysis/defenderNeeds";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+import { assessThreat } from "../threat/threatAssessment";
 
 /**
  * Emergency response levels
@@ -137,6 +138,7 @@ export class EmergencyResponseManager {
 
     const needs = analyzeDefenderNeeds(room);
     const current = getCurrentDefenders(room);
+    const threat = assessThreat(room);
 
     // Critical: Critical structures heavily damaged or about to be destroyed
     const criticalStructures = room.find(FIND_MY_STRUCTURES, {
@@ -167,8 +169,13 @@ export class EmergencyResponseManager {
       return EmergencyLevel.HIGH;
     }
 
+    // High: live threat analysis already sees active-attack/siege pressure and the room lacks defenders.
+    if (threat.dangerLevel >= 2 && defenderDeficit >= 2) {
+      return EmergencyLevel.HIGH;
+    }
+
     // Medium: Significant threat with defender deficit
-    if (swarm.danger >= 2 && defenderDeficit >= 1) {
+    if ((swarm.danger >= 2 || threat.dangerLevel >= 2) && defenderDeficit >= 1) {
       return EmergencyLevel.MEDIUM;
     }
 
