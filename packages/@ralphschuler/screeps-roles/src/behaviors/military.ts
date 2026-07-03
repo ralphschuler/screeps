@@ -35,6 +35,8 @@ const DEFENSE_ASSIST_TASK = "defenseAssist";
 
 type DefenseAssistRole = "guard" | "ranger" | "healer";
 
+type DefenseAssistReleaseReason = NonNullable<SwarmCreepMemory["defenseAssistReleaseReason"]>;
+
 interface DefenseAssistRequestMemory {
   roomName: string;
   guardsNeeded?: number;
@@ -62,10 +64,16 @@ function clearDefenseAssistAssignment(mem: SwarmCreepMemory): void {
   delete mem.defenseSquadSize;
   delete mem.defenseSquadCreatedAt;
   delete mem.defenseAssistReleasedAt;
+  delete mem.defenseAssistReleaseReason;
   if (mem.task === DEFENSE_ASSIST_TASK) {
     delete mem.task;
     delete mem.targetRoom;
   }
+}
+
+function markDefenseAssistReleased(mem: SwarmCreepMemory, reason: DefenseAssistReleaseReason): void {
+  mem.defenseAssistReleasedAt ??= Game.time;
+  mem.defenseAssistReleaseReason = reason;
 }
 
 function isDefenseAssistSquadConfigured(mem: SwarmCreepMemory): boolean {
@@ -76,10 +84,6 @@ function isDefenseAssistSquadStagingExpired(mem: SwarmCreepMemory, hardThreat: b
   if (mem.defenseSquadCreatedAt === undefined) return true;
   const timeout = hardThreat ? DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT : DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT;
   return Game.time - mem.defenseSquadCreatedAt >= timeout;
-}
-
-function markDefenseAssistReleased(mem: SwarmCreepMemory): void {
-  mem.defenseAssistReleasedAt ??= Game.time;
 }
 
 function emptyCombatPower(): CombatPower {
@@ -305,30 +309,30 @@ function getDefenseAssistSquadStagingAction(ctx: CreepContext, mem: SwarmCreepMe
 
   if (threatProfile) {
     if (hasReadyDefenseAssistParity(assistTarget, ctx.homeRoom, threatProfile)) {
-      markDefenseAssistReleased(mem);
+      markDefenseAssistReleased(mem, "parity-ready");
       return null;
     }
     if (readyMembers >= releaseQuorum) {
-      markDefenseAssistReleased(mem);
+      markDefenseAssistReleased(mem, "squad-quorum");
       return null;
     }
     if (stagingExpired) {
       if (!hardThreat) {
-        markDefenseAssistReleased(mem);
+        markDefenseAssistReleased(mem, "expired-staging");
         return null;
       }
       if (canReleaseHardThreatTrickle(ctx.creep, ctx.homeRoom, assistTarget, readyTargetMembers)) {
-        markDefenseAssistReleased(mem);
+        markDefenseAssistReleased(mem, "hard-threat-trickle");
         return null;
       }
     }
   } else {
     if (readyMembers >= releaseQuorum) {
-      markDefenseAssistReleased(mem);
+      markDefenseAssistReleased(mem, "squad-quorum");
       return null;
     }
     if (stagingExpired) {
-      markDefenseAssistReleased(mem);
+      markDefenseAssistReleased(mem, "expired-staging");
       return null;
     }
   }

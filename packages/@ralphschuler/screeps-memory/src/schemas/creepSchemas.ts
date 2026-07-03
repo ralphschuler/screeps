@@ -123,6 +123,12 @@ export interface SwarmCreepMemory {
   defenseSquadCreatedAt?: number;
   /** Tick when this creep was released from defense-assist staging. */
   defenseAssistReleasedAt?: number;
+  /** Release mode used when a defense-assist creep left staging. */
+  defenseAssistReleaseReason?:
+    | "parity-ready"
+    | "squad-quorum"
+    | "expired-staging"
+    | "hard-threat-trickle";
   /** Boosted flag */
   boosted?: boolean;
   /** Boost requirements (for spawning with boost intentions) */
