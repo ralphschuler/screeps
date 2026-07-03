@@ -129,10 +129,11 @@ export class UnifiedStatsManager {
    * This method ensures room stats persist across ticks even when rooms don't execute.
    *
    * Stale data cleanup:
-   * - Only preserve stats for rooms that are still present in Game.rooms
-   * - This prevents unbounded accumulation of stats for lost or invisible rooms
+   * - Only preserve stats for rooms that are currently visible and owned.
+   *   This prevents stale entries for lost rooms from staying in Memory.stats.
    *
-   * @returns Room stats object from previous snapshot (filtered to current rooms), or empty object if none exists
+   * @returns Room stats object from previous snapshot (filtered to visible-owned rooms),
+   * or empty object if none exists
    */
   private preserveRoomStats(): Record<string, RoomStatsEntry> {
     const previousRooms = this.currentSnapshot?.rooms;
@@ -142,12 +143,16 @@ export class UnifiedStatsManager {
 
     const filteredRooms: Record<string, RoomStatsEntry> = {};
     for (const roomName in previousRooms) {
-      if (Object.prototype.hasOwnProperty.call(previousRooms, roomName) && Game.rooms[roomName]) {
+      if (Object.prototype.hasOwnProperty.call(previousRooms, roomName) && this.isOwnedRoom(roomName)) {
         filteredRooms[roomName] = previousRooms[roomName];
       }
     }
 
     return filteredRooms;
+  }
+
+  private isOwnedRoom(roomName: string): boolean {
+    return Boolean(Game.rooms[roomName]?.controller?.my);
   }
 
   /**
