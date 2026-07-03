@@ -41,8 +41,23 @@ interface MemoryWithTaskBoard extends Memory {
   creepTaskBoard?: TaskBoardMemory;
 }
 
+function getRuntimeGame(): typeof Game | null {
+  const game = (globalThis as unknown as { Game?: typeof Game }).Game;
+  return game && typeof game === "object" ? game : null;
+}
+
+function getRuntimeMemory(): MemoryWithTaskBoard | null {
+  const memory = (globalThis as unknown as { Memory?: MemoryWithTaskBoard }).Memory;
+  return memory && typeof memory === "object" ? memory : null;
+}
+
+function getCpuBucket(): number {
+  return getRuntimeGame()?.cpu?.bucket ?? 10000;
+}
+
 function getTaskMemory(): TaskBoardMemory {
-  const memory = Memory as MemoryWithTaskBoard;
+  const memory = getRuntimeMemory();
+  if (!memory) return { enabled: false, rooms: {} };
   if (!memory.creepTaskBoard) {
     memory.creepTaskBoard = { enabled: true, rooms: {} };
   }
@@ -187,7 +202,7 @@ function createRefillTask(roomName: string, type: TaskType, structure: AnyStoreS
 }
 
 function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
-  const interval = Game.cpu.bucket < TASKBOARD_LOW_BUCKET_THRESHOLD ? LOW_BUCKET_GENERATION_INTERVAL : GENERATION_INTERVAL;
+  const interval = getCpuBucket() < TASKBOARD_LOW_BUCKET_THRESHOLD ? LOW_BUCKET_GENERATION_INTERVAL : GENERATION_INTERVAL;
   if (Game.time - board.lastGeneratedTick < interval) return;
   board.lastGeneratedTick = Game.time;
 
@@ -500,7 +515,7 @@ export class TaskBoard {
   }
 
   public getAssignedAction(ctx: CreepContext, allowedTypes?: TaskType[]): CreepAction | null {
-    if (!this.isEnabled()) return null;
+    if (!this.isEnabled() || !getRuntimeGame()) return null;
     const board = getRoomBoard(ctx.room.name);
     measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
     measureCpuDetail("taskBoard.generate", () => generateTasks(ctx.room, board));
@@ -511,7 +526,7 @@ export class TaskBoard {
   }
 
   public getAssignedDeliveryAction(ctx: CreepContext): CreepAction | null {
-    if (!this.isEnabled()) return null;
+    if (!this.isEnabled() || !getRuntimeGame()) return null;
     const board = getRoomBoard(ctx.room.name);
     measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
     measureCpuDetail("taskBoard.generate", () => generateTasks(ctx.room, board));
@@ -529,10 +544,11 @@ export class TaskBoard {
   }
 
   public hasActiveTask(roomName: string, allowedTypes: TaskType[]): boolean {
-    if (!this.isEnabled()) return false;
+    const game = getRuntimeGame();
+    if (!this.isEnabled() || !game) return false;
     const board = getRoomBoard(roomName);
     measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
-    const room = Game.rooms[roomName];
+    const room = game.rooms?.[roomName];
     if (room) measureCpuDetail("taskBoard.generate", () => generateTasks(room, board));
 
     return Object.values(board.tasks).some(
@@ -541,7 +557,7 @@ export class TaskBoard {
   }
 
   public refreshRoom(room: Room): void {
-    if (!this.isEnabled()) return;
+    if (!this.isEnabled() || !getRuntimeGame()) return;
     pruneStaleRoomBoards(room.name);
     const board = getRoomBoard(room.name);
     measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
@@ -568,7 +584,9 @@ export class TaskBoard {
   }
 
   public getStats(roomName: string): TaskBoardStats | null {
-    const room = Game.rooms[roomName];
+    const game = getRuntimeGame();
+    if (!game) return null;
+    const room = game.rooms?.[roomName];
     if (!room) return null;
     const board = getRoomBoard(roomName);
     measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board, true));
@@ -588,7 +606,8 @@ export class TaskBoard {
   }
 
   public describe(roomName: string): string {
-    const room = Game.rooms[roomName];
+    const game = getRuntimeGame();
+    const room = game?.rooms[roomName];
     if (!room) return `Room ${roomName} is not visible`;
     const board = getRoomBoard(roomName);
     cleanupBoard(board, true);
