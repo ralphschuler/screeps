@@ -263,6 +263,67 @@ describe("defense spawn throttling", () => {
     assert.equal(secondRequest?.additionalMemory?.defenseSquadCreatedAt, 1005);
   });
 
+  it("stabilizes wave IDs across request refreshes", () => {
+    const helper = createRoom([], "W17S29", 1800, 1800);
+    const attacked = createRoom([createHostile([ATTACK, RANGED_ATTACK, HEAL, MOVE])], "W19S28");
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 0,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: 1000,
+        threat: "visible mixed assault"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const initial = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(request => request.additionalMemory?.task === "defenseAssist");
+
+    Game.time = 1050;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 0,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: 1050,
+        threat: "visible mixed assault"
+      }
+    ];
+    const refreshed = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(request => request.additionalMemory?.task === "defenseAssist");
+
+    Game.time = 2405;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 0,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: 2405,
+        threat: "visible mixed assault"
+      }
+    ];
+    const newWave = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(request => request.additionalMemory?.task === "defenseAssist");
+
+    assert.equal(initial?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:1000");
+    assert.equal(refreshed?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:1000");
+    assert.equal(newWave?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:2405");
+  });
+
   it("uses aggregate parity squad size instead of role count for hard defense assists", () => {
     const helper = createRoom([], "W17S29", 800, 800);
     const attacked = createRoom([

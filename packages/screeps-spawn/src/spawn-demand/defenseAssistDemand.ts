@@ -23,6 +23,7 @@ import { getEffectiveRoomEnergyAvailable } from "../roomEnergy";
 import { spawnQueue, SpawnPriority } from "../spawnQueue";
 
 const DEFENSE_ASSIST_REQUEST_TTL = 500;
+const DEFENSE_ASSIST_WAVE_TTL = 1200;
 const DEFENSE_ASSIST_TASK = "defenseAssist";
 const DEFENSE_ASSIST_ROLES = ["guard", "ranger", "healer"] as const;
 
@@ -42,6 +43,62 @@ interface DefenseAssistRequestMemory {
   healersNeeded?: number;
   urgency?: number;
   createdAt?: number;
+}
+
+interface DefenseAssistWaveState {
+  /** Stable wave start tick shared across refreshing requests for this home+target pair */
+  createdAt: number;
+  /** Last tick the wave was referenced while building spawn demand */
+  seenAt: number;
+}
+
+interface DefenseAssistSpawnMemory {
+  defenseAssistWaves?: Record<string, DefenseAssistWaveState>;
+}
+
+function getDefenseAssistWaveState(): Record<string, DefenseAssistWaveState> {
+  const memory = Memory as unknown as DefenseAssistSpawnMemory;
+  return memory.defenseAssistWaves ??= {};
+}
+
+function getDefenseAssistWaveKey(homeRoom: string, targetRoom: string): string {
+  return `${homeRoom}:${targetRoom}`;
+}
+
+function pruneExpiredDefenseAssistWaves(now: number): void {
+  const memory = Memory as unknown as DefenseAssistSpawnMemory;
+  const states = memory.defenseAssistWaves;
+  if (!states) return;
+
+  for (const [key, state] of Object.entries(states)) {
+    if (now - state.seenAt > DEFENSE_ASSIST_WAVE_TTL) {
+      delete states[key];
+    }
+  }
+
+  if (Object.keys(states).length === 0) delete memory.defenseAssistWaves;
+}
+
+function getDefenseAssistWaveId(homeRoom: string, request: DefenseAssistRequestMemory): number {
+  const states = getDefenseAssistWaveState();
+  const key = getDefenseAssistWaveKey(homeRoom, request.roomName);
+  const now = Game.time;
+  const requestedAt =
+    typeof request.createdAt === "number" && Number.isFinite(request.createdAt)
+      ? request.createdAt
+      : now;
+  const existing = states[key];
+  if (existing && now - existing.seenAt <= DEFENSE_ASSIST_WAVE_TTL) {
+    existing.seenAt = now;
+    return existing.createdAt;
+  }
+
+  states[key] = { createdAt: requestedAt, seenAt: now };
+  return requestedAt;
+}
+
+function getDefenseAssistSquadKey(homeRoom: string, request: DefenseAssistRequestMemory): number {
+  return getDefenseAssistWaveId(homeRoom, request);
 }
 
 function getDefenseRoleNeed(request: DefenseAssistRequestMemory, role: string): number {
@@ -198,12 +255,9 @@ function getDefenseAssistCreatedAt(_request: DefenseAssistRequestMemory): number
   return Game.time;
 }
 
-function getDefenseAssistWaveIdTick(request: DefenseAssistRequestMemory): number {
-  return typeof request.createdAt === "number" && Number.isFinite(request.createdAt) ? request.createdAt : Game.time;
-}
-
 function createDefenseAssistSquadId(homeRoom: string, request: DefenseAssistRequestMemory): string {
-  return `defenseAssist:${homeRoom}:${request.roomName}:${getDefenseAssistWaveIdTick(request)}`;
+  const squadKey = getDefenseAssistSquadKey(homeRoom, request);
+  return `defenseAssist:${homeRoom}:${request.roomName}:${squadKey}`;
 }
 
 function createDefenseAssistSpawnAssignment(
@@ -259,6 +313,7 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
 
   const helperEnergyCapacity = home.energyCapacityAvailable;
   const memory = Memory as unknown as { defenseRequests?: DefenseAssistRequestMemory[] };
+  pruneExpiredDefenseAssistWaves(Game.time);
   const candidates = getActiveDefenseAssistRequests(memory)
     .filter(request => request.roomName !== homeRoom)
     .map(request => {

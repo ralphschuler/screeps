@@ -323,6 +323,8 @@ describe("military assistance behavior", () => {
     const action = guard(ctx);
 
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("squad-quorum");
   });
 
   it("keeps hard-threat defense assists staged after the normal timeout until parity is ready", () => {
@@ -419,6 +421,35 @@ describe("military assistance behavior", () => {
     const action = healer(ctx);
 
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("hard-threat-trickle");
+  });
+
+  it("stages spawn-produced low-energy hard-threat assists before bounded trickle release", () => {
+    createHardThreatRoom("W2N1");
+    const ctx = createAssistContext("guard", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        task: "defenseAssist",
+        targetRoom: "W2N1",
+        defenseSquadId: "defenseAssist:W1N1:W2N1:1000",
+        defenseSquadSize: 5,
+        defenseSquadCreatedAt: Game.time
+      }
+    });
+    Game.creeps[ctx.creep.name] = ctx.creep;
+
+    const stagedAction = guard(ctx);
+    Game.time += 760;
+    const releasedAction = guard(ctx);
+
+    expect(stagedAction.type).to.equal("wait");
+    expect(releasedAction).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect(ctx.creep.memory.defenseSquadId).to.equal("defenseAssist:W1N1:W2N1:1000");
+    expect(ctx.creep.memory.assistTarget).to.equal("W2N1");
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("hard-threat-trickle");
   });
 
   it("releases expired aggregate hard-threat assists as a bounded trickle", () => {
@@ -554,6 +585,8 @@ describe("military assistance behavior", () => {
     const action = healer(ctx);
 
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("expired-staging");
   });
 
   it("keeps guard assistance active and attacks hostile structures when no hostile creeps remain", () => {
