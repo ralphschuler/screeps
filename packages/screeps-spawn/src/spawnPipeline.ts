@@ -14,6 +14,7 @@ import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegratio
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
+import { getAffordableEmergencyDefenderFallback } from "./emergencyDefenseBody";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
@@ -336,32 +337,6 @@ function addAffordableEmergencyDefenderFallback(
     `${fallback.role}_defense_affordable_${Game.time}`,
     fallback.body
   );
-}
-
-function getAffordableEmergencyDefenderFallback(
-  availableEnergy: number,
-  threatProfile: ReturnType<typeof analyzeDefenseAssistThreat>
-): { role: "guard" | "ranger"; body: SpawnRequest["body"] } | null {
-  const candidates = (["guard", "ranger"] as const)
-    .map(role => {
-      try {
-        const body = optimizeBody({ maxEnergy: availableEnergy, role });
-        return body.cost <= availableEnergy ? { role, body } : null;
-      } catch {
-        return null;
-      }
-    })
-    .filter((candidate): candidate is { role: "guard" | "ranger"; body: SpawnRequest["body"] } => Boolean(candidate));
-
-  if (candidates.length === 0) return null;
-
-  const strongestThreat = threatProfile?.strongest;
-  return candidates.sort((a, b) => {
-    const powerDelta = calculateCombatPower(b.body.parts).score - calculateCombatPower(a.body.parts).score;
-    if (powerDelta !== 0) return powerDelta;
-    if (strongestThreat?.ranged && a.role !== b.role) return a.role === "ranger" ? -1 : 1;
-    return a.body.cost - b.body.cost;
-  })[0] ?? null;
 }
 
 function countAffordableEmergencyLocalDefenders(room: Room, availableEnergy: number): number {

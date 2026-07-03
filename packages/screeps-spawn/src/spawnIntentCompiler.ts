@@ -9,6 +9,7 @@ import { emergencyResponseManager, energyFlowPredictor } from "./botIntegration"
 import { optimizeBody } from "./bodyOptimizer";
 import { getBootstrapRole, isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { getDefenderPriorityBoost } from "./defenderManager";
+import { getAffordableEmergencyDefenseAssistBody } from "./emergencyDefenseBody";
 import { ROLE_DEFINITIONS, type BodyTemplate, type RoleSpawnDef } from "./roleDefinitions";
 import { isRemoteEconomyRole } from "./remoteRoleDemand";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
@@ -244,15 +245,24 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
       ? demand.roleName
       : null;
     const isDefenseAssistDemand = Boolean(defenseAssistRole);
+    const isEmergencyDefenseAssist = isDefenseAssistDemand && demand.priority >= SpawnPriority.EMERGENCY;
     const defenseAssistThreatProfile = demand.assistTarget
       ? getVisibleDefenseAssistThreatProfile(demand.assistTarget)
       : null;
-    const defenseAssistBody = defenseAssistRole
+    const defenseAssistCapacityBody = defenseAssistRole
       ? buildDefenseAssistBody(
           defenseAssistRole,
           maxEnergy,
           defenseAssistThreatProfile
         )
+      : null;
+    const affordableDefenseAssistBody = defenseAssistRole && isEmergencyDefenseAssist
+      ? buildDefenseAssistBody(defenseAssistRole, availableEnergy, defenseAssistThreatProfile) ??
+        getAffordableEmergencyDefenseAssistBody(defenseAssistRole, availableEnergy, defenseAssistThreatProfile) ??
+        (defenseAssistCapacityBody && defenseAssistCapacityBody.cost <= availableEnergy ? defenseAssistCapacityBody : null)
+      : null;
+    const defenseAssistBody = defenseAssistRole
+      ? affordableDefenseAssistBody ?? (isEmergencyDefenseAssist ? null : defenseAssistCapacityBody)
       : null;
     if (isDefenseAssistDemand && defenseAssistThreatProfile && !defenseAssistBody && !demand.bodyOverride) return null;
 
@@ -264,7 +274,11 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
         maxEnergy: effectiveMaxEnergy,
         role: demand.roleName
       });
-    const maxBodyEnergy = demand.bodyOverride || defenseAssistBody ? maxEnergy : effectiveMaxEnergy;
+    const maxBodyEnergy = demand.bodyOverride
+      ? maxEnergy
+      : defenseAssistBody
+        ? (isEmergencyDefenseAssist ? availableEnergy : maxEnergy)
+        : effectiveMaxEnergy;
 
     if (!body) return null;
     if (demand.roleName === "claimer" && !body.parts.includes(CLAIM)) return null;
