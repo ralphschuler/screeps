@@ -224,11 +224,11 @@ describe("defense spawn throttling", () => {
     );
     for (const request of assistRequests) {
       assert.equal(request.additionalMemory?.defenseSquadSize, 3);
-      assert.equal(request.additionalMemory?.defenseSquadCreatedAt, Game.time);
+      assert.equal(request.additionalMemory?.defenseSquadCreatedAt, 990);
     }
   });
 
-  it("keeps helper defense-assist wave ids stable across planning ticks", () => {
+  it("keeps helper defense-assist wave ids and staging start stable across planning ticks", () => {
     const helper = createRoom([], "W17S29", 1800, 1800);
     const attacked = createRoom([createHostile([ATTACK, RANGED_ATTACK, HEAL, MOVE])], "W19S28");
     Game.rooms.W17S29 = helper;
@@ -259,8 +259,8 @@ describe("defense spawn throttling", () => {
 
     assert.equal(firstRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:900");
     assert.equal(secondRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:900");
-    assert.equal(firstRequest?.additionalMemory?.defenseSquadCreatedAt, 1000);
-    assert.equal(secondRequest?.additionalMemory?.defenseSquadCreatedAt, 1005);
+    assert.equal(firstRequest?.additionalMemory?.defenseSquadCreatedAt, 900);
+    assert.equal(secondRequest?.additionalMemory?.defenseSquadCreatedAt, 900);
   });
 
   it("stabilizes wave IDs across request refreshes", () => {
@@ -322,6 +322,9 @@ describe("defense spawn throttling", () => {
     assert.equal(initial?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:1000");
     assert.equal(refreshed?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:1000");
     assert.equal(newWave?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:2405");
+    assert.equal(initial?.additionalMemory?.defenseSquadCreatedAt, 1000);
+    assert.equal(refreshed?.additionalMemory?.defenseSquadCreatedAt, 1000);
+    assert.equal(newWave?.additionalMemory?.defenseSquadCreatedAt, 2405);
   });
 
   it("uses aggregate parity squad size instead of role count for hard defense assists", () => {

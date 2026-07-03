@@ -79,7 +79,7 @@ function pruneExpiredDefenseAssistWaves(now: number): void {
   if (Object.keys(states).length === 0) delete memory.defenseAssistWaves;
 }
 
-function getDefenseAssistWaveId(homeRoom: string, request: DefenseAssistRequestMemory): number {
+function getDefenseAssistWave(homeRoom: string, request: DefenseAssistRequestMemory): DefenseAssistWaveState {
   const states = getDefenseAssistWaveState();
   const key = getDefenseAssistWaveKey(homeRoom, request.roomName);
   const now = Game.time;
@@ -90,15 +90,12 @@ function getDefenseAssistWaveId(homeRoom: string, request: DefenseAssistRequestM
   const existing = states[key];
   if (existing && now - existing.seenAt <= DEFENSE_ASSIST_WAVE_TTL) {
     existing.seenAt = now;
-    return existing.createdAt;
+    return existing;
   }
 
-  states[key] = { createdAt: requestedAt, seenAt: now };
-  return requestedAt;
-}
-
-function getDefenseAssistSquadKey(homeRoom: string, request: DefenseAssistRequestMemory): number {
-  return getDefenseAssistWaveId(homeRoom, request);
+  const wave = { createdAt: requestedAt, seenAt: now };
+  states[key] = wave;
+  return wave;
 }
 
 function getDefenseRoleNeed(request: DefenseAssistRequestMemory, role: string): number {
@@ -251,13 +248,8 @@ function canSpawnDefenseAssistFrom(room: Room): boolean {
   return getActualHostileCreeps(room).length === 0;
 }
 
-function getDefenseAssistCreatedAt(_request: DefenseAssistRequestMemory): number {
-  return Game.time;
-}
-
-function createDefenseAssistSquadId(homeRoom: string, request: DefenseAssistRequestMemory): string {
-  const squadKey = getDefenseAssistSquadKey(homeRoom, request);
-  return `defenseAssist:${homeRoom}:${request.roomName}:${squadKey}`;
+function createDefenseAssistSquadId(homeRoom: string, request: DefenseAssistRequestMemory, waveCreatedAt: number): string {
+  return `defenseAssist:${homeRoom}:${request.roomName}:${waveCreatedAt}`;
 }
 
 function createDefenseAssistSpawnAssignment(
@@ -265,13 +257,14 @@ function createDefenseAssistSpawnAssignment(
   home: Room,
   request: DefenseAssistRequestMemory
 ): DefenseAssistSpawnAssignment {
+  const wave = getDefenseAssistWave(homeRoom, request);
   return {
     targetRoom: request.roomName,
     task: DEFENSE_ASSIST_TASK,
     priority: (request.urgency ?? 1) >= 2 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH,
-    defenseSquadId: createDefenseAssistSquadId(homeRoom, request),
+    defenseSquadId: createDefenseAssistSquadId(homeRoom, request, wave.createdAt),
     defenseSquadSize: getDefenseAssistSquadSizeForHelper(request, home),
-    defenseSquadCreatedAt: getDefenseAssistCreatedAt(request)
+    defenseSquadCreatedAt: wave.createdAt
   };
 }
 
