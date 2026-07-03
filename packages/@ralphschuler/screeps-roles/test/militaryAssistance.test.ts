@@ -125,6 +125,7 @@ describe("military assistance behavior", () => {
   beforeEach(() => {
     resetMockGame();
     delete (Memory as unknown as { defenseRequests?: unknown }).defenseRequests;
+    delete (Memory as unknown as { defenseAssistTrickleReleases?: unknown }).defenseAssistTrickleReleases;
   });
 
   it("assigns an idle guard to a visible active defense request", () => {
@@ -188,26 +189,28 @@ describe("military assistance behavior", () => {
     expect((ctx.creep.memory as { assistTarget?: string }).assistTarget).to.equal(undefined);
   });
 
-  it("does not acquire defense assist for allied creeps in the target room", () => {
-    const ally = { owner: { username: "TooAngel" }, body: [{ type: ATTACK, hits: 100 }] } as unknown as Creep;
-    const target = createMockRoom("W2N1");
-    (target as any).find = (type: number) => (type === FIND_HOSTILE_CREEPS ? [ally] : []);
-    Game.rooms.W2N1 = target;
-    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
-      { roomName: "W2N1", guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, urgency: 2, createdAt: Game.time }
-    ];
-    const ctx = createAssistContext("guard", [], { roomName: "W1N1" });
-    delete (ctx.creep.memory as { assistTarget?: string }).assistTarget;
-    (ctx.room as any).getTerrain = () => ({ get: () => 0 });
-    Game.creeps[ctx.creep.name] = ctx.creep;
+  for (const allyName of ["TooAngel", "TedRoastBeef"]) {
+    it(`does not acquire defense assist for allied ${allyName} creeps in the target room`, () => {
+      const ally = { owner: { username: allyName }, body: [{ type: ATTACK, hits: 100 }] } as unknown as Creep;
+      const target = createMockRoom("W2N1");
+      (target as any).find = (type: number) => (type === FIND_HOSTILE_CREEPS ? [ally] : []);
+      Game.rooms.W2N1 = target;
+      (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+        { roomName: "W2N1", guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, urgency: 2, createdAt: Game.time }
+      ];
+      const ctx = createAssistContext("guard", [], { roomName: "W1N1" });
+      delete (ctx.creep.memory as { assistTarget?: string }).assistTarget;
+      (ctx.room as any).getTerrain = () => ({ get: () => 0 });
+      Game.creeps[ctx.creep.name] = ctx.creep;
 
-    const action = guard(ctx);
+      const action = guard(ctx);
 
-    expect((ctx.creep.memory as { assistTarget?: string }).assistTarget).to.equal(undefined);
-    expect(action.type).to.not.equal("moveToRoom");
-  });
+      expect((ctx.creep.memory as { assistTarget?: string }).assistTarget).to.equal(undefined);
+      expect(action.type).to.not.equal("moveToRoom");
+    });
+  }
 
-  it("keeps hard-threat assistance staged when quorum lacks aggregate parity", () => {
+  it("releases hard-threat assistance when cross-wave staging quorum is ready", () => {
     createHardThreatRoom("W2N1");
     const ctx = createAssistContext("guard", [], {
       roomName: "W1N1",
@@ -235,7 +238,7 @@ describe("military assistance behavior", () => {
 
     const action = guard(ctx);
 
-    expect(action.type).to.equal("wait");
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
   it("stages guard assistance at home until its squad quorum is ready", () => {
@@ -400,7 +403,7 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
-  it("keeps visible hard-threat defense assists staged after the extended timeout without parity", () => {
+  it("releases visible hard-threat defense assists after the extended timeout without parity", () => {
     createHardThreatRoom("W2N1");
     const ctx = createAssistContext("healer", [], {
       roomName: "W1N1",
@@ -415,10 +418,10 @@ describe("military assistance behavior", () => {
 
     const action = healer(ctx);
 
-    expect(action.type).to.equal("wait");
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
-  it("keeps expired aggregate hard-threat assists staged until same-home parity is ready", () => {
+  it("releases expired aggregate hard-threat assists as a bounded trickle", () => {
     createAggregateHardThreatRoom("W2N1");
     const ctx = createAssistContext("guard", [], {
       roomName: "W1N1",
@@ -433,7 +436,51 @@ describe("military assistance behavior", () => {
 
     const action = guard(ctx);
 
-    expect(action.type).to.equal("wait");
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+  });
+
+  it("limits expired hard-threat trickle release to one member per interval", () => {
+    createHardThreatRoom("W2N1");
+    const squadId = "assist:W1N1:W2N1:hard-trickle";
+    const ctx = createAssistContext("guard", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        defenseSquadId: squadId,
+        defenseSquadSize: 13,
+        defenseSquadCreatedAt: Game.time - 760
+      }
+    });
+    const guard2 = createMockCreep("guard2", {
+      room: ctx.room,
+      memory: {
+        role: "guard",
+        family: "military",
+        homeRoom: "W1N1",
+        assistTarget: "W2N1",
+        defenseSquadId: squadId,
+        defenseSquadSize: 13,
+        defenseSquadCreatedAt: Game.time - 760
+      },
+      body: [{ type: ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+    });
+    const guard2Ctx = { ...ctx, creep: guard2, memory: guard2.memory as CreepContext["memory"] };
+    Game.creeps = { [ctx.creep.name]: ctx.creep, [guard2.name]: guard2 } as typeof Game.creeps;
+
+    const firstAction = guard(ctx);
+    const firstReleaseTick = Game.time;
+    Game.time += 1;
+    const releasedCreepNextTickAction = guard(ctx);
+    const sameIntervalAction = guard(guard2Ctx);
+    delete Game.creeps[ctx.creep.name];
+    Game.time += 49;
+    const nextIntervalAction = guard(guard2Ctx);
+
+    expect(firstAction).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect((ctx.creep.memory as { defenseAssistReleasedAt?: number }).defenseAssistReleasedAt).to.equal(firstReleaseTick);
+    expect(releasedCreepNextTickAction).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect(sameIntervalAction.type).to.equal("wait");
+    expect(nextIntervalAction).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
   it("defends the home room before staging for another room", () => {
@@ -468,7 +515,7 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "attack", target: localHostile });
   });
 
-  it("keeps hard-threat defense assists staged when staged quorum lacks parity", () => {
+  it("releases hard-threat defense assists once the bounded staging quorum is ready", () => {
     createHardThreatRoom("W2N1");
     const squadId = "assist:W1N1:W2N1:hard";
     const ctx = createAssistContext("guard", [], {
@@ -489,7 +536,7 @@ describe("military assistance behavior", () => {
 
     const action = guard(ctx);
 
-    expect(action.type).to.equal("wait");
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
   it("releases healer assistance after the squad staging timeout", () => {
