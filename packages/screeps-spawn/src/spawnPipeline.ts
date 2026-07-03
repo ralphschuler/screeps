@@ -350,12 +350,18 @@ function countAffordableEmergencyLocalDefenders(room: Room, availableEnergy: num
   for (const request of spawnQueue.getPendingRequests(room.name)) {
     if (request.priority < SpawnPriority.EMERGENCY) continue;
     if (!LOCAL_DEFENSE_ROLES.has(request.role)) continue;
-    if (request.targetRoom && request.targetRoom !== room.name) continue;
-    if (request.additionalMemory?.assistTarget) continue;
+    if (!isLocalPendingDefenderRequest(request, room.name)) continue;
     if (request.body.cost <= availableEnergy) count++;
   }
 
   return count;
+}
+
+function isLocalPendingDefenderRequest(request: SpawnRequest, roomName: string): boolean {
+  if (request.targetRoom && request.targetRoom !== roomName) return false;
+  if (request.additionalMemory?.task === "defenseAssist") return false;
+  if (request.additionalMemory?.assistTarget) return false;
+  return true;
 }
 
 function getThreatParityDefenderBody(
@@ -403,6 +409,7 @@ function getPendingDefenderPower(
   for (const request of spawnQueue.getPendingRequests(roomName)) {
     if (Game.time - request.createdAt > 1500) continue;
     if (request.body.cost > energyCapacity) continue;
+    if (!isLocalPendingDefenderRequest(request, roomName)) continue;
     if (request.role === "guard") {
       counts.guards++;
       addRolePower(power, "guard", request.body.parts);

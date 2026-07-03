@@ -832,6 +832,41 @@ describe("defense spawn throttling", () => {
     assert.exists(plan.requests.find(request => request.role === "healer"));
   });
 
+  it("does not count outbound defense assists as local pending defender power", () => {
+    const localHostile = createHostile([ATTACK, MOVE]);
+    const helper = createRoom([localHostile], "W17S29", 800, 800);
+    Game.rooms.W17S29 = helper;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    spawnQueue.addRequest({
+      id: "outbound_assist_guard",
+      roomName: "W17S29",
+      role: "guard",
+      family: "military",
+      body: { parts: [ATTACK, ATTACK, MOVE, MOVE], cost: 260, minCapacity: 260 },
+      priority: SpawnPriority.EMERGENCY,
+      targetRoom: "W19S28",
+      createdAt: Game.time,
+      additionalMemory: { task: "defenseAssist", assistTarget: "W19S28", targetRoom: "W19S28" }
+    });
+
+    populateSpawnQueue(helper, { danger: 1, posture: "defense" } as any);
+
+    const pending = spawnQueue.getPendingRequests("W17S29");
+    const localDefender = pending.find(request =>
+      (request.role === "guard" || request.role === "ranger" || request.role === "healer") &&
+      request.id !== "outbound_assist_guard" &&
+      !request.targetRoom &&
+      !request.additionalMemory?.assistTarget
+    );
+
+    assert.isOk(pending.find(request => request.id === "outbound_assist_guard"), "outbound assist remains queued");
+    assert.isOk(localDefender, "outbound assists must not satisfy the helper room's direct hostile defense need");
+  });
+
   it("does not keep adding defense assists once assigned pending power exceeds visible threat", () => {
     const helper = createRoom([], "W17S29", 800, 800);
     const attacked = createRoom([createHostile([ATTACK, MOVE])], "W19S28");
