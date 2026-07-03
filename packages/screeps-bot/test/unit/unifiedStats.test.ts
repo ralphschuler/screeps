@@ -436,8 +436,8 @@ describe("UnifiedStatsManager", function () {
         rooms: {
           W1N1: {
             tasks: {
-              openTask: { status: "open", reservations: {} },
-              assignedTask: { status: "assigned", reservations: { hauler1: {} } }
+              openTask: { type: "refillSpawn", status: "open", priority: 200, amount: 300, reservations: {} },
+              assignedTask: { type: "refillExtension", status: "assigned", priority: 100, amount: 200, reservations: { hauler1: { amount: 50 } } }
             },
             stats: { staleReservations: 2, blockedReservations: 1 }
           }
@@ -455,7 +455,34 @@ describe("UnifiedStatsManager", function () {
         assigned_tasks: 1,
         reservations: 1,
         stale_reservations: 2,
-        blocked_reservations: 1
+        blocked_reservations: 1,
+        amount: 500,
+        reserved_amount: 50,
+        remaining_amount: 450,
+        delivery_amount: 500,
+        delivery_reserved_amount: 50,
+        delivery_remaining_amount: 450,
+        critical_delivery_remaining_amount: 450,
+        by_type: {
+          refillSpawn: {
+            tasks: 1,
+            open_tasks: 1,
+            assigned_tasks: 0,
+            reservations: 0,
+            amount: 300,
+            reserved_amount: 0,
+            remaining_amount: 300
+          },
+          refillExtension: {
+            tasks: 1,
+            open_tasks: 0,
+            assigned_tasks: 1,
+            reservations: 1,
+            amount: 200,
+            reserved_amount: 50,
+            remaining_amount: 150
+          }
+        }
       });
     });
 
