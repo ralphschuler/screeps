@@ -28234,12 +28234,14 @@ return null !== (t = e.assistTarget) && void 0 !== t ? t : e.task === sd ? e.tar
 
 function ud(e) {
 delete e.assistTarget, delete e.defenseSquadId, delete e.defenseSquadSize, delete e.defenseSquadCreatedAt,
-delete e.defenseAssistReleasedAt, e.task === sd && (delete e.task, delete e.targetRoom);
+delete e.defenseAssistReleasedAt, delete e.defenseAssistReleaseReason, e.task === sd && (delete e.task,
+delete e.targetRoom);
 }
 
-function ld(e) {
-var t;
-null !== (t = e.defenseAssistReleasedAt) && void 0 !== t || (e.defenseAssistReleasedAt = Game.time);
+function ld(e, t) {
+var r;
+null !== (r = e.defenseAssistReleasedAt) && void 0 !== r || (e.defenseAssistReleasedAt = Game.time),
+e.defenseAssistReleaseReason = t;
 }
 
 function md(e) {
@@ -28376,10 +28378,10 @@ score: 0
 });
 }(e, t);
 return o.attack + o.ranged + o.dismantle > 0 && o.score >= r.total.score && o.partCount >= r.total.partCount;
-}(r, e.homeRoom, o)) return ld(t), null;
-if (c >= u) return ld(t), null;
+}(r, e.homeRoom, o)) return ld(t, "parity-ready"), null;
+if (c >= u) return ld(t, "squad-quorum"), null;
 if (l) {
-if (!n) return ld(t), null;
+if (!n) return ld(t, "expired-staging"), null;
 if (function(e, t, r, o) {
 var n, a;
 if ((null === (n = function(e) {
@@ -28393,11 +28395,11 @@ var c = Memory, u = null !== (a = c.defenseAssistTrickleReleases) && void 0 !== 
 return "".concat(e, ":").concat(t);
 }(t, r), m = u[l];
 return !(void 0 !== m && Game.time - m < 50 || (u[l] = Game.time, 0));
-}(e.creep, e.homeRoom, r, a)) return ld(t), null;
+}(e.creep, e.homeRoom, r, a)) return ld(t, "hard-threat-trickle"), null;
 }
 } else {
-if (c >= u) return ld(t), null;
-if (l) return ld(t), null;
+if (c >= u) return ld(t, "squad-quorum"), null;
+if (l) return ld(t, "expired-staging"), null;
 }
 var m = Uu(e.room.name);
 return {
@@ -37546,9 +37548,21 @@ return !!(null === (t = e.controller) || void 0 === t ? void 0 : t.my) && 0 !== 
 }
 
 function gv(e, t) {
-return "defenseAssist:".concat(e, ":").concat(t.roomName, ":").concat(function(e) {
-return "number" == typeof e.createdAt && Number.isFinite(e.createdAt) ? e.createdAt : Game.time;
-}(t));
+var r = function(e, t) {
+return function(e, t) {
+var r = function() {
+var e, t = Memory;
+return null !== (e = t.defenseAssistWaves) && void 0 !== e ? e : t.defenseAssistWaves = {};
+}(), o = function(e, t) {
+return "".concat(e, ":").concat(t);
+}(e, t.roomName), n = Game.time, a = "number" == typeof t.createdAt && Number.isFinite(t.createdAt) ? t.createdAt : n, i = r[o];
+return i && n - i.seenAt <= 1200 ? (i.seenAt = n, i.createdAt) : (r[o] = {
+createdAt: a,
+seenAt: n
+}, a);
+}(e, t);
+}(e, t);
+return "defenseAssist:".concat(e, ":").concat(t.roomName, ":").concat(r);
 }
 
 function hv(e, t, r, o) {
@@ -37563,10 +37577,33 @@ return Dr(e);
 }(t)) return null;
 var o = Game.rooms[e];
 if (!o || !vv(o)) return null;
-var n = o.energyCapacityAvailable, a = function(e) {
+var n = o.energyCapacityAvailable, s = Memory;
+!function(e) {
+var t, r, o = Memory, n = o.defenseAssistWaves;
+if (n) {
+try {
+for (var s = a(Object.entries(n)), c = s.next(); !c.done; c = s.next()) {
+var u = i(c.value, 2), l = u[0];
+e - u[1].seenAt > 1200 && delete n[l];
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+c && !c.done && (r = s.return) && r.call(s);
+} finally {
+if (t) throw t.error;
+}
+}
+0 === Object.keys(n).length && delete o.defenseAssistWaves;
+}
+}(Game.time);
+var c = function(e) {
 var t, r = null !== (t = e.defenseRequests) && void 0 !== t ? t : [], o = r.filter(lv);
 return o.length !== r.length && (e.defenseRequests = o), o;
-}(Memory).filter(function(t) {
+}(s).filter(function(t) {
 return t.roomName !== e;
 }).map(function(e) {
 var r = Mr(e.roomName);
@@ -37587,8 +37624,8 @@ var o, n, a, i, s, c, u, l, m, d, p = (null !== (o = r.request.urgency) && void 
 if (0 !== p) return p;
 var f = null !== (s = null === (i = null === (a = Game.map) || void 0 === a ? void 0 : a.getRoomLinearDistance) || void 0 === i ? void 0 : i.call(a, e, t.request.roomName)) && void 0 !== s ? s : 999, y = null !== (l = null === (u = null === (c = Game.map) || void 0 === c ? void 0 : c.getRoomLinearDistance) || void 0 === u ? void 0 : u.call(c, e, r.request.roomName)) && void 0 !== l ? l : 999;
 return f !== y ? f - y : (null !== (m = t.request.createdAt) && void 0 !== m ? m : 0) - (null !== (d = r.request.createdAt) && void 0 !== d ? d : 0);
-}), i = null === (r = a[0]) || void 0 === r ? void 0 : r.request;
-return i ? function(e, t, r) {
+}), u = null === (r = c[0]) || void 0 === r ? void 0 : r.request;
+return u ? function(e, t, r) {
 var o;
 return {
 targetRoom: r.roomName,
@@ -37598,7 +37635,7 @@ defenseSquadId: gv(e, r),
 defenseSquadSize: dv(r, t),
 defenseSquadCreatedAt: Game.time
 };
-}(e, o, i) : null;
+}(e, o, u) : null;
 }
 
 function Ev(e) {
