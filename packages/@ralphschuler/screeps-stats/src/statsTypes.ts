@@ -199,7 +199,7 @@ export interface RoomStatsEntry {
     constructionSites: number;
   };
   
-  // Creep task board reservations
+  // Creep task board reservations and amount-aware pressure.
   taskBoard?: {
     tasks: number;
     openTasks: number;
@@ -207,6 +207,22 @@ export interface RoomStatsEntry {
     reservations: number;
     staleReservations: number;
     blockedReservations: number;
+    amount: number;
+    reservedAmount: number;
+    remainingAmount: number;
+    deliveryAmount: number;
+    deliveryReservedAmount: number;
+    deliveryRemainingAmount: number;
+    criticalDeliveryRemainingAmount: number;
+    byType: Record<string, {
+      tasks: number;
+      openTasks: number;
+      assignedTasks: number;
+      reservations: number;
+      amount: number;
+      reservedAmount: number;
+      remainingAmount: number;
+    }>;
   };
 
   // Spawn queue health for this room
