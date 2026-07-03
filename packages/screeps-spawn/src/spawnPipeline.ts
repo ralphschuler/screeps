@@ -43,6 +43,10 @@ function getLastPreemptiveReplanTicks(): Record<string, number> {
   return memory.spawnPipeline.lastPreemptiveReplanTickByRoom;
 }
 
+function hasCompletedLocalSpawnCapacity(room: Room): boolean {
+  return room.find(FIND_MY_SPAWNS).length > 0 && room.energyCapacityAvailable > 0;
+}
+
 interface SpawnPipelineSettingsMemory {
   spawnSettings?: {
     /** Set false to roll back claimer preemption while existing low-priority queues drain. */
@@ -69,6 +73,13 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
   ensureRoomVisibleForSpawnAnalysis(room);
 
   const queueSize = spawnQueue.getQueueSize(room.name);
+  if (!hasCompletedLocalSpawnCapacity(room)) {
+    if (queueSize > 0) {
+      spawnQueue.clearQueue(room.name);
+    }
+    return;
+  }
+
   const bootstrapMode = isBootstrapMode(room.name, room);
   const emergencyRecoveryNeeded = isEmergencySpawnState(room.name) && !spawnQueue.hasEmergencySpawns(room.name);
   const defenderNeeds = analyzeDefenderNeeds(room);

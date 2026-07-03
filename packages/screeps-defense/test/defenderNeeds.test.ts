@@ -20,14 +20,20 @@ function repeatedParts(part: BodyPartConstant, count: number): BodyPartConstant[
   return Array.from({ length: count }, () => part);
 }
 
-function createRoom(hostiles: Creep[], controllerLevel = 4, spawnCount = 1, friendlyRoles: string[] = []): Room {
+function createRoom(
+  hostiles: Creep[],
+  controllerLevel = 4,
+  spawnCount = 1,
+  friendlyRoles: string[] = [],
+  controllerOwned = true
+): Room {
   const spawns = Array.from({ length: spawnCount }, () => ({ spawning: false }));
   const friendlyCreeps = friendlyRoles.map(role => ({ memory: { role } }));
   return {
     name: "W1N1",
     energyAvailable: 800,
     energyCapacityAvailable: 800,
-    controller: { my: true, level: controllerLevel },
+    controller: { my: controllerOwned, level: controllerLevel },
     find: (type: FindConstant) => {
       if (type === FIND_HOSTILE_CREEPS) return hostiles;
       if (type === FIND_MY_CREEPS) return friendlyCreeps;
@@ -153,6 +159,50 @@ describe("defense assistance needs", () => {
     expect(request).to.not.equal(null);
     expect(request?.guardsNeeded).to.equal(1);
     expect(request?.threat).to.include("bootstrap defense gap");
+  });
+
+  it("escalates hostile spawnless owned rooms at any RCL to emergency assistance", () => {
+    const room = createRoom([createHostile([ATTACK, MOVE])], 5, 0);
+    const swarm = { danger: 0 } as any;
+
+    const needs = analyzeDefenderNeeds(room);
+    const request = createDefenseRequest(room, swarm);
+
+    expect(needs.urgency).to.equal(3.0);
+    expect(needs.reasons.join("; ")).to.include("no local spawn capacity");
+    expect(request).to.not.equal(null);
+    expect(request?.urgency).to.equal(3.0);
+    expect(request?.guardsNeeded).to.be.greaterThan(0);
+    expect(request?.threat).to.include("no local spawn capacity");
+  });
+
+  it("keeps no-spawn hostile urgency at emergency level when attackers are boosted", () => {
+    const room = createRoom([createHostile([ATTACK, MOVE], "XUH2O")], 5, 0);
+
+    const needs = analyzeDefenderNeeds(room);
+
+    expect(needs.urgency).to.equal(3.0);
+    expect(needs.reasons.join("; ")).to.include("boosted enemies");
+  });
+
+  it("treats zero room energy capacity under hostile pressure as no local spawn capacity", () => {
+    const room = createRoom([createHostile([ATTACK, MOVE])], 5, 1) as Room & { energyCapacityAvailable: number };
+    room.energyCapacityAvailable = 0;
+
+    const needs = analyzeDefenderNeeds(room);
+
+    expect(needs.urgency).to.equal(3.0);
+    expect(needs.reasons.join("; ")).to.include("no local spawn capacity");
+  });
+
+  it("does not apply owned-room spawnless recovery escalation to neutral rooms", () => {
+    const room = createRoom([createHostile([ATTACK, MOVE])], 0, 0, [], false);
+
+    const needs = analyzeDefenderNeeds(room);
+
+    expect(needs.urgency).to.equal(1.0);
+    expect(needs.guards).to.equal(1);
+    expect(needs.reasons.join("; ")).to.not.include("no local spawn capacity");
   });
 
   it("records the tick when an existing emergency escalates", () => {

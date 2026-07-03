@@ -58,7 +58,7 @@ function createSwarm(remoteAssignments: string[] = []): SwarmState {
   };
 }
 
-function createRoom(name = "W1N1", spawns: StructureSpawn[] = []): Room {
+function createRoom(name = "W1N1", spawns: StructureSpawn[] = [createSpawn("Spawn1", name)]): Room {
   return {
     name,
     energyCapacityAvailable: 800,
