@@ -21,6 +21,8 @@ describe("UnifiedStatsManager", () => {
         lastUpdate: 1234
       }
     };
+    (Game as unknown as { rooms: Record<string, unknown> }).rooms = {};
+    (Game as unknown as { creeps: Record<string, unknown> }).creeps = {};
   });
 
   it("preserves profiler memory when publishing stats to Memory", () => {
@@ -30,6 +32,136 @@ describe("UnifiedStatsManager", () => {
 
     const profiler = (Memory as unknown as { stats: { profiler?: { rooms: Record<string, { samples: number }> } } }).stats.profiler;
     expect(profiler?.rooms.W17S29.samples).to.equal(42);
+  });
+
+  it("drops stale room stats when room ownership is lost", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    const state = manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } };
+
+    state.currentSnapshot.rooms = {
+      W12S8: {
+        name: "W12S8",
+        rcl: 4,
+        energy: {
+          available: 300,
+          capacity: 300,
+          storage: 200,
+          terminal: 0
+        },
+        controller: {
+          progress: 100,
+          progressTotal: 200,
+          progressPercent: 50,
+          ticksToDowngrade: 1000,
+          downgradeRisk: false
+        },
+        creeps: 5,
+        hostiles: 0,
+        brain: {
+          danger: 0,
+          postureCode: 0,
+          colonyLevelCode: 0
+        },
+        pheromones: {},
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailableForSharing: 0,
+          energyCapacityTotal: 0,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        },
+        profiler: {
+          avgCpu: 0,
+          peakCpu: 0,
+          samples: 1
+        }
+      } as Record<string, unknown>
+    };
+
+    (Game as unknown as { rooms: Record<string, unknown> }).rooms = {
+      W12S8: {
+        name: "W12S8",
+        controller: {
+          my: false
+        }
+      } as Record<string, unknown>
+    };
+
+    manager.startTick();
+
+    expect((manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } }).currentSnapshot.rooms.W12S8).to.equal(undefined);
+  });
+
+  it("retains room stats for still-owned visible rooms", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    const state = manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } };
+
+    state.currentSnapshot.rooms = {
+      W1N1: {
+        name: "W1N1",
+        rcl: 1,
+        energy: {
+          available: 300,
+          capacity: 300,
+          storage: 0,
+          terminal: 0
+        },
+        controller: {
+          progress: 0,
+          progressTotal: 100,
+          progressPercent: 0,
+          ticksToDowngrade: 999,
+          downgradeRisk: false
+        },
+        creeps: 2,
+        hostiles: 0,
+        brain: {
+          danger: 0,
+          postureCode: 0,
+          colonyLevelCode: 0
+        },
+        pheromones: {},
+        metrics: {
+          energyHarvested: 0,
+          energySpawning: 0,
+          energyConstruction: 0,
+          energyRepair: 0,
+          energyTower: 0,
+          energyAvailableForSharing: 0,
+          energyCapacityTotal: 300,
+          energyNeed: 0,
+          controllerProgress: 0,
+          hostileCount: 0,
+          damageReceived: 0,
+          constructionSites: 0
+        },
+        profiler: {
+          avgCpu: 0,
+          peakCpu: 0,
+          samples: 1
+        }
+      } as Record<string, unknown>
+    };
+
+    (Game as unknown as { rooms: Record<string, unknown> }).rooms = {
+      W1N1: {
+        name: "W1N1",
+        controller: {
+          my: true
+        }
+      } as Record<string, unknown>
+    };
+
+    manager.startTick();
+
+    expect((manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } }).currentSnapshot.rooms.W1N1).to.exist;
   });
 
   it("captures gated CPU detail samples and auto-disables after TTL", () => {
