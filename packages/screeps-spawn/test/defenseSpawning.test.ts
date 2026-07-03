@@ -3,7 +3,8 @@ import {
   buildDefenseAssistBody,
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
-  calculateThreatParitySquadSize
+  calculateThreatParitySquadSize,
+  createDefenseRequest
 } from "@ralphschuler/screeps-defense";
 import { analyzeDefenderNeeds } from "../src/defenderManager.ts";
 import {
@@ -23,7 +24,8 @@ function createRoom(
   name = "W1N1",
   energyCapacity = 800,
   energyAvailable = energyCapacity,
-  controllerLevel = 3
+  controllerLevel = 3,
+  hasSpawn = true
 ): Room {
   const spawn = { id: `${name}-spawn`, spawning: false };
   return {
@@ -33,7 +35,7 @@ function createRoom(
     controller: { my: true, level: controllerLevel },
     find: (type: number) => {
       if (type === FIND_HOSTILE_CREEPS) return hostiles;
-      if (type === FIND_MY_SPAWNS) return [spawn];
+      if (type === FIND_MY_SPAWNS) return hasSpawn ? [spawn] : [];
       if (type === FIND_MY_STRUCTURES) return [];
       if (type === FIND_MY_CREEPS) return [];
       return [];
@@ -64,7 +66,7 @@ describe("defense spawn throttling", () => {
       getObjectById: () => null
     };
     (global as any).Memory = {};
-    for (const roomName of ["W1N1", "W17S29", "W18S29", "W19S28"]) {
+    for (const roomName of ["W1N1", "W17S29", "W18S28", "W18S29", "W19S28"]) {
       spawnQueue.clearQueue(roomName);
     }
   });
@@ -189,6 +191,65 @@ describe("defense spawn throttling", () => {
     assert.equal(guardRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:1000");
     assert.equal(guardRequest?.additionalMemory?.defenseSquadSize, 1);
     assert.equal(guardRequest?.additionalMemory?.defenseSquadCreatedAt, Game.time);
+  });
+
+  it("turns spawnless hostile-room defense requests into emergency helper assists", () => {
+    const helper = createRoom([], "W17S29", 800, 800, 6);
+    const attacked = createRoom([createHostile([ATTACK, MOVE])], "W18S28", 800, 800, 5, false);
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    const request = createDefenseRequest(attacked, { danger: 0, posture: "eco" } as any);
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = request ? [request] : [];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const guardRequest = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(spawnRequest => spawnRequest.additionalMemory?.task === "defenseAssist");
+
+    assert.equal(request?.urgency, 3.0);
+    assert.equal(guardRequest?.targetRoom, "W18S28");
+    assert.equal(guardRequest?.priority, SpawnPriority.EMERGENCY);
+    assert.include(guardRequest?.additionalMemory, { task: "defenseAssist", assistTarget: "W18S28" });
+  });
+
+  it("does not queue local defenders in a hostile room with no completed spawn", () => {
+    const attacked = createRoom([createHostile([ATTACK, MOVE])], "W18S28", 800, 800, 5, false);
+    Game.rooms.W18S28 = attacked;
+    spawnQueue.addRequest({
+      id: "stale_local_guard",
+      roomName: "W18S28",
+      role: "guard",
+      family: "military",
+      body: { parts: [ATTACK, MOVE], cost: 130, minCapacity: 130 },
+      priority: SpawnPriority.EMERGENCY,
+      createdAt: Game.time
+    });
+
+    populateSpawnQueue(attacked, { danger: 3, posture: "war" } as any);
+
+    assert.deepEqual(spawnQueue.getPendingRequests("W18S28"), []);
+  });
+
+  it("does not queue local defenders when room energy capacity is zero", () => {
+    const attacked = createRoom([createHostile([ATTACK, MOVE])], "W18S28", 0, 0, 5, true);
+    Game.rooms.W18S28 = attacked;
+    spawnQueue.addRequest({
+      id: "stale_zero_capacity_guard",
+      roomName: "W18S28",
+      role: "guard",
+      family: "military",
+      body: { parts: [ATTACK, MOVE], cost: 130, minCapacity: 130 },
+      priority: SpawnPriority.EMERGENCY,
+      createdAt: Game.time
+    });
+
+    populateSpawnQueue(attacked, { danger: 3, posture: "war" } as any);
+
+    assert.deepEqual(spawnQueue.getPendingRequests("W18S28"), []);
   });
 
   it("assigns the same defense squad id to a helper room reinforcement wave", () => {

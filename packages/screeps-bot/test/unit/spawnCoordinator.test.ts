@@ -4,6 +4,11 @@ import { spawnQueue, SpawnPriority } from "@ralphschuler/screeps-spawn";
 import { populateSpawnQueue, processSpawnQueue } from "@ralphschuler/screeps-spawn";
 import type { SwarmState } from "../../src/memory/schemas";
 
+function findWithCompletedSpawn(type: FindConstant): unknown[] {
+  if (type === FIND_MY_SPAWNS) return [{ id: "spawn1", spawning: false }];
+  return [];
+}
+
 describe("SpawnCoordinator", () => {
   beforeEach(() => {
     // Setup mock Game object
@@ -28,7 +33,7 @@ describe("SpawnCoordinator", () => {
         name: "W1N1",
         energyCapacityAvailable: 800,
         energyAvailable: 300,
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -97,7 +102,7 @@ describe("SpawnCoordinator", () => {
         name: "W1N1",
         energyCapacityAvailable: 800,
         energyAvailable: 300,
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -199,7 +204,7 @@ describe("SpawnCoordinator", () => {
           progress: 50000,
           progressTotal: 100000
         },
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const emergencySwarm: SwarmState = {
@@ -268,7 +273,7 @@ describe("SpawnCoordinator", () => {
           my: true,
           level: 3
         },
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const lowEnergySwarm: SwarmState = {
@@ -333,7 +338,7 @@ describe("SpawnCoordinator", () => {
           my: true,
           level: 5
         },
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -397,7 +402,7 @@ describe("SpawnCoordinator", () => {
         name: "W1N1",
         energyCapacityAvailable: 800,
         energyAvailable: 300,
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -460,6 +465,7 @@ describe("SpawnCoordinator", () => {
         energyCapacityAvailable: 800,
         energyAvailable: 300,
         find: sinon.stub().callsFake((findConstant: number) => {
+          if (findConstant === FIND_MY_SPAWNS) return [{ id: "spawn1", spawning: false }];
           if (findConstant === FIND_HOSTILE_CREEPS) {
             return [
               {
@@ -538,7 +544,7 @@ describe("SpawnCoordinator", () => {
           my: true,
           level: 2
         },
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const earlySwarm: SwarmState = {
@@ -603,7 +609,7 @@ describe("SpawnCoordinator", () => {
         energyCapacityAvailable: 300,
         energyAvailable: 300,
         controller: undefined,
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -668,7 +674,7 @@ describe("SpawnCoordinator", () => {
           my: true,
           level: 1
         },
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -733,7 +739,7 @@ describe("SpawnCoordinator", () => {
           my: true,
           level: 8
         },
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const mockSwarm: SwarmState = {
@@ -794,7 +800,7 @@ describe("SpawnCoordinator", () => {
         name: "W1N1",
         energyCapacityAvailable: 800,
         energyAvailable: 300,
-        find: () => []
+        find: findWithCompletedSpawn
       };
 
       const zeroPheromoneSwarm: SwarmState = {

@@ -20,11 +20,18 @@ function hasVisibleDefenseThreat(room: Room): boolean {
   );
 }
 
+function hasNoLocalSpawnCapacity(room: Room): boolean {
+  return room.find(FIND_MY_SPAWNS).length === 0 || room.energyCapacityAvailable <= 0;
+}
+
 function hasBootstrapDefenseGap(room: Room): boolean {
   const rcl = room.controller?.level ?? 0;
-  const spawns = room.find(FIND_MY_SPAWNS);
   const hostiles = getActualHostileCreeps(room);
-  return rcl <= 3 && spawns.length === 0 && hostiles.length > 0;
+  return Boolean(room.controller?.my) && rcl <= 3 && hasNoLocalSpawnCapacity(room) && hostiles.length > 0;
+}
+
+function hasSpawnlessHostileRecoveryGap(room: Room): boolean {
+  return Boolean(room.controller?.my) && hasNoLocalSpawnCapacity(room) && getActualHostileCreeps(room).length > 0;
 }
 
 /**
@@ -82,6 +89,13 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   }
 
   const bootstrapDefenseGap = hasBootstrapDefenseGap(room);
+  const spawnlessRecoveryGap = hasSpawnlessHostileRecoveryGap(room);
+
+  if (spawnlessRecoveryGap) {
+    result.guards = Math.max(1, result.guards);
+    result.urgency = Math.max(result.urgency, 3.0);
+    result.reasons.push(`Hostile present with no local spawn capacity (RCL ${rcl})`);
+  }
 
   if (bootstrapDefenseGap) {
     result.guards = Math.max(1, result.guards);
@@ -132,7 +146,7 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
     result.guards = Math.ceil(result.guards * 1.5);
     result.rangers = Math.ceil(result.rangers * 1.5);
     result.healers = Math.ceil(result.healers * 1.5);
-    result.urgency = 2.0;
+    result.urgency = Math.max(result.urgency, 2.0);
     result.reasons.push(`${boostedCount} boosted enemies (high threat)`);
   }
 
@@ -261,7 +275,8 @@ export function needsEmergencyDefenders(room: Room, swarm: SwarmState): boolean 
 export function needsDefenseAssistance(room: Room, swarm: SwarmState): boolean {
   const visibleDefenseThreat = hasVisibleDefenseThreat(room);
   const hasBootstrapDefenseNeed = hasBootstrapDefenseGap(room);
-  if (swarm.danger < 2 && !visibleDefenseThreat && !hasBootstrapDefenseNeed) {
+  const hasSpawnlessRecoveryNeed = hasSpawnlessHostileRecoveryGap(room);
+  if (swarm.danger < 2 && !visibleDefenseThreat && !hasBootstrapDefenseNeed && !hasSpawnlessRecoveryNeed) {
     return false;
   }
 
