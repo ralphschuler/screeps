@@ -72,6 +72,39 @@ const DEFAULT_WEIGHTS: ScoringWeights = {
   warTargetBonus: 50
 };
 
+interface TargetSafetyEvaluation {
+  isSafe: boolean;
+  isConfirmedHostile: boolean;
+  isExplicitWarTarget: boolean;
+  reason?: string;
+}
+
+function evaluateTargetSafety(targetRoom: string, intel: RoomIntel, empire: ReturnType<typeof memoryManager.getEmpire>): TargetSafetyEvaluation {
+  const allyOptions = { empire };
+  if (intel.owner && isKnownAllyPlayer(intel.owner, allyOptions)) {
+    return { isSafe: false, isConfirmedHostile: false, isExplicitWarTarget: false, reason: `owner ${intel.owner} is allied` };
+  }
+  if (intel.reserver && isKnownAllyPlayer(intel.reserver, allyOptions)) {
+    return { isSafe: false, isConfirmedHostile: false, isExplicitWarTarget: false, reason: `reserver ${intel.reserver} is allied` };
+  }
+
+  const warTargets = new Set((empire.warTargets || []).filter(target => !isKnownAllyPlayer(target, allyOptions)));
+  const hostilePosturePlayers = new Set(
+    Object.values(empire.playerPostures?.players ?? {})
+      .filter(entry => entry.state === "war" && !isKnownAllyPlayer(entry.username, allyOptions))
+      .map(entry => entry.username)
+  );
+  const isExplicitWarTarget = warTargets.has(targetRoom) || Boolean(intel.owner && warTargets.has(intel.owner));
+  const isConfirmedHostile = isExplicitWarTarget || Boolean(intel.owner && hostilePosturePlayers.has(intel.owner));
+
+  return {
+    isSafe: true,
+    isConfirmedHostile,
+    isExplicitWarTarget,
+    reason: isConfirmedHostile ? undefined : "not a confirmed enemy target"
+  };
+}
+
 /**
  * Find potential attack targets for a cluster
  */
@@ -85,14 +118,7 @@ export function findAttackTargets(
   const targets: AttackTarget[] = [];
   
   const empire = memoryManager.getEmpire();
-  const allyOptions = { empire };
   const roomIntel = empire.knownRooms || {};
-  const warTargets = new Set((empire.warTargets || []).filter(target => !isKnownAllyPlayer(target, allyOptions)));
-  const hostilePosturePlayers = new Set(
-    Object.values(empire.playerPostures?.players ?? {})
-      .filter(entry => entry.state === "war" && !isKnownAllyPlayer(entry.username, allyOptions))
-      .map(entry => entry.username)
-  );
 
   // Get all known rooms
   for (const roomName in roomIntel) {
@@ -106,17 +132,9 @@ export function findAttackTargets(
     if (intel.owner === myUsername) continue;
     
     // Permanent/runtime-configured allies are never attack targets, even if stale intel marked them dangerous.
-    if (
-      (intel.owner && isKnownAllyPlayer(intel.owner, allyOptions)) ||
-      (intel.reserver && isKnownAllyPlayer(intel.reserver, allyOptions))
-    ) {
-      continue;
-    }
-
-    const isExplicitWarTarget = warTargets.has(roomName) || Boolean(intel.owner && warTargets.has(intel.owner));
-    const isConfirmedHostile = isExplicitWarTarget || Boolean(intel.owner && hostilePosturePlayers.has(intel.owner));
-    if (!isConfirmedHostile) {
-      logger.debug(`Skipping ${roomName}: not a confirmed enemy target`, { subsystem: "AttackTarget" });
+    const safety = evaluateTargetSafety(roomName, intel, empire);
+    if (!safety.isSafe || !safety.isConfirmedHostile) {
+      logger.debug(`Skipping ${roomName}: ${safety.reason ?? "unsafe target"}`, { subsystem: "AttackTarget" });
       continue;
     }
     
@@ -132,12 +150,12 @@ export function findAttackTargets(
     if (Game.time - lastAttacked < ATTACK_COOLDOWN_TICKS) continue;
     
     // Calculate score
-    const score = scoreTarget(intel, distance, isExplicitWarTarget, finalWeights);
+    const score = scoreTarget(intel, distance, safety.isExplicitWarTarget, finalWeights);
     
     // Determine target type
     let type: AttackTarget["type"] = "neutral";
     if (intel.owner) {
-      type = isExplicitWarTarget ? "enemy" : "hostile";
+      type = safety.isExplicitWarTarget ? "enemy" : "hostile";
     }
     
     // Select doctrine
@@ -282,6 +300,14 @@ export function validateTarget(targetRoom: string): boolean {
   // Check if target was recently seen (use same cooldown constant for consistency)
   if (Game.time - intel.lastSeen > ATTACK_COOLDOWN_TICKS) {
     logger.warn(`Intel for ${targetRoom} is stale (${Game.time - intel.lastSeen} ticks old)`, {
+      subsystem: "AttackTarget"
+    });
+    return false;
+  }
+
+  const safety = evaluateTargetSafety(targetRoom, intel, empire);
+  if (!safety.isSafe || !safety.isConfirmedHostile) {
+    logger.warn(`Refusing offensive target ${targetRoom}: ${safety.reason ?? "unsafe target"}`, {
       subsystem: "AttackTarget"
     });
     return false;
