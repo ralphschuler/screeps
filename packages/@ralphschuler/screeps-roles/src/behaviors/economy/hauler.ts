@@ -13,7 +13,7 @@ import { findDistributedTarget, registerAssignment } from "@ralphschuler/screeps
 import { findCachedClosest } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "@ralphschuler/screeps-core";
-import { taskBoard } from "../../tasks";
+import { taskBoard, type TaskType } from "../../tasks";
 import { hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
 import { getTerminalEnergyExportRequest } from "../../tasks/energyExport";
 
@@ -24,6 +24,8 @@ const STORAGE_ENERGY_RESERVE = 50000;
 const MINERAL_STORAGE_BUFFER = 5000;
 const TERMINAL_MINERAL_TARGET = 10000;
 const HAULER_DISTRIBUTED_TARGET_CACHE_TTL = 5;
+const DEFENSE_REFUEL_TASK = "defenseRefuel";
+const DEFENSE_REFUEL_CORE_DELIVERY_TASKS: TaskType[] = ["refillSpawn", "refillExtension"];
 
 interface HaulerTargetCacheMemory {
   haulerTargetCache?: Record<string, { id: string; tick: number }>;
@@ -38,6 +40,7 @@ interface HaulerTargetCacheMemory {
  */
 export function hauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
+  const isDefenseRefuel = ctx.memory.task === DEFENSE_REFUEL_TASK;
   logger.debug(`${ctx.creep.name} hauler state: working=${isWorking}, energy=${ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY)}/${ctx.creep.store.getCapacity()}`);
 
   if (isWorking) {
@@ -50,6 +53,11 @@ export function hauler(ctx: CreepContext): CreepAction {
     if (energyCarried === 0 && resourceType && resourceType !== RESOURCE_ENERGY) {
       const target = ctx.terminal ?? ctx.storage;
       if (target) return { type: "transfer", target, resourceType };
+    }
+
+    if (isDefenseRefuel) {
+      const defenseRefuelDelivery = findDefenseRefuelDelivery(ctx);
+      if (defenseRefuelDelivery) return defenseRefuelDelivery;
     }
     
     const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
@@ -130,6 +138,11 @@ export function hauler(ctx: CreepContext): CreepAction {
 
   // Collect resources - priority order
   // BUGFIX: Use distributed targets for containers to prevent clustering with larvaWorkers
+  if (isDefenseRefuel) {
+    const defenseRefuelCollection = findDefenseRefuelCollection(ctx);
+    if (defenseRefuelCollection) return defenseRefuelCollection;
+  }
+
   // 1. Dropped resources (use cached - transient and rarely contested)
   // Collects all resource types, not just energy
   if (ctx.droppedResources.length > 0) {
@@ -223,6 +236,52 @@ export function hauler(ctx: CreepContext): CreepAction {
 
   logger.warn(`${ctx.creep.name} hauler idle (no energy sources found)`);
   return { type: "idle" };
+}
+
+function findDefenseRefuelDelivery(ctx: CreepContext): CreepAction | null {
+  const assignedCoreDelivery = taskBoard.getAssignedAction(ctx, DEFENSE_REFUEL_CORE_DELIVERY_TASKS);
+  if (assignedCoreDelivery?.type === "transfer") return assignedCoreDelivery;
+
+  if (taskBoard.hasActiveTask(ctx.room.name, DEFENSE_REFUEL_CORE_DELIVERY_TASKS)) return null;
+
+  const spawns = ctx.spawnStructures.filter(
+    (s): s is StructureSpawn =>
+      s.structureType === STRUCTURE_SPAWN &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  );
+  if (spawns.length > 0) {
+    const closest = findCachedClosest(ctx.creep, spawns, "defense_refuel_spawn", 3);
+    if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+  }
+
+  const extensions = ctx.spawnStructures.filter(
+    (s): s is StructureExtension =>
+      s.structureType === STRUCTURE_EXTENSION &&
+      s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+  );
+  if (extensions.length > 0) {
+    const closest = findCachedClosest(ctx.creep, extensions, "defense_refuel_ext", 3);
+    if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
+  }
+
+  return null;
+}
+
+function findDefenseRefuelCollection(ctx: CreepContext): CreepAction | null {
+  // Spawn demand only creates defenseRefuel haulers when helper-room source containers
+  // hold useful energy; role behavior consumes the context's container contract here.
+  const containersWithEnergy = ctx.containers.filter(
+    c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
+  );
+  if (containersWithEnergy.length === 0) return null;
+
+  const target = getCachedDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
+  if (target) return { type: "withdraw", target, resourceType: RESOURCE_ENERGY };
+
+  const fallback = ctx.creep.pos.findClosestByRange(containersWithEnergy);
+  if (fallback) return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
+
+  return null;
 }
 
 function getCachedDistributedTarget<T extends RoomObject & _HasId>(creep: Creep, targets: T[], typeKey: string): T | null {
