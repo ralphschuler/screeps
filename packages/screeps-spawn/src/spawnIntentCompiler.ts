@@ -195,7 +195,7 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
       roleName,
       def,
       current,
-      priority: priorityForDemand(room, swarm, roleName, def.priority, isEmergency),
+      priority: pioneerAssignment?.priority ?? priorityForDemand(room, swarm, roleName, def.priority, isEmergency),
       targetRoom: claimerAssignment?.targetRoom ?? pioneerAssignment?.targetRoom ?? remoteTargetRoom ?? undefined,
       task: claimerAssignment?.task ?? pioneerAssignment?.task
     }));

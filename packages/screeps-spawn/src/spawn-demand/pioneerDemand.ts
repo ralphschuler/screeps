@@ -7,7 +7,7 @@
  */
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
-import { spawnQueue } from "../spawnQueue";
+import { spawnQueue, SpawnPriority } from "../spawnQueue";
 import {
   getSafeRoomLinearDistance,
   getSpawnQueueRoomNames,
@@ -20,6 +20,7 @@ const MAX_PIONEERS_PER_SPAWN_SITE = 3;
 export interface PioneerSpawnAssignment {
   targetRoom: string;
   task: "bootstrapSpawn";
+  priority: SpawnPriority;
 }
 
 function countAssignedPioneers(targetRoom: string): number {
@@ -42,12 +43,18 @@ function countAssignedPioneers(targetRoom: string): number {
   return count;
 }
 
-function getPioneerTargetCount(targetRoom: Room): number {
-  const hasSpawnSite = targetRoom
+function hasSpawnConstructionSite(targetRoom: Room): boolean {
+  return targetRoom
     .find(FIND_MY_CONSTRUCTION_SITES)
     .some(site => site.structureType === STRUCTURE_SPAWN);
+}
 
-  return hasSpawnSite ? MAX_PIONEERS_PER_SPAWN_SITE : 1;
+function getPioneerTargetCount(targetRoom: Room): number {
+  return hasSpawnConstructionSite(targetRoom) ? MAX_PIONEERS_PER_SPAWN_SITE : 1;
+}
+
+function getPioneerPriority(targetRoom: Room): SpawnPriority {
+  return hasSpawnConstructionSite(targetRoom) ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
 }
 
 function isEligiblePioneerParent(room: Room, activeHomeRoom: string, activeSwarm: SwarmState): boolean {
@@ -96,7 +103,7 @@ export function getPioneerSpawnAssignment(homeRoom: string, swarm: SwarmState): 
 
   for (const target of spawnlessTargets) {
     if (getPioneerParentForTarget(target.room, homeRoom, swarm) === homeRoom) {
-      return { targetRoom: target.room.name, task: "bootstrapSpawn" };
+      return { targetRoom: target.room.name, task: "bootstrapSpawn", priority: getPioneerPriority(target.room) };
     }
   }
 
