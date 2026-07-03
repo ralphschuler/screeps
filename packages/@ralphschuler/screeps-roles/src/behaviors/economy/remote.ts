@@ -7,6 +7,7 @@
 import type { SwarmCreepMemory } from "../../memory/schemas";
 import type { CreepAction, CreepContext } from "../types";
 import { findCachedClosest, cachedFindSources } from "../../cache";
+import { deliverEnergy } from "./common/energyManagement";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 
 /**
@@ -227,56 +228,8 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
       return { type: "remoteMoveToRoom", roomName: homeRoom, routeType: "hauler" };
     }
 
-    // In home room - deliver with priority: spawn > extensions > towers > storage > containers
-    // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
-
-    // 1. Spawns first (highest priority, cache 5 ticks)
-    const spawns = ctx.spawnStructures.filter(
-      (s): s is StructureSpawn => 
-        s.structureType === STRUCTURE_SPAWN &&
-        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-    );
-    if (spawns.length > 0) {
-      const closest = findCachedClosest(ctx.creep, spawns, "remoteHauler_spawn", 5);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
-
-    // 2. Extensions second (cache 5 ticks)
-    const extensions = ctx.spawnStructures.filter(
-      (s): s is StructureExtension => 
-        s.structureType === STRUCTURE_EXTENSION &&
-        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-    );
-    if (extensions.length > 0) {
-      const closest = findCachedClosest(ctx.creep, extensions, "remoteHauler_ext", 5);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
-
-    // 3. Towers third (cache 10 ticks)
-    // FIX: Lower threshold from 200 to 100 to keep towers better stocked for defense
-    // Towers need to be kept full for rapid response to threats (ROADMAP.md Section 12)
-    const towersWithCapacity = ctx.towers.filter(
-      t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
-    );
-    if (towersWithCapacity.length > 0) {
-      const closest = findCachedClosest(ctx.creep, towersWithCapacity, "remoteHauler_tower", 10);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
-
-    // 4. Storage fourth
-    if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-      return { type: "transfer", target: ctx.storage, resourceType: RESOURCE_ENERGY };
-    }
-
-    // 5. Containers last (for early game or when storage is full/unavailable, cache 10 ticks)
-    // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
-    const depositContainersWithCapacity = ctx.depositContainers.filter(
-      c => c.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-    );
-    if (depositContainersWithCapacity.length > 0) {
-      const closest = findCachedClosest(ctx.creep, depositContainersWithCapacity, "remoteHauler_cont", 10);
-      if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-    }
+    const deliverAction = deliverEnergy(ctx);
+    if (deliverAction) return deliverAction;
 
     // FIX: No valid delivery targets found, but creep still has energy
     // If in home room with energy but no targets, switch to collection mode

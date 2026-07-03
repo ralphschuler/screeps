@@ -22,6 +22,15 @@ function makeSpawn(id: Id<StructureSpawn>, freeCapacity: number): StructureSpawn
   } as unknown as StructureSpawn;
 }
 
+function makeExtension(id: Id<StructureExtension>, freeCapacity: number): StructureExtension {
+  return {
+    id,
+    structureType: STRUCTURE_EXTENSION,
+    pos: { x: 12, y: 10, roomName: "W1N1" },
+    store: makeStore(50 - freeCapacity, 50)
+  } as unknown as StructureExtension;
+}
+
 function makeStorage(id: Id<StructureStorage>, used: number, capacity: number): StructureStorage {
   return {
     id,
@@ -155,6 +164,24 @@ describe("TaskBoard", () => {
 
     expect(taskBoard.getAssignedDeliveryAction(makeContext(creep1, room))?.type).to.equal("transfer");
     expect(taskBoard.getAssignedDeliveryAction(makeContext(creep2, room))?.type).to.equal("transfer");
+  });
+
+  it("assigns another delivery creep when a partial refill reservation leaves energy remaining", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_MY_STRUCTURES ? [extension] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const creep1 = createMockCreep("hauler1", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(25, 50) });
+    const creep2 = createMockCreep("hauler2", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(25, 50) });
+    MockGame.creeps[creep1.name] = creep1;
+    MockGame.creeps[creep2.name] = creep2;
+
+    expect(taskBoard.getAssignedDeliveryAction(makeContext(creep1, room))?.type).to.equal("transfer");
+    expect(taskBoard.getAssignedDeliveryAction(makeContext(creep2, room))?.type).to.equal("transfer");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("hauler1 -> refillExtension");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("hauler2 -> refillExtension");
   });
 
   it("cleans dead creep reservations", () => {
@@ -511,6 +538,303 @@ describe("TaskBoard", () => {
     const room = createMockRoom("W1N1");
     const creep = createMockCreep("hauler1", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(100, 100) });
     expect(taskBoard.getAssignedDeliveryAction(makeContext(creep, room))).to.equal(null);
+  });
+
+  it("does not generate unconsumed build repair or upgrade tasks", () => {
+    const controller = makeController("controller1" as Id<StructureController>);
+    const site = {
+      id: "site1" as Id<ConstructionSite>,
+      structureType: STRUCTURE_EXTENSION,
+      progress: 0,
+      progressTotal: 100,
+      pos: { x: 14, y: 10, roomName: "W1N1" }
+    } as ConstructionSite;
+    const road = {
+      id: "road1" as Id<StructureRoad>,
+      structureType: STRUCTURE_ROAD,
+      hits: 100,
+      hitsMax: 5000,
+      pos: { x: 15, y: 10, roomName: "W1N1" }
+    } as StructureRoad;
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [site];
+      if (type === FIND_STRUCTURES) return [road];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === site.id) return site;
+      if (id === road.id) return road;
+      if (id === controller.id) return controller;
+      return null;
+    };
+
+    taskBoard.refreshRoom(room);
+
+    const description = taskBoard.describe(room.name);
+    expect(description).to.not.contain(" build ");
+    expect(description).to.not.contain(" repair ");
+    expect(description).to.not.contain(" upgrade ");
+    expect(taskBoard.getStats(room.name)).to.include({ open: 0, assigned: 0, reservations: 0 });
+  });
+
+  it("assigns builder critical extension refill through the task board before direct build fallback", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const creep = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const action = evaluateEconomyBehavior(makeContext(creep, room));
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+    expect(taskBoard.describeAssignments(room.name)).to.contain("builder1 -> refillExtension");
+  });
+
+  it("assigns upgrader critical extension refill through the task board before direct upgrade fallback", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const creep = createMockCreep("upgrader1", {
+      room,
+      memory: { role: "upgrader", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const action = evaluateEconomyBehavior(makeContext(creep, room));
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+    expect(taskBoard.describeAssignments(room.name)).to.contain("upgrader1 -> refillExtension");
+  });
+
+  it("does not duplicate direct builder refill when a task-board reservation already owns the target", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const first = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    const second = createMockCreep("builder2", {
+      room,
+      memory: { role: "builder", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[first.name] = first;
+    MockGame.creeps[second.name] = second;
+
+    const firstContext = makeContext(first, room);
+    firstContext.spawnStructures = [extension];
+    const secondContext = makeContext(second, room);
+    secondContext.spawnStructures = [extension];
+
+    expect(evaluateEconomyBehavior(firstContext).type).to.equal("transfer");
+    const secondAction = evaluateEconomyBehavior(secondContext);
+
+    expect(secondAction.type).to.equal("upgrade");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("builder1 -> refillExtension");
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("builder2 -> refillExtension");
+  });
+
+  it("does not duplicate direct upgrader refill when a task-board reservation already owns the target", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const first = createMockCreep("upgrader1", {
+      room,
+      memory: { role: "upgrader", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    const second = createMockCreep("upgrader2", {
+      room,
+      memory: { role: "upgrader", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[first.name] = first;
+    MockGame.creeps[second.name] = second;
+
+    const firstContext = makeContext(first, room);
+    firstContext.spawnStructures = [extension];
+    const secondContext = makeContext(second, room);
+    secondContext.spawnStructures = [extension];
+
+    expect(evaluateEconomyBehavior(firstContext).type).to.equal("transfer");
+    const secondAction = evaluateEconomyBehavior(secondContext);
+
+    expect(secondAction.type).to.equal("upgrade");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("upgrader1 -> refillExtension");
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("upgrader2 -> refillExtension");
+  });
+
+  it("does not duplicate direct hauler refill when a task-board reservation already owns the target", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const first = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    const second = createMockCreep("hauler2", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[first.name] = first;
+    MockGame.creeps[second.name] = second;
+
+    const firstContext = makeContext(first, room);
+    firstContext.spawnStructures = [extension];
+    const secondContext = makeContext(second, room);
+    secondContext.spawnStructures = [extension];
+
+    expect(evaluateEconomyBehavior(firstContext).type).to.equal("transfer");
+    const secondAction = evaluateEconomyBehavior(secondContext);
+
+    expect(secondAction.type).to.not.equal("transfer");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("hauler1 -> refillExtension");
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("hauler2 -> refillExtension");
+  });
+
+  it("does not duplicate direct larvaWorker refill when a task-board reservation already owns the target", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const first = createMockCreep("larva1", {
+      room,
+      memory: { role: "larvaWorker", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    const second = createMockCreep("larva2", {
+      room,
+      memory: { role: "larvaWorker", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[first.name] = first;
+    MockGame.creeps[second.name] = second;
+
+    const firstContext = makeContext(first, room);
+    firstContext.spawnStructures = [extension];
+    const secondContext = makeContext(second, room);
+    secondContext.spawnStructures = [extension];
+
+    expect(evaluateEconomyBehavior(firstContext).type).to.equal("transfer");
+    const secondAction = evaluateEconomyBehavior(secondContext);
+
+    expect(secondAction.type).to.equal("upgrade");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("larva1 -> refillExtension");
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("larva2 -> refillExtension");
+  });
+
+  it("does not duplicate direct remoteHauler refill when a task-board reservation already owns the target", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const first = createMockCreep("remoteHauler1", {
+      room,
+      memory: { role: "remoteHauler", family: "economy", homeRoom: room.name, targetRoom: "W2N2", version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    const second = createMockCreep("remoteHauler2", {
+      room,
+      memory: { role: "remoteHauler", family: "economy", homeRoom: room.name, targetRoom: "W2N2", version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[first.name] = first;
+    MockGame.creeps[second.name] = second;
+
+    const firstContext = makeContext(first, room);
+    firstContext.spawnStructures = [extension];
+    const secondContext = makeContext(second, room);
+    secondContext.spawnStructures = [extension];
+
+    expect(evaluateEconomyBehavior(firstContext).type).to.equal("transfer");
+    const secondAction = evaluateEconomyBehavior(secondContext);
+
+    expect(secondAction.type).to.equal("remoteMoveToRoom");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("remoteHauler1 -> refillExtension");
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("remoteHauler2 -> refillExtension");
   });
 
   it("does not divert a full upgrader into storage when the controller can be upgraded", () => {

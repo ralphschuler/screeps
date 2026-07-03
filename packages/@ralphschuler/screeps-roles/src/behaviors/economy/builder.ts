@@ -10,7 +10,7 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState } from "./common/stateManagement";
-import { findCriticalEnergyDelivery, findEnergy } from "./common/energyManagement";
+import { findAssignedCriticalEnergyDelivery, findCriticalEnergyDelivery, findEnergy, hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
 import { getAssignedBuildTarget } from "../../economy/targetAssignmentManager";
 
 /**
@@ -26,8 +26,13 @@ export function builder(ctx: CreepContext): CreepAction {
     // Priority: Spawns → Extensions → Towers → Build → Upgrade
     // This ensures the room economy stays healthy while building
     
-    const criticalDelivery = findCriticalEnergyDelivery(ctx, "builder");
-    if (criticalDelivery) return criticalDelivery;
+    const assignedCriticalDelivery = findAssignedCriticalEnergyDelivery(ctx);
+    if (assignedCriticalDelivery) return assignedCriticalDelivery;
+
+    if (!hasTaskBoardCriticalEnergyDelivery(ctx)) {
+      const criticalDelivery = findCriticalEnergyDelivery(ctx, "builder");
+      if (criticalDelivery) return criticalDelivery;
+    }
 
     // All critical structures filled - now build construction sites
     // OPTIMIZATION: Use centralized assignment manager (O(1) lookup)
