@@ -138,6 +138,11 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   function hasTaskType(type) {
     return taskBoardTasks().some(function(task) { return task && task.type === type; });
   }
+  function taskBoardOmitsUnconsumedWorkerTasks() {
+    return taskBoardTasks().every(function(task) {
+      return !task || ['build','repair','upgrade'].indexOf(task.type) < 0;
+    });
+  }
   function hasStatsRoomField(fieldName) {
     var rooms = ((memory.stats || {}).rooms) || {};
     return Object.keys(rooms).some(function(roomName) { return Boolean(rooms[roomName] && rooms[roomName][fieldName]); });
@@ -317,7 +322,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   runtimeAssert('creep population exists after warmup', ['runtime','population'], function() { return Object.keys(game.creeps || {}).length > 0; }, 'no creeps after warmup');
   runtimeAssert('CPU bucket is not chronically empty', ['runtime','cpu'], function() { return ((game.cpu && game.cpu.bucket) || 10000) > 1000; }, 'CPU bucket below 1000');
   runtimeAssert('task board memory exists and can track room tasks', ['runtime','task-board'], function() { return Object.keys(((memory.creepTaskBoard || {}).rooms) || {}).length > 0; }, 'Memory.creepTaskBoard.rooms is empty');
-  runtimeAssert('task board contains actionable room tasks', ['runtime','task-board'], function() { return taskBoardTasks().length > 0; }, 'Memory.creepTaskBoard has no tasks');
+  runtimeAssert('task board omits unconsumed worker task backlog', ['runtime','task-board'], taskBoardOmitsUnconsumedWorkerTasks, 'Memory.creepTaskBoard contains build/repair/upgrade tasks that role logic does not consume');
   runtimeAssert('empire memory has initialized roadmap shape', ['runtime','memory','empire'], function() {
     var empire = memory.empire || {};
     return isObject(empire.knownRooms) && Array.isArray(empire.clusters) && isObject(empire.ownedRooms) && Array.isArray(empire.claimQueue) && isObject(empire.objectives);

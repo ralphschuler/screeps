@@ -7,7 +7,7 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { findCachedClosest , cachedFindSources } from "../../cache";
-import { findCriticalEnergyDelivery } from "./common/energyManagement";
+import { findAssignedCriticalEnergyDelivery, findCriticalEnergyDelivery, hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
 import { updateWorkingState } from "./common/stateManagement";
 
 const CRITICAL_SPAWN_FREE_CAPACITY = 250;
@@ -48,10 +48,15 @@ export function upgrader(ctx: CreepContext): CreepAction {
     // Priority: Spawns → Extensions → Towers → Upgrade
     // This ensures the room economy stays healthy while upgrading
     
-    const criticalDelivery = shouldUpgraderRefillCriticalStructures(ctx)
-      ? findCriticalEnergyDelivery(ctx, "upgrader")
-      : null;
-    if (criticalDelivery) return criticalDelivery;
+    if (shouldUpgraderRefillCriticalStructures(ctx)) {
+      const assignedCriticalDelivery = findAssignedCriticalEnergyDelivery(ctx);
+      if (assignedCriticalDelivery) return assignedCriticalDelivery;
+
+      if (!hasTaskBoardCriticalEnergyDelivery(ctx)) {
+        const criticalDelivery = findCriticalEnergyDelivery(ctx, "upgrader");
+        if (criticalDelivery) return criticalDelivery;
+      }
+    }
 
     // All critical structures filled - now upgrade controller
     if (ctx.room.controller) {

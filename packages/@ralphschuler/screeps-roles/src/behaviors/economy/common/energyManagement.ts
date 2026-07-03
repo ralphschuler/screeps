@@ -8,9 +8,10 @@ import type { CreepAction, CreepContext } from "../../types";
 import { findDistributedTarget } from "@ralphschuler/screeps-utils";
 import { findCachedClosest , cachedFindSources } from "../../../cache";
 import { createLogger } from "../../../core/logger";
-import { taskBoard } from "../../../tasks";
+import { taskBoard, type TaskType } from "../../../tasks";
 
 const logger = createLogger("EnergyCollection");
+const CRITICAL_DELIVERY_TASK_TYPES: TaskType[] = ["refillSpawn", "refillExtension", "refillTower"];
 
 /**
  * Find energy to collect (common pattern for many roles).
@@ -93,6 +94,17 @@ export function findEnergy(ctx: CreepContext): CreepAction {
  * BUGFIX: Filter by capacity here, not in room cache, to get fresh capacity state.
  * Multiple creeps can fill structures in the same tick, making cached capacity stale.
  */
+export function findAssignedCriticalEnergyDelivery(
+  ctx: CreepContext
+): Extract<CreepAction, { type: "transfer" }> | null {
+  const assigned = taskBoard.getAssignedAction(ctx, CRITICAL_DELIVERY_TASK_TYPES);
+  return assigned?.type === "transfer" ? assigned : null;
+}
+
+export function hasTaskBoardCriticalEnergyDelivery(ctx: CreepContext): boolean {
+  return taskBoard.hasActiveTask(ctx.room.name, CRITICAL_DELIVERY_TASK_TYPES);
+}
+
 export function findCriticalEnergyDelivery(
   ctx: CreepContext,
   cachePrefix: string
@@ -139,8 +151,10 @@ export function deliverEnergy(ctx: CreepContext): CreepAction | null {
   const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
   if (assignedDelivery) return assignedDelivery;
 
-  const criticalDelivery = findCriticalEnergyDelivery(ctx, "deliver");
-  if (criticalDelivery) return criticalDelivery;
+  if (!hasTaskBoardCriticalEnergyDelivery(ctx)) {
+    const criticalDelivery = findCriticalEnergyDelivery(ctx, "deliver");
+    if (criticalDelivery) return criticalDelivery;
+  }
 
   // 4. Storage fourth
   if (ctx.storage && ctx.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
