@@ -267,6 +267,13 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   const counts = countCreepsByRole(roomName);
   const current = counts.get(role) ?? 0;
 
+  // Pioneer waves are capped per target spawnless room in pioneerDemand.ts.
+  // Do not let the home-room role cap for one recovery target block another
+  // spawnless owned room that still needs bootstrap workers.
+  if (role === "pioneer") {
+    return getPioneerSpawnAssignment(roomName, swarm) !== null;
+  }
+
   if (current >= getRoleTargetCount(roomName, role, swarm)) return false;
 
   // Special conditions
@@ -298,11 +305,6 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
   // Claimer: Only spawn if the creep can be born with a concrete claim/reserve target.
   if (role === "claimer") {
     return getClaimerSpawnAssignment(roomName, swarm) !== null;
-  }
-
-  // Pioneer: parent-spawned bootstrap worker for newly claimed spawnless rooms.
-  if (role === "pioneer") {
-    return getPioneerSpawnAssignment(roomName, swarm) !== null;
   }
 
   // Intershard footprint roles are requested explicitly by the bot footprint manager.

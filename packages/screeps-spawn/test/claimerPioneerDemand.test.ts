@@ -289,6 +289,39 @@ describe("claimer and pioneer demand", () => {
     expect(pioneerRequest?.additionalMemory).to.deep.equal({ task: "bootstrapSpawn" });
   });
 
+  it("continues pioneer recovery for a second spawnless room when another target has a full bootstrap wave", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, spawnSite: true });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    seedStableHomeEconomy();
+
+    for (let i = 1; i <= 3; i++) {
+      Game.creeps[`pioneer${i}`] = {
+        spawning: false,
+        memory: {
+          role: "pioneer",
+          homeRoom: "E1N1",
+          targetRoom: "E2N1",
+          task: "bootstrapSpawn"
+        }
+      } as Creep;
+    }
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+    expect(needsRole("E1N1", "pioneer", createSwarm())).to.equal(true);
+
+    const plan = createSpawnPlan(Game.rooms.E1N1, createSwarm());
+    const pioneerDemand = plan.demands.find(demand => demand.roleName === "pioneer" && demand.targetRoom === "E3N1");
+    const pioneerRequest = plan.requests.find(request => request.role === "pioneer" && request.targetRoom === "E3N1");
+
+    expect(pioneerDemand?.missing).to.equal(1);
+    expect(pioneerRequest?.priority).to.equal(SpawnPriority.EMERGENCY);
+    expect(pioneerRequest?.additionalMemory).to.deep.equal({ task: "bootstrapSpawn" });
+  });
+
   it("suppresses pioneer demand when a spawnless room already has enough bootstrap workers", () => {
     Game.rooms.E2N1 = createRoom("E2N1", { my: true });
     Game.creeps.pioneer1 = {
