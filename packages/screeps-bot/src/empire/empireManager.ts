@@ -297,6 +297,22 @@ export class EmpireManager {
 
     empire.claimQueue = plan.claimQueue;
 
+    if (plan.ownedConstructionTargets > 0 && Game.time % 100 === 0) {
+      logger.warn(
+        `Requeued expansion target(s) from owned spawn construction sites: ${plan.ownedConstructionTargetRooms.join(", ")}`,
+        { subsystem: "Empire" }
+      );
+    }
+
+    if (plan.skippedOwnedConstructionTargets.length > 0 && Game.time % 500 === 0) {
+      logger.warn(
+        `Skipped owned spawn construction expansion target(s): ${plan.skippedOwnedConstructionTargets
+          .map(target => `${target.roomName} (${target.reason})`)
+          .join(", ")}`,
+        { subsystem: "Empire" }
+      );
+    }
+
     if (plan.claimQueue.length > 0 && Game.time % 100 === 0) {
       logger.info(
         `Expansion queue updated: ${plan.claimQueue.length} candidates, top score: ${plan.claimQueue[0].score}`,
