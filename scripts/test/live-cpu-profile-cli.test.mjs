@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { formatHelp, parseArgs, summarizeShard } from "../live-cpu-profile.mjs";
+import { evaluateTelemetryHealth, formatHelp, parseArgs, summarizeShard } from "../live-cpu-profile.mjs";
 
 const rootPackage = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
@@ -17,7 +17,8 @@ test("parseArgs honors documented CLI flags", () => {
     "--out-dir", "artifacts/test-cpu",
     "--hostname", "localhost",
     "--protocol", "http",
-    "--port", "21025"
+    "--port", "21025",
+    "--allow-empty"
   ]);
 
   assert.deepEqual(args, {
@@ -27,7 +28,8 @@ test("parseArgs honors documented CLI flags", () => {
     outDir: "artifacts/test-cpu",
     hostname: "localhost",
     protocol: "http",
-    port: 21025
+    port: 21025,
+    allowEmpty: true
   });
 });
 
@@ -42,6 +44,7 @@ test("help documents all flags and Screeps env vars", () => {
     "--hostname <host>",
     "--protocol <http|https>",
     "--port <n>",
+    "--allow-empty",
     "SCREEPS_TOKEN",
     "SCREEPS_HOSTNAME",
     "SCREEPS_PROTOCOL",
@@ -119,6 +122,58 @@ test("summarizeShard aggregates CPU stats and sorted top rows", () => {
   assert.equal(summary.top_rooms[0].rcl, 8);
   assert.equal(summary.top_roles[0].active, 3);
   assert.equal(summary.top_cpu_details[0].key, "pathfinder");
+  assert.equal(summary.read_errors, 0);
+  assert.deepEqual(summary.errors, []);
+});
+
+test("summarizeShard records redacted read errors", () => {
+  const summary = summarizeShard([], [{ sample: 1, message: "Rate limit exceeded token=<redacted>" }]);
+
+  assert.equal(summary.samples, 0);
+  assert.equal(summary.read_errors, 1);
+  assert.deepEqual(summary.errors, [{ sample: 1, message: "Rate limit exceeded token=<redacted>" }]);
+});
+
+test("telemetry health fails closed when every requested shard has zero samples", () => {
+  const summary = {
+    shards: {
+      shard1: { samples: 0, read_errors: 2 },
+      shard3: { samples: 0, read_errors: 1 }
+    }
+  };
+
+  const health = evaluateTelemetryHealth(summary, { allowEmpty: false });
+
+  assert.equal(health.ok, false);
+  assert.equal(health.status, "failed");
+  assert.deepEqual(health.empty_shards, ["shard1", "shard3"]);
+  assert.equal(health.read_errors, 3);
+  assert.match(health.message, /zero live CPU samples/);
+});
+
+test("telemetry health allows explicit degraded zero-sample artifact collection", () => {
+  const summary = { shards: { shard1: { samples: 0, read_errors: 1 } } };
+
+  const health = evaluateTelemetryHealth(summary, { allowEmpty: true });
+
+  assert.equal(health.ok, true);
+  assert.equal(health.status, "degraded");
+  assert.equal(health.allow_empty, true);
+});
+
+test("telemetry health reports partial samples without failing", () => {
+  const summary = {
+    shards: {
+      shard1: { samples: 2, read_errors: 0 },
+      shard3: { samples: 0, read_errors: 1 }
+    }
+  };
+
+  const health = evaluateTelemetryHealth(summary, { allowEmpty: false });
+
+  assert.equal(health.ok, true);
+  assert.equal(health.status, "partial");
+  assert.deepEqual(health.empty_shards, ["shard3"]);
 });
 
 test("root package exposes a bounded read-only live CPU profile script", () => {

@@ -21,6 +21,7 @@ Options:
   --hostname <host>          Screeps hostname (default SCREEPS_HOSTNAME or screeps.com)
   --protocol <http|https>    Screeps API protocol (default SCREEPS_PROTOCOL or https)
   --port <n>                 Screeps API port (default SCREEPS_PORT or 443)
+  --allow-empty              Allow zero-sample degraded artifact collection (default fail closed)
   --help, -h                 Show this help
 
 Environment:
@@ -41,7 +42,8 @@ export function parseArgs(argv) {
     outDir: "artifacts/cpu-profile",
     hostname: process.env.SCREEPS_HOSTNAME || "screeps.com",
     protocol: process.env.SCREEPS_PROTOCOL || "https",
-    port: Number(process.env.SCREEPS_PORT || 443)
+    port: Number(process.env.SCREEPS_PORT || 443),
+    allowEmpty: false
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -54,6 +56,7 @@ export function parseArgs(argv) {
     else if (arg === "--hostname" && next) args.hostname = next, i++;
     else if (arg === "--protocol" && next) args.protocol = next, i++;
     else if (arg === "--port" && next) args.port = Number(next), i++;
+    else if (arg === "--allow-empty") args.allowEmpty = true;
     else if (arg === "--help" || arg === "-h") {
       console.log(formatHelp());
       process.exit(0);
@@ -93,7 +96,7 @@ function top(bucket, limit) {
     .slice(0, limit);
 }
 
-export function summarizeShard(samples) {
+export function summarizeShard(samples, errors = []) {
   const cpu = [];
   const bucket = [];
   const skipped = [];
@@ -162,7 +165,31 @@ export function summarizeShard(samples) {
     top_processes: top(processes, 15),
     top_rooms: top(rooms, 10),
     top_roles: top(roles, 10),
-    top_cpu_details: top(cpuDetails, 20)
+    top_cpu_details: top(cpuDetails, 20),
+    read_errors: errors.length,
+    errors
+  };
+}
+
+export function evaluateTelemetryHealth(summary, { allowEmpty = false } = {}) {
+  const shards = Object.entries(summary.shards || {});
+  const emptyShards = shards.filter(([, data]) => (data.samples || 0) === 0).map(([shard]) => shard);
+  const totalSamples = shards.reduce((sum, [, data]) => sum + (data.samples || 0), 0);
+  const readErrors = shards.reduce((sum, [, data]) => sum + (data.read_errors ?? data.errors?.length ?? 0), 0);
+  const allEmpty = shards.length > 0 && totalSamples === 0;
+  const status = allEmpty ? (allowEmpty ? "degraded" : "failed") : emptyShards.length > 0 ? "partial" : "healthy";
+  return {
+    ok: allowEmpty || !allEmpty,
+    status,
+    allow_empty: allowEmpty,
+    total_samples: totalSamples,
+    empty_shards: emptyShards,
+    read_errors: readErrors,
+    message: allEmpty
+      ? `Collected zero live CPU samples across ${shards.length} shard(s); Memory.stats telemetry is unavailable${allowEmpty ? " (allowed)" : ""}.`
+      : emptyShards.length > 0
+        ? `Collected partial live CPU samples; empty shard(s): ${emptyShards.join(", ")}.`
+        : "Live CPU telemetry collected."
   };
 }
 
@@ -176,7 +203,7 @@ async function fetchStats(api, shard) {
 function printSummary(summary) {
   for (const [shard, data] of Object.entries(summary.shards)) {
     console.log(`\n=== ${shard} ===`);
-    console.log(`samples=${data.samples} ticks=${data.tick_first ?? "n/a"}->${data.tick_last ?? "n/a"} cpu_avg=${data.cpu_avg.toFixed(2)} cpu_max=${data.cpu_max.toFixed(2)} bucket_avg=${data.bucket_avg.toFixed(0)} bucket_min=${data.bucket_min.toFixed(0)} skipped_avg=${data.skipped_avg.toFixed(1)}`);
+    console.log(`samples=${data.samples} ticks=${data.tick_first ?? "n/a"}->${data.tick_last ?? "n/a"} cpu_avg=${data.cpu_avg.toFixed(2)} cpu_max=${data.cpu_max.toFixed(2)} bucket_avg=${data.bucket_avg.toFixed(0)} bucket_min=${data.bucket_min.toFixed(0)} skipped_avg=${data.skipped_avg.toFixed(1)} read_errors=${data.read_errors || 0}`);
     for (const [label, rows] of [["subsystems", data.top_subsystems], ["processes", data.top_processes], ["rooms", data.top_rooms], ["roles", data.top_roles], ["cpu_details", data.top_cpu_details]]) {
       if (!rows.length) continue;
       console.log(`Top ${label}:`);
@@ -202,14 +229,16 @@ async function main() {
   });
 
   const byShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
+  const errorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
   for (let sample = 1; sample <= args.samples; sample++) {
     await Promise.all(args.shards.map(async shard => {
       try {
         const stats = await fetchStats(api, shard);
         if (stats) byShard[shard].push(stats);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.warn(`WARN ${shard}: ${redactScreepsApiMessage(message)}`);
+        const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
+        errorsByShard[shard].push({ sample, message });
+        console.warn(`WARN ${shard}: ${message}`);
       }
     }));
     if (sample < args.samples && args.interval > 0) await sleep(args.interval);
@@ -220,14 +249,21 @@ async function main() {
     hostname: args.hostname,
     samples_requested: args.samples,
     interval_ms: args.interval,
-    shards: Object.fromEntries(Object.entries(byShard).map(([shard, samples]) => [shard, summarizeShard(samples)]))
+    allow_empty: args.allowEmpty,
+    shards: Object.fromEntries(Object.entries(byShard).map(([shard, samples]) => [shard, summarizeShard(samples, errorsByShard[shard] || [])]))
   };
+  summary.health = evaluateTelemetryHealth(summary, { allowEmpty: args.allowEmpty });
 
   fs.mkdirSync(args.outDir, { recursive: true });
   const outPath = path.join(args.outDir, `live-cpu-profile-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
   fs.writeFileSync(outPath, JSON.stringify(summary, null, 2));
   printSummary(summary);
-  console.log(`\nWrote ${outPath}`);
+  console.log(`\nHealth: ${summary.health.status} (${summary.health.message})`);
+  console.log(`Wrote ${outPath}`);
+  if (!summary.health.ok) {
+    console.error(summary.health.message);
+    process.exitCode = 2;
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
