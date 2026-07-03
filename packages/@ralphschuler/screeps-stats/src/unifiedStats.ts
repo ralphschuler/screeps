@@ -86,6 +86,59 @@ type CpuProfilerGlobal = {
   status: () => CpuDetailsConfig;
 };
 
+type TaskBoardStatsEntry = NonNullable<RoomStatsEntry["taskBoard"]>;
+type TaskBoardTypeStatsEntry = TaskBoardStatsEntry["byType"][string];
+
+type RawTaskBoardTask = {
+  type?: string;
+  status?: string;
+  priority?: number;
+  amount?: number;
+  reservations?: Record<string, { amount?: number }>;
+};
+
+const TASK_BOARD_DELIVERY_TYPES = new Set(["refillSpawn", "refillExtension", "refillTower", "fillTerminalEnergy", "storeEnergy"]);
+const TASK_BOARD_HIGH_PRIORITY_DELIVERY = 100;
+
+function emptyTaskBoardTypeStats(): TaskBoardTypeStatsEntry {
+  return {
+    tasks: 0,
+    openTasks: 0,
+    assignedTasks: 0,
+    reservations: 0,
+    amount: 0,
+    reservedAmount: 0,
+    remainingAmount: 0
+  };
+}
+
+function emptyTaskBoardStats(): TaskBoardStatsEntry {
+  return {
+    tasks: 0,
+    openTasks: 0,
+    assignedTasks: 0,
+    reservations: 0,
+    staleReservations: 0,
+    blockedReservations: 0,
+    amount: 0,
+    reservedAmount: 0,
+    remainingAmount: 0,
+    deliveryAmount: 0,
+    deliveryReservedAmount: 0,
+    deliveryRemainingAmount: 0,
+    criticalDeliveryRemainingAmount: 0,
+    byType: {}
+  };
+}
+
+function taskAmount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+function taskReservationAmount(task: RawTaskBoardTask): number {
+  return Object.values(task.reservations ?? {}).reduce((total, reservation) => total + taskAmount(reservation?.amount), 0);
+}
+
 // ============================================================================
 // Unified Stats Manager
 // ============================================================================
@@ -428,25 +481,60 @@ export class UnifiedStatsManager {
     const memory = Memory as unknown as {
       creepTaskBoard?: {
         rooms?: Record<string, {
-          tasks?: Record<string, { status?: string; reservations?: Record<string, unknown> }>;
+          tasks?: Record<string, RawTaskBoardTask>;
           stats?: { staleReservations?: number; blockedReservations?: number };
         }>;
       };
     };
     const board = memory.creepTaskBoard?.rooms?.[roomName];
-    if (!board) {
-      return { tasks: 0, openTasks: 0, assignedTasks: 0, reservations: 0, staleReservations: 0, blockedReservations: 0 };
+    const summary = emptyTaskBoardStats();
+    if (!board) return summary;
+
+    summary.staleReservations = board.stats?.staleReservations ?? 0;
+    summary.blockedReservations = board.stats?.blockedReservations ?? 0;
+
+    for (const task of Object.values(board.tasks ?? {})) {
+      const type = task.type ?? "unknown";
+      const byType = summary.byType[type] ?? emptyTaskBoardTypeStats();
+      const reservations = Object.keys(task.reservations ?? {}).length;
+      const amount = taskAmount(task.amount);
+      const reservedAmount = taskReservationAmount(task);
+      const remainingAmount = Math.max(0, amount - reservedAmount);
+      const deliveryTask = TASK_BOARD_DELIVERY_TYPES.has(type);
+
+      summary.tasks++;
+      summary.reservations += reservations;
+      summary.amount += amount;
+      summary.reservedAmount += reservedAmount;
+      summary.remainingAmount += remainingAmount;
+
+      byType.tasks++;
+      byType.reservations += reservations;
+      byType.amount += amount;
+      byType.reservedAmount += reservedAmount;
+      byType.remainingAmount += remainingAmount;
+
+      if (task.status === "open") {
+        summary.openTasks++;
+        byType.openTasks++;
+      } else if (task.status === "assigned") {
+        summary.assignedTasks++;
+        byType.assignedTasks++;
+      }
+
+      if (deliveryTask) {
+        summary.deliveryAmount += amount;
+        summary.deliveryReservedAmount += reservedAmount;
+        summary.deliveryRemainingAmount += remainingAmount;
+        if ((task.priority ?? 0) >= TASK_BOARD_HIGH_PRIORITY_DELIVERY) {
+          summary.criticalDeliveryRemainingAmount += remainingAmount;
+        }
+      }
+
+      summary.byType[type] = byType;
     }
 
-    const tasks = Object.values(board.tasks ?? {});
-    return {
-      tasks: tasks.length,
-      openTasks: tasks.filter(task => task.status === "open").length,
-      assignedTasks: tasks.filter(task => task.status === "assigned").length,
-      reservations: tasks.reduce((total, task) => total + Object.keys(task.reservations ?? {}).length, 0),
-      staleReservations: board.stats?.staleReservations ?? 0,
-      blockedReservations: board.stats?.blockedReservations ?? 0
-    };
+    return summary;
   }
 
   private getMyUsername(): string {
@@ -1711,7 +1799,23 @@ export class UnifiedStatsManager {
           assigned_tasks: room.taskBoard.assignedTasks,
           reservations: room.taskBoard.reservations,
           stale_reservations: room.taskBoard.staleReservations,
-          blocked_reservations: room.taskBoard.blockedReservations
+          blocked_reservations: room.taskBoard.blockedReservations,
+          amount: room.taskBoard.amount,
+          reserved_amount: room.taskBoard.reservedAmount,
+          remaining_amount: room.taskBoard.remainingAmount,
+          delivery_amount: room.taskBoard.deliveryAmount,
+          delivery_reserved_amount: room.taskBoard.deliveryReservedAmount,
+          delivery_remaining_amount: room.taskBoard.deliveryRemainingAmount,
+          critical_delivery_remaining_amount: room.taskBoard.criticalDeliveryRemainingAmount,
+          by_type: Object.fromEntries(Object.entries(room.taskBoard.byType).map(([type, stats]) => [type, {
+            tasks: stats.tasks,
+            open_tasks: stats.openTasks,
+            assigned_tasks: stats.assignedTasks,
+            reservations: stats.reservations,
+            amount: stats.amount,
+            reserved_amount: stats.reservedAmount,
+            remaining_amount: stats.remainingAmount
+          }]))
         } : undefined,
         spawn_queue: room.spawnQueue ? {
           total: room.spawnQueue.total,

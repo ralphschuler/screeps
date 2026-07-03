@@ -1,5 +1,71 @@
 import { expect } from "chai";
 import { UnifiedStatsManager } from "../src/unifiedStats.ts";
+import type { RoomStatsEntry } from "../src/statsTypes.ts";
+
+type RoomStatsOverrides = Omit<Partial<RoomStatsEntry>, "energy" | "controller" | "brain" | "metrics" | "profiler"> & {
+  energy?: Partial<RoomStatsEntry["energy"]>;
+  controller?: Partial<RoomStatsEntry["controller"]>;
+  brain?: Partial<RoomStatsEntry["brain"]>;
+  metrics?: Partial<RoomStatsEntry["metrics"]>;
+  profiler?: Partial<RoomStatsEntry["profiler"]>;
+};
+
+function makeRoomStats(overrides: RoomStatsOverrides = {}): RoomStatsEntry {
+  const base: RoomStatsEntry = {
+    name: "W1N1",
+    rcl: 1,
+    energy: {
+      available: 0,
+      capacity: 0,
+      storage: 0,
+      terminal: 0
+    },
+    controller: {
+      progress: 0,
+      progressTotal: 1,
+      progressPercent: 0,
+      ticksToDowngrade: 1000,
+      downgradeRisk: false
+    },
+    creeps: 0,
+    hostiles: 0,
+    brain: {
+      danger: 0,
+      postureCode: 0,
+      colonyLevelCode: 0
+    },
+    pheromones: {},
+    metrics: {
+      energyHarvested: 0,
+      energySpawning: 0,
+      energyConstruction: 0,
+      energyRepair: 0,
+      energyTower: 0,
+      energyAvailableForSharing: 0,
+      energyCapacityTotal: 0,
+      energyNeed: 0,
+      controllerProgress: 0,
+      hostileCount: 0,
+      damageReceived: 0,
+      constructionSites: 0
+    },
+    profiler: {
+      avgCpu: 0,
+      peakCpu: 0,
+      samples: 1
+    }
+  };
+
+  return {
+    ...base,
+    ...overrides,
+    energy: { ...base.energy, ...overrides.energy },
+    controller: { ...base.controller, ...overrides.controller },
+    brain: { ...base.brain, ...overrides.brain },
+    metrics: { ...base.metrics, ...overrides.metrics },
+    profiler: { ...base.profiler, ...overrides.profiler }
+  };
+}
 
 describe("UnifiedStatsManager", () => {
   beforeEach(() => {
@@ -104,7 +170,7 @@ describe("UnifiedStatsManager", () => {
     const state = manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } };
 
     state.currentSnapshot.rooms = {
-      W1N1: {
+      W1N1: makeRoomStats({
         name: "W1N1",
         rcl: 1,
         energy: {
@@ -121,33 +187,10 @@ describe("UnifiedStatsManager", () => {
           downgradeRisk: false
         },
         creeps: 2,
-        hostiles: 0,
-        brain: {
-          danger: 0,
-          postureCode: 0,
-          colonyLevelCode: 0
-        },
-        pheromones: {},
         metrics: {
-          energyHarvested: 0,
-          energySpawning: 0,
-          energyConstruction: 0,
-          energyRepair: 0,
-          energyTower: 0,
-          energyAvailableForSharing: 0,
-          energyCapacityTotal: 300,
-          energyNeed: 0,
-          controllerProgress: 0,
-          hostileCount: 0,
-          damageReceived: 0,
-          constructionSites: 0
-        },
-        profiler: {
-          avgCpu: 0,
-          peakCpu: 0,
-          samples: 1
+          energyCapacityTotal: 300
         }
-      } as Record<string, unknown>
+      }) as Record<string, unknown>
     };
 
     (Game as unknown as { rooms: Record<string, unknown> }).rooms = {
@@ -162,6 +205,104 @@ describe("UnifiedStatsManager", () => {
     manager.startTick();
 
     expect((manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } }).currentSnapshot.rooms.W1N1).to.exist;
+  });
+
+  it("summarizes task-board amounts by type for live backlog diagnosis", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    (Memory as Memory & { creepTaskBoard?: unknown }).creepTaskBoard = {
+      rooms: {
+        W1N1: {
+          stats: { staleReservations: 1, blockedReservations: 2 },
+          tasks: {
+            spawn: { type: "refillSpawn", status: "open", priority: 200, amount: 300, reservations: {} },
+            extension: { type: "refillExtension", status: "assigned", priority: 100, amount: 200, reservations: { hauler1: { amount: 50 } } },
+            storage: { type: "storeEnergy", status: "open", priority: 10, amount: 1000, reservations: { hauler2: { amount: 100 } } },
+            defend: { type: "defend", status: "open", priority: 200, amount: 5000, reservations: {} }
+          }
+        }
+      }
+    };
+
+    const stats = (manager as unknown as {
+      getRoomTaskBoardStats(roomName: string): NonNullable<RoomStatsEntry["taskBoard"]>;
+    }).getRoomTaskBoardStats("W1N1");
+
+    expect(stats).to.include({
+      tasks: 4,
+      openTasks: 3,
+      assignedTasks: 1,
+      reservations: 2,
+      staleReservations: 1,
+      blockedReservations: 2,
+      amount: 6500,
+      reservedAmount: 150,
+      remainingAmount: 6350,
+      deliveryAmount: 1500,
+      deliveryReservedAmount: 150,
+      deliveryRemainingAmount: 1350,
+      criticalDeliveryRemainingAmount: 450
+    });
+    expect(stats.byType.refillExtension).to.deep.equal({
+      tasks: 1,
+      openTasks: 0,
+      assignedTasks: 1,
+      reservations: 1,
+      amount: 200,
+      reservedAmount: 50,
+      remainingAmount: 150
+    });
+  });
+
+  it("publishes compact task-board amount stats to Memory.stats", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    const taskBoard = {
+      tasks: 1,
+      openTasks: 1,
+      assignedTasks: 0,
+      reservations: 1,
+      staleReservations: 0,
+      blockedReservations: 0,
+      amount: 200,
+      reservedAmount: 50,
+      remainingAmount: 150,
+      deliveryAmount: 200,
+      deliveryReservedAmount: 50,
+      deliveryRemainingAmount: 150,
+      criticalDeliveryRemainingAmount: 150,
+      byType: {
+        refillExtension: {
+          tasks: 1,
+          openTasks: 1,
+          assignedTasks: 0,
+          reservations: 1,
+          amount: 200,
+          reservedAmount: 50,
+          remainingAmount: 150
+        }
+      }
+    };
+    const state = manager as unknown as { currentSnapshot: { rooms: Record<string, RoomStatsEntry> } };
+    state.currentSnapshot.rooms = { W1N1: makeRoomStats({ name: "W1N1", taskBoard }) };
+
+    (manager as unknown as { publishToMemory(): void }).publishToMemory();
+
+    const published = (Memory as unknown as {
+      stats: { rooms: Record<string, { taskBoard: Record<string, unknown> }> };
+    }).stats.rooms.W1N1.taskBoard;
+    expect(published).to.include({
+      tasks: 1,
+      open_tasks: 1,
+      assigned_tasks: 0,
+      amount: 200,
+      reserved_amount: 50,
+      remaining_amount: 150,
+      delivery_remaining_amount: 150,
+      critical_delivery_remaining_amount: 150
+    });
+    expect((published.by_type as Record<string, Record<string, number>>).refillExtension).to.include({
+      remaining_amount: 150,
+      reserved_amount: 50
+    });
   });
 
   it("captures gated CPU detail samples and auto-disables after TTL", () => {
