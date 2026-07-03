@@ -37759,6 +37759,7 @@ if (n) throw n.error;
 return !1;
 }
 var C = null !== (u = Ly(e).get(t)) && void 0 !== u ? u : 0;
+if ("pioneer" === t) return null !== ov(e, r);
 if (C >= xv(e, t, r)) return !1;
 if (!f) return !1;
 if ("scout" === t) {
@@ -37779,7 +37780,6 @@ return !1;
 }(e));
 }
 if ("claimer" === t) return null !== Jy(0, r);
-if ("pioneer" === t) return null !== ov(e, r);
 if ("interShardScout" === t || "interShardClaimer" === t || "interShardPioneer" === t) return !1;
 if ("mineralHarvester" === t) {
 var x = f.find(FIND_MINERALS)[0];
@@ -37942,11 +37942,11 @@ return s([], i(e), !1).sort(function(e, t) {
 return t.priority - e.priority;
 });
 }(function(e, t) {
-var r, o, n, s, c, u, l, m, d;
+var r, o, n, s, c, u;
 Uv(e);
-var p = Ly(e.name), f = Mv(e.name), y = [];
+var l = Ly(e.name), m = Mv(e.name), d = [];
 if (kv(e.name, e)) {
-var v = function(e, t, r) {
+var p = function(e, t, r) {
 var o, n, i;
 if (0 === Ov(Ly(e, !0))) return U.info("Bootstrap: Spawning larvaWorker (emergency - no active energy producers)", {
 subsystem: "spawn",
@@ -37998,40 +37998,49 @@ subsystem: "spawn",
 room: e
 }), null;
 }(e.name, e, t);
-return v && (E = vy[v]) && bv(e.name, v, t, !0) ? (y.push(_v(e, t, {
-roleName: v,
-def: E,
-current: null !== (n = p.get(v)) && void 0 !== n ? n : 0,
-priority: Nv(e, 0, v, E.priority, f),
+return p && (g = vy[p]) && bv(e.name, p, t, !0) ? (d.push(_v(e, t, {
+roleName: p,
+def: g,
+current: null !== (n = l.get(p)) && void 0 !== n ? n : 0,
+priority: Nv(e, 0, p, g.priority, m),
 bootstrap: !0
-})), y) : y;
+})), d) : d;
 }
 try {
-for (var g = a(Object.entries(vy)), h = g.next(); !h.done; h = g.next()) {
-var R = i(h.value, 2), E = (v = R[0], R[1]), T = null !== (s = p.get(v)) && void 0 !== s ? s : 0, C = Tv(e.name, v);
-if (C) y.push({
-roleName: v,
-def: E,
-current: T,
-target: T + 1,
+for (var f = a(Object.entries(vy)), y = f.next(); !y.done; y = f.next()) {
+var v = i(y.value, 2), g = (p = v[0], v[1]), h = null !== (s = l.get(p)) && void 0 !== s ? s : 0, R = Tv(e.name, p);
+if (R) d.push({
+roleName: p,
+def: g,
+current: h,
+target: h + 1,
 missing: 1,
-priority: C.priority,
-targetRoom: C.targetRoom,
-task: C.task,
-assistTarget: C.targetRoom,
-defenseSquadId: C.defenseSquadId,
-defenseSquadSize: C.defenseSquadSize,
-defenseSquadCreatedAt: C.defenseSquadCreatedAt
-}); else if (bv(e.name, v, t, f)) {
-var S = Wy(v), x = S ? wv(e.name, v, t) : null, w = "claimer" === v ? Jy(e.name, t) : null, b = "pioneer" === v ? ov(e.name, t) : null;
-S && !x || ("claimer" !== v || w) && ("pioneer" !== v || b) && y.push(_v(e, t, {
-roleName: v,
-def: E,
-current: T,
-priority: null !== (c = null == b ? void 0 : b.priority) && void 0 !== c ? c : Nv(e, 0, v, E.priority, f),
-targetRoom: null !== (m = null !== (l = null !== (u = null == w ? void 0 : w.targetRoom) && void 0 !== u ? u : null == b ? void 0 : b.targetRoom) && void 0 !== l ? l : x) && void 0 !== m ? m : void 0,
-task: null !== (d = null == w ? void 0 : w.task) && void 0 !== d ? d : null == b ? void 0 : b.task
-}));
+priority: R.priority,
+targetRoom: R.targetRoom,
+task: R.task,
+assistTarget: R.targetRoom,
+defenseSquadId: R.defenseSquadId,
+defenseSquadSize: R.defenseSquadSize,
+defenseSquadCreatedAt: R.defenseSquadCreatedAt
+}); else if (bv(e.name, p, t, m)) {
+var E = Wy(p), T = E ? wv(e.name, p, t) : null, C = "claimer" === p ? Jy(e.name, t) : null, S = "pioneer" === p ? ov(e.name, t) : null;
+E && !T || ("claimer" !== p || C) && ("pioneer" !== p || S) && (S ? d.push({
+roleName: p,
+def: g,
+current: h,
+target: h + 1,
+missing: 1,
+priority: S.priority,
+targetRoom: S.targetRoom,
+task: S.task
+}) : d.push(_v(e, t, {
+roleName: p,
+def: g,
+current: h,
+priority: Nv(e, 0, p, g.priority, m),
+targetRoom: null !== (u = null !== (c = null == C ? void 0 : C.targetRoom) && void 0 !== c ? c : T) && void 0 !== u ? u : void 0,
+task: null == C ? void 0 : C.task
+})));
 }
 }
 } catch (e) {
@@ -38040,12 +38049,12 @@ error: e
 };
 } finally {
 try {
-h && !h.done && (o = g.return) && o.call(g);
+y && !y.done && (o = f.return) && o.call(f);
 } finally {
 if (r) throw r.error;
 }
 }
-return y;
+return d;
 }(e, t)), c = [];
 try {
 for (var u = a(n), l = u.next(); !l.done; l = u.next()) {

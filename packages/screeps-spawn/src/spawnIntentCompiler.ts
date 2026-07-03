@@ -191,13 +191,27 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
       continue;
     }
 
+    if (pioneerAssignment) {
+      demands.push({
+        roleName,
+        def,
+        current,
+        target: current + 1,
+        missing: 1,
+        priority: pioneerAssignment.priority,
+        targetRoom: pioneerAssignment.targetRoom,
+        task: pioneerAssignment.task
+      });
+      continue;
+    }
+
     demands.push(createDemand(room, swarm, {
       roleName,
       def,
       current,
-      priority: pioneerAssignment?.priority ?? priorityForDemand(room, swarm, roleName, def.priority, isEmergency),
-      targetRoom: claimerAssignment?.targetRoom ?? pioneerAssignment?.targetRoom ?? remoteTargetRoom ?? undefined,
-      task: claimerAssignment?.task ?? pioneerAssignment?.task
+      priority: priorityForDemand(room, swarm, roleName, def.priority, isEmergency),
+      targetRoom: claimerAssignment?.targetRoom ?? remoteTargetRoom ?? undefined,
+      task: claimerAssignment?.task
     }));
   }
 
