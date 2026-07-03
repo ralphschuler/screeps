@@ -47,6 +47,18 @@ SCREEPS_TOKEN=<token> npm run profile:live:cpu -- --samples 5 --interval 1000 --
 
 Supported environment variables: `SCREEPS_TOKEN` (required), `SCREEPS_HOSTNAME`, `SCREEPS_PROTOCOL`, `SCREEPS_PORT`, and `SCREEPS_PATH`. The profiler only reads `Memory.stats`; do not paste token-bearing Screeps URLs into issues or logs.
 
+By default, the profiler fails closed when every requested shard returns zero samples, which usually means the Memory API is rate-limited or unavailable. Use `--allow-empty` only when you intentionally want degraded artifacts for investigation:
+
+```bash
+SCREEPS_TOKEN=<token> node scripts/live-cpu-profile.mjs --samples 1 --interval 0 --shards shard1 --allow-empty
+```
+
+For structural live snapshots, deployment gates can fail when Memory reads are unavailable while still writing redacted artifacts:
+
+```bash
+SCREEPS_TOKEN=<token> node packages/screeps-server/scripts/export-live-structural-snapshot.js --shard shard1 --rooms W18S28,W18S27 --fail-on-memory-errors
+```
+
 ## Runtime triage
 
 1. Check recent console errors and global reset frequency.

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { redactedSnapshotError } from "../../packages/screeps-server/scripts/export-live-structural-snapshot.js";
+import {
+  evaluateStructuralSnapshotHealth,
+  parseOptions,
+  redactedSnapshotError
+} from "../../packages/screeps-server/scripts/export-live-structural-snapshot.js";
 
 const RATE_LIMIT_MESSAGE = [
   "Rate limit exceeded, retry after 123ms or disable rate limiting using this link:",
@@ -31,4 +35,37 @@ test("structural snapshot room endpoint errors redact token fragments", () => {
     assert.equal(entry.message.includes("6ea62d57"), false);
     assert.equal(entry.message.includes("token=<redacted>"), true);
   }
+});
+
+test("structural snapshot parser supports deploy-gate memory error failure flag", () => {
+  const options = parseOptions(["--shard", "shard3", "--rooms", "W1N1,W2N2", "--fail-on-memory-errors"], {
+    SCREEPS_HOSTNAME: "screeps.com",
+    SCREEPS_PROTOCOL: "https",
+    SCREEPS_PORT: "443"
+  });
+
+  assert.equal(options.shard, "shard3");
+  assert.deepEqual(options.rooms, ["W1N1", "W2N2"]);
+  assert.equal(options.failOnMemoryErrors, true);
+});
+
+test("structural snapshot health fails only when requested memory errors are present", () => {
+  const snapshot = {
+    errors: [
+      { type: "memory", path: "stats", message: "Rate limit exceeded token=<redacted>" },
+      { type: "roomObjects", room: "W1N1", message: "timeout" }
+    ]
+  };
+
+  const strict = evaluateStructuralSnapshotHealth(snapshot, { failOnMemoryErrors: true });
+  assert.equal(strict.ok, false);
+  assert.equal(strict.status, "failed");
+  assert.equal(strict.memory_errors, 1);
+  assert.equal(strict.total_errors, 2);
+  assert.match(strict.message, /Memory API errors/);
+
+  const degraded = evaluateStructuralSnapshotHealth(snapshot, { failOnMemoryErrors: false });
+  assert.equal(degraded.ok, true);
+  assert.equal(degraded.status, "degraded");
+  assert.equal(degraded.memory_errors, 1);
 });

@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 const { ScreepsAPI } = require("screeps-api");
 
 function printHelp() {
-  console.log(`Usage: node packages/screeps-server/scripts/export-live-structural-snapshot.js [options]\n\nOptions:\n  --shard <name>       Screeps shard (default shard1)\n  --rooms <list>       Comma-separated extra/source rooms to include\n  --maxRooms <n>       Maximum derived rooms to export (default 30)\n  --out <path>         Output JSON path (default packages/screeps-server/artifacts/cpu-benchmark/live-snapshot.json)\n  --hostname <host>    Screeps hostname (default screeps.com)\n  --protocol <proto>   Protocol (default https)\n  --port <n>           Port (default 443)\n\nRequires SCREEPS_TOKEN. Read-only endpoints only.`);
+  console.log(`Usage: node packages/screeps-server/scripts/export-live-structural-snapshot.js [options]\n\nOptions:\n  --shard <name>              Screeps shard (default shard1)\n  --rooms <list>              Comma-separated extra/source rooms to include\n  --maxRooms <n>              Maximum derived rooms to export (default 30)\n  --out <path>                Output JSON path (default packages/screeps-server/artifacts/cpu-benchmark/live-snapshot.json)\n  --hostname <host>           Screeps hostname (default screeps.com)\n  --protocol <proto>          Protocol (default https)\n  --port <n>                  Port (default 443)\n  --fail-on-memory-errors     Exit nonzero when read-only Memory paths fail\n\nRequires SCREEPS_TOKEN. Read-only endpoints only.`);
 }
 
 function parseOptions(argv = process.argv.slice(2), env = process.env) {
@@ -34,6 +34,7 @@ function parseOptions(argv = process.argv.slice(2), env = process.env) {
     hostname: args.get("hostname") ?? env.SCREEPS_HOSTNAME ?? "screeps.com",
     protocol: args.get("protocol") ?? env.SCREEPS_PROTOCOL ?? "https",
     port: Number(args.get("port") ?? env.SCREEPS_PORT ?? 443),
+    failOnMemoryErrors: args.has("fail-on-memory-errors") && args.get("fail-on-memory-errors") !== "false",
   };
 }
 
@@ -45,6 +46,24 @@ function unwrapMemory(response) {
 
 export function redactedSnapshotError(fields, error) {
   return { ...fields, message: formatScreepsApiError(error) };
+}
+
+export function evaluateStructuralSnapshotHealth(snapshot, { failOnMemoryErrors = false } = {}) {
+  const errors = snapshot.errors || [];
+  const memoryErrors = errors.filter((error) => error.type === "memory");
+  const status = memoryErrors.length > 0 ? (failOnMemoryErrors ? "failed" : "degraded") : errors.length > 0 ? "partial" : "healthy";
+  return {
+    ok: !failOnMemoryErrors || memoryErrors.length === 0,
+    status,
+    fail_on_memory_errors: failOnMemoryErrors,
+    total_errors: errors.length,
+    memory_errors: memoryErrors.length,
+    message: memoryErrors.length > 0
+      ? `Structural snapshot recorded ${memoryErrors.length} Memory API errors${failOnMemoryErrors ? " and strict mode is enabled" : ""}.`
+      : errors.length > 0
+        ? `Structural snapshot recorded ${errors.length} non-Memory endpoint errors.`
+        : "Structural snapshot completed without endpoint errors."
+  };
 }
 
 async function fetchMemory(api, shard) {
@@ -120,9 +139,15 @@ async function main() {
     return;
   }
   const snapshot = await exportSnapshot(options);
+  const health = evaluateStructuralSnapshotHealth(snapshot, options);
   console.log(`wrote ${options.out}`);
   console.log(`rooms=${snapshot.roomCount} shard=${snapshot.source.shard} tick=${snapshot.source.tick} user=${snapshot.source.user}`);
   console.log(`read-only methods=${snapshot.source.apiPolicy.methodsUsed.join(",")}`);
+  console.log(`errors=${health.total_errors} memoryErrors=${health.memory_errors} health=${health.status}`);
+  if (!health.ok) {
+    console.error(health.message);
+    process.exitCode = 2;
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
