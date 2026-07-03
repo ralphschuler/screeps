@@ -30,6 +30,7 @@ const logger = createLogger("MilitaryBehaviors");
 const DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT = 250;
 const DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT = 750;
 const DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM = 5;
+const DEFENSE_ASSIST_HARD_THREAT_TRICKLE_INTERVAL = 50;
 const DEFENSE_ASSIST_TASK = "defenseAssist";
 
 type DefenseAssistRole = "guard" | "ranger" | "healer";
@@ -47,6 +48,10 @@ interface MemoryWithDefenseRequests {
   defenseRequests?: DefenseAssistRequestMemory[] | Record<string, DefenseAssistRequestMemory>;
 }
 
+interface MemoryWithDefenseAssistTrickleReleases {
+  defenseAssistTrickleReleases?: Record<string, number>;
+}
+
 function getDefenseAssistTargetRoom(mem: Partial<SwarmCreepMemory>): string | undefined {
   return mem.assistTarget ?? (mem.task === DEFENSE_ASSIST_TASK ? mem.targetRoom : undefined);
 }
@@ -56,6 +61,7 @@ function clearDefenseAssistAssignment(mem: SwarmCreepMemory): void {
   delete mem.defenseSquadId;
   delete mem.defenseSquadSize;
   delete mem.defenseSquadCreatedAt;
+  delete mem.defenseAssistReleasedAt;
   if (mem.task === DEFENSE_ASSIST_TASK) {
     delete mem.task;
     delete mem.targetRoom;
@@ -70,6 +76,10 @@ function isDefenseAssistSquadStagingExpired(mem: SwarmCreepMemory, hardThreat: b
   if (mem.defenseSquadCreatedAt === undefined) return true;
   const timeout = hardThreat ? DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT : DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT;
   return Game.time - mem.defenseSquadCreatedAt >= timeout;
+}
+
+function markDefenseAssistReleased(mem: SwarmCreepMemory): void {
+  mem.defenseAssistReleasedAt ??= Game.time;
 }
 
 function emptyCombatPower(): CombatPower {
@@ -148,15 +158,18 @@ function isReadyDefenseAssistTargetMember(creep: Creep, assistTarget: string, ho
   );
 }
 
-function countReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: string): number {
+function getReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: string): Creep[] {
   return Object.values(Game.creeps).filter(creep =>
     isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom)
-  ).length;
+  );
+}
+
+function countReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: string): number {
+  return getReadyDefenseAssistTargetMembers(assistTarget, homeRoom).length;
 }
 
 function calculateReadyDefenseAssistTargetPower(assistTarget: string, homeRoom: string): CombatPower {
-  return Object.values(Game.creeps)
-    .filter(creep => isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom))
+  return getReadyDefenseAssistTargetMembers(assistTarget, homeRoom)
     .reduce((total, creep) => {
       const activeBody = creep.body.filter(part => part.hits > 0);
       return addCombatPower(total, calculateCombatPower(activeBody));
@@ -237,25 +250,87 @@ function countReadyDefenseAssistSquadMembers(mem: SwarmCreepMemory, homeRoom: st
   ).length;
 }
 
+function getDefenseAssistTrickleKey(homeRoom: string, assistTarget: string): string {
+  return `${homeRoom}:${assistTarget}`;
+}
+
+function getDefenseAssistTricklePriority(creep: Creep): number {
+  const activeDamage = creep.body.some(part =>
+    part.hits > 0 && (part.type === ATTACK || part.type === RANGED_ATTACK || part.type === WORK)
+  );
+  if (activeDamage) return 0;
+
+  const activeHeal = creep.body.some(part => part.hits > 0 && part.type === HEAL);
+  return activeHeal ? 1 : 2;
+}
+
+function chooseDefenseAssistTrickleMember(readyMembers: Creep[]): Creep | null {
+  return [...readyMembers].sort((a, b) => {
+    const priorityDelta = getDefenseAssistTricklePriority(a) - getDefenseAssistTricklePriority(b);
+    if (priorityDelta !== 0) return priorityDelta;
+    return a.name.localeCompare(b.name);
+  })[0] ?? null;
+}
+
+function canReleaseHardThreatTrickle(creep: Creep, homeRoom: string, assistTarget: string, readyMembers: Creep[]): boolean {
+  if (chooseDefenseAssistTrickleMember(readyMembers)?.name !== creep.name) return false;
+
+  const memory = Memory as unknown as MemoryWithDefenseAssistTrickleReleases;
+  const releases = memory.defenseAssistTrickleReleases ??= {};
+  const key = getDefenseAssistTrickleKey(homeRoom, assistTarget);
+  const lastReleasedAt = releases[key];
+  if (lastReleasedAt !== undefined && Game.time - lastReleasedAt < DEFENSE_ASSIST_HARD_THREAT_TRICKLE_INTERVAL) {
+    return false;
+  }
+
+  releases[key] = Game.time;
+  return true;
+}
+
 function getDefenseAssistSquadStagingAction(ctx: CreepContext, mem: SwarmCreepMemory): CreepAction | null {
   if (!isDefenseAssistSquadConfigured(mem)) return null;
   if (ctx.creep.room.name !== ctx.homeRoom) return null;
 
   const assistTarget = getDefenseAssistTargetRoom(mem);
   if (!assistTarget) return null;
+  if (mem.defenseAssistReleasedAt !== undefined) return null;
 
   const threatProfile = getVisibleDefenseAssistThreatProfile(assistTarget);
   const hardThreat = isDefenseAssistThreatProfileHard(threatProfile);
-  const readyMembers = hardThreat
-    ? countReadyDefenseAssistTargetMembers(assistTarget, ctx.homeRoom)
-    : countReadyDefenseAssistSquadMembers(mem, ctx.homeRoom);
+  const readyTargetMembers = hardThreat ? getReadyDefenseAssistTargetMembers(assistTarget, ctx.homeRoom) : [];
+  const readyMembers = hardThreat ? readyTargetMembers.length : countReadyDefenseAssistSquadMembers(mem, ctx.homeRoom);
+
+  const releaseQuorum = getDefenseAssistSquadReleaseQuorum(mem, hardThreat);
+  const stagingExpired = isDefenseAssistSquadStagingExpired(mem, hardThreat);
 
   if (threatProfile) {
-    if (hasReadyDefenseAssistParity(assistTarget, ctx.homeRoom, threatProfile)) return null;
+    if (hasReadyDefenseAssistParity(assistTarget, ctx.homeRoom, threatProfile)) {
+      markDefenseAssistReleased(mem);
+      return null;
+    }
+    if (readyMembers >= releaseQuorum) {
+      markDefenseAssistReleased(mem);
+      return null;
+    }
+    if (stagingExpired) {
+      if (!hardThreat) {
+        markDefenseAssistReleased(mem);
+        return null;
+      }
+      if (canReleaseHardThreatTrickle(ctx.creep, ctx.homeRoom, assistTarget, readyTargetMembers)) {
+        markDefenseAssistReleased(mem);
+        return null;
+      }
+    }
   } else {
-    if (readyMembers >= getDefenseAssistSquadReleaseQuorum(mem, hardThreat)) return null;
-    if (!hardThreat && isDefenseAssistSquadStagingExpired(mem, false)) return null;
-    if (hardThreat && isDefenseAssistSquadStagingExpired(mem, true)) return null;
+    if (readyMembers >= releaseQuorum) {
+      markDefenseAssistReleased(mem);
+      return null;
+    }
+    if (stagingExpired) {
+      markDefenseAssistReleased(mem);
+      return null;
+    }
   }
 
   const collectionPoint = getCollectionPoint(ctx.room.name);

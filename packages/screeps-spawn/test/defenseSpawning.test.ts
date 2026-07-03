@@ -174,7 +174,7 @@ describe("defense spawn throttling", () => {
         rangersNeeded: 0,
         healersNeeded: 0,
         urgency: 3,
-        createdAt: Game.time - 2000,
+        createdAt: Game.time,
         threat: "visible hostile dismantler"
       }
     ];
@@ -220,12 +220,47 @@ describe("defense spawn throttling", () => {
     assert.sameMembers(assistRequests.map(request => request.role), ["guard", "ranger", "healer"]);
     assert.deepEqual(
       [...new Set(assistRequests.map(request => request.additionalMemory?.defenseSquadId))],
-      ["defenseAssist:W17S29:W19S28:1000"]
+      ["defenseAssist:W17S29:W19S28:990"]
     );
     for (const request of assistRequests) {
       assert.equal(request.additionalMemory?.defenseSquadSize, 3);
       assert.equal(request.additionalMemory?.defenseSquadCreatedAt, Game.time);
     }
+  });
+
+  it("keeps helper defense-assist wave ids stable across planning ticks", () => {
+    const helper = createRoom([], "W17S29", 1800, 1800);
+    const attacked = createRoom([createHostile([ATTACK, RANGED_ATTACK, HEAL, MOVE])], "W19S28");
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 0,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: 900,
+        threat: "visible mixed assault"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const firstRequest = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(request => request.additionalMemory?.task === "defenseAssist");
+    Game.time = 1005;
+    const secondRequest = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests
+      .find(request => request.additionalMemory?.task === "defenseAssist");
+
+    assert.equal(firstRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:900");
+    assert.equal(secondRequest?.additionalMemory?.defenseSquadId, "defenseAssist:W17S29:W19S28:900");
+    assert.equal(firstRequest?.additionalMemory?.defenseSquadCreatedAt, 1000);
+    assert.equal(secondRequest?.additionalMemory?.defenseSquadCreatedAt, 1005);
   });
 
   it("uses aggregate parity squad size instead of role count for hard defense assists", () => {

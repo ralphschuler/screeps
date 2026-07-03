@@ -198,8 +198,12 @@ function getDefenseAssistCreatedAt(_request: DefenseAssistRequestMemory): number
   return Game.time;
 }
 
+function getDefenseAssistWaveIdTick(request: DefenseAssistRequestMemory): number {
+  return typeof request.createdAt === "number" && Number.isFinite(request.createdAt) ? request.createdAt : Game.time;
+}
+
 function createDefenseAssistSquadId(homeRoom: string, request: DefenseAssistRequestMemory): string {
-  return `defenseAssist:${homeRoom}:${request.roomName}:${getDefenseAssistCreatedAt(request)}`;
+  return `defenseAssist:${homeRoom}:${request.roomName}:${getDefenseAssistWaveIdTick(request)}`;
 }
 
 function createDefenseAssistSpawnAssignment(

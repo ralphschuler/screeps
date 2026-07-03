@@ -121,6 +121,8 @@ export interface SwarmCreepMemory {
   defenseSquadSize?: number;
   /** Tick when the defense assist wave was requested/spawned. */
   defenseSquadCreatedAt?: number;
+  /** Tick when this creep was released from defense-assist staging. */
+  defenseAssistReleasedAt?: number;
   /** Boosted flag */
   boosted?: boolean;
   /** Boost requirements (for spawning with boost intentions) */
