@@ -24,6 +24,7 @@ import { createMockCreep, createMockRoom, resetMockGame } from "./setup";
 describe("Behavior Contracts", () => {
   beforeEach(() => {
     resetMockGame();
+    delete (Memory as Memory & { creepTaskBoard?: unknown }).creepTaskBoard;
     (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = () => null;
     setLabManagerProvider(undefined);
     setRemoteMoveHandler(undefined);
@@ -77,6 +78,15 @@ describe("Behavior Contracts", () => {
       tombstones: [],
       mineralContainers: []
     };
+  }
+
+  function makeEnergyStore(used: number, capacity: number): Store<RESOURCE_ENERGY, false> {
+    return {
+      [RESOURCE_ENERGY]: used,
+      getUsedCapacity: (resource?: ResourceConstant) => resource === undefined || resource === RESOURCE_ENERGY ? used : 0,
+      getFreeCapacity: (resource?: ResourceConstant) => resource === undefined || resource === RESOURCE_ENERGY ? Math.max(0, capacity - used) : 0,
+      getCapacity: () => capacity
+    } as unknown as Store<RESOURCE_ENERGY, false>;
   }
 
   it("exports current economy behavior functions", () => {
@@ -195,6 +205,212 @@ describe("Behavior Contracts", () => {
     });
 
     expect(action.type).to.equal("idle");
+  });
+
+  it("prioritizes source-container energy for defenseRefuel haulers before dropped resources", () => {
+    const ctx = createContext("hauler");
+    ctx.memory.task = "defenseRefuel";
+
+    const dropped = {
+      id: "drop1",
+      resourceType: RESOURCE_ENERGY,
+      amount: 500,
+      pos: new RoomPosition(24, 25, ctx.room.name)
+    } as Resource<RESOURCE_ENERGY>;
+    const sourceContainer = {
+      id: "sourceContainer1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: new RoomPosition(20, 20, ctx.room.name),
+      store: makeEnergyStore(500, 2000)
+    } as unknown as StructureContainer;
+
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      droppedResources: [dropped],
+      containers: [sourceContainer]
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(sourceContainer);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
+  it("fills spawn and extension targets before task-board tower work for defenseRefuel haulers", () => {
+    const room = createMockRoom("W1N1");
+    const extension = {
+      id: "extension1",
+      structureType: STRUCTURE_EXTENSION,
+      pos: new RoomPosition(24, 25, room.name),
+      store: makeEnergyStore(0, 50)
+    } as unknown as StructureExtension;
+    const tower = {
+      id: "tower1",
+      structureType: STRUCTURE_TOWER,
+      pos: new RoomPosition(25, 25, room.name),
+      store: makeEnergyStore(200, 1000)
+    } as unknown as StructureTower;
+    const storage = {
+      id: "storage1",
+      store: makeEnergyStore(0, 100000)
+    } as unknown as StructureStorage;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, task: "defenseRefuel", working: true },
+      store: makeEnergyStore(50, 50)
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id => id === "tower1" ? tower : null;
+    (Memory as Memory & { creepTaskBoard?: unknown }).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: 0,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 },
+          tasks: {
+            "W1N1:refillTower:tower1": {
+              id: "W1N1:refillTower:tower1",
+              roomName: room.name,
+              type: "refillTower",
+              priority: 100,
+              status: "open",
+              targetId: "tower1" as Id<StructureTower>,
+              targetPos: { x: 25, y: 25, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              amount: 800,
+              reservedAmount: 0,
+              maxAssignments: 1,
+              assignedCreeps: [],
+              reservations: {},
+              allowedRoles: ["hauler"],
+              createdTick: Game.time,
+              updatedTick: Game.time,
+              expiresTick: Game.time + 50
+            }
+          }
+        }
+      }
+    };
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isFull: true,
+      isWorking: true,
+      spawnStructures: [extension],
+      towers: [tower],
+      storage
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+  });
+
+  it("does not duplicate a reserved spawn or extension refill task for defenseRefuel haulers", () => {
+    const room = createMockRoom("W1N1");
+    const extension = {
+      id: "extension1",
+      structureType: STRUCTURE_EXTENSION,
+      pos: new RoomPosition(24, 25, room.name),
+      store: makeEnergyStore(0, 50)
+    } as unknown as StructureExtension;
+    const storage = {
+      id: "storage1",
+      store: makeEnergyStore(0, 100000)
+    } as unknown as StructureStorage;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, task: "defenseRefuel", working: true },
+      store: makeEnergyStore(50, 50)
+    });
+    const otherHauler = createMockCreep("otherHauler", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: true },
+      store: makeEnergyStore(50, 50)
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    Game.creeps[otherHauler.name] = otherHauler;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id => id === "extension1" ? extension : null;
+    (Memory as Memory & { creepTaskBoard?: unknown }).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: 0,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 },
+          tasks: {
+            "W1N1:refillExtension:extension1": {
+              id: "W1N1:refillExtension:extension1",
+              roomName: room.name,
+              type: "refillExtension",
+              priority: 100,
+              status: "assigned",
+              targetId: "extension1" as Id<StructureExtension>,
+              targetPos: { x: 24, y: 25, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              amount: 50,
+              reservedAmount: 50,
+              maxAssignments: 1,
+              assignedCreeps: [otherHauler.name],
+              reservations: {
+                [otherHauler.name]: {
+                  creepName: otherHauler.name,
+                  amount: 50,
+                  assignedTick: Game.time,
+                  expiresTick: Game.time + 10
+                }
+              },
+              allowedRoles: ["hauler"],
+              createdTick: Game.time,
+              updatedTick: Game.time,
+              expiresTick: Game.time + 50
+            }
+          }
+        }
+      }
+    };
+
+    const action = evaluateEconomyBehavior({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isFull: true,
+      isWorking: true,
+      spawnStructures: [extension],
+      storage
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+  });
+
+  it("falls back to normal hauler energy collection when defenseRefuel has no source container", () => {
+    const storage = {
+      id: "storage1",
+      store: makeEnergyStore(1000, 100000)
+    } as unknown as StructureStorage;
+    const ctx = createContext("hauler");
+    ctx.memory.task = "defenseRefuel";
+
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      storage
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
   });
 
   it("keeps spawn delivery ahead of terminal energy buffering", () => {
