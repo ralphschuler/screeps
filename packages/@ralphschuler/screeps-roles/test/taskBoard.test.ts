@@ -581,6 +581,118 @@ describe("TaskBoard", () => {
     expect(taskBoard.getStats(room.name)).to.include({ open: 0, assigned: 0, reservations: 0 });
   });
 
+  it("prunes legacy build repair and upgrade tasks from memory while keeping delivery tasks", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const site = {
+      id: "site1" as Id<ConstructionSite>,
+      structureType: STRUCTURE_EXTENSION,
+      progress: 0,
+      progressTotal: 100,
+      pos: { x: 14, y: 10, roomName: "W1N1" }
+    } as ConstructionSite;
+    const road = {
+      id: "road1" as Id<StructureRoad>,
+      structureType: STRUCTURE_ROAD,
+      hits: 100,
+      hitsMax: 5000,
+      pos: { x: 15, y: 10, roomName: "W1N1" }
+    } as StructureRoad;
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === extension.id) return extension;
+      if (id === site.id) return site;
+      if (id === road.id) return road;
+      if (id === controller.id) return controller;
+      return null;
+    };
+
+    const builder = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", family: "economy", homeRoom: room.name, version: 1, assignedTaskId: `${room.name}:build:${site.id}` } as any,
+      store: makeStore(50, 50),
+      body: [{ type: WORK, hits: 100 }, { type: CARRY, hits: 100 }, { type: MOVE, hits: 100 }]
+    });
+    MockGame.creeps[builder.name] = builder;
+
+    const baseTask = {
+      roomName: room.name,
+      priority: TaskPriority.NORMAL,
+      amount: 50,
+      maxAssignments: 1,
+      allowedRoles: ["builder"],
+      createdTick: Game.time - 10,
+      updatedTick: Game.time - 10,
+      expiresTick: Game.time + 50,
+      reservedAmount: 0,
+      assignedCreeps: [],
+      reservations: {},
+      status: "open"
+    };
+
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          tasks: {
+            [`${room.name}:build:${site.id}`]: {
+              ...baseTask,
+              id: `${room.name}:build:${site.id}`,
+              type: "build",
+              targetId: site.id,
+              targetPos: { x: 14, y: 10, roomName: room.name },
+              reservedAmount: 50,
+              assignedCreeps: [builder.name],
+              reservations: { [builder.name]: { creepName: builder.name, amount: 50, assignedTick: Game.time - 1, expiresTick: Game.time + 10 } },
+              status: "assigned"
+            },
+            [`${room.name}:repair:${road.id}`]: {
+              ...baseTask,
+              id: `${room.name}:repair:${road.id}`,
+              type: "repair",
+              targetId: road.id,
+              targetPos: { x: 15, y: 10, roomName: room.name }
+            },
+            [`${room.name}:upgrade:${controller.id}`]: {
+              ...baseTask,
+              id: `${room.name}:upgrade:${controller.id}`,
+              type: "upgrade",
+              targetId: controller.id,
+              targetPos: { x: 40, y: 40, roomName: room.name }
+            },
+            [`${room.name}:refillExtension:${extension.id}`]: {
+              ...baseTask,
+              id: `${room.name}:refillExtension:${extension.id}`,
+              type: "refillExtension",
+              priority: TaskPriority.HIGH,
+              targetId: extension.id,
+              targetPos: { x: 12, y: 10, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              allowedRoles: ["hauler"]
+            }
+          },
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: Game.time - 1,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    taskBoard.refreshRoom(room);
+
+    const board = (Memory as any).creepTaskBoard.rooms[room.name];
+    expect(Object.values(board.tasks).map((task: any) => task.type)).to.deep.equal(["refillExtension"]);
+    expect(board.stats.invalidated).to.equal(3);
+    expect((builder.memory as any).assignedTaskId).to.equal(undefined);
+  });
+
   it("assigns builder critical extension refill through the task board before direct build fallback", () => {
     const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
     const controller = makeController("controller1" as Id<StructureController>);
