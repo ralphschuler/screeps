@@ -609,6 +609,44 @@ export class TaskBoard {
     }
   }
 
+  public refreshCreepReservation(
+    ctx: CreepContext,
+    action: Extract<CreepAction, { type: "transfer" }>
+  ): number | null {
+    const assignedTaskId = ctx.memory.assignedTaskId;
+    if (!assignedTaskId) return null;
+
+    const memory = getTaskMemory();
+    const roomName = action.target.pos.roomName;
+    const board = memory.rooms[roomName] ?? memory.rooms[ctx.room.name];
+    const task = board?.tasks[assignedTaskId];
+    const reservation = task?.reservations[ctx.creep.name];
+
+    if (
+      !board ||
+      !task ||
+      !reservation ||
+      task.targetId !== action.target.id ||
+      !isEnergyDeliveryTaskType(task.type) ||
+      !isTargetStillValid(task)
+    ) {
+      delete ctx.memory.assignedTaskId;
+      return null;
+    }
+
+    const amount = getReservationAmount(task, ctx.creep.name) ?? action.amount;
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+      delete ctx.memory.assignedTaskId;
+      return null;
+    }
+
+    reservation.amount = amount;
+    reservation.expiresTick = Game.time + DEFAULT_RESERVATION_TTL;
+    task.updatedTick = Game.time;
+    recomputeReservationTotals(task);
+    return reservation.amount;
+  }
+
   public clear(roomName?: string): void {
     const memory = getTaskMemory();
     if (roomName) {
