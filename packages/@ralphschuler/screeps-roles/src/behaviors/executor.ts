@@ -53,7 +53,33 @@ export type RemoteMoveHandler = (
 
 type MetricsCreepMemory = CreepMemory & { _metrics?: metrics.CreepMetrics };
 
+type TransferAmountResolution =
+  | { amount?: number; error?: undefined }
+  | { amount?: undefined; error: ScreepsReturnCode };
+
 let remoteMoveHandler: RemoteMoveHandler | undefined;
+
+function resolveTransferAmount(
+  creep: Creep,
+  target: AnyStoreStructure,
+  resourceType: ResourceConstant,
+  requestedAmount?: number,
+): TransferAmountResolution {
+  if (requestedAmount === undefined) return {};
+
+  const carriedAmount = creep.store.getUsedCapacity(resourceType);
+  if (carriedAmount <= 0) return { error: ERR_NOT_ENOUGH_RESOURCES };
+
+  const freeCapacity = target.store?.getFreeCapacity(resourceType);
+  if (typeof freeCapacity === "number" && freeCapacity <= 0) return { error: ERR_FULL };
+
+  const amount = Math.min(
+    requestedAmount,
+    carriedAmount,
+    freeCapacity ?? requestedAmount,
+  );
+  return amount > 0 ? { amount } : { error: ERR_INVALID_ARGS };
+}
 
 function shouldBlockHarmfulActionAgainstAlly(
   ctx: CreepContext,
@@ -203,17 +229,27 @@ export function executeAction(
       break;
 
     // Resource delivery
-    case "transfer":
+    case "transfer": {
+      const transferAmount = resolveTransferAmount(
+        creep,
+        optimizedAction.target,
+        optimizedAction.resourceType,
+        optimizedAction.amount,
+      );
       shouldClearState = executeWithRange(
         creep,
-        () =>
-          creep.transfer(optimizedAction.target, optimizedAction.resourceType),
+        () => transferAmount.error ?? creep.transfer(
+          optimizedAction.target,
+          optimizedAction.resourceType,
+          transferAmount.amount,
+        ),
         optimizedAction.target,
         PATH_COLORS.transfer,
         optimizedAction.type,
-        { resourceType: optimizedAction.resourceType },
+        { resourceType: optimizedAction.resourceType, amount: transferAmount.amount },
       );
       break;
+    }
 
     case "drop":
       creep.drop(optimizedAction.resourceType);
@@ -572,7 +608,7 @@ function executeWithRange(
   target: RoomObject,
   _pathColor: string,
   actionLabel?: string,
-  actionData?: { resourceType?: ResourceConstant },
+  actionData?: { resourceType?: ResourceConstant; amount?: number },
 ): boolean {
   const result = action();
 
@@ -628,7 +664,7 @@ function trackActionMetrics(
   creep: Creep,
   actionType: string,
   target: RoomObject,
-  actionData?: { resourceType?: ResourceConstant },
+  actionData?: { resourceType?: ResourceConstant; amount?: number },
 ): void {
   const metricsMemory = creep.memory as MetricsCreepMemory;
 
@@ -651,12 +687,14 @@ function trackActionMetrics(
     }
 
     case "transfer": {
-      // For transfer, track the actual amount transferred
-      // Use the specific resource type from the action
+      // For transfer, track the intended amount. Screeps intents do not mutate
+      // store state until tick end, so explicit reserved amounts are the best
+      // available estimate for amount-aware task-board deliveries.
       const resourceType = actionData?.resourceType ?? RESOURCE_ENERGY;
       const transferAmount = Math.min(
+        actionData?.amount ?? creep.store.getUsedCapacity(resourceType),
         creep.store.getUsedCapacity(resourceType),
-        (target as AnyStoreStructure).store?.getFreeCapacity(resourceType) ?? 0,
+        (target as AnyStoreStructure).store?.getFreeCapacity(resourceType) ?? Infinity,
       );
       if (transferAmount > 0) {
         metrics.recordTransfer(metricsMemory, transferAmount);

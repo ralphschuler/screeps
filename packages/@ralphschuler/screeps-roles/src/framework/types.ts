@@ -52,7 +52,7 @@ export type CreepAction =
   | { type: "withdraw"; target: AnyStoreStructure | Tombstone | Ruin; resourceType: ResourceConstant }
 
   // Resource delivery actions
-  | { type: "transfer"; target: AnyStoreStructure; resourceType: ResourceConstant }
+  | { type: "transfer"; target: AnyStoreStructure; resourceType: ResourceConstant; amount?: number }
   | { type: "drop"; resourceType: ResourceConstant }
 
   // Construction and maintenance actions
