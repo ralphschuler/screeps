@@ -29,6 +29,7 @@ const ENERGY_DELIVERY_TASK_TYPES: TaskType[] = [
   "fillTerminalEnergy",
   "storeEnergy"
 ];
+const LEGACY_UNCONSUMED_TASK_TYPES = new Set<TaskType>(["build", "repair", "upgrade"]);
 
 const MILITARY_ROLES = ["guard", "remoteGuard", "healer", "soldier", "siegeUnit", "harasser", "ranger"];
 
@@ -105,6 +106,10 @@ function remainingAmount(task: CreepTask): number {
 
 function isEnergyDeliveryTaskType(type: TaskType): boolean {
   return ENERGY_DELIVERY_TASK_TYPES.includes(type);
+}
+
+function isLegacyUnconsumedTaskType(type: TaskType): boolean {
+  return LEGACY_UNCONSUMED_TASK_TYPES.has(type);
 }
 
 function getCreepEnergy(creep: Creep): number {
@@ -319,12 +324,34 @@ function isTargetStillValid(task: CreepTask): boolean {
   }
 }
 
+function clearTaskAssignmentMemory(task: CreepTask): void {
+  for (const creepName of new Set([...task.assignedCreeps, ...Object.keys(task.reservations)])) {
+    const creep = Game.creeps[creepName];
+    const memory = creep?.memory as unknown as Record<string, unknown> | undefined;
+    if (memory?.assignedTaskId === task.id) {
+      delete memory.assignedTaskId;
+    }
+  }
+}
+
+function invalidateTask(board: RoomTaskBoardMemory, task: CreepTask): void {
+  task.status = "invalid";
+  clearTaskAssignmentMemory(task);
+  board.stats.invalidated++;
+  delete board.tasks[task.id];
+}
+
 function cleanupBoard(board: RoomTaskBoardMemory, force = false): void {
   if (!force && board.lastCleanedTick === Game.time) return;
   board.lastCleanedTick = Game.time;
   let staleReservations = 0;
 
   for (const task of Object.values(board.tasks)) {
+    if (isLegacyUnconsumedTaskType(task.type)) {
+      invalidateTask(board, task);
+      continue;
+    }
+
     for (const [creepName, reservation] of Object.entries(task.reservations)) {
       if (!Game.creeps[creepName] || Game.time > reservation.expiresTick) {
         delete task.reservations[creepName];
@@ -335,9 +362,7 @@ function cleanupBoard(board: RoomTaskBoardMemory, force = false): void {
     recomputeReservationTotals(task);
 
     if (Game.time > task.expiresTick || !isTargetStillValid(task)) {
-      task.status = "invalid";
-      board.stats.invalidated++;
-      delete board.tasks[task.id];
+      invalidateTask(board, task);
       continue;
     }
 
