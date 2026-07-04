@@ -184,6 +184,26 @@ describe("TaskBoard", () => {
     expect(taskBoard.describeAssignments(room.name)).to.contain("hauler2 -> refillExtension");
   });
 
+  it("includes the reserved amount on delivery transfer actions", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_MY_STRUCTURES ? [extension] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 },
+      store: makeStore(200, 200),
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const action = taskBoard.getAssignedDeliveryAction(makeContext(creep, room));
+
+    expect(action?.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).amount).to.equal(50);
+  });
+
   it("cleans dead creep reservations", () => {
     const spawn = makeSpawn("spawn1" as Id<StructureSpawn>, 100);
     const room = createMockRoom("W1N1");

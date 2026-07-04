@@ -107,6 +107,77 @@ describe("Action execution ally-safety guard", () => {
     expect(attackCalled).to.equal(true);
   });
 
+  it("passes bounded explicit transfer amounts to creep.transfer", () => {
+    const room = createMockRoom("W1N1");
+    let transferArgs: [AnyStoreStructure, ResourceConstant, number | undefined] | undefined;
+    const extension = {
+      id: "extension1" as Id<StructureExtension>,
+      structureType: STRUCTURE_EXTENSION,
+      pos: new RoomPosition(10, 10, room.name),
+      store: { getFreeCapacity: () => 50 },
+    } as unknown as StructureExtension;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: true },
+      store: {
+        getUsedCapacity: () => 200,
+        getFreeCapacity: () => 0,
+        getCapacity: () => 200,
+      } as Creep["store"],
+    });
+    (creep as unknown as { transfer: typeof creep.transfer }).transfer = (
+      target,
+      resourceType,
+      amount,
+    ) => {
+      transferArgs = [target as AnyStoreStructure, resourceType, amount];
+      return OK;
+    };
+    Game.creeps[creep.name] = creep;
+    Game.rooms[room.name] = room;
+
+    executeAction(
+      creep,
+      { type: "transfer", target: extension, resourceType: RESOURCE_ENERGY, amount: 80 },
+      createTestContext(creep, room),
+    );
+
+    expect(transferArgs).to.deep.equal([extension, RESOURCE_ENERGY, 50]);
+  });
+
+  it("leaves direct transfer actions unbounded when no amount is provided", () => {
+    const room = createMockRoom("W1N1");
+    let transferArgs: [AnyStoreStructure, ResourceConstant, number | undefined] | undefined;
+    const storage = {
+      id: "storage1" as Id<StructureStorage>,
+      structureType: STRUCTURE_STORAGE,
+      pos: new RoomPosition(10, 10, room.name),
+      store: { getFreeCapacity: () => 1000 },
+    } as unknown as StructureStorage;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: true },
+    });
+    (creep as unknown as { transfer: typeof creep.transfer }).transfer = (
+      target,
+      resourceType,
+      amount,
+    ) => {
+      transferArgs = [target as AnyStoreStructure, resourceType, amount];
+      return OK;
+    };
+    Game.creeps[creep.name] = creep;
+    Game.rooms[room.name] = room;
+
+    executeAction(
+      creep,
+      { type: "transfer", target: storage, resourceType: RESOURCE_ENERGY },
+      createTestContext(creep, room),
+    );
+
+    expect(transferArgs).to.deep.equal([storage, RESOURCE_ENERGY, undefined]);
+  });
+
   it("clears stale controller-action state when the creep has no active CLAIM parts", () => {
     const room = createMockRoom("W1N1");
     const controller = {

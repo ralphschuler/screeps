@@ -125,6 +125,11 @@ function getAssignmentAmount(creep: Creep, task: CreepTask): number {
   return Math.max(1, getCreepEnergy(creep));
 }
 
+function getReservationAmount(task: CreepTask, creepName: string): number | undefined {
+  const amount = task.reservations[creepName]?.amount;
+  return typeof amount === "number" && Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
 function canPerformTask(ctx: CreepContext, task: CreepTask): boolean {
   if (!task.allowedRoles.includes(ctx.memory.role)) return false;
 
@@ -514,7 +519,12 @@ function convertTaskToAction(task: CreepTask, ctx: CreepContext): CreepAction | 
     case "refillTower":
     case "fillTerminalEnergy":
     case "storeEnergy":
-      return { type: "transfer", target: target as AnyStoreStructure, resourceType: RESOURCE_ENERGY };
+      return {
+        type: "transfer",
+        target: target as AnyStoreStructure,
+        resourceType: RESOURCE_ENERGY,
+        amount: getReservationAmount(task, ctx.creep.name),
+      };
     case "build":
       return { type: "build", target: target as ConstructionSite };
     case "repair":
