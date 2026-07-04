@@ -45,6 +45,7 @@
 import type { CreepAction, CreepContext } from "./types";
 import type { CreepState } from "../memory/schemas";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { taskBoard } from "../tasks/taskBoard";
 
 const logger = createLogger("StateMachine");
 
@@ -75,6 +76,10 @@ interface StateValidityResult {
   valid: boolean;
   reason?: string;
   meta?: Record<string, unknown>;
+}
+
+function asPositiveFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 export interface StateMachineOptions {
@@ -305,8 +310,15 @@ function actionToState(action: CreepAction, _ctx: CreepContext): CreepState {
   }
 
   // Store additional data based on action type
-  if (action.type === "withdraw" || action.type === "transfer") {
+  if (action.type === "withdraw") {
     state.data = { resourceType: action.resourceType };
+  }
+
+  if (action.type === "transfer") {
+    state.data = {
+      resourceType: action.resourceType,
+      ...(asPositiveFiniteNumber(action.amount) !== undefined ? { amount: action.amount } : {})
+    };
   }
 
   if (action.type === "remoteMoveTo" || action.type === "remoteMoveToRoom") {
@@ -362,10 +374,12 @@ function stateToAction(state: CreepState): CreepAction | null {
 
     case "transfer":
       if (target && state.data?.resourceType) {
+        const amount = asPositiveFiniteNumber(state.data.amount);
         return {
           type: "transfer",
           target: target as AnyStoreStructure,
-          resourceType: state.data.resourceType as ResourceConstant
+          resourceType: state.data.resourceType as ResourceConstant,
+          ...(amount !== undefined ? { amount } : {})
         };
       }
       return null;
@@ -514,7 +528,22 @@ export function evaluateWithStateMachine(
       // State still ongoing - try to reconstruct and continue action
       const action = stateToAction(currentState);
       if (action) {
-        return action;
+        if (action.type === "transfer" && ctx.memory.assignedTaskId) {
+          const assignedTaskId = ctx.memory.assignedTaskId;
+          const reservationAmount = taskBoard.refreshCreepReservation(ctx, action);
+          if (reservationAmount === null) {
+            logger.info("Task-board delivery reservation missing, re-evaluating behavior", {
+              room: ctx.creep.pos.roomName,
+              creep: ctx.creep.name,
+              meta: { action: currentState.action, role: ctx.memory.role, assignedTaskId }
+            });
+            delete ctx.memory.state;
+          } else {
+            return { ...action, amount: reservationAmount };
+          }
+        } else {
+          return action;
+        }
       }
       // Failed to reconstruct - clear state and evaluate new
       logger.info("State reconstruction failed, re-evaluating behavior", {

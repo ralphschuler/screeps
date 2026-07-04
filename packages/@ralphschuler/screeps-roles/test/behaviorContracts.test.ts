@@ -12,6 +12,7 @@ import {
   remoteHarvester,
   remoteWorker,
   evaluateWithStateMachine,
+  TaskPriority,
   setLabManagerProvider,
   setRemoteMoveHandler,
   soldier,
@@ -835,6 +836,263 @@ describe("Behavior Contracts", () => {
     expect((action as Extract<CreepAction, { type: "remoteMoveToRoom" }>).roomName).to.equal("W1N1");
     expect(creep.memory.state?.action).to.equal("remoteMoveToRoom");
     expect(creep.memory.state?.targetRoom).to.equal("W1N1");
+  });
+
+  it("preserves task-board transfer amounts and refreshes the reservation during stateful delivery", () => {
+    const room = createMockRoom("W1N1");
+    const extension = {
+      id: "extension1" as Id<StructureExtension>,
+      structureType: STRUCTURE_EXTENSION,
+      pos: new RoomPosition(10, 10, room.name),
+      room,
+      store: { getFreeCapacity: () => 50 }
+    } as unknown as StructureExtension;
+    const taskId = `${room.name}:refillExtension:${extension.id}`;
+    const creep = createMockCreep("hauler1", {
+      room,
+      pos: new RoomPosition(25, 25, room.name),
+      memory: {
+        role: "hauler",
+        homeRoom: room.name,
+        assignedTaskId: taskId,
+        working: true
+      },
+      store: makeEnergyStore(200, 200)
+    });
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id =>
+      id === extension.id ? extension : null;
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          tasks: {
+            [taskId]: {
+              id: taskId,
+              roomName: room.name,
+              type: "refillExtension",
+              priority: TaskPriority.HIGH,
+              targetId: extension.id,
+              targetPos: { x: 10, y: 10, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              amount: 50,
+              reservedAmount: 50,
+              maxAssignments: 1,
+              allowedRoles: ["hauler"],
+              status: "assigned",
+              assignedCreeps: [creep.name],
+              reservations: {
+                [creep.name]: {
+                  creepName: creep.name,
+                  amount: 50,
+                  assignedTick: Game.time,
+                  expiresTick: Game.time
+                }
+              },
+              createdTick: Game.time,
+              updatedTick: Game.time,
+              expiresTick: Game.time + 50
+            }
+          },
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: Game.time,
+          stats: { generated: 0, assigned: 1, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    const ctx = {
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isWorking: true
+    };
+
+    const firstAction = evaluateWithStateMachine(ctx, () => ({
+      type: "transfer",
+      target: extension,
+      resourceType: RESOURCE_ENERGY,
+      amount: 50
+    }));
+    expect((firstAction as Extract<CreepAction, { type: "transfer" }>).amount).to.equal(50);
+    expect(creep.memory.state?.data).to.deep.include({ resourceType: RESOURCE_ENERGY, amount: 50 });
+
+    Game.time++;
+    const continuedAction = evaluateWithStateMachine(ctx, () => ({ type: "idle" }));
+
+    expect(continuedAction.type).to.equal("transfer");
+    expect((continuedAction as Extract<CreepAction, { type: "transfer" }>).amount).to.equal(50);
+    const reservation = (Memory as any).creepTaskBoard.rooms[room.name].tasks[taskId].reservations[creep.name];
+    expect(reservation.expiresTick).to.equal(Game.time + 15);
+  });
+
+  it("hydrates legacy task-board transfer state amounts from the active reservation", () => {
+    const room = createMockRoom("W1N1");
+    const extension = {
+      id: "extension1" as Id<StructureExtension>,
+      structureType: STRUCTURE_EXTENSION,
+      pos: new RoomPosition(10, 10, room.name),
+      room,
+      store: { getFreeCapacity: () => 50 }
+    } as unknown as StructureExtension;
+    const taskId = `${room.name}:refillExtension:${extension.id}`;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: {
+        role: "hauler",
+        homeRoom: room.name,
+        assignedTaskId: taskId,
+        working: true,
+        state: {
+          action: "transfer",
+          targetId: extension.id,
+          startTick: Game.time,
+          timeout: 25,
+          data: { resourceType: RESOURCE_ENERGY }
+        }
+      },
+      store: makeEnergyStore(200, 200)
+    });
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id =>
+      id === extension.id ? extension : null;
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          tasks: {
+            [taskId]: {
+              id: taskId,
+              roomName: room.name,
+              type: "refillExtension",
+              priority: TaskPriority.HIGH,
+              targetId: extension.id,
+              targetPos: { x: 10, y: 10, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              amount: 50,
+              reservedAmount: 50,
+              maxAssignments: 1,
+              allowedRoles: ["hauler"],
+              status: "assigned",
+              assignedCreeps: [creep.name],
+              reservations: {
+                [creep.name]: {
+                  creepName: creep.name,
+                  amount: 50,
+                  assignedTick: Game.time,
+                  expiresTick: Game.time
+                }
+              },
+              createdTick: Game.time,
+              updatedTick: Game.time,
+              expiresTick: Game.time + 50
+            }
+          },
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: Game.time,
+          stats: { generated: 0, assigned: 1, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    Game.time++;
+    const action = evaluateWithStateMachine({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isWorking: true
+    }, () => ({ type: "idle" }));
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).amount).to.equal(50);
+    const reservation = (Memory as any).creepTaskBoard.rooms[room.name].tasks[taskId].reservations[creep.name];
+    expect(reservation.expiresTick).to.equal(Game.time + 15);
+  });
+
+  it("clears stale task-board delivery state when its reservation no longer exists", () => {
+    const room = createMockRoom("W1N1");
+    const extension = {
+      id: "extension1" as Id<StructureExtension>,
+      structureType: STRUCTURE_EXTENSION,
+      pos: new RoomPosition(10, 10, room.name),
+      room,
+      store: { getFreeCapacity: () => 50 }
+    } as unknown as StructureExtension;
+    const taskId = `${room.name}:refillExtension:${extension.id}`;
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: {
+        role: "hauler",
+        homeRoom: room.name,
+        assignedTaskId: taskId,
+        working: true,
+        state: {
+          action: "transfer",
+          targetId: extension.id,
+          startTick: Game.time,
+          timeout: 25,
+          data: { resourceType: RESOURCE_ENERGY, amount: 50 }
+        }
+      },
+      store: makeEnergyStore(200, 200)
+    });
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    (Game as unknown as { getObjectById: (id: string) => unknown }).getObjectById = id =>
+      id === extension.id ? extension : null;
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          tasks: {
+            [taskId]: {
+              id: taskId,
+              roomName: room.name,
+              type: "refillExtension",
+              priority: TaskPriority.HIGH,
+              targetId: extension.id,
+              targetPos: { x: 10, y: 10, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              amount: 50,
+              reservedAmount: 0,
+              maxAssignments: 1,
+              allowedRoles: ["hauler"],
+              status: "open",
+              assignedCreeps: [],
+              reservations: {},
+              createdTick: Game.time,
+              updatedTick: Game.time,
+              expiresTick: Game.time + 50
+            }
+          },
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: Game.time,
+          stats: { generated: 0, assigned: 1, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    const action = evaluateWithStateMachine({
+      ...createContext("hauler"),
+      creep,
+      room,
+      memory: creep.memory as CreepContext["memory"],
+      isEmpty: false,
+      isWorking: true
+    }, () => ({ type: "idle" }));
+
+    expect(action.type).to.equal("idle");
+    expect(creep.memory.state).to.equal(undefined);
+    expect((creep.memory as { assignedTaskId?: string }).assignedTaskId).to.equal(undefined);
   });
 
   it("keeps room movement state active while on the target room exit", () => {
