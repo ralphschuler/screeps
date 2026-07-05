@@ -14,7 +14,7 @@
  * - FactoryWorker
  */
 
-import { createContext, evaluateEconomyBehavior, executeAction } from "../behaviors";
+import { createContext, evaluateEconomyBehavior, executeAction, getEconomyStateInterrupt } from "../behaviors";
 import { evaluateWithStateMachine } from "../behaviors/stateMachine";
 
 /**
@@ -23,6 +23,6 @@ import { evaluateWithStateMachine } from "../behaviors/stateMachine";
  */
 export function runEconomyRole(creep: Creep): void {
   const ctx = createContext(creep);
-  const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
+  const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior, { interrupt: getEconomyStateInterrupt });
   executeAction(creep, action, ctx);
 }

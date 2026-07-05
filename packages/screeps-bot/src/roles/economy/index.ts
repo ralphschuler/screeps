@@ -18,7 +18,8 @@ import {
   createContext,
   evaluateEconomyBehavior,
   evaluateWithStateMachine,
-  executeAction
+  executeAction,
+  getEconomyStateInterrupt
 } from "@ralphschuler/screeps-roles";
 
 /**
@@ -27,6 +28,6 @@ import {
  */
 export function runEconomyRole(creep: Creep): void {
   const ctx = createContext(creep);
-  const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
+  const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior, { interrupt: getEconomyStateInterrupt });
   executeAction(creep, action, ctx);
 }
