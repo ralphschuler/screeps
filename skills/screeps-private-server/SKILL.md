@@ -66,13 +66,13 @@ npm run server:ci:up
 npm run server:ci:down
 ```
 
-LAN access is opt-in only:
+LAN access is opt-in only and requires non-default server and bot passwords because shared-network clients can reach the local server:
 
 ```bash
-npm run server:local:up -- --serverHost=0.0.0.0
+npm run server:local:up -- --serverHost=0.0.0.0 --serverPassword=<strong-server-password> --password=<strong-bot-password>
 ```
 
-If Docker shows stale `0.0.0.0`, recreate/reset:
+A LAN bind with either default `ci-password` credential is rejected before Docker Compose starts. If Docker shows stale `0.0.0.0`, recreate/reset:
 
 ```bash
 npm run server:local:down

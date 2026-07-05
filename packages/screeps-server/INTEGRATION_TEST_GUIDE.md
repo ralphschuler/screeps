@@ -21,13 +21,13 @@ Password: ci-password
 Server password: ci-password
 ```
 
-Use LAN binding only when needed:
+Use LAN binding only when needed, and set non-default server and bot passwords because shared-network clients can reach the local server:
 
 ```bash
-npm run server:local:up -- --serverHost=0.0.0.0
+npm run server:local:up -- --serverHost=0.0.0.0 --serverPassword=<strong-server-password> --password=<strong-bot-password>
 ```
 
-If a running container still exposes `0.0.0.0`, recreate/reset it:
+A LAN bind with either default `ci-password` credential is rejected before Docker Compose starts. If a running container still exposes `0.0.0.0`, recreate/reset it:
 
 ```bash
 npm run server:local:down
