@@ -100,6 +100,52 @@ describe("UnifiedStatsManager", () => {
     expect(profiler?.rooms.W17S29.samples).to.equal(42);
   });
 
+  it("publishes a fresh zero-room idle tick for abandoned shards", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    const game = Game as unknown as { time: number; cpu: typeof Game.cpu };
+    const originalCpu = game.cpu;
+
+    try {
+      game.time = 76166543;
+      game.cpu = {
+        ...(Game.cpu as unknown as object),
+        bucket: 906,
+        limit: 20,
+        getUsed: () => 0
+      } as typeof Game.cpu;
+
+      manager.publishIdleTick();
+
+      const stats = (Memory as unknown as { stats: { tick: number; rooms: Record<string, unknown>; cpu: { bucket: number }; empire: { rooms: number } } }).stats;
+      expect(stats.tick).to.equal(76166543);
+      expect(stats.cpu.bucket).to.equal(906);
+      expect(stats.empire.rooms).to.equal(0);
+      expect(stats.rooms).to.deep.equal({});
+    } finally {
+      game.cpu = originalCpu;
+    }
+  });
+
+  it("keeps idle tick publishing robust when legacy creep mocks lack room data", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    (Game as unknown as { creeps: Record<string, unknown> }).creeps = {
+      legacyDrone: {
+        memory: undefined,
+        hits: undefined,
+        hitsMax: undefined,
+        body: undefined,
+        fatigue: undefined
+      }
+    };
+
+    manager.publishIdleTick();
+
+    const creepStats = (Memory as unknown as { stats: { creeps: Record<string, { current_room: string; home_room: string; body_parts: number }> } }).stats.creeps.legacyDrone;
+    expect(creepStats.current_room).to.equal("unknown");
+    expect(creepStats.home_room).to.equal("unknown");
+    expect(creepStats.body_parts).to.equal(0);
+  });
+
   it("drops stale room stats when room ownership is lost", () => {
     const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
     const state = manager as unknown as { currentSnapshot: { rooms: Record<string, unknown> } };

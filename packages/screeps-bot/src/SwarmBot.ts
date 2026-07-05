@@ -221,6 +221,15 @@ function runVisualizations(ownedRooms: Room[], profile: ReturnType<typeof resolv
 }
 
 /**
+ * Publish fresh minimal stats for abandoned/respawning shards before skipping
+ * colony work. This keeps live diagnostics from seeing stale or missing
+ * `Memory.stats` while preserving the no-owned-room CPU-saving guard.
+ */
+function publishIdleShardStats(): void {
+  unifiedStats.publishIdleTick();
+}
+
+/**
  * Main loop for SwarmBot
  */
 export function loop(): void {
@@ -255,7 +264,10 @@ export function loop(): void {
     if (Game.time % 100 === 0) {
       logger.info(`Shard idle (no owned rooms) at tick ${Game.time}`, { subsystem: "SwarmBot" });
     }
-    // Skip colony work to save CPU on abandoned shards
+    // Skip colony work to save CPU on abandoned shards, but still publish a fresh
+    // zero-room stats snapshot so live diagnostics can distinguish intentional
+    // idleness from stale/missing telemetry.
+    publishIdleShardStats();
     logger.flush();
     return;
   }

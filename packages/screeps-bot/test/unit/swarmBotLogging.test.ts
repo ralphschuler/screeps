@@ -74,6 +74,43 @@ describe("SwarmBot logging", () => {
     sinon.assert.called(kernelRunStub);
   });
 
+  it("publishes fresh idle-shard stats before returning with no owned rooms", async () => {
+    const bot = await reloadSwarmBot();
+
+    const startTickSpy = sandbox.spy(bot.unifiedStats, "startTick");
+    const finalizeTickSpy = sandbox.spy(bot.unifiedStats, "finalizeTick");
+    const kernelRunSpy = sandbox.spy(Kernel.prototype, "run");
+
+    // @ts-ignore: test setup for Game globals
+    global.Game.time = 76166543;
+    // @ts-ignore: test setup for Game globals
+    global.Game.cpu = { ...global.Game.cpu, bucket: 906, limit: 20 };
+    // @ts-ignore: test setup for Game globals
+    global.Game.rooms = {
+      W9N1: {
+        name: "W9N1",
+        controller: { my: false } as any,
+        find: () => []
+      } as any
+    };
+    // @ts-ignore: test setup for Memory globals
+    global.Memory.stats = { tick: 70000000, rooms: { W1N1: {} } };
+
+    bot.loop();
+
+    sinon.assert.calledOnce(startTickSpy);
+    sinon.assert.calledOnce(finalizeTickSpy);
+    sinon.assert.notCalled(kernelRunSpy);
+    // @ts-ignore: test setup for Memory globals
+    assert.equal(global.Memory.stats.tick, 76166543);
+    // @ts-ignore: test setup for Memory globals
+    assert.equal(global.Memory.stats.cpu.bucket, 906);
+    // @ts-ignore: test setup for Memory globals
+    assert.equal(global.Memory.stats.empire.rooms, 0);
+    // @ts-ignore: test setup for Memory globals
+    assert.deepEqual(global.Memory.stats.rooms, {});
+  });
+
   it("logs visualization errors through the logger", async () => {
     // Set up spies/stubs before reloading modules to ensure they're properly intercepted
     const errorSpy = sandbox.spy(loggerModule.logger, "error");
