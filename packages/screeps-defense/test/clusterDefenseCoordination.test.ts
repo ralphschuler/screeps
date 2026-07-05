@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { coordinateClusterDefense } from "../src/coordination/clusterDefense";
+import { DefenseCoordinator } from "../src/coordination/defenseCoordinator";
 
 function installScreepsConstants(): void {
   Object.assign(globalThis, {
@@ -129,9 +130,50 @@ describe("cluster defense coordination", () => {
     memoryManager.getHeapCache().clear();
   });
 
-  it("accepts a cluster id and assigns an idle helper-room defender", () => {
+  it("accepts a cluster id and assigns an idle helper-room defender with staged assist memory", () => {
     coordinateClusterDefense("cluster_W1N1");
 
-    expect(Game.creeps.guard1.memory.assistTarget).to.equal("W1N1");
+    expect(Game.creeps.guard1.memory).to.include({
+      assistTarget: "W1N1",
+      targetRoom: "W1N1",
+      task: "defenseAssist",
+      defenseSquadId: "defenseAssist:W2N1:W1N1:20",
+      defenseSquadSize: 1,
+      defenseSquadCreatedAt: 20
+    });
+  });
+
+  it("recovers staged defense-assist assignments after coordinator heap state resets", () => {
+    Game.creeps.guard1.memory = {
+      role: "guard",
+      family: "military",
+      homeRoom: "W2N1",
+      assistTarget: "W1N1",
+      targetRoom: "W1N1",
+      task: "defenseAssist",
+      defenseSquadId: "defenseAssist:W2N1:W1N1:10",
+      defenseSquadSize: 1,
+      defenseSquadCreatedAt: 10
+    } as CreepMemory;
+
+    const freshCoordinator = new DefenseCoordinator();
+
+    const expectedAssignment = {
+      creepName: "guard1",
+      targetRoom: "W1N1",
+      assignedAt: 10,
+      eta: Game.time
+    };
+
+    expect(freshCoordinator.getAssignmentsForRoom("W1N1")).to.deep.equal([expectedAssignment]);
+    expect(freshCoordinator.getAllAssignments()).to.deep.equal([expectedAssignment]);
+
+    freshCoordinator.cancelAssignment("guard1");
+
+    expect(Game.creeps.guard1.memory).to.not.have.property("assistTarget");
+    expect(Game.creeps.guard1.memory).to.not.have.property("targetRoom");
+    expect(Game.creeps.guard1.memory).to.not.have.property("task");
+    expect(Game.creeps.guard1.memory).to.not.have.property("defenseSquadId");
+    expect(freshCoordinator.getAllAssignments()).to.deep.equal([]);
   });
 });

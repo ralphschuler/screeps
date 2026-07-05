@@ -25,13 +25,12 @@
  * - CrossShardIntelCoordinator (empire:crossShardIntel)
  * - TooAngelManager (empire:tooangel)
  * - EvacuationManager (cluster:evacuation)
- * - DefenseCoordinator (cluster:defense)
  *
  * Addresses Issues: #5, #26, #30
  */
 
 import { clusterManager } from "@ralphschuler/screeps-clusters";
-import { defenseCoordinator, evacuationManager } from "@ralphschuler/screeps-defense";
+import { evacuationManager } from "@ralphschuler/screeps-defense";
 import { factoryManager, linkManager, marketManager, terminalManager } from "@ralphschuler/screeps-economy";
 import { getConfig } from "../config";
 import { crossShardIntelCoordinator } from "../empire/crossShardIntel";
@@ -151,8 +150,7 @@ export function registerAllProcesses(): void {
     // Cluster processes
     clusterManager,
     // Defense processes
-    evacuationManager,
-    defenseCoordinator
+    evacuationManager
   );
 
   registerFrameworkEconomyProcesses();

@@ -7,13 +7,16 @@
 
 import type { SquadMemory, SwarmCreepMemory } from "../memory/schemas";
 import {
+  DEFENSE_ASSIST_TASK,
   calculateCombatPower,
   checkAndExecuteRetreat,
   getActualHostileCreeps,
   getActualHostileStructures,
+  getDefenseAssistTargetRoom,
   getVisibleDefenseAssistThreatProfile,
   isKnownAllyPlayer,
   isDefenseAssistThreatProfileHard,
+  stageDefenseAssistCreep,
   type CombatPower,
   type DefenseAssistThreatProfile
 } from "@ralphschuler/screeps-defense";
@@ -31,7 +34,6 @@ const DEFENSE_ASSIST_SQUAD_STAGE_TIMEOUT = 250;
 const DEFENSE_ASSIST_HARD_THREAT_STAGE_TIMEOUT = 750;
 const DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM = 5;
 const DEFENSE_ASSIST_HARD_THREAT_TRICKLE_INTERVAL = 50;
-const DEFENSE_ASSIST_TASK = "defenseAssist";
 
 type DefenseAssistRole = "guard" | "ranger" | "healer";
 
@@ -52,10 +54,6 @@ interface MemoryWithDefenseRequests {
 
 interface MemoryWithDefenseAssistTrickleReleases {
   defenseAssistTrickleReleases?: Record<string, number>;
-}
-
-function getDefenseAssistTargetRoom(mem: Partial<SwarmCreepMemory>): string | undefined {
-  return mem.assistTarget ?? (mem.task === DEFENSE_ASSIST_TASK ? mem.targetRoom : undefined);
 }
 
 function clearDefenseAssistAssignment(mem: SwarmCreepMemory): void {
@@ -221,14 +219,15 @@ function tryAcquireDefenseAssistAssignment(ctx: CreepContext, mem: SwarmCreepMem
     if (!targetRoom || getActualHostileCreeps(targetRoom).length === 0) continue;
     if (!shouldAcquireDefenseAssistRequest(request, mem.role, ctx.homeRoom)) continue;
 
-    mem.task = DEFENSE_ASSIST_TASK;
-    mem.targetRoom = request.roomName;
-    mem.assistTarget = request.roomName;
-    mem.defenseSquadId = getActiveDefenseAssistSquadId(ctx.homeRoom, request.roomName);
-    mem.defenseSquadSize = hasVisibleHardDefenseAssistThreat(request.roomName)
-      ? Math.max(DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM, getTotalDefenseAssistRequestNeed(request))
-      : Math.max(1, getTotalDefenseAssistRequestNeed(request));
-    mem.defenseSquadCreatedAt = Game.time;
+    stageDefenseAssistCreep(ctx.creep, {
+      homeRoom: ctx.homeRoom,
+      targetRoom: request.roomName,
+      now: Game.time,
+      squadId: getActiveDefenseAssistSquadId(ctx.homeRoom, request.roomName),
+      squadSize: hasVisibleHardDefenseAssistThreat(request.roomName)
+        ? Math.max(DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM, getTotalDefenseAssistRequestNeed(request))
+        : Math.max(1, getTotalDefenseAssistRequestNeed(request))
+    });
 
     return request.roomName;
   }

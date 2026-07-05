@@ -11,6 +11,8 @@ import {
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
   calculateDefenseAssistSquadSize,
+  createDefenseAssistSquadId,
+  DEFENSE_ASSIST_TASK,
   getActualHostileCreeps,
   getVisibleDefenseAssistThreatProfile,
   isDefenseAssistMilitaryRole,
@@ -24,7 +26,6 @@ import { spawnQueue, SpawnPriority } from "../spawnQueue";
 
 const DEFENSE_ASSIST_REQUEST_TTL = 500;
 const DEFENSE_ASSIST_WAVE_TTL = 1200;
-const DEFENSE_ASSIST_TASK = "defenseAssist";
 const DEFENSE_ASSIST_ROLES = ["guard", "ranger", "healer"] as const;
 
 export interface DefenseAssistSpawnAssignment {
@@ -248,10 +249,6 @@ function canSpawnDefenseAssistFrom(room: Room): boolean {
   return getActualHostileCreeps(room).length === 0;
 }
 
-function createDefenseAssistSquadId(homeRoom: string, request: DefenseAssistRequestMemory, waveCreatedAt: number): string {
-  return `defenseAssist:${homeRoom}:${request.roomName}:${waveCreatedAt}`;
-}
-
 function createDefenseAssistSpawnAssignment(
   homeRoom: string,
   home: Room,
@@ -262,7 +259,7 @@ function createDefenseAssistSpawnAssignment(
     targetRoom: request.roomName,
     task: DEFENSE_ASSIST_TASK,
     priority: (request.urgency ?? 1) >= 2 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH,
-    defenseSquadId: createDefenseAssistSquadId(homeRoom, request, wave.createdAt),
+    defenseSquadId: createDefenseAssistSquadId(homeRoom, request.roomName, wave.createdAt),
     defenseSquadSize: getDefenseAssistSquadSizeForHelper(request, home),
     defenseSquadCreatedAt: wave.createdAt
   };

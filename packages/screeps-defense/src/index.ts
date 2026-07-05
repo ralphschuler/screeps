@@ -132,6 +132,17 @@ export {
   coordinateClusterDefense,
 } from "./coordination/clusterDefense";
 
+export {
+  DEFENSE_ASSIST_TASK,
+  clearDefenseAssistMemory,
+  createDefenseAssistMemory,
+  createDefenseAssistSquadId,
+  getDefenseAssistTargetRoom,
+  stageDefenseAssistCreep,
+  type DefenseAssistStagingMemory,
+  type DefenseAssistStagingOptions,
+} from "./coordination/defenseAssistStaging";
+
 // Emergency Response
 export {
   emergencyResponseManager,

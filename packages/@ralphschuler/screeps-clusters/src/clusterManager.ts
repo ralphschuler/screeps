@@ -68,7 +68,7 @@ import {
 import { queueDefenseReinforcementSpawns } from "./defenseReinforcements";
 import { updateClusterRallyPoints } from "./rallyPointManager";
 import { assignDefendersToDefenseRequests } from "./defenderAssignments";
-import { coordinateClusterDefense, getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import {
   calculateMilitaryReadinessRatio,
   decideClusterRole,
@@ -193,7 +193,6 @@ export class ClusterManager {
         break;
       case "defense":
         this.processDefenseRequests(cluster);
-        coordinateClusterDefense(cluster.id);
         break;
       case "terminals":
         this.balanceTerminalResources(cluster);

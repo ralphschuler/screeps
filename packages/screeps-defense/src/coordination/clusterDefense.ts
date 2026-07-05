@@ -15,6 +15,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { type ThreatAnalysis, assessThreat, logThreatAnalysis } from "../threat/threatAssessment";
+import { getDefenseAssistTargetRoom, stageDefenseAssistCreep } from "./defenseAssistStaging";
 
 /**
  * Find cluster for a room
@@ -128,16 +129,18 @@ export class ClusterDefenseCoordinator {
         // Room is safe, can spare defenders
         const roomDefenders = room.find(FIND_MY_CREEPS, {
           filter: c => {
-            const memory = c.memory as unknown as { 
-              role?: string; 
+            const memory = c.memory as unknown as {
+              role?: string;
               assistTarget?: string;
+              targetRoom?: string;
+              task?: string;
             };
             return (
-              (memory.role === "defender" || 
-               memory.role === "rangedDefender" || 
-               memory.role === "guard" || 
+              (memory.role === "defender" ||
+               memory.role === "rangedDefender" ||
+               memory.role === "guard" ||
                memory.role === "ranger") &&
-              !memory.assistTarget
+              !getDefenseAssistTargetRoom(memory)
             );
           }
         });
@@ -155,9 +158,18 @@ export class ClusterDefenseCoordinator {
    * @param targetRoom - Room to defend
    */
   private sendDefenders(defenders: Creep[], targetRoom: string): void {
+    const defendersByRoom = defenders.reduce((counts, defender) => {
+      counts.set(defender.room.name, (counts.get(defender.room.name) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>());
+
     for (const defender of defenders) {
-      const memory = defender.memory as unknown as { assistTarget?: string };
-      memory.assistTarget = targetRoom;
+      stageDefenseAssistCreep(defender, {
+        homeRoom: defender.room.name,
+        targetRoom,
+        now: Game.time,
+        squadSize: defendersByRoom.get(defender.room.name) ?? 1
+      });
     }
   }
 

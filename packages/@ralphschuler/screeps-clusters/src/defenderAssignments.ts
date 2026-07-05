@@ -1,3 +1,4 @@
+import { getDefenseAssistTargetRoom, stageDefenseAssistCreep } from "@ralphschuler/screeps-defense";
 import type { ClusterMemory } from "./types";
 
 type DefenseAssistRole = "guard" | "ranger" | "healer";
@@ -90,7 +91,7 @@ function collectCandidatesForRequest(
       const memory = creep.memory as DefenseAssistMemory;
       const role = getMilitaryAssistRole(memory);
       if (!role) continue;
-      if (memory.assistTarget) continue;
+      if (getDefenseAssistTargetRoom(memory)) continue;
       if (!hasActiveRolePart(creep, role)) continue;
       if (request.assignedCreeps.includes(creep.name)) continue;
       if (getNeededCount(request, role) <= 0) continue;
@@ -151,15 +152,14 @@ export function assignDefendersToDefenseRequests(
     }, new Map<string, number>());
 
     for (const defender of selectedDefenders) {
-      const memory = defender.creep.memory as DefenseAssistMemory;
       const localSquadSize = Math.max(1, Math.min(3, selectedByRoom.get(defender.room.name) ?? 1));
 
-      memory.assistTarget = request.roomName;
-      memory.targetRoom = request.roomName;
-      memory.task = "defenseAssist";
-      memory.defenseSquadId = `defenseAssist:${defender.room.name}:${request.roomName}:${options.now}`;
-      memory.defenseSquadSize = localSquadSize;
-      memory.defenseSquadCreatedAt = options.now;
+      stageDefenseAssistCreep(defender.creep, {
+        homeRoom: defender.room.name,
+        targetRoom: request.roomName,
+        now: options.now,
+        squadSize: localSquadSize
+      });
       request.assignedCreeps.push(defender.creep.name);
       setNeededCount(request, defender.role, getNeededCount(request, defender.role) - 1);
 

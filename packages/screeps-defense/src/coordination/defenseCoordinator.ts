@@ -21,10 +21,15 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import type { DefenseRequest } from "../analysis/defenderNeeds";
 import { assessThreat } from "../threat/threatAssessment";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+import {
+  clearDefenseAssistMemory,
+  getDefenseAssistTargetRoom,
+  stageDefenseAssistCreep,
+  type DefenseAssistStagingMemory
+} from "./defenseAssistStaging";
 
 /**
  * Defense assistance assignment
@@ -43,7 +48,6 @@ export interface DefenseAssignment {
 /**
  * Defense Coordinator
  */
-@ProcessClass()
 export class DefenseCoordinator {
   private assignments: Map<string, DefenseAssignment> = new Map();
 
@@ -56,23 +60,9 @@ export class DefenseCoordinator {
   }
 
   /**
-   * Set defense requests in memory
+   * Legacy compatibility loop for direct defense requests.
+   * Runtime dispatch is owned by the cluster manager; this method is intentionally not decorator-registered.
    */
-  private setDefenseRequestsInMemory(requests: DefenseRequest[]): void {
-    const mem = Memory as unknown as Record<string, unknown>;
-    mem.defenseRequests = requests;
-  }
-
-  /**
-   * Main coordination loop - process defense requests and assign helpers
-   * Registered as kernel process via decorator
-   */
-  @MediumFrequencyProcess("cluster:defense", "Defense Coordinator", {
-    priority: ProcessPriority.HIGH,
-    interval: 3,
-    minBucket: 0, // Removed bucket requirement - aligns with kernel defaults
-    cpuBudget: 0.05
-  })
   public run(): void {
     // Get active defense requests
     const requests = this.getDefenseRequestsFromMemory();
@@ -163,13 +153,13 @@ export class DefenseCoordinator {
       // Find available defenders in this room
       const defenders = helperRoom.find(FIND_MY_CREEPS, {
         filter: c => {
-          const memory = c.memory as unknown as { role?: string; assistTarget?: string };
+          const memory = c.memory as unknown as { role?: string; assistTarget?: string; targetRoom?: string; task?: string };
           
           // Must be the right role
           if (memory.role !== role) return false;
           
           // Must not already have an assignment
-          if (memory.assistTarget) return false;
+          if (getDefenseAssistTargetRoom(memory)) return false;
           
           // Must not already be assigned by coordinator
           if (this.assignments.has(c.name)) return false;
@@ -199,9 +189,13 @@ export class DefenseCoordinator {
 
         this.assignments.set(defender.name, assignment);
 
-        // Set creep memory for role behavior
-        const memory = defender.memory as unknown as { assistTarget?: string };
-        memory.assistTarget = targetRoom;
+        // Set staged creep memory for role behavior.
+        stageDefenseAssistCreep(defender, {
+          homeRoom: helperRoom.name,
+          targetRoom,
+          now: Game.time,
+          squadSize: toAssign
+        });
 
         assigned++;
 
@@ -240,9 +234,9 @@ export class DefenseCoordinator {
         // Prefer rooms with idle defenders
         const defenders = room.find(FIND_MY_CREEPS, {
           filter: c => {
-            const memory = c.memory as unknown as { role?: string; assistTarget?: string };
+            const memory = c.memory as unknown as { role?: string; assistTarget?: string; targetRoom?: string; task?: string };
             const role = memory.role;
-            return (role === "guard" || role === "ranger") && !memory.assistTarget;
+            return (role === "guard" || role === "ranger") && !getDefenseAssistTargetRoom(memory);
           }
         });
         score += defenders.length * 20;
@@ -264,11 +258,39 @@ export class DefenseCoordinator {
     return candidates.map(c => c.room);
   }
 
+  private getMemoryBackedAssignments(targetRoom?: string, role?: string, seen = new Set<string>()): DefenseAssignment[] {
+    const assignments: DefenseAssignment[] = [];
+
+    for (const creep of Object.values(Game.creeps)) {
+      if (seen.has(creep.name)) continue;
+      const memory = creep.memory as unknown as {
+        role?: string;
+        assistTarget?: string;
+        targetRoom?: string;
+        task?: string;
+        defenseSquadCreatedAt?: number;
+      };
+      const assignedTargetRoom = getDefenseAssistTargetRoom(memory);
+      if (!assignedTargetRoom) continue;
+      if (targetRoom && assignedTargetRoom !== targetRoom) continue;
+      if (role && memory.role !== role) continue;
+      assignments.push({
+        creepName: creep.name,
+        targetRoom: assignedTargetRoom,
+        assignedAt: memory.defenseSquadCreatedAt ?? Game.time,
+        eta: Game.time
+      });
+    }
+
+    return assignments;
+  }
+
   /**
    * Get defenders already assigned to a room
    */
   private getAssignedDefenders(targetRoom: string, role?: string): DefenseAssignment[] {
     const assigned: DefenseAssignment[] = [];
+    const seen = new Set<string>();
 
     for (const [creepName, assignment] of this.assignments.entries()) {
       if (assignment.targetRoom !== targetRoom) continue;
@@ -282,9 +304,10 @@ export class DefenseCoordinator {
       }
 
       assigned.push(assignment);
+      seen.add(creepName);
     }
 
-    return assigned;
+    return [...assigned, ...this.getMemoryBackedAssignments(targetRoom, role, seen)];
   }
 
   /**
@@ -307,8 +330,7 @@ export class DefenseCoordinator {
         const hostiles = getActualHostileCreeps(creep.room);
         if (hostiles.length === 0) {
           // No more hostiles, release creep
-          const memory = creep.memory as unknown as { assistTarget?: string };
-          delete memory.assistTarget;
+          clearDefenseAssistMemory(creep.memory as Partial<DefenseAssistStagingMemory>);
           toRemove.push(creepName);
           
           logger.debug(
@@ -320,8 +342,7 @@ export class DefenseCoordinator {
 
       // Remove stale assignments (older than 1000 ticks)
       if (Game.time - assignment.assignedAt > 1000) {
-        const memory = creep.memory as unknown as { assistTarget?: string };
-        delete memory.assistTarget;
+        clearDefenseAssistMemory(creep.memory as Partial<DefenseAssistStagingMemory>);
         toRemove.push(creepName);
         
         logger.debug(
@@ -348,7 +369,9 @@ export class DefenseCoordinator {
    * Get all active defense assignments
    */
   public getAllAssignments(): DefenseAssignment[] {
-    return Array.from(this.assignments.values());
+    const assignments = Array.from(this.assignments.values()).filter(assignment => Game.creeps[assignment.creepName]);
+    const seen = new Set(assignments.map(assignment => assignment.creepName));
+    return [...assignments, ...this.getMemoryBackedAssignments(undefined, undefined, seen)];
   }
 
   /**
@@ -356,19 +379,20 @@ export class DefenseCoordinator {
    */
   public cancelAssignment(creepName: string): void {
     const assignment = this.assignments.get(creepName);
-    if (assignment) {
-      const creep = Game.creeps[creepName];
-      if (creep) {
-        const memory = creep.memory as unknown as { assistTarget?: string };
-        delete memory.assistTarget;
-      }
-      this.assignments.delete(creepName);
-      
-      logger.info(
-        `Cancelled defense assignment for ${creepName}`,
-        { subsystem: "Defense" }
-      );
+    const creep = Game.creeps[creepName];
+    const memory = creep?.memory as Partial<DefenseAssistStagingMemory> | undefined;
+    const hasStagedAssignment = memory ? Boolean(getDefenseAssistTargetRoom(memory)) : false;
+    if (!assignment && !hasStagedAssignment) return;
+
+    if (memory) {
+      clearDefenseAssistMemory(memory);
     }
+    this.assignments.delete(creepName);
+
+    logger.info(
+      `Cancelled defense assignment for ${creepName}`,
+      { subsystem: "Defense" }
+    );
   }
 }
 
