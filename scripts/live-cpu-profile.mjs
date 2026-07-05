@@ -9,6 +9,7 @@ import { redactScreepsApiMessage } from "./live-redaction.mjs";
 export { redactScreepsApiMessage };
 
 const DEFAULT_SHARDS = ["shard0", "shard1", "shard2", "shard3"];
+const DEFAULT_MAX_STATS_AGE = 100;
 
 export function formatHelp() {
   return `Usage: node scripts/live-cpu-profile.mjs [options]
@@ -21,7 +22,9 @@ Options:
   --hostname <host>          Screeps hostname (default SCREEPS_HOSTNAME or screeps.com)
   --protocol <http|https>    Screeps API protocol (default SCREEPS_PROTOCOL or https)
   --port <n>                 Screeps API port (default SCREEPS_PORT or 443)
+  --max-stats-age <ticks>    Maximum api.time - Memory.stats.tick age allowed (default ${DEFAULT_MAX_STATS_AGE})
   --allow-empty              Allow zero-sample degraded artifact collection (default fail closed)
+  --allow-stale              Allow stale/missing stats artifacts as degraded instead of failed
   --help, -h                 Show this help
 
 Environment:
@@ -31,7 +34,7 @@ Environment:
   SCREEPS_PORT               Default port override
   SCREEPS_PATH               API path override (default /)
 
-Read-only: only fetches Memory.stats.`;
+Read-only: fetches api.time and Memory.stats.`;
 }
 
 export function parseArgs(argv) {
@@ -43,7 +46,9 @@ export function parseArgs(argv) {
     hostname: process.env.SCREEPS_HOSTNAME || "screeps.com",
     protocol: process.env.SCREEPS_PROTOCOL || "https",
     port: Number(process.env.SCREEPS_PORT || 443),
-    allowEmpty: false
+    maxStatsAge: DEFAULT_MAX_STATS_AGE,
+    allowEmpty: false,
+    allowStale: false
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -56,7 +61,9 @@ export function parseArgs(argv) {
     else if (arg === "--hostname" && next) args.hostname = next, i++;
     else if (arg === "--protocol" && next) args.protocol = next, i++;
     else if (arg === "--port" && next) args.port = Number(next), i++;
+    else if (arg === "--max-stats-age" && next) args.maxStatsAge = Number(next), i++;
     else if (arg === "--allow-empty") args.allowEmpty = true;
+    else if (arg === "--allow-stale") args.allowStale = true;
     else if (arg === "--help" || arg === "-h") {
       console.log(formatHelp());
       process.exit(0);
@@ -73,11 +80,48 @@ export function parseArgs(argv) {
   if (!Number.isInteger(args.port) || args.port < 1 || args.port > 65535) {
     throw new Error("--port must be between 1 and 65535");
   }
+  if (!Number.isFinite(args.maxStatsAge) || args.maxStatsAge < 1) throw new Error("--max-stats-age must be >= 1");
   return args;
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const isFiniteNumber = value => typeof value === "number" && Number.isFinite(value);
+const normalizePositiveTick = value => isFiniteNumber(value) && value > 0 ? value : null;
+
+export function evaluateStatsFreshness({ samples = 0, statsTick, gameTick, maxStatsAge = DEFAULT_MAX_STATS_AGE, timeErrors = [] } = {}) {
+  const normalizedMaxAge = isFiniteNumber(maxStatsAge) && maxStatsAge >= 1 ? maxStatsAge : DEFAULT_MAX_STATS_AGE;
+  const normalizedStatsTick = normalizePositiveTick(statsTick);
+  const normalizedGameTick = normalizePositiveTick(gameTick);
+  const base = {
+    game_tick: normalizedGameTick,
+    stats_tick: normalizedStatsTick,
+    age_ticks: null,
+    max_age_ticks: normalizedMaxAge
+  };
+
+  if (samples === 0) {
+    return { ok: true, status: "empty", ...base, reason: "No Memory.stats samples collected." };
+  }
+  if (timeErrors.length > 0) {
+    return { ok: false, status: "unknown", ...base, reason: `api.time unavailable: ${timeErrors[0].message}` };
+  }
+  if (normalizedGameTick === null) {
+    return { ok: true, status: "unchecked", ...base, reason: "api.time was not collected." };
+  }
+  if (normalizedStatsTick === null) {
+    return { ok: false, status: "missing", ...base, reason: "Memory.stats tick is missing." };
+  }
+
+  const age = normalizedGameTick - normalizedStatsTick;
+  const withAge = { ...base, age_ticks: age };
+  if (age < 0) {
+    return { ok: false, status: "future", ...withAge, reason: `Memory.stats tick is ahead of api.time by ${Math.abs(age)} ticks.` };
+  }
+  if (age > normalizedMaxAge) {
+    return { ok: false, status: "stale", ...withAge, reason: `Memory.stats tick is stale by ${age} ticks.` };
+  }
+  return { ok: true, status: "fresh", ...withAge, reason: "Memory.stats tick is fresh." };
+}
 
 function addMetric(bucket, key, value, meta = {}) {
   if (!isFiniteNumber(value)) return;
@@ -96,7 +140,7 @@ function top(bucket, limit) {
     .slice(0, limit);
 }
 
-export function summarizeShard(samples, errors = []) {
+export function summarizeShard(samples, errors = [], { gameTick, maxStatsAge = DEFAULT_MAX_STATS_AGE, timeErrors = [] } = {}) {
   const cpu = [];
   const bucket = [];
   const skipped = [];
@@ -152,10 +196,21 @@ export function summarizeShard(samples, errors = []) {
   }
 
   const avg = list => list.length ? list.reduce((sum, value) => sum + value, 0) / list.length : 0;
+  const latestStatsTick = samples.length > 0 ? samples[samples.length - 1]?.tick : undefined;
+  const freshness = evaluateStatsFreshness({
+    samples: samples.length,
+    statsTick: latestStatsTick,
+    gameTick,
+    maxStatsAge,
+    timeErrors
+  });
   return {
     samples: samples.length,
     tick_first: ticks[0],
     tick_last: ticks[ticks.length - 1],
+    game_tick: freshness.game_tick,
+    stats_tick_age: freshness.age_ticks,
+    freshness,
     cpu_avg: avg(cpu),
     cpu_max: cpu.length ? Math.max(...cpu) : 0,
     bucket_avg: avg(bucket),
@@ -167,29 +222,58 @@ export function summarizeShard(samples, errors = []) {
     top_roles: top(roles, 10),
     top_cpu_details: top(cpuDetails, 20),
     read_errors: errors.length,
-    errors
+    time_read_errors: timeErrors.length,
+    errors,
+    time_errors: timeErrors
   };
 }
 
-export function evaluateTelemetryHealth(summary, { allowEmpty = false } = {}) {
+export function evaluateTelemetryHealth(summary, { allowEmpty = false, allowStale = false } = {}) {
   const shards = Object.entries(summary.shards || {});
   const emptyShards = shards.filter(([, data]) => (data.samples || 0) === 0).map(([shard]) => shard);
   const totalSamples = shards.reduce((sum, [, data]) => sum + (data.samples || 0), 0);
-  const readErrors = shards.reduce((sum, [, data]) => sum + (data.read_errors ?? data.errors?.length ?? 0), 0);
+  const readErrors = shards.reduce((sum, [, data]) => sum + (data.read_errors ?? data.errors?.length ?? 0) + (data.time_read_errors ?? data.time_errors?.length ?? 0), 0);
+  const freshnessFailures = shards
+    .filter(([, data]) => data.freshness && data.freshness.ok === false)
+    .map(([shard, data]) => ({ shard, status: data.freshness.status, reason: data.freshness.reason }));
+  const shardsByFreshness = status => freshnessFailures.filter(row => row.status === status).map(row => row.shard);
+  const staleStatsShards = shardsByFreshness("stale");
+  const missingStatsShards = shardsByFreshness("missing");
+  const unknownStatsShards = freshnessFailures
+    .filter(row => row.status !== "stale" && row.status !== "missing")
+    .map(row => row.shard);
   const allEmpty = shards.length > 0 && totalSamples === 0;
-  const status = allEmpty ? (allowEmpty ? "degraded" : "failed") : emptyShards.length > 0 ? "partial" : "healthy";
+
+  let status = "healthy";
+  let ok = true;
+  let message = "Live CPU telemetry collected.";
+  if (allEmpty) {
+    status = allowEmpty ? "degraded" : "failed";
+    ok = allowEmpty;
+    message = `Collected zero live CPU samples across ${shards.length} shard(s); Memory.stats telemetry is unavailable${allowEmpty ? " (allowed)" : ""}.`;
+  } else if (freshnessFailures.length > 0) {
+    const allowStaleOnly = allowStale && freshnessFailures.every(row => row.status === "stale" || row.status === "missing");
+    status = allowStaleOnly ? "degraded" : "failed";
+    ok = allowStaleOnly;
+    message = `Collected live CPU samples with stale/missing Memory.stats ticks: ${freshnessFailures.map(row => `${row.shard}=${row.status}`).join(", ")}${allowStaleOnly ? " (allowed)" : ""}.`;
+  } else if (emptyShards.length > 0) {
+    status = "partial";
+    message = `Collected partial live CPU samples; empty shard(s): ${emptyShards.join(", ")}.`;
+  }
+
   return {
-    ok: allowEmpty || !allEmpty,
+    ok,
     status,
     allow_empty: allowEmpty,
+    allow_stale: allowStale,
     total_samples: totalSamples,
     empty_shards: emptyShards,
+    stale_stats_shards: staleStatsShards,
+    missing_stats_shards: missingStatsShards,
+    unknown_stats_shards: unknownStatsShards,
+    freshness_failures: freshnessFailures,
     read_errors: readErrors,
-    message: allEmpty
-      ? `Collected zero live CPU samples across ${shards.length} shard(s); Memory.stats telemetry is unavailable${allowEmpty ? " (allowed)" : ""}.`
-      : emptyShards.length > 0
-        ? `Collected partial live CPU samples; empty shard(s): ${emptyShards.join(", ")}.`
-        : "Live CPU telemetry collected."
+    message
   };
 }
 
@@ -200,10 +284,19 @@ async function fetchStats(api, shard) {
   return stats;
 }
 
+async function fetchGameTick(api, shard) {
+  const response = await api.time(shard);
+  const tick = Number(response?.time ?? response?.gameTime);
+  if (!Number.isFinite(tick)) throw new Error(`api.time returned invalid tick for ${shard}`);
+  return tick;
+}
+
 function printSummary(summary) {
   for (const [shard, data] of Object.entries(summary.shards)) {
     console.log(`\n=== ${shard} ===`);
-    console.log(`samples=${data.samples} ticks=${data.tick_first ?? "n/a"}->${data.tick_last ?? "n/a"} cpu_avg=${data.cpu_avg.toFixed(2)} cpu_max=${data.cpu_max.toFixed(2)} bucket_avg=${data.bucket_avg.toFixed(0)} bucket_min=${data.bucket_min.toFixed(0)} skipped_avg=${data.skipped_avg.toFixed(1)} read_errors=${data.read_errors || 0}`);
+    const freshness = data.freshness ? ` freshness=${data.freshness.status}${data.stats_tick_age !== null ? ` age=${data.stats_tick_age}` : ""}` : "";
+    console.log(`samples=${data.samples} ticks=${data.tick_first ?? "n/a"}->${data.tick_last ?? "n/a"} cpu_avg=${data.cpu_avg.toFixed(2)} cpu_max=${data.cpu_max.toFixed(2)} bucket_avg=${data.bucket_avg.toFixed(0)} bucket_min=${data.bucket_min.toFixed(0)} skipped_avg=${data.skipped_avg.toFixed(1)} read_errors=${data.read_errors || 0}${freshness}`);
+    if (data.freshness && data.freshness.ok === false) console.log(`  stats_freshness: ${data.freshness.reason}`);
     for (const [label, rows] of [["subsystems", data.top_subsystems], ["processes", data.top_processes], ["rooms", data.top_rooms], ["roles", data.top_roles], ["cpu_details", data.top_cpu_details]]) {
       if (!rows.length) continue;
       console.log(`Top ${label}:`);
@@ -230,6 +323,8 @@ async function main() {
 
   const byShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
   const errorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
+  const gameTicksByShard = Object.fromEntries(args.shards.map(shard => [shard, null]));
+  const timeErrorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
   for (let sample = 1; sample <= args.samples; sample++) {
     await Promise.all(args.shards.map(async shard => {
       try {
@@ -244,15 +339,31 @@ async function main() {
     if (sample < args.samples && args.interval > 0) await sleep(args.interval);
   }
 
+  await Promise.all(args.shards.map(async shard => {
+    try {
+      gameTicksByShard[shard] = await fetchGameTick(api, shard);
+    } catch (error) {
+      const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
+      timeErrorsByShard[shard].push({ message });
+      console.warn(`WARN ${shard} api.time: ${message}`);
+    }
+  }));
+
   const summary = {
     generated_at: new Date().toISOString(),
     hostname: args.hostname,
     samples_requested: args.samples,
     interval_ms: args.interval,
     allow_empty: args.allowEmpty,
-    shards: Object.fromEntries(Object.entries(byShard).map(([shard, samples]) => [shard, summarizeShard(samples, errorsByShard[shard] || [])]))
+    allow_stale: args.allowStale,
+    max_stats_age: args.maxStatsAge,
+    shards: Object.fromEntries(Object.entries(byShard).map(([shard, samples]) => [shard, summarizeShard(samples, errorsByShard[shard] || [], {
+      gameTick: gameTicksByShard[shard],
+      maxStatsAge: args.maxStatsAge,
+      timeErrors: timeErrorsByShard[shard] || []
+    })]))
   };
-  summary.health = evaluateTelemetryHealth(summary, { allowEmpty: args.allowEmpty });
+  summary.health = evaluateTelemetryHealth(summary, { allowEmpty: args.allowEmpty, allowStale: args.allowStale });
 
   fs.mkdirSync(args.outDir, { recursive: true });
   const outPath = path.join(args.outDir, `live-cpu-profile-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
