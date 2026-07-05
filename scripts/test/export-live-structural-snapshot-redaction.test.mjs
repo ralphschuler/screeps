@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   evaluateStructuralSnapshotHealth,
+  formatStructuralSnapshotCliError,
   parseOptions,
   redactedSnapshotError
 } from "../../packages/screeps-server/scripts/export-live-structural-snapshot.js";
@@ -35,6 +36,30 @@ test("structural snapshot room endpoint errors redact token fragments", () => {
     assert.equal(entry.message.includes("6ea62d57"), false);
     assert.equal(entry.message.includes("token=<redacted>"), true);
   }
+});
+
+test("structural snapshot top-level CLI errors redact token fragments", () => {
+  const error = new Error(`X-Token: abc123 ${RATE_LIMIT_MESSAGE}`);
+  error.stack = `Error: X-Token: abc123 SCREEPS_TOKEN=secret123 ${RATE_LIMIT_MESSAGE}\n    at fetch (https://screeps.com/api/user/memory?access_token=abcd&path=stats)`;
+
+  const message = formatStructuralSnapshotCliError(error);
+
+  assert.equal(message.includes("abc123"), false);
+  assert.equal(message.includes("secret123"), false);
+  assert.equal(message.includes("6ea62d57"), false);
+  assert.equal(message.includes("access_token=abcd"), false);
+  assert.equal(message.includes("token=<redacted>"), true);
+  assert.equal(message.includes("access_token=<redacted>"), true);
+  assert.equal(message.includes("path=stats"), true);
+});
+
+test("structural snapshot top-level CLI errors redact non-Error token fragments", () => {
+  const message = formatStructuralSnapshotCliError(`X-Token: abc123 ${RATE_LIMIT_MESSAGE} SCREEPS_TOKEN=secret123`);
+
+  assert.equal(message.includes("abc123"), false);
+  assert.equal(message.includes("secret123"), false);
+  assert.equal(message.includes("6ea62d57"), false);
+  assert.equal(message.includes("token=<redacted>"), true);
 });
 
 test("structural snapshot parser supports deploy-gate memory error failure flag", () => {
