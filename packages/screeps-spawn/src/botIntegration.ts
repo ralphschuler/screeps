@@ -32,12 +32,27 @@ export interface EnergyPrediction {
 }
 
 /**
- * Power bank spawn needs
+ * Power bank spawn needs for one operation room.
+ */
+export interface PowerBankOperationSpawnRequest {
+  targetRoom: string;
+  powerHarvesters: number;
+  healers: number;
+  powerCarriers: number;
+}
+
+/**
+ * Power bank spawn needs.
+ *
+ * Aggregated counts are retained for compatibility and logging; new callers should
+ * use operation entries so remote creeps receive target-room metadata.
  */
 export interface PowerBankSpawnRequests {
   powerHarvesters: number;
   healers: number;
   powerCarriers: number;
+  operations?: PowerBankOperationSpawnRequest[];
+  targetRoom?: string;
 }
 
 export type RemoteHaulerRequirement = EmpireRemoteHaulerRequirement;
@@ -145,6 +160,7 @@ export const powerBankHarvestingManager: IPowerBankHarvestingManager = {
     powerHarvesters: 0,
     healers: 0,
     powerCarriers: 0,
+    operations: [],
   }),
 };
 

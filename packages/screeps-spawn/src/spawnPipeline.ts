@@ -10,7 +10,7 @@ import {
   type ExistingDefensePower
 } from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { energyFlowPredictor, powerBankHarvestingManager } from "./botIntegration";
+import { energyFlowPredictor, powerBankHarvestingManager, type PowerBankOperationSpawnRequest } from "./botIntegration";
 import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
@@ -104,12 +104,12 @@ export function populateSpawnQueue(room: Room, swarm: SwarmState): void {
     addDefenderRequests(room, swarm, defenderNeeds, currentDefenders);
   }
 
+  addPowerBankRequests(room);
+
   if (queueSize > 0 && !emergencyRecoveryNeeded) {
     addPreemptiveRequestsWhenMissing(room, swarm);
     return;
   }
-
-  addPowerBankRequests(room);
 
   for (const request of createSpawnPlan(room, swarm).requests) {
     spawnQueue.addRequest(request);
@@ -451,30 +451,117 @@ function getPendingDefenderPower(
 
 function addPowerBankRequests(room: Room): void {
   const requests = powerBankHarvestingManager.requestSpawns(room.name);
+  const operations = getPowerBankOperationRequests(requests);
 
-  if (requests.powerHarvesters === 0 && requests.healers === 0 && requests.powerCarriers === 0) {
+  if (operations.length === 0) {
+    if (requests.powerHarvesters > 0 || requests.healers > 0 || requests.powerCarriers > 0) {
+      logger.warn(
+        `Skipping targetless power bank spawn requests in ${room.name}: ${requests.powerHarvesters} harvesters, ${requests.healers} healers, ${requests.powerCarriers} carriers`,
+        { subsystem: "SpawnPipeline" }
+      );
+    }
     return;
   }
 
   const maxEnergy = room.energyCapacityAvailable;
   const priority = SpawnPriority.NORMAL;
+  let addedHarvesters = 0;
+  let addedHealers = 0;
+  let addedCarriers = 0;
 
-  for (let i = 0; i < requests.powerHarvesters; i++) {
-    addOptimizedRequest(room, "powerHarvester", "power", priority, maxEnergy, `powerHarvester_${Game.time}_${i}`);
+  for (const operation of operations) {
+    const targetRoom = operation.targetRoom;
+    const operationMemory = { task: "powerBank", targetRoom };
+    const pendingHarvesters = countPendingPowerBankRequests(room.name, "powerHarvester", targetRoom);
+    const pendingHealers = countPendingPowerBankRequests(room.name, "healer", targetRoom);
+    const pendingCarriers = countPendingPowerBankRequests(room.name, "powerCarrier", targetRoom);
+
+    for (let i = 0; i < Math.max(0, operation.powerHarvesters - pendingHarvesters); i++) {
+      addOptimizedRequest(
+        room,
+        "powerHarvester",
+        "power",
+        priority,
+        maxEnergy,
+        `powerHarvester_${targetRoom}_${Game.time}_${i}`,
+        null,
+        targetRoom,
+        operationMemory
+      );
+      addedHarvesters++;
+    }
+
+    for (let i = 0; i < Math.max(0, operation.healers - pendingHealers); i++) {
+      addOptimizedRequest(
+        room,
+        "healer",
+        "military",
+        priority,
+        maxEnergy,
+        `healer_powerBank_${targetRoom}_${Game.time}_${i}`,
+        null,
+        targetRoom,
+        operationMemory
+      );
+      addedHealers++;
+    }
+
+    for (let i = 0; i < Math.max(0, operation.powerCarriers - pendingCarriers); i++) {
+      addOptimizedRequest(
+        room,
+        "powerCarrier",
+        "power",
+        priority,
+        maxEnergy,
+        `powerCarrier_${targetRoom}_${Game.time}_${i}`,
+        null,
+        targetRoom,
+        operationMemory
+      );
+      addedCarriers++;
+    }
   }
 
-  for (let i = 0; i < requests.healers; i++) {
-    addOptimizedRequest(room, "healer", "military", priority, maxEnergy, `healer_powerBank_${Game.time}_${i}`);
-  }
-
-  for (let i = 0; i < requests.powerCarriers; i++) {
-    addOptimizedRequest(room, "powerCarrier", "power", priority, maxEnergy, `powerCarrier_${Game.time}_${i}`);
-  }
+  if (addedHarvesters === 0 && addedHealers === 0 && addedCarriers === 0) return;
 
   logger.info(
-    `Added power bank spawn requests: ${requests.powerHarvesters} harvesters, ${requests.healers} healers, ${requests.powerCarriers} carriers`,
+    `Added power bank spawn requests: ${addedHarvesters} harvesters, ${addedHealers} healers, ${addedCarriers} carriers`,
     { subsystem: "SpawnPipeline" }
   );
+}
+
+function getPowerBankOperationRequests(requests: {
+  powerHarvesters: number;
+  healers: number;
+  powerCarriers: number;
+  operations?: PowerBankOperationSpawnRequest[];
+  targetRoom?: string;
+}): PowerBankOperationSpawnRequest[] {
+  if (requests.operations?.length) {
+    return requests.operations.filter(operation =>
+      operation.targetRoom && (operation.powerHarvesters > 0 || operation.healers > 0 || operation.powerCarriers > 0)
+    );
+  }
+
+  if (!requests.targetRoom) return [];
+  if (requests.powerHarvesters === 0 && requests.healers === 0 && requests.powerCarriers === 0) return [];
+
+  return [
+    {
+      targetRoom: requests.targetRoom,
+      powerHarvesters: requests.powerHarvesters,
+      healers: requests.healers,
+      powerCarriers: requests.powerCarriers
+    }
+  ];
+}
+
+function countPendingPowerBankRequests(roomName: string, role: SpawnRequest["role"], targetRoom: string): number {
+  return spawnQueue.getPendingRequests(roomName).filter(request =>
+    request.role === role &&
+    request.targetRoom === targetRoom &&
+    request.additionalMemory?.task === "powerBank"
+  ).length;
 }
 
 function addOptimizedRequest(
@@ -484,7 +571,9 @@ function addOptimizedRequest(
   priority: SpawnPriority,
   maxEnergy: number,
   id: string,
-  bodyOverride: SpawnRequest["body"] | null = null
+  bodyOverride: SpawnRequest["body"] | null = null,
+  targetRoom?: string,
+  additionalMemory?: SpawnRequest["additionalMemory"]
 ): void {
   try {
     const body = bodyOverride ?? optimizeBody({ maxEnergy, role });
@@ -501,6 +590,8 @@ function addOptimizedRequest(
       family,
       body,
       priority,
+      targetRoom,
+      additionalMemory,
       createdAt: Game.time
     });
   } catch (error) {

@@ -13,6 +13,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { PowerBankEntry } from "@ralphschuler/screeps-memory";
+import type { PowerBankOperationSpawnRequest, PowerBankSpawnRequests } from "@ralphschuler/screeps-spawn";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
 import { isHighwayRoom } from "./roomGeometry";
@@ -537,43 +538,85 @@ export class PowerBankHarvestingManager {
    * Request spawning for power bank operations
    * Should be called by spawn logic to check if power bank creeps are needed
    */
-  public requestSpawns(homeRoom: string): {
-    powerHarvesters: number;
-    healers: number;
-    powerCarriers: number;
-  } {
+  public requestSpawns(homeRoom: string): PowerBankSpawnRequests {
+    const operations: PowerBankOperationSpawnRequest[] = [];
     let totalHarvesters = 0;
     let totalHealers = 0;
     let totalCarriers = 0;
 
     // Find operations that need this room's creeps
-    for (const [_, op] of this.operations) {
+    for (const [, op] of this.operations) {
       if (op.homeRoom !== homeRoom) continue;
       if (op.state === "complete" || op.state === "failed") continue;
 
       const required = this.getRequiredCreeps(op);
-      const current = {
-        attackers: op.assignedCreeps.attackers.filter(name => Game.creeps[name]).length,
-        healers: op.assignedCreeps.healers.filter(name => Game.creeps[name]).length,
-        carriers: op.assignedCreeps.carriers.filter(name => Game.creeps[name]).length
+      const current = this.getCurrentOperationCreeps(op, homeRoom);
+      const operationRequest: PowerBankOperationSpawnRequest = {
+        targetRoom: op.roomName,
+        powerHarvesters: 0,
+        healers: 0,
+        powerCarriers: 0
       };
 
       // Request missing creeps
       if (op.state === "attacking" || op.state === "scouting") {
-        totalHarvesters += Math.max(0, required.attackers - current.attackers);
-        totalHealers += Math.max(0, required.healers - current.healers);
+        operationRequest.powerHarvesters = Math.max(0, required.attackers - current.attackers);
+        operationRequest.healers = Math.max(0, required.healers - current.healers);
       }
 
       if (op.state === "collecting" || op.state === "attacking") {
-        totalCarriers += Math.max(0, required.carriers - current.carriers);
+        operationRequest.powerCarriers = Math.max(0, required.carriers - current.carriers);
       }
+
+      if (operationRequest.powerHarvesters === 0 && operationRequest.healers === 0 && operationRequest.powerCarriers === 0) {
+        continue;
+      }
+
+      operations.push(operationRequest);
+      totalHarvesters += operationRequest.powerHarvesters;
+      totalHealers += operationRequest.healers;
+      totalCarriers += operationRequest.powerCarriers;
     }
 
     return {
       powerHarvesters: totalHarvesters,
       healers: totalHealers,
-      powerCarriers: totalCarriers
+      powerCarriers: totalCarriers,
+      operations
     };
+  }
+
+  private getCurrentOperationCreeps(
+    op: PowerBankOperation,
+    homeRoom: string
+  ): { attackers: number; healers: number; carriers: number } {
+    const attackers = this.getLiveAssignedCreeps(op.assignedCreeps.attackers);
+    const healers = this.getLiveAssignedCreeps(op.assignedCreeps.healers);
+    const carriers = this.getLiveAssignedCreeps(op.assignedCreeps.carriers);
+
+    for (const creep of Object.values(Game.creeps)) {
+      const memory = creep.memory as {
+        role?: string;
+        homeRoom?: string;
+        targetRoom?: string;
+        task?: string;
+        assistTarget?: string;
+      };
+      if (memory.homeRoom !== homeRoom || memory.targetRoom !== op.roomName) continue;
+      if (memory.role === "powerHarvester") attackers.add(creep.name);
+      if (memory.role === "healer" && memory.task !== "defenseAssist" && !memory.assistTarget) healers.add(creep.name);
+      if (memory.role === "powerCarrier") carriers.add(creep.name);
+    }
+
+    return {
+      attackers: attackers.size,
+      healers: healers.size,
+      carriers: carriers.size
+    };
+  }
+
+  private getLiveAssignedCreeps(creepNames: string[]): Set<string> {
+    return new Set(creepNames.filter(name => Boolean(Game.creeps[name])));
   }
 
   /**

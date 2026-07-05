@@ -161,6 +161,8 @@ export type {
   IEnergyFlowPredictor,
   IPowerBankHarvestingManager,
   IEmergencyResponseManager,
+  PowerBankOperationSpawnRequest,
+  PowerBankSpawnRequests,
   SpawnIntegrationOverrides
 } from "./botIntegration";
 
