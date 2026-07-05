@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { evaluateTelemetryHealth, formatHelp, parseArgs, summarizeShard } from "../live-cpu-profile.mjs";
+import { evaluateStatsFreshness, evaluateTelemetryHealth, formatHelp, parseArgs, summarizeShard } from "../live-cpu-profile.mjs";
 
 const rootPackage = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
@@ -18,7 +18,9 @@ test("parseArgs honors documented CLI flags", () => {
     "--hostname", "localhost",
     "--protocol", "http",
     "--port", "21025",
-    "--allow-empty"
+    "--max-stats-age", "25",
+    "--allow-empty",
+    "--allow-stale"
   ]);
 
   assert.deepEqual(args, {
@@ -29,7 +31,9 @@ test("parseArgs honors documented CLI flags", () => {
     hostname: "localhost",
     protocol: "http",
     port: 21025,
-    allowEmpty: true
+    maxStatsAge: 25,
+    allowEmpty: true,
+    allowStale: true
   });
 });
 
@@ -44,7 +48,9 @@ test("help documents all flags and Screeps env vars", () => {
     "--hostname <host>",
     "--protocol <http|https>",
     "--port <n>",
+    "--max-stats-age <ticks>",
     "--allow-empty",
+    "--allow-stale",
     "SCREEPS_TOKEN",
     "SCREEPS_HOSTNAME",
     "SCREEPS_PROTOCOL",
@@ -69,6 +75,7 @@ test("rejects invalid arguments", () => {
   assert.throws(() => parseArgs(["node", "script", "--interval", "-1"]), /--interval must be >= 0/);
   assert.throws(() => parseArgs(["node", "script", "--port", "not-a-number"]), /--port must be a number/);
   assert.throws(() => parseArgs(["node", "script", "--port", "0"]), /--port must be between 1 and 65535/);
+  assert.throws(() => parseArgs(["node", "script", "--max-stats-age", "0"]), /--max-stats-age must be >= 1/);
   assert.throws(() => parseArgs(["node", "script", "--protocol", "ftp"]), /--protocol must be http or https/);
   assert.throws(() => parseArgs(["node", "script", "--shards", ","]), /--shards must include at least one shard/);
 });
@@ -174,6 +181,125 @@ test("telemetry health reports partial samples without failing", () => {
   assert.equal(health.ok, true);
   assert.equal(health.status, "partial");
   assert.deepEqual(health.empty_shards, ["shard3"]);
+});
+
+test("stats freshness classifies fresh, missing, and stale ticks", () => {
+  assert.deepEqual(
+    evaluateStatsFreshness({ samples: 1, statsTick: 1000, gameTick: 1005, maxStatsAge: 10 }),
+    {
+      ok: true,
+      status: "fresh",
+      game_tick: 1005,
+      stats_tick: 1000,
+      age_ticks: 5,
+      max_age_ticks: 10,
+      reason: "Memory.stats tick is fresh."
+    }
+  );
+
+  assert.deepEqual(
+    evaluateStatsFreshness({ samples: 1, statsTick: undefined, gameTick: 1005, maxStatsAge: 10 }),
+    {
+      ok: false,
+      status: "missing",
+      game_tick: 1005,
+      stats_tick: null,
+      age_ticks: null,
+      max_age_ticks: 10,
+      reason: "Memory.stats tick is missing."
+    }
+  );
+
+  assert.deepEqual(
+    evaluateStatsFreshness({ samples: 1, statsTick: 900, gameTick: 1005, maxStatsAge: 10 }),
+    {
+      ok: false,
+      status: "stale",
+      game_tick: 1005,
+      stats_tick: 900,
+      age_ticks: 105,
+      max_age_ticks: 10,
+      reason: "Memory.stats tick is stale by 105 ticks."
+    }
+  );
+});
+
+test("summarizeShard embeds per-shard freshness details when game tick is known", () => {
+  const summary = summarizeShard(
+    [{ tick: 100, cpu: { used: 1, bucket: 9000 } }],
+    [],
+    { gameTick: 104, maxStatsAge: 10 }
+  );
+
+  assert.equal(summary.game_tick, 104);
+  assert.equal(summary.stats_tick_age, 4);
+  assert.equal(summary.freshness.status, "fresh");
+  assert.match(summary.freshness.reason, /fresh/);
+});
+
+test("summarizeShard treats the latest missing stats tick as unhealthy", () => {
+  const summary = summarizeShard(
+    [
+      { tick: 100, cpu: { used: 1, bucket: 9000 } },
+      { cpu: { used: 1, bucket: 9000 } }
+    ],
+    [],
+    { gameTick: 101, maxStatsAge: 10 }
+  );
+
+  assert.equal(summary.tick_last, 100);
+  assert.equal(summary.freshness.status, "missing");
+  assert.equal(summary.freshness.ok, false);
+});
+
+test("telemetry health fails on missing or stale stats ticks", () => {
+  const summary = {
+    shards: {
+      shard0: summarizeShard([{ cpu: { bucket: 906 } }], [], { gameTick: 76165765, maxStatsAge: 100 }),
+      shard1: summarizeShard([{ tick: 72119539, cpu: { used: 46, bucket: 9962 } }], [], { gameTick: 72119539, maxStatsAge: 100 }),
+      shard3: summarizeShard([{ tick: 79383724, cpu: { used: 5, bucket: 7985 } }], [], { gameTick: 81307055, maxStatsAge: 100 })
+    }
+  };
+
+  const health = evaluateTelemetryHealth(summary, { allowEmpty: false, allowStale: false });
+
+  assert.equal(health.ok, false);
+  assert.equal(health.status, "failed");
+  assert.deepEqual(health.missing_stats_shards, ["shard0"]);
+  assert.deepEqual(health.stale_stats_shards, ["shard3"]);
+  assert.match(health.message, /stale\/missing Memory.stats ticks/);
+});
+
+test("telemetry health can explicitly preserve stale artifacts as degraded", () => {
+  const summary = {
+    shards: {
+      shard3: summarizeShard([{ tick: 100, cpu: { used: 5, bucket: 5000 } }], [], { gameTick: 300, maxStatsAge: 50 })
+    }
+  };
+
+  const health = evaluateTelemetryHealth(summary, { allowEmpty: false, allowStale: true });
+
+  assert.equal(health.ok, true);
+  assert.equal(health.status, "degraded");
+  assert.deepEqual(health.stale_stats_shards, ["shard3"]);
+});
+
+test("allow-stale does not hide api.time freshness failures", () => {
+  const summary = {
+    shards: {
+      shard1: summarizeShard(
+        [{ tick: 100, cpu: { used: 5, bucket: 5000 } }],
+        [],
+        { timeErrors: [{ message: "api.time unavailable" }] }
+      )
+    }
+  };
+
+  const health = evaluateTelemetryHealth(summary, { allowEmpty: false, allowStale: true });
+
+  assert.equal(health.ok, false);
+  assert.equal(health.status, "failed");
+  assert.deepEqual(health.unknown_stats_shards, ["shard1"]);
 });
 
 test("root package exposes a bounded read-only live CPU profile script", () => {
