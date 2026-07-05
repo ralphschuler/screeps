@@ -22,18 +22,20 @@ const logger = createLogger("CreepContext");
 /**
  * Priority order for construction sites.
  * Higher values = higher priority.
- * 
- * Defense structures (walls, ramparts) have high priority to ensure
- * room security is established early, especially at RCL 2-3.
+ *
+ * Recovery rooms need built defensive/economy anchors before spending builder
+ * throughput on extension backlogs or noncritical perimeter work.
  */
 const CONSTRUCTION_PRIORITY: Record<string, number> = {
   [STRUCTURE_SPAWN]: 100,
-  [STRUCTURE_EXTENSION]: 90,
-  [STRUCTURE_TOWER]: 80,
-  [STRUCTURE_RAMPART]: 75,
-  [STRUCTURE_WALL]: 70,
-  [STRUCTURE_STORAGE]: 70,
-  [STRUCTURE_CONTAINER]: 60,
+  [STRUCTURE_TOWER]: 95,
+  [STRUCTURE_STORAGE]: 90,
+  [STRUCTURE_EXTENSION]: 80,
+  [STRUCTURE_TERMINAL]: 75,
+  [STRUCTURE_LINK]: 70,
+  [STRUCTURE_CONTAINER]: 65,
+  [STRUCTURE_RAMPART]: 55,
+  [STRUCTURE_WALL]: 50,
   [STRUCTURE_ROAD]: 30
 };
 

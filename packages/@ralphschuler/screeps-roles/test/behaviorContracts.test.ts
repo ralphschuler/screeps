@@ -13,6 +13,8 @@ import {
   remoteWorker,
   evaluateWithStateMachine,
   TaskPriority,
+  clearRoomCaches,
+  createContext as createRuntimeContext,
   setLabManagerProvider,
   setRemoteMoveHandler,
   soldier,
@@ -110,6 +112,41 @@ describe("Behavior Contracts", () => {
       expect(action).to.have.property("type");
       expect(action.type).to.be.a("string");
     }
+  });
+
+  it("prioritizes recovery-critical tower and storage construction before extension backlog", () => {
+    const room = createMockRoom("W1N1", {
+      controller: { my: true, level: 5 }
+    });
+    const sites = [
+      { id: "extension-site", structureType: STRUCTURE_EXTENSION, pos: new RoomPosition(24, 25, room.name) },
+      { id: "road-site", structureType: STRUCTURE_ROAD, pos: new RoomPosition(23, 25, room.name) },
+      { id: "storage-site", structureType: STRUCTURE_STORAGE, pos: new RoomPosition(25, 25, room.name) },
+      { id: "wall-site", structureType: STRUCTURE_WALL, pos: new RoomPosition(26, 25, room.name) },
+      { id: "tower-site", structureType: STRUCTURE_TOWER, pos: new RoomPosition(25, 24, room.name) }
+    ] as unknown as ConstructionSite[];
+    (room as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      if (type === FIND_MY_CONSTRUCTION_SITES) return sites;
+      return [];
+    }) as Room["find"];
+    const creep = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", homeRoom: room.name, working: true }
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    clearRoomCaches();
+
+    const ctx = createRuntimeContext(creep);
+
+    expect(ctx.prioritizedSites.map(site => site.structureType)).to.deep.equal([
+      STRUCTURE_TOWER,
+      STRUCTURE_STORAGE,
+      STRUCTURE_EXTENSION,
+      STRUCTURE_WALL,
+      STRUCTURE_ROAD
+    ]);
   });
 
   it("keeps builder and upgrader critical energy delivery priority aligned", () => {

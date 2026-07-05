@@ -22346,9 +22346,10 @@ usage: "showConfig()",
 examples: [ "showConfig()" ],
 category: "Configuration"
 }) ], e.prototype, "showConfig", null), e;
-}(), Mu = k("CreepContext"), Uu = ((fu = {})[STRUCTURE_SPAWN] = 100, fu[STRUCTURE_EXTENSION] = 90,
-fu[STRUCTURE_TOWER] = 80, fu[STRUCTURE_RAMPART] = 75, fu[STRUCTURE_WALL] = 70, fu[STRUCTURE_STORAGE] = 70,
-fu[STRUCTURE_CONTAINER] = 60, fu[STRUCTURE_ROAD] = 30, fu), _u = new Map;
+}(), Mu = k("CreepContext"), Uu = ((fu = {})[STRUCTURE_SPAWN] = 100, fu[STRUCTURE_TOWER] = 95,
+fu[STRUCTURE_STORAGE] = 90, fu[STRUCTURE_EXTENSION] = 80, fu[STRUCTURE_TERMINAL] = 75,
+fu[STRUCTURE_LINK] = 70, fu[STRUCTURE_CONTAINER] = 65, fu[STRUCTURE_RAMPART] = 55,
+fu[STRUCTURE_WALL] = 50, fu[STRUCTURE_ROAD] = 30, fu), _u = new Map;
 
 function Nu(e) {
 e._allStructuresLoaded || (e.allStructures = e.room.find(FIND_STRUCTURES), e._allStructuresLoaded = !0);
