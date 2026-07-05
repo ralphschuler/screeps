@@ -8,7 +8,7 @@ import {
   safeObject,
   writeJson,
 } from "./cpu-benchmark-model.js";
-import { formatScreepsApiError } from "../../../scripts/live-redaction.mjs";
+import { formatScreepsApiError, redactScreepsApiMessage } from "../../../scripts/live-redaction.mjs";
 
 const require = createRequire(import.meta.url);
 const { ScreepsAPI } = require("screeps-api");
@@ -46,6 +46,11 @@ function unwrapMemory(response) {
 
 export function redactedSnapshotError(fields, error) {
   return { ...fields, message: formatScreepsApiError(error) };
+}
+
+export function formatStructuralSnapshotCliError(error) {
+  const message = error instanceof Error ? error.stack || error.message : String(error);
+  return redactScreepsApiMessage(message);
 }
 
 export function evaluateStructuralSnapshotHealth(snapshot, { failOnMemoryErrors = false } = {}) {
@@ -152,7 +157,7 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
-    console.error(error instanceof Error ? error.stack || error.message : String(error));
+    console.error(formatStructuralSnapshotCliError(error));
     process.exitCode = 1;
   });
 }
