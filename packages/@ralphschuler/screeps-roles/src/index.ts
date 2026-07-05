@@ -67,7 +67,8 @@ export {
   haulBehavior,
   buildBehavior,
   upgradeBehavior,
-  evaluateEconomyBehavior
+  evaluateEconomyBehavior,
+  getEconomyStateInterrupt
 } from "./behaviors/economy";
 
 // Export individual economy behavior functions

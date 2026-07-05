@@ -26,12 +26,14 @@
  */
 
 import type { CreepAction, CreepContext } from "../types";
+import type { CreepState } from "../../memory/schemas";
+import { findAssignedCriticalEnergyDelivery } from "./common/energyManagement";
 import { larvaWorker } from "./larvaWorker";
 import { pioneer } from "./pioneer";
 import { interShardPioneer } from "./interShardPioneer";
 import { harvester } from "./harvester";
 import { hauler } from "./hauler";
-import { upgrader } from "./upgrader";
+import { shouldUpgraderRefillCriticalStructures, upgrader } from "./upgrader";
 import { builder } from "./builder";
 import { mineralHarvester, depositHarvester } from "./mining";
 import { remoteHarvester, remoteHauler } from "./remote";
@@ -64,6 +66,20 @@ const economyBehaviors: Record<string, (ctx: CreepContext) => CreepAction> = {
 export function evaluateEconomyBehavior(ctx: CreepContext): CreepAction {
   const behavior = economyBehaviors[ctx.memory.role] ?? larvaWorker;
   return behavior(ctx);
+}
+
+const INTERRUPTIBLE_ECONOMY_DELIVERY_STATES = new Set(["build", "repair", "upgrade"]);
+
+/**
+ * Preempt long-running economy work when carried energy can immediately satisfy
+ * task-board critical room refill demand. This keeps refill reservations visible
+ * instead of letting builders/upgraders stay committed until empty.
+ */
+export function getEconomyStateInterrupt(ctx: CreepContext, currentState: CreepState): CreepAction | null {
+  if (!INTERRUPTIBLE_ECONOMY_DELIVERY_STATES.has(currentState.action)) return null;
+  if (ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) return null;
+  if (ctx.memory.role === "upgrader" && !shouldUpgraderRefillCriticalStructures(ctx)) return null;
+  return findAssignedCriticalEnergyDelivery(ctx);
 }
 
 // Export individual behaviors with backward-compatible names

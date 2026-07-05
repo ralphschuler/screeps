@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { TaskPriority, taskBoard } from "../src/tasks";
-import { evaluateEconomyBehavior } from "../src/behaviors/economy";
+import { evaluateEconomyBehavior, getEconomyStateInterrupt } from "../src/behaviors/economy";
+import { evaluateWithStateMachine } from "../src/behaviors/stateMachine";
 import { createMockCreep, createMockRoom, resetMockGame, MockGame } from "./setup";
 import type { CreepAction, CreepContext } from "../src";
 
@@ -711,6 +712,128 @@ describe("TaskBoard", () => {
     expect(Object.values(board.tasks).map((task: any) => task.type)).to.deep.equal(["refillExtension"]);
     expect(board.stats.invalidated).to.equal(3);
     expect((builder.memory as any).assignedTaskId).to.equal(undefined);
+  });
+
+  it("interrupts a committed builder upgrade state for critical refill task-board work", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === controller.id ? controller : null;
+
+    const creep = createMockCreep("builder1", {
+      room,
+      memory: {
+        role: "builder",
+        family: "economy",
+        homeRoom: room.name,
+        version: 1,
+        working: true,
+        state: { action: "upgrade", targetId: controller.id, startTick: Game.time - 1, timeout: 25 }
+      },
+      store: makeStore(50, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    expect(getEconomyStateInterrupt).to.be.a("function");
+    const action = evaluateWithStateMachine(makeContext(creep, room), evaluateEconomyBehavior, {
+      interrupt: getEconomyStateInterrupt
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+    expect((creep.memory as any).state.action).to.equal("transfer");
+    expect(taskBoard.describeAssignments(room.name)).to.contain("builder1 -> refillExtension");
+  });
+
+  it("clears stale creep assignment memory when no matching reservation exists", () => {
+    const room = createMockRoom("W1N1");
+    (room as any).find = () => [];
+    MockGame.rooms[room.name] = room;
+
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: {
+        role: "hauler",
+        family: "economy",
+        homeRoom: room.name,
+        version: 1,
+        working: true,
+        assignedTaskId: "W1N1:refillExtension:missing"
+      },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const action = taskBoard.getAssignedDeliveryAction(makeContext(creep, room));
+
+    expect(action).to.equal(null);
+    expect((creep.memory as any).assignedTaskId).to.equal(undefined);
+  });
+
+  it("repairs stale assignment memory when an active reservation exists", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    (room as any).find = (type: number) => type === FIND_MY_STRUCTURES ? [extension] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : null;
+
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const firstAction = taskBoard.getAssignedDeliveryAction(makeContext(creep, room));
+    expect(firstAction?.type).to.equal("transfer");
+    const assignedTaskId = (creep.memory as any).assignedTaskId;
+    (creep.memory as any).assignedTaskId = "W1N1:refillExtension:stale";
+
+    const continuedAction = taskBoard.getAssignedDeliveryAction(makeContext(creep, room));
+
+    expect(continuedAction?.type).to.equal("transfer");
+    expect((creep.memory as any).assignedTaskId).to.equal(assignedTaskId);
+  });
+
+  it("does not interrupt active-hauler upgraders for extension refill", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = makeController("controller1" as Id<StructureController>);
+    const room = createMockRoom("W1N1", { controller });
+    (room as any).find = (type: number) => type === FIND_MY_STRUCTURES ? [extension] : [];
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === controller.id ? controller : null;
+
+    const hauler = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 },
+      store: makeStore(0, 50)
+    });
+    const upgrader = createMockCreep("upgrader1", {
+      room,
+      memory: { role: "upgrader", family: "economy", homeRoom: room.name, version: 1, working: true },
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[hauler.name] = hauler;
+    MockGame.creeps[upgrader.name] = upgrader;
+
+    const interrupt = getEconomyStateInterrupt(makeContext(upgrader, room), {
+      action: "upgrade",
+      targetId: controller.id,
+      startTick: Game.time - 1,
+      timeout: 25
+    });
+
+    expect(interrupt).to.equal(null);
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("upgrader1 -> refillExtension");
   });
 
   it("assigns builder critical extension refill through the task board before direct build fallback", () => {

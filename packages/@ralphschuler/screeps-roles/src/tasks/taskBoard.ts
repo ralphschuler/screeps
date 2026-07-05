@@ -430,6 +430,11 @@ function isAllowedTaskType(task: CreepTask, options: TaskAssignmentOptions): boo
 
 function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: TaskAssignmentOptions = {}): CreepTask | null {
   const current = getCurrentAssignedTask(board, ctx.creep.name, ctx.memory.assignedTaskId);
+  if (current && ctx.memory.assignedTaskId !== current.id) {
+    ctx.memory.assignedTaskId = current.id;
+  } else if (!current && ctx.memory.assignedTaskId) {
+    delete ctx.memory.assignedTaskId;
+  }
   if (current && isAllowedTaskType(current, options) && isTargetStillValid(current) && canPerformTask(ctx, current)) {
     if (!shouldCheckForPreemption(ctx, current)) {
       return current;

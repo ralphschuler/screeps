@@ -29,7 +29,7 @@ function hasCriticallyEmptySpawn(ctx: CreepContext): boolean {
   );
 }
 
-function shouldUpgraderRefillCriticalStructures(ctx: CreepContext): boolean {
+export function shouldUpgraderRefillCriticalStructures(ctx: CreepContext): boolean {
   if (!hasActiveLocalHauler(ctx)) return true;
   return hasCriticallyEmptySpawn(ctx);
 }
