@@ -418,6 +418,40 @@ describe("TaskBoard", () => {
     expect((stopped as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
   });
 
+  it("caps low-priority storage task demand to an actionable haul batch", () => {
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 1000, 1000000);
+    const room = createMockRoom("W1N1", { storage });
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === storage.id ? storage : null;
+
+    taskBoard.refreshRoom(room);
+
+    const task = (Memory as any).creepTaskBoard.rooms[room.name].tasks[`${room.name}:storeEnergy:${storage.id}`];
+    expect(task.amount).to.equal(1000);
+    expect(task.maxAssignments).to.equal(20);
+  });
+
+  it("stops assigning storage delivery once the actionable batch is reserved", () => {
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 1000, 1000000);
+    const room = createMockRoom("W1N1", { storage });
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === storage.id ? storage : null;
+
+    const first = createMockCreep("hauler1", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(500, 500) });
+    const second = createMockCreep("hauler2", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(500, 500) });
+    const third = createMockCreep("hauler3", { room, memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1 }, store: makeStore(500, 500) });
+    MockGame.creeps[first.name] = first;
+    MockGame.creeps[second.name] = second;
+    MockGame.creeps[third.name] = third;
+
+    expect(taskBoard.getAssignedDeliveryAction(makeContext(first, room))?.type).to.equal("transfer");
+    expect(taskBoard.getAssignedDeliveryAction(makeContext(second, room))?.type).to.equal("transfer");
+    expect(taskBoard.getAssignedDeliveryAction(makeContext(third, room))).to.equal(null);
+
+    const task = (Memory as any).creepTaskBoard.rooms[room.name].tasks[`${room.name}:storeEnergy:${storage.id}`];
+    expect(task.reservedAmount).to.equal(1000);
+  });
+
   it("uses ranged attacks for ranged-only defenders assigned defend tasks", () => {
     const hostile = makeHostile("hostile1" as Id<Creep>, 20, 20);
     const room = createMockRoom("W1N1");
