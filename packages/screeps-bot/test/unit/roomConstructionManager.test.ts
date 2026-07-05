@@ -169,8 +169,10 @@ describe("RoomConstructionManager", () => {
       );
     });
 
-    it("should place missing RCL5 tower sites before local construction cap during danger", () => {
-      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+    function createRcl5RoomWithBacklog(
+      record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] },
+      existingSites: ConstructionSite[]
+    ): { room: Room; spawn: StructureSpawn; structures: Structure[] } {
       const spawn = {
         id: "spawn1" as Id<StructureSpawn>,
         structureType: STRUCTURE_SPAWN,
@@ -182,19 +184,15 @@ describe("RoomConstructionManager", () => {
         pos: new RoomPosition(25, 8, "W2N1")
       } as unknown as StructureController;
       const source = { pos: new RoomPosition(10, 25, "W2N1") } as Source;
-      const sites = Array.from({ length: 10 }, (_, index) => ({
-        structureType: STRUCTURE_ROAD,
-        pos: new RoomPosition(10 + index, 10, "W2N1")
-      }) as ConstructionSite);
       const structures = [spawn] as Structure[];
       const room = {
         name: "W2N1",
         controller,
         getTerrain: () => ({ get: () => 0 }),
-        find: (type: FindConstant, options?: { filter?: (structure: Structure) => boolean }) => {
+        find: (type: FindConstant, options?: { filter?: (structure: Structure | ConstructionSite) => boolean }) => {
           if (type === FIND_STRUCTURES) return structures;
           if (type === FIND_MY_STRUCTURES) return options?.filter ? structures.filter(options.filter) : structures;
-          if (type === FIND_MY_CONSTRUCTION_SITES) return sites;
+          if (type === FIND_MY_CONSTRUCTION_SITES) return options?.filter ? existingSites.filter(options.filter) : existingSites;
           if (type === FIND_MY_SPAWNS) return [spawn];
           if (type === FIND_SOURCES) return [source];
           if (type === FIND_MINERALS) return [];
@@ -205,6 +203,17 @@ describe("RoomConstructionManager", () => {
           return OK;
         }
       } as unknown as Room;
+
+      return { room, spawn, structures };
+    }
+
+    it("should place missing RCL5 tower sites before local construction cap during danger", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const sites = Array.from({ length: 10 }, (_, index) => ({
+        structureType: STRUCTURE_ROAD,
+        pos: new RoomPosition(10 + index, 10, "W2N1")
+      }) as ConstructionSite);
+      const { room, spawn } = createRcl5RoomWithBacklog(record, sites);
       const swarm = { danger: 3, remoteAssignments: [], metrics: {}, posture: "siege" } as any;
       const oldGame = (globalThis as { Game?: unknown }).Game;
       (globalThis as { Game?: unknown }).Game = { time: 100, constructionSites: {} };
@@ -218,6 +227,42 @@ describe("RoomConstructionManager", () => {
       assert.isTrue(
         record.calls.some(call => call.structureType === STRUCTURE_TOWER),
         "critical defense construction should bypass the local site cap to place a missing tower"
+      );
+    });
+
+    it("should reserve the last global construction slot for a missing RCL5 tower in peaceful recovery rooms", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const sites = Array.from({ length: 10 }, (_, index) => ({
+        structureType: STRUCTURE_ROAD,
+        pos: new RoomPosition(10 + index, 10, "W2N1")
+      }) as ConstructionSite);
+      const { room, spawn, structures } = createRcl5RoomWithBacklog(record, sites);
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {}, posture: "eco" } as any;
+      const oldGame = (globalThis as { Game?: unknown }).Game;
+      (globalThis as { Game?: unknown }).Game = {
+        time: 100,
+        constructionSites: Object.fromEntries(Array.from({ length: 99 }, (_, index) => [`site${index}`, {}]))
+      };
+
+      try {
+        manager.runConstruction(room, swarm, sites, [spawn]);
+      } finally {
+        (globalThis as { Game?: unknown }).Game = oldGame;
+      }
+
+      assert.equal(
+        record.calls[0]?.structureType,
+        STRUCTURE_TOWER,
+        "peaceful RCL5 recovery should use the final global construction slot for missing tower defense before lower-priority backlog work"
+      );
+      assert.equal(
+        record.calls.filter(call => call.structureType === STRUCTURE_TOWER).length,
+        1,
+        "one missing tower site should be enough for the final global construction slot"
+      );
+      assert.isTrue(
+        structures.every(structure => structure.structureType !== STRUCTURE_TOWER),
+        "fixture should reproduce a room with no completed towers"
       );
     });
 
