@@ -62,10 +62,11 @@ Permanent ally safety is mandatory: never target or attack `TooAngel` or `TedRoa
 Configure Screeps credentials through environment variables or the package `.env` flow, then run:
 
 ```bash
+npm run deploy:preflight
 npm run push
 ```
 
-`npm run build` is safe build-only mode. `npm run push` sets `DEPLOY=true` and uploads the bundle to the configured Screeps branch.
+`npm run build` is safe build-only mode. `npm run deploy:preflight` runs deploy-gate validation without secrets. `npm run push` sets `DEPLOY=true` and uploads the bundle to the configured Screeps branch.
 
 ## Documentation
 
