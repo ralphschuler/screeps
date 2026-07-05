@@ -11,6 +11,8 @@ const TASKBOARD_LOW_BUCKET_THRESHOLD = 4000;
 const DEFAULT_STICKINESS_DELTA = 75;
 const STALE_ROOM_BOARD_TTL = 1500;
 const ASSIGNED_TASK_PREEMPTION_CHECK_INTERVAL = 3;
+// Storage free capacity can be ~1M; keep low-priority backlog actionable and telemetry bounded.
+const STORE_ENERGY_TASK_AMOUNT_CAP = 1000;
 
 const ENERGY_DELIVERY_ROLES = [
   "larvaWorker",
@@ -251,8 +253,10 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
     );
   }
 
-  if (room.storage && room.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-    updateOrCreateTask(board, createRefillTask(room.name, "storeEnergy", room.storage, room.storage.store.getFreeCapacity(RESOURCE_ENERGY), TaskPriority.LOW));
+  const storageFreeCapacity = room.storage?.store.getFreeCapacity(RESOURCE_ENERGY) ?? 0;
+  if (room.storage && storageFreeCapacity > 0) {
+    const actionableAmount = Math.min(storageFreeCapacity, STORE_ENERGY_TASK_AMOUNT_CAP);
+    updateOrCreateTask(board, createRefillTask(room.name, "storeEnergy", room.storage, actionableAmount, TaskPriority.LOW));
   }
 
   const hostiles = measureCpuDetail("taskBoard.findHostiles", () => getActualHostileCreeps(room));

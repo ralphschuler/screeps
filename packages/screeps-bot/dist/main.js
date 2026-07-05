@@ -5091,7 +5091,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -24496,19 +24496,19 @@ expiresTick: Game.time + 50
 }
 
 function cl(e, t) {
-var r, o, n, i, s, c, u = function() {
+var r, o, n, i, s, c, u, l, m = function() {
 var e, t, r;
 return null !== (r = null === (t = null === (e = Qu()) || void 0 === e ? void 0 : e.cpu) || void 0 === t ? void 0 : t.bucket) && void 0 !== r ? r : 1e4;
 }() < 4e3 ? 5 : 3;
-if (!(Game.time - t.lastGeneratedTick < u)) {
+if (!(Game.time - t.lastGeneratedTick < m)) {
 t.lastGeneratedTick = Game.time;
-var l = zu("taskBoard.findMyStructures", function() {
+var d = zu("taskBoard.findMyStructures", function() {
 return e.find(FIND_MY_STRUCTURES);
 });
 try {
-for (var m = a(l), d = m.next(); !d.done; d = m.next()) {
-var p, f = d.value;
-f.structureType !== STRUCTURE_SPAWN ? f.structureType !== STRUCTURE_EXTENSION ? f.structureType === STRUCTURE_TOWER && (p = f.store.getFreeCapacity(RESOURCE_ENERGY)) >= 100 && al(t, sl(e.name, "refillTower", f, p, Wu.HIGH)) : (p = f.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && al(t, sl(e.name, "refillExtension", f, p, Wu.HIGH)) : (p = f.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && al(t, sl(e.name, "refillSpawn", f, p, Wu.CRITICAL));
+for (var p = a(d), f = p.next(); !f.done; f = p.next()) {
+var y, v = f.value;
+v.structureType !== STRUCTURE_SPAWN ? v.structureType !== STRUCTURE_EXTENSION ? v.structureType === STRUCTURE_TOWER && (y = v.store.getFreeCapacity(RESOURCE_ENERGY)) >= 100 && al(t, sl(e.name, "refillTower", v, y, Wu.HIGH)) : (y = v.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && al(t, sl(e.name, "refillExtension", v, y, Wu.HIGH)) : (y = v.store.getFreeCapacity(RESOURCE_ENERGY)) > 0 && al(t, sl(e.name, "refillSpawn", v, y, Wu.CRITICAL));
 }
 } catch (e) {
 r = {
@@ -24516,27 +24516,32 @@ error: e
 };
 } finally {
 try {
-d && !d.done && (o = m.return) && o.call(m);
+f && !f.done && (o = p.return) && o.call(p);
 } finally {
 if (r) throw r.error;
 }
 }
-var y = Ku(e);
-y && al(t, sl(e.name, "fillTerminalEnergy", y.terminal, y.amount, Wu.NORMAL)), e.storage && e.storage.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && al(t, sl(e.name, "storeEnergy", e.storage, e.storage.store.getFreeCapacity(RESOURCE_ENERGY), Wu.LOW));
-var v = zu("taskBoard.findHostiles", function() {
+var g = Ku(e);
+g && al(t, sl(e.name, "fillTerminalEnergy", g.terminal, g.amount, Wu.NORMAL));
+var h = null !== (l = null === (u = e.storage) || void 0 === u ? void 0 : u.store.getFreeCapacity(RESOURCE_ENERGY)) && void 0 !== l ? l : 0;
+if (e.storage && h > 0) {
+var R = Math.min(h, 1e3);
+al(t, sl(e.name, "storeEnergy", e.storage, R, Wu.LOW));
+}
+var E = zu("taskBoard.findHostiles", function() {
 return j(e);
 });
 try {
-for (var g = a(v.slice(0, 5)), h = g.next(); !h.done; h = g.next()) {
-var R = h.value;
+for (var T = a(E.slice(0, 5)), C = T.next(); !C.done; C = T.next()) {
+var S = C.value;
 al(t, {
-id: Ju(e.name, "defend", R.id),
+id: Ju(e.name, "defend", S.id),
 roomName: e.name,
 type: "defend",
 priority: Wu.CRITICAL,
-targetId: R.id,
-targetPos: il(R.pos),
-amount: R.hits,
+targetId: S.id,
+targetPos: il(S.pos),
+amount: S.hits,
 maxAssignments: 3,
 allowedRoles: ju,
 expiresTick: Game.time + 50
@@ -24548,12 +24553,12 @@ error: e
 };
 } finally {
 try {
-h && !h.done && (i = g.return) && i.call(g);
+C && !C.done && (i = T.return) && i.call(T);
 } finally {
 if (n) throw n.error;
 }
 }
-var E = zu("taskBoard.findInjuredAllies", function() {
+var w = zu("taskBoard.findInjuredAllies", function() {
 return e.find(FIND_MY_CREEPS, {
 filter: function(e) {
 return e.hits < e.hitsMax;
@@ -24561,16 +24566,16 @@ return e.hits < e.hitsMax;
 });
 });
 try {
-for (var T = a(E.slice(0, 5)), C = T.next(); !C.done; C = T.next()) {
-var S = C.value;
+for (var x = a(w.slice(0, 5)), b = x.next(); !b.done; b = x.next()) {
+var O = b.value;
 al(t, {
-id: Ju(e.name, "heal", S.id),
+id: Ju(e.name, "heal", O.id),
 roomName: e.name,
 type: "heal",
 priority: Wu.HIGH,
-targetId: S.id,
-targetPos: il(S.pos),
-amount: S.hitsMax - S.hits,
+targetId: O.id,
+targetPos: il(O.pos),
+amount: O.hitsMax - O.hits,
 maxAssignments: 1,
 allowedRoles: [ "healer" ],
 expiresTick: Game.time + 50
@@ -24582,7 +24587,7 @@ error: e
 };
 } finally {
 try {
-C && !C.done && (c = T.return) && c.call(T);
+b && !b.done && (c = x.return) && c.call(x);
 } finally {
 if (s) throw s.error;
 }
