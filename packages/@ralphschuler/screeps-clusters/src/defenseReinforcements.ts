@@ -3,6 +3,8 @@ import {
   buildDefenseAssistBody as buildSharedDefenseAssistBody,
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
+  createDefenseAssistSquadId,
+  DEFENSE_ASSIST_TASK,
   getActualHostileCreeps,
   getVisibleDefenseAssistThreatProfile,
   type BodyTemplate,
@@ -67,7 +69,6 @@ export interface SpawnQueueForReinforcements {
   addRequest(request: SpawnRequest): void;
 }
 
-const DEFENSE_ASSIST_TASK = "defenseAssist";
 const DEFAULT_MAX_NEW_SPAWNS_PER_HELPER_ROOM = 2;
 const DISTANT_ROOM_PENALTY = 50;
 function createEmptyAssignedDefenseAssistPower(): AssignedDefenseAssistPower {
@@ -243,10 +244,6 @@ function getRemainingRequestNeeds(
   };
 }
 
-function createDefenseSquadId(helperRoom: string, targetRoom: string, now: number): string {
-  return `defenseAssist:${helperRoom}:${targetRoom}:${now}`;
-}
-
 /**
  * Build spawn intents for helper-room reinforcements without mutating Game or Memory.
  */
@@ -298,7 +295,7 @@ export function planDefenseReinforcementSpawns(input: DefenseReinforcementPlanIn
             assistTarget: request.roomName,
             targetRoom: request.roomName,
             task: DEFENSE_ASSIST_TASK,
-            defenseSquadId: createDefenseSquadId(helper.roomName, request.roomName, input.now),
+            defenseSquadId: createDefenseAssistSquadId(helper.roomName, request.roomName, input.now),
             defenseSquadSize: plannedSquadSize,
             defenseSquadCreatedAt: input.now
           },

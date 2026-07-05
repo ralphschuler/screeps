@@ -627,6 +627,22 @@ describe("Cluster defense assistance assignments", () => {
     });
 
     expect(cluster.defenseRequests[0]!.assignedCreeps).to.deep.equal(["firstGuard", "ranger"]);
+    expect(firstGuard.memory).to.include({
+      assistTarget: "W1N1",
+      targetRoom: "W1N1",
+      task: "defenseAssist",
+      defenseSquadId: "defenseAssist:W2N1:W1N1:4243",
+      defenseSquadSize: 2,
+      defenseSquadCreatedAt: 4243
+    });
+    expect(ranger.memory).to.include({
+      assistTarget: "W1N1",
+      targetRoom: "W1N1",
+      task: "defenseAssist",
+      defenseSquadId: "defenseAssist:W2N1:W1N1:4243",
+      defenseSquadSize: 2,
+      defenseSquadCreatedAt: 4243
+    });
     expect(spareGuard.memory).to.not.have.property("assistTarget");
     expect(cluster.defenseRequests[0]!).to.include({ guardsNeeded: 0, rangersNeeded: 0, healersNeeded: 0 });
   });

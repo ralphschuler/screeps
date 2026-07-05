@@ -26,7 +26,7 @@ describe("process registry", () => {
     unregisterAllProcesses();
   });
 
-  it("registers framework-decorated economy processes on the bot kernel", () => {
+  it("registers framework-decorated economy processes on the bot kernel without the legacy defense dispatcher", () => {
     registerAllProcesses();
 
     const processIds = kernel.getProcesses().map(process => process.id);
@@ -35,6 +35,7 @@ describe("process registry", () => {
     assert.include(processIds, "terminal:manager");
     assert.include(processIds, "factory:manager");
     assert.include(processIds, "empire:market");
+    assert.notInclude(processIds, "cluster:defense");
   });
 
   it("defers high-cost optional work until bucket exits low mode", () => {
