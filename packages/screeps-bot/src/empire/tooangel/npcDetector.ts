@@ -10,6 +10,8 @@ import { logger } from "@ralphschuler/screeps-core";
 import { normalizeJsonObjectMessage } from "./messageParsing";
 import type { TooAngelNPCRoom, TooAngelQuestSign } from "./types";
 
+const TOOANGEL_USERNAME = "TooAngel";
+
 /**
  * Check if a controller sign is a TooAngel quest advertisement
  */
@@ -40,8 +42,12 @@ export function scanRoomForNPC(room: Room): TooAngelNPCRoom | null {
 
   const controller = room.controller;
 
+  if (controller.sign?.username !== TOOANGEL_USERNAME) {
+    return null;
+  }
+
   // Check for quest sign
-  const questSign = parseQuestSign(controller.sign?.text);
+  const questSign = parseQuestSign(controller.sign.text);
 
   if (!questSign) {
     return null;

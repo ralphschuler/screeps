@@ -15,6 +15,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { getTooAngelMemory } from "./memoryInit";
 import { normalizeJsonObjectMessage } from "./messageParsing";
 import { findClosestNPCRoom } from "./npcDetector";
+import { shouldProcessTooAngelTransaction } from "./transactionGuards";
 import type { TooAngelReputationMessage } from "./types";
 
 /**
@@ -81,7 +82,7 @@ export function processReputationUpdates(): void {
 
       const reputation = parseReputationResponse(transaction.description);
 
-      if (reputation !== null) {
+      if (reputation !== null && shouldProcessTooAngelTransaction(transaction)) {
         logger.info(`Received reputation update from TooAngel: ${reputation}`, {
           subsystem: "TooAngel"
         });
