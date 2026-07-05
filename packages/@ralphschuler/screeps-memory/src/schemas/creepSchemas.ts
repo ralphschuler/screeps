@@ -107,6 +107,12 @@ export interface SwarmCreepMemory {
   task?: string;
   /** Persistent task-board assignment ID */
   assignedTaskId?: string;
+  /** External quest assignment ID, currently used by TooAngel buildcs cooperation. */
+  questId?: string;
+  /** External quest target room. */
+  questTarget?: string;
+  /** External quest action intent. */
+  questAction?: "build";
   /** Source ID (for harvesters) */
   sourceId?: Id<Source>;
   /** Target ID (for various tasks) */
