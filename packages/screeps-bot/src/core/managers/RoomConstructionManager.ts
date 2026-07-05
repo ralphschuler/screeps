@@ -137,10 +137,6 @@ function isEarlyGameDefense(rcl: number): boolean {
   return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
 }
 
-function countOwnedStructures(room: Room, structureType: StructureConstant): number {
-  return room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType === structureType }).length;
-}
-
 function countBuildsForType(room: Room, structureType: BuildableStructureConstant): number {
   const ownedStructures = room.find(FIND_MY_STRUCTURES, {
     filter: structure => structure.structureType === structureType
@@ -150,6 +146,19 @@ function countBuildsForType(room: Room, structureType: BuildableStructureConstan
   });
 
   return ownedStructures.length + ownedSites.length;
+}
+
+function getControllerStructureLimit(structureType: StructureConstant, rcl: number): number {
+  const controllerStructures = (typeof CONTROLLER_STRUCTURES === "undefined"
+    ? { [STRUCTURE_TOWER]: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 6 } }
+    : CONTROLLER_STRUCTURES) as Record<string, Record<number, number>>;
+
+  return controllerStructures[structureType]?.[rcl] ?? 0;
+}
+
+function hasOutstandingTowerDemand(room: Room, rcl: number): boolean {
+  const towerLimit = getControllerStructureLimit(STRUCTURE_TOWER, rcl);
+  return towerLimit > 0 && countBuildsForType(room, STRUCTURE_TOWER) < towerLimit;
 }
 
 function hasOutstandingMandatoryBlueprintDemand(room: Room, rcl: number): boolean {
@@ -173,11 +182,8 @@ function placeCriticalDefenseConstructionSites(room: Room, stampPlan: ReturnType
   if (globalExistingSites >= globalSiteCap) return 0;
 
   const rcl = room.controller?.level ?? stampPlan.rcl;
-  const controllerStructures = (typeof CONTROLLER_STRUCTURES === "undefined"
-    ? { [STRUCTURE_TOWER]: { 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 3, 8: 6 } }
-    : CONTROLLER_STRUCTURES) as Record<string, Record<number, number>>;
-  const towerLimit = controllerStructures[STRUCTURE_TOWER]?.[rcl] ?? 0;
-  const towerCount = countOwnedStructures(room, STRUCTURE_TOWER);
+  const towerLimit = getControllerStructureLimit(STRUCTURE_TOWER, rcl);
+  const towerBuildCount = countBuildsForType(room, STRUCTURE_TOWER);
   const existingStructureKeys = new Set<string>();
   const existingSiteKeys = new Set<string>();
   for (const structure of room.find(FIND_STRUCTURES)) {
@@ -189,7 +195,7 @@ function placeCriticalDefenseConstructionSites(room: Room, stampPlan: ReturnType
   const queue = buildConstructionQueue(stampPlan, { existingStructureKeys, existingSiteKeys, currentRcl: rcl })
     .filter(item =>
       item.structureType === STRUCTURE_TOWER ||
-      (item.structureType === STRUCTURE_RAMPART && (towerCount < towerLimit || rcl >= 3))
+      (item.structureType === STRUCTURE_RAMPART && (towerBuildCount < towerLimit || rcl >= 3))
     )
     .sort((a, b) => {
       if (a.structureType === STRUCTURE_TOWER && b.structureType !== STRUCTURE_TOWER) return -1;
@@ -197,7 +203,7 @@ function placeCriticalDefenseConstructionSites(room: Room, stampPlan: ReturnType
       return b.score - a.score;
     });
 
-  if (towerCount < towerLimit && !queue.some(item => item.structureType === STRUCTURE_TOWER)) {
+  if (towerBuildCount < towerLimit && !queue.some(item => item.structureType === STRUCTURE_TOWER)) {
     const spawn = room.find(FIND_MY_SPAWNS)[0];
     const anchor = spawn?.pos ?? room.controller?.pos;
     if (anchor) {
@@ -273,18 +279,6 @@ export class RoomConstructionManager {
       return;
     }
 
-    // Priority 0: place critical dynamic link/lab sites before static blueprint
-    // work can consume the room's local construction throttle.
-    let linkSitesPlaced = 0;
-    if (rcl >= 5) {
-      linkSitesPlaced = placeLinkConstructionSites(room, 2);
-    }
-
-    let labSitesPlaced = 0;
-    if (rcl >= 6) {
-      labSitesPlaced = placeLabClusterConstructionSites(room, 3);
-    }
-
     // Use the canonical framework stamp planner as the single layout authority.
     // A remembered anchor keeps cleanup/perimeter stable; without one the planner
     // derives an anchor from fixed structures and room facts.
@@ -298,13 +292,28 @@ export class RoomConstructionManager {
     const finalBlueprint = blueprintFromPlan(stampPlan);
     rememberLayoutAnchor(swarm, anchor, finalBlueprint.name, rcl);
 
-    const criticalDefenseSitesPlaced = swarm.danger >= 1 && rcl >= 3
+    // Priority 0: missing towers are survival-critical even in peaceful recovery.
+    // Place them before dynamic links/labs can consume the final global site slot.
+    const shouldPlaceCriticalDefenseSites = rcl >= 3 && (swarm.danger >= 1 || hasOutstandingTowerDemand(room, rcl));
+    const criticalDefenseSitesPlaced = shouldPlaceCriticalDefenseSites
       ? placeCriticalDefenseConstructionSites(room, stampPlan, swarm.danger >= 2 ? 3 : 1)
       : 0;
 
     if (options.criticalOnly) {
       swarm.metrics.constructionSites = existingSites.length + criticalDefenseSitesPlaced;
       return;
+    }
+
+    // Priority 1: place dynamic link/lab sites before lower-priority blueprint
+    // and road work, but after missing tower recovery preserves room safety.
+    let linkSitesPlaced = 0;
+    if (rcl >= 5) {
+      linkSitesPlaced = placeLinkConstructionSites(room, 2);
+    }
+
+    let labSitesPlaced = 0;
+    if (rcl >= 6) {
+      labSitesPlaced = placeLabClusterConstructionSites(room, 3);
     }
 
     // Check per-room construction site throttle after first-spawn/bootstrap, priority economy sites,
