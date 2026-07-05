@@ -140,7 +140,7 @@ This indicates the rollup-plugin-screeps is running in `dryRun` mode (simulating
 **Solution:**
 - Check the deploy logs for the configuration output
 - Verify the credentials in the environment configuration
-- Ensure the workflow calls `npm run push` (which sets `DEST=screeps`)
+- Ensure the workflow runs `npm run deploy:preflight` before `npm run push` (which sets `DEST=screeps`)
 
 ### How to test locally
 

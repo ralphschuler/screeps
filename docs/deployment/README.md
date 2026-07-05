@@ -24,10 +24,12 @@ The deploy path is `npm run push` / `npm run deploy`. Build-only validation is `
 3. Validate before upload:
 
    ```bash
-   npm run build
+   npm run deploy:preflight
    npm run test:unit
    npm run lint:all
    ```
+
+   `npm run deploy:preflight` runs dependency sync validation, alliance-safety checks, and a full repository build so framework package outputs exist before upload.
 
 4. Upload:
 
@@ -42,7 +44,7 @@ The deploy path is `npm run push` / `npm run deploy`. Build-only validation is `
 
 Workflow: `.github/workflows/deploy.yml`.
 
-Deploy can run from `workflow_dispatch` or after the release workflow succeeds. It uses GitHub environments for server-specific variables/secrets.
+Deploy can run from `workflow_dispatch` or after the release workflow succeeds. It uses GitHub environments for server-specific variables/secrets. Every deploy job runs `npm run deploy:preflight` before the secret-scoped Screeps upload step.
 
 Required environment variables/secrets:
 
