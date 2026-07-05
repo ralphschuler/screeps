@@ -33,11 +33,20 @@ describe('start-local-server credential validation', () => {
   });
 
   it('rejects LAN binds when server or bot password still uses the default', () => {
-    expect(() => validateLocalServerCredentials({
-      host: '0.0.0.0',
-      serverPassword: 'ci-password',
-      password: 'bot-secret'
-    })).to.throw(/default credentials/i);
+    let error: Error | null = null;
+    try {
+      validateLocalServerCredentials({
+        host: '0.0.0.0',
+        serverPassword: 'ci-password',
+        password: 'bot-secret'
+      });
+    } catch (caught) {
+      error = caught as Error;
+    }
+
+    expect(error?.message).to.match(/default credentials/i);
+    expect(error?.message).to.include('--serverPassword=<strong-server-password> --password=<strong-bot-password>');
+    expect(error?.message).to.match(/shared-network/i);
 
     expect(() => validateLocalServerCredentials({
       host: '192.168.1.20',

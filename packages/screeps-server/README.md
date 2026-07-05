@@ -46,13 +46,13 @@ Password: ci-password
 Server password: ci-password
 ```
 
-LAN access is explicit opt-in:
+LAN access is explicit opt-in and requires non-default passwords because shared-network clients can reach the local server:
 
 ```bash
-npm run server:local:up -- --serverHost=0.0.0.0
+npm run server:local:up -- --serverHost=0.0.0.0 --serverPassword=<strong-server-password> --password=<strong-bot-password>
 ```
 
-If Docker still shows a stale `0.0.0.0` bind, recreate or reset the local stack:
+A LAN bind with the default `ci-password` server or bot password fails before Docker Compose starts. If Docker still shows a stale `0.0.0.0` bind, recreate or reset the local stack:
 
 ```bash
 npm run server:local:down
