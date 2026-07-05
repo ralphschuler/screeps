@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "private": false,
   "scripts": {
-    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-cache -w @ralphschuler/screeps-defense -w @ralphschuler/screeps-utils --if-present",
+    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-cache -w @ralphschuler/screeps-defense -w @ralphschuler/screeps-intershard -w @ralphschuler/screeps-memory -w @ralphschuler/screeps-stats -w @ralphschuler/screeps-utils --if-present",
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
     "prepublishOnly": "npm run build",
@@ -32,12 +32,14 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-roles#readme",
   "dependencies": {
-    "screeps-cartographer": "^1.8.15",
-    "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-cache": "*",
+    "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-defense": "*",
+    "@ralphschuler/screeps-intershard": "*",
+    "@ralphschuler/screeps-memory": "*",
+    "@ralphschuler/screeps-stats": "*",
     "@ralphschuler/screeps-utils": "*",
-    "@ralphschuler/screeps-memory": "*"
+    "screeps-cartographer": "^1.8.15"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",

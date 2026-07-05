@@ -11,7 +11,7 @@
     "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
-    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-memory -w @ralphschuler/screeps-utils --if-present"
+    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-kernel -w @ralphschuler/screeps-memory -w @ralphschuler/screeps-utils --if-present"
   },
   "keywords": [
     "screeps",
@@ -24,6 +24,7 @@
   "license": "Unlicense",
   "dependencies": {
     "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-kernel": "*",
     "@ralphschuler/screeps-memory": "*",
     "@ralphschuler/screeps-utils": "*"
   },
