@@ -8,6 +8,7 @@
 import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { deliverEnergy, findEnergy } from "./common/energyManagement";
+import { findQuestBuildAction, findQuestBuildRecoveryAction } from "./common/questBuild";
 import { getPheromones, needsBuilding, needsUpgrading } from "../pheromoneHelper";
 import { createLogger } from "@ralphschuler/screeps-core";
 
@@ -19,9 +20,15 @@ const logger = createLogger("LarvaWorkerBehavior");
  */
 export function larvaWorker(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
+  const questRecoveryAction = findQuestBuildRecoveryAction(ctx);
+  if (questRecoveryAction) return questRecoveryAction;
 
   if (isWorking) {
     logger.debug(`${ctx.creep.name} larvaWorker working with ${ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
+
+    const questBuildAction = findQuestBuildAction(ctx);
+    if (questBuildAction) return questBuildAction;
+
     // Try to deliver energy following standard priority: spawns→extensions→towers→storage→containers
     const deliverAction = deliverEnergy(ctx);
     if (deliverAction) {

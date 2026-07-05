@@ -28,6 +28,7 @@
 import type { CreepAction, CreepContext } from "../types";
 import type { CreepState } from "../../memory/schemas";
 import { findAssignedCriticalEnergyDelivery } from "./common/energyManagement";
+import { getQuestBuildStateInterrupt } from "./common/questBuild";
 import { larvaWorker } from "./larvaWorker";
 import { pioneer } from "./pioneer";
 import { interShardPioneer } from "./interShardPioneer";
@@ -76,6 +77,9 @@ const INTERRUPTIBLE_ECONOMY_DELIVERY_STATES = new Set(["build", "repair", "upgra
  * instead of letting builders/upgraders stay committed until empty.
  */
 export function getEconomyStateInterrupt(ctx: CreepContext, currentState: CreepState): CreepAction | null {
+  const questBuildAction = getQuestBuildStateInterrupt(ctx, currentState);
+  if (questBuildAction) return questBuildAction;
+
   if (!INTERRUPTIBLE_ECONOMY_DELIVERY_STATES.has(currentState.action)) return null;
   if (ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) return null;
   if (ctx.memory.role === "upgrader" && !shouldUpgraderRefillCriticalStructures(ctx)) return null;

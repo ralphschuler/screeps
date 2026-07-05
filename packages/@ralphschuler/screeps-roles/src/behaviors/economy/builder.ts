@@ -11,6 +11,7 @@
 import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState } from "./common/stateManagement";
 import { findAssignedCriticalEnergyDelivery, findCriticalEnergyDelivery, findEnergy, hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
+import { findQuestBuildAction, findQuestBuildRecoveryAction } from "./common/questBuild";
 import { getAssignedBuildTarget } from "../../economy/targetAssignmentManager";
 
 /**
@@ -20,8 +21,13 @@ import { getAssignedBuildTarget } from "../../economy/targetAssignmentManager";
  */
 export function builder(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
+  const questRecoveryAction = findQuestBuildRecoveryAction(ctx);
+  if (questRecoveryAction) return questRecoveryAction;
 
   if (isWorking) {
+    const questBuildAction = findQuestBuildAction(ctx);
+    if (questBuildAction) return questBuildAction;
+
     // Before building, check if critical structures need energy
     // Priority: Spawns → Extensions → Towers → Build → Upgrade
     // This ensures the room economy stays healthy while building
