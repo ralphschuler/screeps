@@ -63,27 +63,197 @@ function isApproved(relativePath) {
   return approvedFiles.has(relativePath);
 }
 
-function isCommentOnlyLine(line) {
-  const trimmed = line.trim();
-  return trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*");
+function stripCommentsFromLines(lines) {
+  let inBlockComment = false;
+  let quote = null;
+  let escaped = false;
+
+  return lines.map(line => {
+    let code = "";
+
+    for (let index = 0; index < line.length; index++) {
+      const current = line[index];
+      const next = line[index + 1];
+
+      if (inBlockComment) {
+        if (current === "*" && next === "/") {
+          inBlockComment = false;
+          index++;
+        }
+        continue;
+      }
+
+      if (quote) {
+        code += current;
+        if (escaped) {
+          escaped = false;
+        } else if (current === "\\") {
+          escaped = true;
+        } else if (current === quote) {
+          quote = null;
+        }
+        continue;
+      }
+
+      if (current === '"' || current === "'" || current === "`") {
+        quote = current;
+        code += current;
+        continue;
+      }
+
+      if (current === "/" && next === "*") {
+        inBlockComment = true;
+        index++;
+        continue;
+      }
+
+      if (current === "/" && next === "/") {
+        break;
+      }
+
+      code += current;
+    }
+
+    if (quote !== "`") {
+      quote = null;
+      escaped = false;
+    }
+
+    return code;
+  });
 }
 
-function isRawHostileUsage(line) {
-  if (isCommentOnlyLine(line)) {
-    return false;
+function codeOnlyLine(line) {
+  return line;
+}
+
+function isCommentOnlyLine(line) {
+  return codeOnlyLine(line).trim() === "";
+}
+
+const rawFindCallPatterns = [
+  ".find(",
+  "safeFind(",
+  "safeFindClosestByRange(",
+  "cachedRoomFind(",
+  "cachedFindHostile"
+];
+
+function stripStringLiterals(text) {
+  let stripped = "";
+  let quote = null;
+  let escaped = false;
+
+  for (const character of text) {
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === quote) {
+        quote = null;
+      }
+      stripped += " ";
+      continue;
+    }
+
+    if (character === '"' || character === "'") {
+      quote = character;
+      stripped += " ";
+      continue;
+    }
+
+    stripped += character;
   }
 
-  if (!hostilePatterns.some(pattern => line.includes(pattern))) {
-    return false;
+  return stripped;
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function containsIdentifier(text, identifier) {
+  return new RegExp(`(^|[^A-Za-z0-9_$])${escapeRegExp(identifier)}([^A-Za-z0-9_$]|$)`).test(text);
+}
+
+function containsHostilePattern(text, hostileIdentifiers = hostilePatterns) {
+  const code = stripStringLiterals(text);
+  return [...hostileIdentifiers].some(identifier => containsIdentifier(code, identifier));
+}
+
+function containsRawFindCall(text) {
+  return rawFindCallPatterns.some(pattern => text.includes(pattern));
+}
+
+function compactSnippet(text) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function countSyntaxCharacter(text, character) {
+  return [...stripStringLiterals(text)].filter(candidate => candidate === character).length;
+}
+
+function collectHostileAliases(lines) {
+  const aliases = new Set();
+  let statement = "";
+  let parenBalance = 0;
+
+  for (const line of lines) {
+    const code = codeOnlyLine(line);
+    if (isCommentOnlyLine(code)) {
+      continue;
+    }
+
+    statement = `${statement}\n${code}`;
+    parenBalance += countSyntaxCharacter(code, "(") - countSyntaxCharacter(code, ")");
+
+    const match = statement.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\b[^=]*=\s*([\s\S]+)/);
+    if (match) {
+      const [, alias, initializer] = match;
+      if (containsHostilePattern(initializer) || containsHostilePattern(initializer, aliases)) {
+        aliases.add(alias);
+      }
+    }
+
+    const trimmed = code.trimEnd();
+    const continues = !code.includes(";") && (parenBalance > 0 || /[=([{,?:|&]$/.test(trimmed));
+    if (!continues) {
+      statement = "";
+      parenBalance = 0;
+    }
   }
 
-  return (
-    line.includes(".find(") ||
-    line.includes("safeFind(") ||
-    line.includes("safeFindClosestByRange(") ||
-    line.includes("cachedRoomFind(") ||
-    line.includes("cachedFindHostile")
-  );
+  return aliases;
+}
+
+function rawHostileUsageSnippet(lines, startIndex, hostileIdentifiers) {
+  const line = codeOnlyLine(lines[startIndex]);
+  if (isCommentOnlyLine(line) || !containsRawFindCall(line)) {
+    return null;
+  }
+
+  let parenBalance = 0;
+  const statementLines = [];
+
+  for (let index = startIndex; index < lines.length; index++) {
+    const code = codeOnlyLine(lines[index]);
+    if (!isCommentOnlyLine(code)) {
+      statementLines.push(code);
+      parenBalance += countSyntaxCharacter(code, "(") - countSyntaxCharacter(code, ")");
+    }
+
+    const statement = statementLines.join("\n");
+    if (containsHostilePattern(statement, hostileIdentifiers)) {
+      return compactSnippet(statement);
+    }
+
+    if (parenBalance <= 0) {
+      break;
+    }
+  }
+
+  return null;
 }
 
 const violations = [];
@@ -96,11 +266,13 @@ for (const file of files) {
   }
 
   const contents = await readFile(file, "utf8");
-  const lines = contents.split("\n");
+  const lines = stripCommentsFromLines(contents.split("\n"));
+  const hostileIdentifiers = [...hostilePatterns, ...collectHostileAliases(lines)];
 
-  lines.forEach((line, index) => {
-    if (isRawHostileUsage(line)) {
-      violations.push(`${relativePath}:${index + 1}: ${line.trim()}`);
+  lines.forEach((_, index) => {
+    const snippet = rawHostileUsageSnippet(lines, index, hostileIdentifiers);
+    if (snippet) {
+      violations.push(`${relativePath}:${index + 1}: ${snippet}`);
     }
   });
 }
