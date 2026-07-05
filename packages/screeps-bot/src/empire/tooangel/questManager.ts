@@ -13,6 +13,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { getTooAngelMemory } from "./memoryInit";
 import { normalizeJsonObjectMessage } from "./messageParsing";
 import { getNPCRooms } from "./npcDetector";
+import { shouldProcessTooAngelTransaction } from "./transactionGuards";
 import type { TooAngelQuest, TooAngelQuestMemory, TooAngelQuestType } from "./types";
 
 /**
@@ -209,7 +210,7 @@ export function processQuestMessages(): void {
 
       const quest = parseQuestMessage(transaction.description);
 
-      if (quest) {
+      if (quest && shouldProcessTooAngelTransaction(transaction, quest.origin)) {
         logger.info(`Received quest ${quest.id}: ${quest.quest} in ${quest.room} (deadline: ${quest.end})`, {
           subsystem: "TooAngel"
         });

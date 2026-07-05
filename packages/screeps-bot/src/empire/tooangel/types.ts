@@ -104,4 +104,6 @@ export interface TooAngelMemory {
   activeQuests: Record<string, TooAngelQuestMemory>;
   completedQuests: string[]; // Quest IDs
   lastProcessedTick: number;
+  /** Bounded ring of recent terminal transaction identities for replay protection. */
+  recentTransactionIds: string[];
 }

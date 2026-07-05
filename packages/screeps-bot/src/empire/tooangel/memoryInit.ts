@@ -23,7 +23,8 @@ export function getTooAngelMemory(): TooAngelMemory {
       npcRooms: {},
       activeQuests: {},
       completedQuests: [],
-      lastProcessedTick: 0
+      lastProcessedTick: 0,
+      recentTransactionIds: []
     };
   }
 
@@ -45,6 +46,14 @@ export function getTooAngelMemory(): TooAngelMemory {
 
   if (!mem.tooangel.completedQuests) {
     mem.tooangel.completedQuests = [];
+  }
+
+  if (typeof mem.tooangel.lastProcessedTick !== "number") {
+    mem.tooangel.lastProcessedTick = 0;
+  }
+
+  if (!Array.isArray(mem.tooangel.recentTransactionIds)) {
+    mem.tooangel.recentTransactionIds = [];
   }
 
   return mem.tooangel;

@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { parseQuestSign } from "../../src/empire/tooangel/npcDetector";
+import { parseQuestSign, scanRoomForNPC } from "../../src/empire/tooangel/npcDetector";
 import { parseQuestMessage, processQuestMessages } from "../../src/empire/tooangel/questManager";
 import { parseReputationResponse, processReputationUpdates } from "../../src/empire/tooangel/reputationManager";
 
@@ -38,12 +38,37 @@ describe("TooAngel quest manager", () => {
     }
   });
 
+  it("detects quest NPC rooms only from TooAngel-signed controllers", () => {
+    const sign = JSON.stringify({ type: "quest", id: "q1", origin: "W9N9", info: "https://tooangel.example/q1" });
+    const room = {
+      name: "W9N9",
+      controller: { sign: { username: "TooAngel", text: sign } },
+      terminal: { my: false }
+    } as unknown as Room;
+
+    const npcRoom = scanRoomForNPC(room);
+
+    assert.equal(npcRoom?.roomName, "W9N9");
+    assert.deepEqual(npcRoom?.availableQuests, ["q1"]);
+  });
+
+  it("rejects spoofed quest signs from non-TooAngel controllers", () => {
+    const sign = JSON.stringify({ type: "quest", id: "q1", origin: "W9N9", info: "https://tooangel.example/q1" });
+    const room = {
+      name: "W9N9",
+      controller: { sign: { username: "Enemy", text: sign } },
+      terminal: { my: false }
+    } as unknown as Room;
+
+    assert.isNull(scanRoomForNPC(room));
+  });
+
   it("continues quest processing after malformed transaction descriptions", () => {
     const validQuest = JSON.stringify({ type: "quest", id: "valid", room: "W2N2", quest: "buildcs", end: 3000 });
 
     setupGame(2000, [
       { transactionId: "bad", time: 1999, from: "W0N0", to: "W1N1", description: "undefined" },
-      { transactionId: "valid", time: 2000, from: "W0N0", to: "W1N1", description: validQuest }
+      { transactionId: "valid", time: 2000, sender: { username: "TooAngel" }, from: "W0N0", to: "W1N1", description: validQuest }
     ]);
 
     assert.doesNotThrow(() => processQuestMessages());
@@ -58,7 +83,7 @@ describe("TooAngel quest manager", () => {
 
     setupGame(2000, [
       { transactionId: "bad", time: 1999, from: "W0N0", to: "W1N1", description: "undefined" },
-      { transactionId: "valid", time: 2000, from: "W0N0", to: "W1N1", description: validReputation }
+      { transactionId: "valid", time: 2000, sender: { username: "TooAngel" }, from: "W0N0", to: "W1N1", description: validReputation }
     ]);
 
     assert.doesNotThrow(() => processReputationUpdates());
@@ -70,8 +95,8 @@ describe("TooAngel quest manager", () => {
     const newQuest = JSON.stringify({ type: "quest", id: "new", room: "W2N2", quest: "buildcs", end: 3000 });
 
     setupGame(2000, [
-      { transactionId: "old", time: 1500, from: "W0N0", to: "W1N1", description: oldQuest },
-      { transactionId: "new", time: 2000, from: "W0N0", to: "W1N1", description: newQuest }
+      { transactionId: "old", time: 1500, sender: { username: "TooAngel" }, from: "W0N0", to: "W1N1", description: oldQuest },
+      { transactionId: "new", time: 2000, sender: { username: "TooAngel" }, from: "W0N0", to: "W1N1", description: newQuest }
     ]);
     (global as any).Memory.tooangel = {
       enabled: true,
