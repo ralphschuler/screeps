@@ -3,14 +3,12 @@
  *
  * Responsibilities:
  * - Lab reactions and boosting
- * - Factory production
  * - Power spawn processing
- * - Labs, factory, and power spawn processing
+ * - Labs, factory capability, and power spawn processing intent
  *
- * Link transfers are centralized in @ralphschuler/screeps-economy LinkManager.
+ * Factory and link side effects are centralized in @ralphschuler/screeps-economy managers.
  */
 
-/* eslint-disable no-undef */
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { labEconomyWorkflow, type LabWorkflowResult } from "../../labs/labEconomyWorkflow";
 
@@ -79,40 +77,11 @@ export class RoomEconomyManager {
       this.labWorkflow.run(room, swarm);
     }
 
-    if (intent.processing.factory) {
-      this.runFactory(room, cache.factory);
-    }
-
     if (intent.processing.powerSpawn) {
       this.runPowerSpawn(room, cache.powerSpawn);
     }
 
-    // Link transfers are handled by the decorated LinkManager process.
-  }
-
-  /**
-   * Run factory production
-   */
-  private runFactory(room: Room, factory: StructureFactory | undefined): void {
-    if (!factory || factory.cooldown > 0) return;
-
-    // Simple commodity production - compress minerals
-    const minerals: MineralConstant[] = [
-      RESOURCE_UTRIUM,
-      RESOURCE_LEMERGIUM,
-      RESOURCE_KEANIUM,
-      RESOURCE_ZYNTHIUM,
-      RESOURCE_HYDROGEN,
-      RESOURCE_OXYGEN
-    ];
-
-    for (const mineral of minerals) {
-      if (factory.store.getUsedCapacity(mineral) >= 500 && factory.store.getUsedCapacity(RESOURCE_ENERGY) >= 200) {
-        // Try to produce compressed bar
-        const result = factory.produce(RESOURCE_UTRIUM_BAR); // Note: This is simplified
-        if (result === OK) break;
-      }
-    }
+    // Factory production and link transfers are handled by framework economy processes.
   }
 
   /**

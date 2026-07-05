@@ -156,12 +156,53 @@ describe("RoomEconomyManager", () => {
   });
 
   describe("Factory production", () => {
-    it("should skip production if factory is on cooldown", () => {
-      assert.exists(manager);
-    });
+    function createStore(contents: Partial<Record<ResourceConstant, number>>): StoreDefinition {
+      return {
+        ...contents,
+        getUsedCapacity: (resource?: ResourceConstant) => {
+          if (resource) return contents[resource] ?? 0;
+          return Object.values(contents).reduce((sum, amount) => sum + (amount ?? 0), 0);
+        },
+        getFreeCapacity: () => 100000,
+        getCapacity: () => 100000
+      } as unknown as StoreDefinition;
+    }
 
-    it("should produce compressed bars when resources available", () => {
-      assert.exists(manager);
+    it("leaves factory side effects to the framework economy manager", () => {
+      const produced: CommodityConstant[] = [];
+      const factory = {
+        cooldown: 0,
+        store: createStore({ [RESOURCE_LEMERGIUM]: 500, [RESOURCE_ENERGY]: 200 }),
+        produce: ((commodity: CommodityConstant) => {
+          produced.push(commodity);
+          return OK;
+        }) as StructureFactory["produce"]
+      } as unknown as StructureFactory;
+      const room = {
+        name: "W7N1",
+        controller: { level: 7 }
+      } as unknown as Room;
+      const managerWithWorkflow = new RoomEconomyManager({
+        run: workflowRoom => ({
+          roomName: workflowRoom.name,
+          initialized: true,
+          boostPrepared: true,
+          reactionPlanned: false,
+          reactionReady: false,
+          activeReactionChanged: false,
+          reactionExecuted: false,
+          saved: true
+        })
+      });
+
+      managerWithWorkflow.runResourceProcessing(room, {} as SwarmState, {
+        factory,
+        powerSpawn: undefined,
+        links: [],
+        sources: []
+      });
+
+      assert.deepEqual(produced, []);
     });
   });
 
