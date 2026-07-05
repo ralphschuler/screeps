@@ -5091,7 +5091,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -35262,29 +35262,7 @@ hasNetwork: a >= 2
 };
 }, e.prototype.runResourceProcessing = function(e, t, r) {
 var o = this.getRoomEconomyIntent(e, r);
-o.processing.labs && this.labWorkflow.run(e, t), o.processing.factory && this.runFactory(e, r.factory),
-o.processing.powerSpawn && this.runPowerSpawn(e, r.powerSpawn);
-}, e.prototype.runFactory = function(e, t) {
-var r, o;
-if (t && !(t.cooldown > 0)) {
-var n = [ RESOURCE_UTRIUM, RESOURCE_LEMERGIUM, RESOURCE_KEANIUM, RESOURCE_ZYNTHIUM, RESOURCE_HYDROGEN, RESOURCE_OXYGEN ];
-try {
-for (var i = a(n), s = i.next(); !s.done; s = i.next()) {
-var c = s.value;
-if (t.store.getUsedCapacity(c) >= 500 && t.store.getUsedCapacity(RESOURCE_ENERGY) >= 200 && t.produce(RESOURCE_UTRIUM_BAR) === OK) break;
-}
-} catch (e) {
-r = {
-error: e
-};
-} finally {
-try {
-s && !s.done && (o = i.return) && o.call(i);
-} finally {
-if (r) throw r.error;
-}
-}
-}
+o.processing.labs && this.labWorkflow.run(e, t), o.processing.powerSpawn && this.runPowerSpawn(e, r.powerSpawn);
 }, e.prototype.runPowerSpawn = function(e, t) {
 t && t.store.getUsedCapacity(RESOURCE_POWER) >= 1 && t.store.getUsedCapacity(RESOURCE_ENERGY) >= 50 && t.processPower();
 }, e;
