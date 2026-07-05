@@ -5091,7 +5091,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -13373,6 +13373,8 @@ if (e) throw e.error;
 }
 Ki.reset();
 }
+}, e.prototype.publishIdleTick = function() {
+this.startTick(), this.finalizeTick();
 }, e.prototype.finalizeTick = function() {
 var e, t, r, n, a, c, u, l, m, d, p, f, y, v, g, h;
 if (this.config.enabled) {
@@ -14253,24 +14255,24 @@ if (e) throw e.error;
 }
 }
 }, e.prototype.finalizeCreepStats = function() {
-var e, t, r, o, n, i, s;
+var e, t, r, o, n, s, c, u, l, m, d, p, f, y, v, g, h;
 try {
-for (var c = a(Object.values(Game.creeps)), u = c.next(); !u.done; u = c.next()) {
-var l = u.value;
-if (!this.currentSnapshot.creeps[l.name]) {
-var m = l.memory, d = null !== (o = null === (r = m.state) || void 0 === r ? void 0 : r.action) && void 0 !== o ? o : m.working ? "working" : "idle";
-this.currentSnapshot.creeps[l.name] = {
-name: l.name,
-role: null !== (n = m.role) && void 0 !== n ? n : "unknown",
-homeRoom: null !== (i = m.homeRoom) && void 0 !== i ? i : l.room.name,
-currentRoom: l.room.name,
+for (var R = a(Object.entries(Game.creeps)), E = R.next(); !E.done; E = R.next()) {
+var T = i(E.value, 2), C = T[0], S = T[1], w = null !== (r = S.name) && void 0 !== r ? r : C;
+if (!this.currentSnapshot.creeps[w]) {
+var x = null !== (o = S.memory) && void 0 !== o ? o : {}, b = null !== (s = null === (n = x.state) || void 0 === n ? void 0 : n.action) && void 0 !== s ? s : x.working ? "working" : "idle", O = null !== (l = null !== (u = null === (c = S.room) || void 0 === c ? void 0 : c.name) && void 0 !== u ? u : x.homeRoom) && void 0 !== l ? l : "unknown";
+this.currentSnapshot.creeps[w] = {
+name: w,
+role: null !== (m = x.role) && void 0 !== m ? m : "unknown",
+homeRoom: null !== (d = x.homeRoom) && void 0 !== d ? d : O,
+currentRoom: O,
 cpu: 0,
-action: d,
-ticksToLive: null !== (s = l.ticksToLive) && void 0 !== s ? s : 0,
-hits: l.hits,
-hitsMax: l.hitsMax,
-bodyParts: l.body.length,
-fatigue: l.fatigue,
+action: b,
+ticksToLive: null !== (p = S.ticksToLive) && void 0 !== p ? p : 0,
+hits: null !== (f = S.hits) && void 0 !== f ? f : 0,
+hitsMax: null !== (y = S.hitsMax) && void 0 !== y ? y : 0,
+bodyParts: null !== (g = null === (v = S.body) || void 0 === v ? void 0 : v.length) && void 0 !== g ? g : 0,
+fatigue: null !== (h = S.fatigue) && void 0 !== h ? h : 0,
 actionsThisTick: 0
 };
 }
@@ -14281,7 +14283,7 @@ error: t
 };
 } finally {
 try {
-u && !u.done && (t = c.return) && t.call(c);
+E && !E.done && (t = R.return) && t.call(R);
 } finally {
 if (e) throw e.error;
 }
@@ -45420,7 +45422,7 @@ return null === (t = e.controller) || void 0 === t ? void 0 : t.my;
 }).length;
 if (0 === n) return Game.time % 100 == 0 && Ci.info("Shard idle (no owned rooms) at tick ".concat(Game.time), {
 subsystem: "SwarmBot"
-}), void Ci.flush();
+}), Ji.publishIdleTick(), void Ci.flush();
 Game.time % 10 == 0 && Ci.info("SwarmBot loop executing at tick ".concat(Game.time), {
 subsystem: "SwarmBot",
 meta: {

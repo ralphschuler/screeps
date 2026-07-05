@@ -244,6 +244,16 @@ export class UnifiedStatsManager {
   }
 
   /**
+   * Publish a fresh zero/idle tick without room or process work.
+   * Runtime shells use this on abandoned or respawning shards so external
+   * diagnostics can distinguish intentional idleness from stale telemetry.
+   */
+  public publishIdleTick(): void {
+    this.startTick();
+    this.finalizeTick();
+  }
+
+  /**
    * End of tick - finalize and publish stats
    */
   public finalizeTick(): void {
@@ -1551,29 +1561,31 @@ export class UnifiedStatsManager {
    * Finalize creep stats - collect stats for all creeps if not already recorded
    */
   private finalizeCreepStats(): void {
-    for (const creep of Object.values(Game.creeps)) {
+    for (const [creepName, creep] of Object.entries(Game.creeps)) {
+      const name = creep.name ?? creepName;
       // Only record if not already recorded this tick
-      if (!this.currentSnapshot.creeps[creep.name]) {
-        const creepMemory = creep.memory as unknown as { 
-          role?: string; 
-          homeRoom?: string; 
-          state?: { action?: string }; 
-          working?: boolean 
+      if (!this.currentSnapshot.creeps[name]) {
+        const creepMemory = (creep.memory ?? {}) as unknown as {
+          role?: string;
+          homeRoom?: string;
+          state?: { action?: string };
+          working?: boolean
         };
         const action = creepMemory.state?.action ?? (creepMemory.working ? "working" : "idle");
+        const currentRoom = creep.room?.name ?? creepMemory.homeRoom ?? "unknown";
         
-        this.currentSnapshot.creeps[creep.name] = {
-          name: creep.name,
+        this.currentSnapshot.creeps[name] = {
+          name,
           role: creepMemory.role ?? "unknown",
-          homeRoom: creepMemory.homeRoom ?? creep.room.name,
-          currentRoom: creep.room.name,
+          homeRoom: creepMemory.homeRoom ?? currentRoom,
+          currentRoom,
           cpu: 0, // Will be filled in by creep runner if tracking
           action,
           ticksToLive: creep.ticksToLive ?? 0,
-          hits: creep.hits,
-          hitsMax: creep.hitsMax,
-          bodyParts: creep.body.length,
-          fatigue: creep.fatigue,
+          hits: creep.hits ?? 0,
+          hitsMax: creep.hitsMax ?? 0,
+          bodyParts: creep.body?.length ?? 0,
+          fatigue: creep.fatigue ?? 0,
           actionsThisTick: 0
         };
       }
