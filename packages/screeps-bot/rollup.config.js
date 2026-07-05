@@ -191,7 +191,7 @@ export default {
       tsconfig: "./tsconfig.json",
       include: ["**/*.ts"],
       filterRoot: path.resolve(__dirname, ".."),
-      noEmitOnError: false,
+      noEmitOnError: true,
       noForceEmit: true
     }),
     resolve({
