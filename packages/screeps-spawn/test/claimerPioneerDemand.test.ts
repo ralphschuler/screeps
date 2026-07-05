@@ -61,10 +61,10 @@ function createSwarm(overrides: Partial<SwarmState> = {}): SwarmState {
   } as SwarmState;
 }
 
-function createDangerousHostile(username = "Invader"): Creep {
+function createDangerousHostile(username = "Invader", parts: BodyPartConstant[] = [ATTACK]): Creep {
   return {
     owner: { username },
-    body: [{ type: ATTACK, hits: 100 }]
+    body: parts.map(type => ({ type, hits: 100 }))
   } as Creep;
 }
 
@@ -88,6 +88,16 @@ function createClaimerCreep(targetRoom: string, parts: BodyPartConstant[]): Cree
     body: parts.map(type => ({ type, hits: 100 })),
     getActiveBodyparts: (part: BodyPartConstant) => parts.filter(type => type === part).length
   } as unknown as Creep;
+}
+
+function createConstructionSite(roomName: string, structureType: BuildableStructureConstant): ConstructionSite {
+  return {
+    id: `${roomName}-${structureType}` as Id<ConstructionSite>,
+    my: true,
+    owner: { username: "me" },
+    pos: { roomName },
+    structureType
+  } as ConstructionSite;
 }
 
 function setEmpireMemory(overrides: Record<string, unknown> = {}): void {
@@ -117,6 +127,7 @@ function setEmpireMemory(overrides: Record<string, unknown> = {}): void {
 function resetWorld(): void {
   Game.time = 1000;
   Game.creeps = {};
+  Game.constructionSites = {};
   Game.rooms = {
     E1N1: createRoom("E1N1", { my: true, hasSpawn: true })
   };
@@ -196,6 +207,80 @@ describe("claimer and pioneer demand", () => {
     });
 
     expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
+  });
+
+  it("claims neutral owned spawn construction sites when the empire queue has not caught up", () => {
+    Game.rooms.E3N1 = createRoom("E3N1", { spawnSite: true });
+    Game.constructionSites = {
+      staleSpawn: createConstructionSite("E3N1", STRUCTURE_SPAWN)
+    };
+    seedStableHomeEconomy();
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E3N1", task: "claim" });
+
+    const plan = createSpawnPlan(Game.rooms.E1N1, createSwarm());
+    const request = plan.requests.find(spawnRequest => spawnRequest.role === "claimer");
+
+    expect(request?.targetRoom).to.equal("E3N1");
+    expect(request?.additionalMemory).to.deep.equal({ task: "claim" });
+  });
+
+  it("prioritizes owned spawn construction claims over normal expansion queue entries", () => {
+    Game.rooms.E3N1 = createRoom("E3N1", { spawnSite: true });
+    Game.constructionSites = {
+      staleSpawn: createConstructionSite("E3N1", STRUCTURE_SPAWN)
+    };
+    setEmpireMemory({
+      claimQueue: [{ roomName: "E2N1", claimed: false, score: 999 }]
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E3N1", task: "claim" });
+  });
+
+  it("skips unsafe owned spawn construction claims and falls back to the expansion queue", () => {
+    Game.rooms.E3N1 = createRoom("E3N1", { spawnSite: true, hostileCreeps: [createDangerousHostile()] });
+    Game.constructionSites = {
+      unsafeSpawn: createConstructionSite("E3N1", STRUCTURE_SPAWN)
+    };
+    setEmpireMemory({
+      claimQueue: [{ roomName: "E2N1", claimed: false, score: 100 }]
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E2N1", task: "claim" });
+  });
+
+  it("treats hostile claim parts as unsafe for owned spawn construction claims", () => {
+    Game.rooms.E3N1 = createRoom("E3N1", { spawnSite: true, hostileCreeps: [createDangerousHostile("Invader", [CLAIM])] });
+    Game.constructionSites = {
+      unsafeClaimSpawn: createConstructionSite("E3N1", STRUCTURE_SPAWN)
+    };
+    setEmpireMemory({
+      claimQueue: [{ roomName: "E2N1", claimed: false, score: 100 }]
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({ targetRoom: "E2N1", task: "claim" });
+  });
+
+  it("does not bypass expansion pause for owned spawn construction claims", () => {
+    Game.rooms.E2N1 = createRoom("E2N1");
+    Game.rooms.E3N1 = createRoom("E3N1", { spawnSite: true });
+    Game.constructionSites = {
+      pausedSpawn: createConstructionSite("E3N1", STRUCTURE_SPAWN)
+    };
+    setEmpireMemory({
+      objectives: {
+        targetPowerLevel: 0,
+        targetRoomCount: 1,
+        warMode: false,
+        expansionPaused: true
+      },
+      claimQueue: [{ roomName: "E3N1", claimed: false, score: 999 }]
+    });
+
+    expect(getClaimerSpawnAssignment("E1N1", createSwarm({ remoteAssignments: ["E2N1"] }))).to.deep.equal({
+      targetRoom: "E2N1",
+      task: "reserve"
+    });
   });
 
   it("ignores queued claimers without CLAIM parts when de-duplicating claim targets", () => {

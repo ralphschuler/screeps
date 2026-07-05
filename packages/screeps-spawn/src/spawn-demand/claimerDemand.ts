@@ -6,12 +6,14 @@
  * then remote reservation refreshes. The module also de-duplicates active and
  * queued claimers to avoid multiple rooms racing for the same controller.
  */
+import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
 import { REMOTE_RESERVATION_REFRESH_TICKS } from "../remoteRoleDemand";
 import { spawnQueue } from "../spawnQueue";
 import {
   getMyUsername,
+  getSafeRoomLinearDistance,
   getSpawnQueueRoomNames,
   hasDangerousHostile,
   hasUnsafeRemoteIntel,
@@ -24,6 +26,16 @@ export interface ClaimerSpawnAssignment {
   targetRoom: string;
   task: ClaimerTask;
 }
+
+const OWNED_SPAWN_CONSTRUCTION_CLAIM_MAX_DISTANCE = 10;
+const UNSAFE_CONSTRUCTION_TARGET_THREAT_LEVEL = 2;
+const DANGEROUS_CONSTRUCTION_CLAIM_HOSTILE_PARTS = new Set<BodyPartConstant>([
+  ATTACK,
+  RANGED_ATTACK,
+  HEAL,
+  WORK,
+  CLAIM
+]);
 
 interface SpawnSettingsMemory {
   spawnSettings?: {
@@ -131,30 +143,98 @@ function getRecoveryClaimTarget(empire: ReturnType<typeof memoryManager.getEmpir
   return candidates[0]?.roomName ?? null;
 }
 
+function getOwnedSpawnConstructionSiteRoomNames(): string[] {
+  const roomNames = new Set<string>();
+  for (const site of Object.values(Game.constructionSites ?? {})) {
+    if (site.structureType === STRUCTURE_SPAWN && site.my !== false) {
+      roomNames.add(site.pos.roomName);
+    }
+  }
+  return [...roomNames].sort();
+}
+
+function hasDangerousConstructionClaimHostile(room: Room): boolean {
+  return getActualHostileCreeps(room).some(hostile =>
+    hostile.body.some(part => part.hits > 0 && DANGEROUS_CONSTRUCTION_CLAIM_HOSTILE_PARTS.has(part.type))
+  );
+}
+
+function isOwnedSpawnConstructionClaimTarget(
+  roomName: string,
+  empire: ReturnType<typeof memoryManager.getEmpire>
+): boolean {
+  const room = Game.rooms[roomName];
+  const myUsername = getMyUsername();
+  if (room) {
+    const controller = room.controller;
+    if (!controller) return false;
+    const owner = controller.owner?.username;
+    if (controller.my || owner === myUsername) return false;
+    if (owner) return false;
+
+    const reserver = controller.reservation?.username;
+    if (reserver && reserver !== myUsername) return false;
+    if (hasDangerousConstructionClaimHostile(room)) return false;
+    return true;
+  }
+
+  const intel = empire.knownRooms[roomName];
+  if (!intel) return true;
+  if (intel.owner && intel.owner !== myUsername) return false;
+  if (intel.reserver && intel.reserver !== myUsername) return false;
+  if (intel.threatLevel >= UNSAFE_CONSTRUCTION_TARGET_THREAT_LEVEL) return false;
+  if (intel.isHighway || intel.isSK) return false;
+  return true;
+}
+
+function getOwnedSpawnConstructionClaimTarget(
+  homeRoom: string,
+  empire: ReturnType<typeof memoryManager.getEmpire>
+): string | null {
+  const candidates = getOwnedSpawnConstructionSiteRoomNames()
+    .filter(roomName => !hasAssignedClaimer(roomName, "claim"))
+    .filter(roomName => isOwnedSpawnConstructionClaimTarget(roomName, empire))
+    .map(roomName => ({
+      roomName,
+      distance: getSafeRoomLinearDistance(homeRoom, roomName) ?? 999
+    }))
+    .filter(candidate => candidate.distance <= OWNED_SPAWN_CONSTRUCTION_CLAIM_MAX_DISTANCE)
+    .sort((a, b) => a.distance - b.distance || a.roomName.localeCompare(b.roomName));
+
+  return candidates[0]?.roomName ?? null;
+}
+
 /**
  * Choose the next claim/reserve target for a claimer born in a home room.
  *
  * Priority is intentionally unchanged from the facade:
- * recovery reclaim (if GCL allows) -> expansion queue -> remote reservation.
+ * recovery reclaim (if GCL allows) -> owned spawn-site claim repair -> expansion queue -> remote reservation.
  */
-export function getClaimerSpawnAssignment(_homeRoom: string, swarm: SwarmState): ClaimerSpawnAssignment | null {
+export function getClaimerSpawnAssignment(homeRoom: string, swarm: SwarmState): ClaimerSpawnAssignment | null {
   const empire = memoryManager.getEmpire();
   const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
   const canClaimRoom = ownedRooms.length < (Game.gcl?.level ?? 1);
+  const expansionClaimsAllowed = canClaimRoom && empire.objectives?.expansionPaused !== true;
   const recoveryTarget = canClaimRoom && isRoomRecoveryReclaimEnabled() ? getRecoveryClaimTarget(empire) : null;
   if (recoveryTarget) {
     return { targetRoom: recoveryTarget, task: "claim" };
   }
 
-  // Expansion claims use the scored empire queue first.
-  const claimTargetRooms = canClaimRoom
+  const ownedConstructionTarget = expansionClaimsAllowed ? getOwnedSpawnConstructionClaimTarget(homeRoom, empire) : null;
+  if (ownedConstructionTarget) {
+    return { targetRoom: ownedConstructionTarget, task: "claim" };
+  }
+
+  // Expansion claims use the scored empire queue after live owned spawn-site repairs.
+  const claimTargetRooms = expansionClaimsAllowed
     ? new Set([
         ...Object.values(empire.recoveryRooms ?? {}).map(entry => entry.roomName),
+        ...getOwnedSpawnConstructionSiteRoomNames(),
         ...empire.claimQueue.filter(candidate => !candidate.claimed).map(candidate => candidate.roomName)
       ])
     : new Set<string>();
-  if (canClaimRoom) {
+  if (expansionClaimsAllowed) {
     const expansionTarget = empire.claimQueue.find(
       candidate => !candidate.claimed && !hasAssignedClaimer(candidate.roomName, "claim")
     );
