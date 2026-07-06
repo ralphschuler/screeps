@@ -41,6 +41,9 @@ jobs:
       - name: Build framework and bot
         run: npm run build
 
+      - name: Check bot bundle drift
+        run: npm run check:bot-bundle-drift
+
       - name: Typecheck workspaces
         run: npm run typecheck
 

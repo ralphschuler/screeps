@@ -4,7 +4,7 @@ The deploy path is `npm run push` / `npm run deploy`. Build-only validation is `
 
 ## Local deploy
 
-1. Use Node.js 24:
+1. Use the canonical Node.js 24 toolchain from `.nvmrc` and the committed lockfile:
 
    ```bash
    nvm use
@@ -29,7 +29,7 @@ The deploy path is `npm run push` / `npm run deploy`. Build-only validation is `
    npm run lint:all
    ```
 
-   `npm run deploy:preflight` runs dependency sync validation, alliance-safety checks, and a full repository build so framework package outputs exist before upload.
+   `npm run deploy:preflight` runs dependency sync validation, alliance-safety checks, a full repository build, and a generated bundle drift check so framework package outputs exist and `packages/screeps-bot/dist/main.js` matches the committed artifact before upload.
 
 4. Upload:
 
@@ -73,7 +73,7 @@ The deploy target is controlled by `SCREEPS_BRANCH` and server variables. Keep p
 npm run build
 ```
 
-Build-only mode creates `packages/screeps-bot/dist/main.js`, checks bundle size, and prints deploy config with upload disabled.
+Build-only mode creates `packages/screeps-bot/dist/main.js`, checks bundle size, and prints deploy config with upload disabled. CI and `npm run deploy:preflight` also run `npm run check:bot-bundle-drift` so Rollup-generated changes to the tracked bot bundle must be reviewed and committed with the source change.
 
 ## Rollback
 

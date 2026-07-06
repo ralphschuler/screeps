@@ -33,7 +33,7 @@ function stepBlock(name) {
 test("deploy workflow runs preflight before secret-scoped upload", () => {
   assert.equal(
     rootPackage.scripts["deploy:preflight"],
-    "npm run sync:deps:check && npm run check:alliance-safety && npm run build",
+    "npm run sync:deps:check && npm run check:alliance-safety && npm run build && npm run check:bot-bundle-drift",
     "root package should define the deploy preflight command used by the workflow",
   );
 
