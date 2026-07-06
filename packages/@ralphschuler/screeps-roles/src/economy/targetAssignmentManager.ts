@@ -8,11 +8,43 @@
  */
 
 import type { BaseCreepMemory } from "../framework/types";
+import { getConstructionPriority } from "./constructionPriority";
 
 type MutableCreepMemory<T extends BaseCreepMemory> = CreepMemory &
   BaseCreepMemory &
   { room?: string } &
   Partial<T>;
+
+interface BuildSiteCache {
+  tick: number;
+  sites: ConstructionSite[];
+  highestPriority: number;
+}
+
+const buildSiteCacheByRoom = new Map<string, BuildSiteCache>();
+
+function getBuildSiteCache(room: Room): BuildSiteCache {
+  const existing = buildSiteCacheByRoom.get(room.name);
+  if (existing && existing.tick === Game.time) return existing;
+
+  const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
+  const highestPriority = sites.reduce(
+    (highest, site) => Math.max(highest, getConstructionPriority(site)),
+    Number.NEGATIVE_INFINITY
+  );
+  const cache = { tick: Game.time, sites, highestPriority };
+  buildSiteCacheByRoom.set(room.name, cache);
+  return cache;
+}
+
+function isLocalBuildSite(site: ConstructionSite, room: Room): boolean {
+  return site.pos.roomName === room.name;
+}
+
+function selectClosestHighestPrioritySite(creep: Creep, cache: BuildSiteCache): ConstructionSite | null {
+  const candidates = cache.sites.filter((site) => getConstructionPriority(site) === cache.highestPriority);
+  return creep.pos.findClosestByRange(candidates) ?? candidates[0] ?? null;
+}
 
 /**
  * Get assigned source for a harvester.
@@ -46,26 +78,35 @@ export function getAssignedSource(creep: Creep): Source | null {
 }
 
 /**
- * Get assigned build target for a builder
- * Falls back to finding closest construction site
+ * Get assigned build target for a builder.
+ *
+ * Existing lower-priority assignments are replaced when recovery-critical
+ * construction sites appear, so builders do not spend throughput on extension,
+ * wall, or road backlogs while tower/storage/spawn sites remain unbuilt.
  */
 export function getAssignedBuildTarget(creep: Creep): ConstructionSite | null {
   if (!creep.room) return null;
   
   const memory = getMutableCreepMemory<BaseCreepMemory & { targetId?: Id<ConstructionSite> }>(creep);
+  const siteCache = getBuildSiteCache(creep.room);
+  if (siteCache.sites.length === 0) {
+    delete memory.targetId;
+    return null;
+  }
+
   if (memory.targetId) {
     const site = Game.getObjectById(memory.targetId);
-    if (site) return site;
+    if (site && isLocalBuildSite(site, creep.room) && getConstructionPriority(site) >= siteCache.highestPriority) {
+      return site;
+    }
+    delete memory.targetId;
   }
   
-  const sites = creep.room.find(FIND_MY_CONSTRUCTION_SITES);
-  if (sites.length === 0) return null;
-  
-  const closest = creep.pos.findClosestByRange(sites);
-  if (closest) {
-    memory.targetId = closest.id;
+  const assignedSite = selectClosestHighestPrioritySite(creep, siteCache);
+  if (assignedSite) {
+    memory.targetId = assignedSite.id;
   }
-  return closest;
+  return assignedSite;
 }
 
 /**
