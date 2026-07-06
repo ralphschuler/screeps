@@ -6663,7 +6663,7 @@ var r = function e() {
 var r = !1;
 try {
 r = this instanceof e;
-} catch (e) {}
+} catch {}
 return r ? Reflect.construct(t, arguments, this.constructor) : t.apply(this, arguments);
 };
 r.prototype = t.prototype;
@@ -22433,18 +22433,44 @@ usage: "showConfig()",
 examples: [ "showConfig()" ],
 category: "Configuration"
 }) ], e.prototype, "showConfig", null), e;
-}(), Hu = ((Bu = {})[STRUCTURE_SPAWN] = 100, Bu[STRUCTURE_TOWER] = 95, Bu[STRUCTURE_STORAGE] = 90,
-Bu[STRUCTURE_EXTENSION] = 80, Bu[STRUCTURE_TERMINAL] = 75, Bu[STRUCTURE_LINK] = 70,
-Bu[STRUCTURE_CONTAINER] = 65, Bu[STRUCTURE_RAMPART] = 55, Bu[STRUCTURE_WALL] = 50,
-Bu[STRUCTURE_ROAD] = 30, Bu);
-
-function Yu(e) {
-var t;
-return null !== (t = Hu[e.structureType]) && void 0 !== t ? t : 50;
-}
+}(), Hu = new Map, Yu = ((Bu = {})[STRUCTURE_SPAWN] = 100, Bu[STRUCTURE_TOWER] = 95,
+Bu[STRUCTURE_STORAGE] = 90, Bu[STRUCTURE_EXTENSION] = 80, Bu[STRUCTURE_TERMINAL] = 75,
+Bu[STRUCTURE_LINK] = 70, Bu[STRUCTURE_CONTAINER] = 65, Bu[STRUCTURE_RAMPART] = 55,
+Bu[STRUCTURE_WALL] = 50, Bu[STRUCTURE_ROAD] = 30, Bu);
 
 function Vu(e, t) {
-return Yu(t) - Yu(e);
+var r;
+return function(e, t) {
+if (!t || e.structureType !== STRUCTURE_STORAGE) return !1;
+var r = function(e) {
+var t, r, o, n, i = Hu.get(e.name);
+if (i && i.tick === Game.time) return i;
+var s = e.find(FIND_MY_STRUCTURES), c = {
+tick: Game.time,
+controllerLevel: null !== (n = null === (o = e.controller) || void 0 === o ? void 0 : o.level) && void 0 !== n ? n : 0,
+hasStorage: null != e.storage,
+builtTowerCount: 0
+};
+try {
+for (var u = a(s), l = u.next(); !l.done; l = u.next()) {
+var m = l.value;
+m.structureType === STRUCTURE_STORAGE && (c.hasStorage = !0), m.structureType === STRUCTURE_TOWER && (c.builtTowerCount += 1);
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+l && !l.done && (r = u.return) && r.call(u);
+} finally {
+if (t) throw t.error;
+}
+}
+return Hu.set(e.name, c), c;
+}(t);
+return r.controllerLevel >= 4 && !r.hasStorage && r.builtTowerCount > 0;
+}(e, t) ? 97 : null !== (r = Yu[e.structureType]) && void 0 !== r ? r : 50;
 }
 
 var qu = M("CreepContext"), ju = new Map;
@@ -22454,8 +22480,11 @@ e._allStructuresLoaded || (e.allStructures = e.room.find(FIND_STRUCTURES), e._al
 }
 
 function Qu(e) {
-return void 0 === e._prioritizedSites && (e._prioritizedSites = e.room.find(FIND_MY_CONSTRUCTION_SITES).sort(Vu)),
-e._prioritizedSites;
+return void 0 === e._prioritizedSites && (e._prioritizedSites = e.room.find(FIND_MY_CONSTRUCTION_SITES).sort(function(t, r) {
+return function(e, t, r) {
+return Vu(t, r) - Vu(e, r);
+}(t, r, e.room);
+})), e._prioritizedSites;
 }
 
 function Xu(e) {
@@ -28023,8 +28052,8 @@ if (!e.room) return null;
 var t = kd(e), r = function(e) {
 var t = Od.get(e.name);
 if (t && t.tick === Game.time) return t;
-var r = e.find(FIND_MY_CONSTRUCTION_SITES), o = r.reduce(function(e, t) {
-return Math.max(e, Yu(t));
+var r = e.find(FIND_MY_CONSTRUCTION_SITES), o = r.reduce(function(t, r) {
+return Math.max(t, Vu(r, e));
 }, Number.NEGATIVE_INFINITY), n = {
 tick: Game.time,
 sites: r,
@@ -28037,12 +28066,12 @@ if (t.targetId) {
 var o = Game.getObjectById(t.targetId);
 if (o && function(e, t) {
 return e.pos.roomName === t.name;
-}(o, e.room) && Yu(o) >= r.highestPriority) return o;
+}(o, e.room) && Vu(o, e.room) >= r.highestPriority) return o;
 delete t.targetId;
 }
 var n = function(e, t) {
-var r, o, n = t.sites.filter(function(e) {
-return Yu(e) === t.highestPriority;
+var r, o, n = t.sites.filter(function(r) {
+return Vu(r, e.room) === t.highestPriority;
 });
 return null !== (o = null !== (r = e.pos.findClosestByRange(n)) && void 0 !== r ? r : n[0]) && void 0 !== o ? o : null;
 }(e, r);

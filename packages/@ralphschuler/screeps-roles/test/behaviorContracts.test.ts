@@ -158,6 +158,52 @@ describe("Behavior Contracts", () => {
     expect(action.target).to.equal(ctx.prioritizedSites[0]);
   });
 
+  it("promotes missing recovery storage before an extra tower after tower coverage exists", () => {
+    const room = createMockRoom("W1N1", {
+      controller: { my: true, level: 5 }
+    });
+    const sites = [
+      { id: "extension-site", structureType: STRUCTURE_EXTENSION, pos: new RoomPosition(24, 25, room.name) },
+      { id: "second-tower-site", structureType: STRUCTURE_TOWER, pos: new RoomPosition(25, 24, room.name) },
+      { id: "storage-site", structureType: STRUCTURE_STORAGE, pos: new RoomPosition(25, 25, room.name) }
+    ] as unknown as ConstructionSite[];
+    const builtTower = {
+      id: "built-tower",
+      structureType: STRUCTURE_TOWER,
+      store: makeEnergyStore(1000, 1000)
+    } as StructureTower;
+    (room as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      if (type === FIND_MY_CONSTRUCTION_SITES) return sites;
+      if (type === FIND_MY_STRUCTURES) return [builtTower];
+      return [];
+    }) as Room["find"];
+    const creep = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", homeRoom: room.name, working: true },
+      store: makeEnergyStore(50, 50),
+      pos: {
+        findClosestByRange: (candidateSites: ConstructionSite[]) => candidateSites[0] ?? null
+      }
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    clearRoomCaches();
+
+    const ctx = createRuntimeContext(creep);
+
+    expect(ctx.prioritizedSites.map(site => site.structureType)).to.deep.equal([
+      STRUCTURE_STORAGE,
+      STRUCTURE_TOWER,
+      STRUCTURE_EXTENSION
+    ]);
+
+    const action = buildBehavior(ctx);
+
+    expect(action.type).to.equal("build");
+    expect(action.target).to.equal(ctx.prioritizedSites[0]);
+  });
+
   it("keeps builder and upgrader critical energy delivery priority aligned", () => {
     const extension = {
       id: "extension1",

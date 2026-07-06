@@ -29,7 +29,7 @@ function getBuildSiteCache(room: Room): BuildSiteCache {
 
   const sites = room.find(FIND_MY_CONSTRUCTION_SITES);
   const highestPriority = sites.reduce(
-    (highest, site) => Math.max(highest, getConstructionPriority(site)),
+    (highest, site) => Math.max(highest, getConstructionPriority(site, room)),
     Number.NEGATIVE_INFINITY
   );
   const cache = { tick: Game.time, sites, highestPriority };
@@ -42,7 +42,7 @@ function isLocalBuildSite(site: ConstructionSite, room: Room): boolean {
 }
 
 function selectClosestHighestPrioritySite(creep: Creep, cache: BuildSiteCache): ConstructionSite | null {
-  const candidates = cache.sites.filter((site) => getConstructionPriority(site) === cache.highestPriority);
+  const candidates = cache.sites.filter((site) => getConstructionPriority(site, creep.room) === cache.highestPriority);
   return creep.pos.findClosestByRange(candidates) ?? candidates[0] ?? null;
 }
 
@@ -96,7 +96,7 @@ export function getAssignedBuildTarget(creep: Creep): ConstructionSite | null {
 
   if (memory.targetId) {
     const site = Game.getObjectById(memory.targetId);
-    if (site && isLocalBuildSite(site, creep.room) && getConstructionPriority(site) >= siteCache.highestPriority) {
+    if (site && isLocalBuildSite(site, creep.room) && getConstructionPriority(site, creep.room) >= siteCache.highestPriority) {
       return site;
     }
     delete memory.targetId;

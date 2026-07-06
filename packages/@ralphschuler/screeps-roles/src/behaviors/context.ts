@@ -227,7 +227,9 @@ function getTowers(cache: RoomCache): StructureTower[] {
  */
 function getPrioritizedSites(cache: RoomCache): ConstructionSite[] {
   if (cache._prioritizedSites === undefined) {
-    cache._prioritizedSites = cache.room.find(FIND_MY_CONSTRUCTION_SITES).sort(compareConstructionSitePriority);
+    cache._prioritizedSites = cache.room
+      .find(FIND_MY_CONSTRUCTION_SITES)
+      .sort((a, b) => compareConstructionSitePriority(a, b, cache.room));
   }
   return cache._prioritizedSites;
 }
