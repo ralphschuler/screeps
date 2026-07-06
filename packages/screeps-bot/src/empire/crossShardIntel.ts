@@ -10,8 +10,8 @@
  */
 
 import { isKnownAllyPlayer, logger } from "@ralphschuler/screeps-core";
-import { deserializeInterShardMemory, serializeInterShardMemory } from "@ralphschuler/screeps-intershard";
-import type { SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
+import { loadLocalInterShardMemory, writeLocalInterShardMemory } from "@ralphschuler/screeps-intershard";
+import type { InterShardMemorySchema, SharedEnemyIntel } from "@ralphschuler/screeps-intershard";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { ProcessPriority } from "../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../core/processDecorators";
@@ -60,27 +60,19 @@ export class CrossShardIntelCoordinator {
   public run(): void {
     this.lastRun = Game.time;
 
-    // Load current intershard memory
-    const rawData = InterShardMemory.getLocal();
-    if (!rawData) return;
-
-    const interShardMemory = deserializeInterShardMemory(rawData);
-    if (!interShardMemory) return;
+    const interShardMemory = loadLocalInterShardMemory();
 
     // Update enemy intelligence
     this.updateEnemyIntelligence(interShardMemory);
 
-    // Save updated intershard memory
-    const serialized = serializeInterShardMemory(interShardMemory);
-    InterShardMemory.setLocal(serialized);
+    // Save updated intershard memory without clobbering portal or footprint namespaces
+    writeLocalInterShardMemory(interShardMemory, { updatedSections: ["globalTargets"] });
   }
 
   /**
    * Update enemy intelligence in intershard memory
    */
-  private updateEnemyIntelligence(interShardMemory: ReturnType<typeof deserializeInterShardMemory>): void {
-    if (!interShardMemory) return;
-
+  private updateEnemyIntelligence(interShardMemory: InterShardMemorySchema): void {
     const empire = memoryManager.getEmpire();
     const knownRooms = Object.entries(empire.knownRooms ?? {}).map(([roomName, intel]) => ({
       roomName,
@@ -113,13 +105,7 @@ export class CrossShardIntelCoordinator {
    * Get global enemies from intershard memory
    */
   public getGlobalEnemies(): SharedEnemyIntel[] {
-    const rawData = InterShardMemory.getLocal();
-    if (!rawData) return [];
-
-    const interShardMemory = deserializeInterShardMemory(rawData);
-    if (!interShardMemory) return [];
-
-    return interShardMemory.globalTargets.enemies || [];
+    return loadLocalInterShardMemory().globalTargets.enemies || [];
   }
 }
 
