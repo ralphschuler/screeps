@@ -22,7 +22,7 @@
  * ```
  */
 
-import { type ProcessFrequency, ProcessPriority, kernel } from "./kernel";
+import { type Kernel, type ProcessFrequency, ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
 
 /**
@@ -48,21 +48,35 @@ export interface ProcessOptions {
 /**
  * Metadata storage for decorated processes
  */
-interface ProcessMetadata {
+export interface ProcessMetadata {
   options: ProcessOptions;
   methodName: string;
   target: object;
 }
 
-/**
- * Storage for process metadata before registration
- */
-const processMetadataStore: ProcessMetadata[] = [];
+type ProcessDecoratorGlobal = typeof globalThis & {
+  __screepsKernelProcessMetadataStore?: ProcessMetadata[];
+  __screepsKernelRegisteredProcessClasses?: Set<new () => unknown>;
+};
+
+const processDecoratorGlobal = globalThis as ProcessDecoratorGlobal;
 
 /**
- * Registered process classes for automatic discovery
+ * Shared runtime storage for process metadata before registration.
+ *
+ * The global key keeps source/dist module instances on one metadata store when
+ * package managers and the bot runtime are loaded through different module paths.
  */
-const registeredClasses: Set<new () => unknown> = new Set();
+const processMetadataStore: ProcessMetadata[] =
+  processDecoratorGlobal.__screepsKernelProcessMetadataStore ??
+  (processDecoratorGlobal.__screepsKernelProcessMetadataStore = []);
+
+/**
+ * Registered process classes for automatic discovery.
+ */
+const registeredClasses: Set<new () => unknown> =
+  processDecoratorGlobal.__screepsKernelRegisteredProcessClasses ??
+  (processDecoratorGlobal.__screepsKernelRegisteredProcessClasses = new Set());
 
 /**
  * Process decorator - marks a method as a kernel process
@@ -213,8 +227,84 @@ export function ProcessClass(): <T extends new (...args: any[]) => any>(construc
 }
 
 /**
- * Register all decorated processes from an instance
- * Call this after creating an instance of a class with @Process decorated methods
+ * Apply execution jitter to interval.
+ * Adds ±10% random jitter to prevent all same-interval decorated processes from
+ * registering with identical cadence after a global reset.
+ */
+function applyJitter(baseInterval: number): { interval: number; jitter: number } {
+  const jitterRange = Math.floor(baseInterval * 0.1);
+  const jitter = Math.floor(Math.random() * (jitterRange * 2 + 1)) - jitterRange;
+  const interval = Math.max(1, baseInterval + jitter);
+  return { interval, jitter };
+}
+
+function metadataMatchesInstance(metadata: ProcessMetadata, instance: object): boolean {
+  const instancePrototype = Object.getPrototypeOf(instance) as object | null;
+  if (!instancePrototype) {
+    return false;
+  }
+
+  return (
+    metadata.target === instancePrototype ||
+    Object.getPrototypeOf(metadata.target) === instancePrototype ||
+    metadata.target === Object.getPrototypeOf(instancePrototype)
+  );
+}
+
+/**
+ * Register all decorated processes from an instance onto an explicit kernel.
+ *
+ * Use this when a runtime owns a configured Kernel instance but consumes
+ * managers from framework packages. Decorators still share this package's
+ * single metadata store, while registration targets the runtime kernel that
+ * actually executes processes.
+ *
+ * @param targetKernel - Kernel instance that should execute the decorated process
+ * @param instance - Instance of a class with decorated process methods
+ */
+export function registerDecoratedProcessesWithKernel(targetKernel: Kernel, instance: object): void {
+  for (const metadata of processMetadataStore) {
+    if (!metadataMatchesInstance(metadata, instance)) {
+      continue;
+    }
+
+    const method = (instance as Record<string, unknown>)[metadata.methodName];
+
+    if (typeof method !== "function") {
+      continue;
+    }
+
+    const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
+    const baseInterval = metadata.options.interval;
+    const { interval, jitter } = baseInterval === undefined
+      ? { interval: undefined, jitter: 0 }
+      : applyJitter(baseInterval);
+
+    targetKernel.registerProcess({
+      id: metadata.options.id,
+      name: metadata.options.name,
+      priority: metadata.options.priority ?? ProcessPriority.MEDIUM,
+      frequency: metadata.options.frequency ?? "medium",
+      minBucket: metadata.options.minBucket,
+      cpuBudget: metadata.options.cpuBudget,
+      interval,
+      execute: boundMethod as () => void
+    });
+
+    const jitterDescription = baseInterval === undefined
+      ? "default interval"
+      : `interval ${interval} (base: ${baseInterval}, jitter: ${jitter > 0 ? "+" : ""}${jitter})`;
+
+    logger.debug(
+      `Registered decorated process "${metadata.options.name}" (${metadata.options.id}) with ${jitterDescription}`,
+      { subsystem: "ProcessDecorators" }
+    );
+  }
+}
+
+/**
+ * Register all decorated processes from an instance on the framework singleton kernel.
+ * Call this after creating an instance of a class with @Process decorated methods.
  *
  * @param instance - Instance of a class with decorated process methods
  *
@@ -225,53 +315,33 @@ export function ProcessClass(): <T extends new (...args: any[]) => any>(construc
  * ```
  */
 export function registerDecoratedProcesses(instance: object): void {
-  const instancePrototype = Object.getPrototypeOf(instance) as object | null;
-
-  for (const metadata of processMetadataStore) {
-    // Check if this metadata belongs to the instance's prototype chain
-    if (metadata.target === instancePrototype || 
-        Object.getPrototypeOf(metadata.target) === instancePrototype ||
-        metadata.target === Object.getPrototypeOf(instancePrototype)) {
-      
-      const method = (instance as Record<string, unknown>)[metadata.methodName];
-      
-      if (typeof method === "function") {
-        const boundMethod = (method as (...args: unknown[]) => unknown).bind(instance);
-        
-        kernel.registerProcess({
-          id: metadata.options.id,
-          name: metadata.options.name,
-          priority: metadata.options.priority ?? ProcessPriority.MEDIUM,
-          frequency: metadata.options.frequency ?? "medium",
-          minBucket: metadata.options.minBucket,
-          cpuBudget: metadata.options.cpuBudget,
-          interval: metadata.options.interval,
-          execute: boundMethod as () => void
-        });
-
-        logger.debug(
-          `Registered decorated process "${metadata.options.name}" (${metadata.options.id})`,
-          { subsystem: "ProcessDecorators" }
-        );
-      }
-    }
-  }
+  registerDecoratedProcessesWithKernel(kernel, instance);
 }
 
 /**
- * Register processes from multiple instances
+ * Register processes from multiple instances onto an explicit kernel.
  *
+ * @param targetKernel - Kernel instance that should execute the decorated processes
  * @param instances - Array of instances with decorated process methods
  */
-export function registerAllDecoratedProcesses(...instances: object[]): void {
+export function registerAllDecoratedProcessesWithKernel(targetKernel: Kernel, ...instances: object[]): void {
   for (const instance of instances) {
-    registerDecoratedProcesses(instance);
+    registerDecoratedProcessesWithKernel(targetKernel, instance);
   }
-  
+
   logger.info(
     `Registered decorated processes from ${instances.length} instance(s)`,
     { subsystem: "ProcessDecorators" }
   );
+}
+
+/**
+ * Register processes from multiple instances on the framework singleton kernel.
+ *
+ * @param instances - Array of instances with decorated process methods
+ */
+export function registerAllDecoratedProcesses(...instances: object[]): void {
+  registerAllDecoratedProcessesWithKernel(kernel, ...instances);
 }
 
 /**

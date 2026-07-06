@@ -50,7 +50,7 @@ import { kernel, ProcessPriority, type ProcessFrequency } from "./kernel";
 import { logger } from "./logger";
 import { registerAllDecoratedProcesses } from "./processDecorators";
 
-interface ManualProcessRegistration {
+interface FrameworkProcessRegistration {
   id: string;
   name: string;
   priority: ProcessPriority;
@@ -62,16 +62,16 @@ interface ManualProcessRegistration {
 }
 
 /**
- * Register framework-package managers that use @ralphschuler/screeps-kernel decorators.
+ * Register framework-package manager fallbacks when package metadata was loaded
+ * through a different source/dist path before decorator registration.
  *
- * The bot keeps its own configured Kernel instance in ./kernel, while framework package
- * decorators record metadata against the framework singleton. Registering these managers
- * explicitly keeps terminal/link/factory/market work on the bot kernel that actually runs.
+ * The shared kernel decorator store is the primary path. These fallbacks are a
+ * bot integration adapter that preserves existing process IDs and keeps package
+ * managers on the bot kernel when metadata is unavailable at runtime.
  */
-function registerFrameworkEconomyProcesses(): void {
+function registerFrameworkPackageProcessFallbacks(): void {
   const optionalWorkMinBucket = getConfig().cpu.bucketThresholds.lowMode;
-
-  const processes: ManualProcessRegistration[] = [
+  const processes: FrameworkProcessRegistration[] = [
     {
       id: "terminal:manager",
       name: "Terminal Manager",
@@ -111,12 +111,60 @@ function registerFrameworkEconomyProcesses(): void {
       minBucket: optionalWorkMinBucket,
       cpuBudget: 0.02,
       execute: () => marketManager.run()
+    },
+    {
+      id: "cluster:manager",
+      name: "Cluster Manager",
+      priority: ProcessPriority.MEDIUM,
+      frequency: "medium",
+      interval: 10,
+      minBucket: 0,
+      cpuBudget: 0.03,
+      execute: () => clusterManager.run()
+    },
+    {
+      id: "cluster:evacuation",
+      name: "Evacuation Manager",
+      priority: ProcessPriority.HIGH,
+      frequency: "medium",
+      interval: 5,
+      minBucket: 0,
+      cpuBudget: 0.02,
+      execute: () => evacuationManager.run()
     }
   ];
 
+  const fallbackProcessIds: string[] = [];
+
   for (const process of processes) {
-    kernel.registerProcess(process);
+    if (!kernel.getProcess(process.id)) {
+      kernel.registerProcess(process);
+      fallbackProcessIds.push(process.id);
+    }
   }
+
+  if (fallbackProcessIds.length > 0) {
+    logger.warn("Registered framework package process fallbacks because decorator metadata was unavailable", {
+      subsystem: "ProcessRegistry",
+      meta: { processIds: fallbackProcessIds }
+    });
+  }
+}
+
+/**
+ * Apply bot-runtime scheduling overrides after decorator registration.
+ *
+ * Framework decorators own process metadata and execution binding; the bot may still
+ * tune runtime policy such as optional-work bucket thresholds from local config.
+ */
+function applyBotRuntimeProcessOverrides(): void {
+  const marketProcess = kernel.getProcess("empire:market");
+  if (!marketProcess) {
+    return;
+  }
+
+  marketProcess.interval = 300;
+  marketProcess.minBucket = getConfig().cpu.bucketThresholds.lowMode;
 }
 
 /**
@@ -153,7 +201,8 @@ export function registerAllProcesses(): void {
     evacuationManager
   );
 
-  registerFrameworkEconomyProcesses();
+  registerFrameworkPackageProcessFallbacks();
+  applyBotRuntimeProcessOverrides();
 
   logger.info(`Registered ${kernel.getProcesses().length} processes with kernel`, {
     subsystem: "ProcessRegistry"
