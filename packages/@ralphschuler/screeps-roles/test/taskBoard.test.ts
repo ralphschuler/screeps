@@ -431,6 +431,21 @@ describe("TaskBoard", () => {
     expect(task.maxAssignments).to.equal(20);
   });
 
+  it("raises mature storage reserve rebuild delivery above low-priority buffering", () => {
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 0, 1000000);
+    const controller = makeController("controller1" as Id<StructureController>) as StructureController & { level: number };
+    controller.level = 6;
+    const room = createMockRoom("W1N1", { controller, storage });
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === storage.id ? storage : null;
+
+    taskBoard.refreshRoom(room);
+
+    const task = (Memory as any).creepTaskBoard.rooms[room.name].tasks[`${room.name}:storeEnergy:${storage.id}`];
+    expect(task.priority).to.equal(TaskPriority.NORMAL);
+    expect(task.amount).to.equal(1000);
+  });
+
   it("stops assigning storage delivery once the actionable batch is reserved", () => {
     const storage = makeStorage("storage1" as Id<StructureStorage>, 1000, 1000000);
     const room = createMockRoom("W1N1", { storage });

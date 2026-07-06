@@ -9,9 +9,20 @@ import { findDistributedTarget } from "@ralphschuler/screeps-utils";
 import { findCachedClosest , cachedFindSources } from "../../../cache";
 import { createLogger } from "../../../core/logger";
 import { taskBoard, type TaskType } from "../../../tasks";
+import { MATURE_ROOM_STORAGE_RESERVE_ENERGY } from "@ralphschuler/screeps-economy/reserves";
 
 const logger = createLogger("EnergyCollection");
 const CRITICAL_DELIVERY_TASK_TYPES: TaskType[] = ["refillSpawn", "refillExtension", "refillTower"];
+const STORAGE_RESERVE_PRESERVING_ROLES = new Set(["builder", "pioneer", "interShardPioneer"]);
+
+function shouldPreserveStorageReserve(ctx: CreepContext, storageEnergy: number): boolean {
+  const controllerLevel = ctx.room.controller?.level ?? 0;
+  return (
+    controllerLevel >= 4 &&
+    storageEnergy <= MATURE_ROOM_STORAGE_RESERVE_ENERGY &&
+    STORAGE_RESERVE_PRESERVING_ROLES.has(ctx.memory.role)
+  );
+}
 
 /**
  * Find energy to collect (common pattern for many roles).
@@ -58,9 +69,12 @@ export function findEnergy(ctx: CreepContext): CreepAction {
   }
 
   // 3. Storage (single target, no distribution needed)
-  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-    logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting storage at ${ctx.storage.pos}`);
-    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+  if (ctx.storage) {
+    const storageEnergy = ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+    if (storageEnergy > 0 && !shouldPreserveStorageReserve(ctx, storageEnergy)) {
+      logger.debug(`${ctx.creep.name} (${ctx.memory.role}) selecting storage at ${ctx.storage.pos}`);
+      return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    }
   }
 
   // 4. Harvest directly (use distributed to prevent clustering on sources)

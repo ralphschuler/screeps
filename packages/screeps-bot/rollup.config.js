@@ -180,6 +180,10 @@ export default {
           replacement: path.resolve(__dirname, "../screeps-defense/src/index.ts")
         },
         {
+          find: "@ralphschuler/screeps-economy/reserves",
+          replacement: path.resolve(__dirname, "../screeps-economy/src/reserves/index.ts")
+        },
+        {
           find: "@ralphschuler/screeps-economy",
           replacement: path.resolve(__dirname, "../screeps-economy/src/index.ts")
         },
