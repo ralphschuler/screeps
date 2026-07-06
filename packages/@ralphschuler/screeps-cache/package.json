@@ -11,7 +11,7 @@
     "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
-    "prebuild": "npm run build -w @ralphschuler/screeps-core --if-present"
+    "prebuild": "npm run build -w @ralphschuler/screeps-kernel --if-present && npm run build -w @ralphschuler/screeps-core --if-present"
   },
   "keywords": [
     "screeps",
@@ -33,6 +33,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
-    "@ralphschuler/screeps-core": "*"
+    "@ralphschuler/screeps-core": "*",
+    "@ralphschuler/screeps-kernel": "*"
   }
 }

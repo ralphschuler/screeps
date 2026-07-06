@@ -60,6 +60,7 @@ export {
   triggerCacheCleanup,
   getCacheCoherenceStats
 } from "./cacheEvents";
+export type { CacheEventBusPort, CacheEventInitializationOptions } from "./cacheEvents";
 
 // Cache Registration
 export {
