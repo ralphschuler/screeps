@@ -95,3 +95,6 @@ jobs:
 
       - name: Check framework dependency synchronization
         run: npm run sync:deps:check
+
+      - name: Check source package import boundaries
+        run: npm run check:no-deep-dist-imports
