@@ -32,14 +32,21 @@ export {
 // Export process decorators
 export {
   type ProcessOptions,
+  type ProcessMetadata,
   Process as ProcessDecorator,
   registerDecoratedProcesses,
+  registerDecoratedProcessesWithKernel,
+  registerAllDecoratedProcesses,
+  registerAllDecoratedProcessesWithKernel,
   HighFrequencyProcess,
   MediumFrequencyProcess,
   LowFrequencyProcess,
   CriticalProcess,
   IdleProcess,
-  ProcessClass
+  ProcessClass,
+  getProcessMetadata,
+  clearProcessMetadata,
+  getRegisteredClasses
 } from './processDecorators';
 
 // Export adaptive budgets
