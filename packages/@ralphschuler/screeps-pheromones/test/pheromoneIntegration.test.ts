@@ -4,6 +4,7 @@
  * Tests for pheromone-driven behavior integration.
  */
 
+import "./setup";
 import { expect } from "chai";
 import { describe, it } from "mocha";
 import {
