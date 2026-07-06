@@ -10,7 +10,7 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState } from "./common/stateManagement";
-import { findAssignedCriticalEnergyDelivery, findCriticalEnergyDelivery, findEnergy, hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
+import { findAssignedCriticalEnergyDelivery, findCriticalEnergyDelivery, findEnergy, hasTaskBoardCriticalEnergyDelivery, reserveCriticalEnergyDeliveryBeforeCollection } from "./common/energyManagement";
 import { findQuestBuildAction, findQuestBuildRecoveryAction } from "./common/questBuild";
 import { getAssignedBuildTarget } from "../../economy/targetAssignmentManager";
 
@@ -62,5 +62,5 @@ export function builder(ctx: CreepContext): CreepAction {
     return { type: "idle" };
   }
 
-  return findEnergy(ctx);
+  return reserveCriticalEnergyDeliveryBeforeCollection(ctx, findEnergy(ctx));
 }

@@ -1299,7 +1299,7 @@ describe("Behavior Contracts", () => {
     } as unknown as StructureLink;
     const storage = {
       id: "storage1",
-      store: { getUsedCapacity: () => 50000 }
+      store: { getUsedCapacity: () => 50000, getFreeCapacity: () => 950000 }
     } as unknown as StructureStorage;
     (room as any).storage = storage;
     (room as any).energyAvailable = 300;

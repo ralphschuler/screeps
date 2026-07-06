@@ -499,6 +499,7 @@ function commitNewAction(ctx: CreepContext, newAction: CreepAction, logMessage: 
  */
 function isEnergyCollectionAction(action: CreepAction): boolean {
   return (
+    action.type === "harvest" ||
     (action.type === "withdraw" && action.resourceType === RESOURCE_ENERGY) ||
     (action.type === "pickup" && action.target.resourceType === RESOURCE_ENERGY)
   );

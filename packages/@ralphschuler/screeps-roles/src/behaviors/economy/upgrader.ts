@@ -10,7 +10,8 @@ import { findCachedClosest , cachedFindSources } from "../../cache";
 import {
   findAssignedCriticalEnergyDelivery,
   findCriticalEnergyDelivery,
-  hasTaskBoardCriticalEnergyDelivery
+  hasTaskBoardCriticalEnergyDelivery,
+  reserveCriticalEnergyDeliveryBeforeCollection
 } from "./common/energyManagement";
 import { MATURE_ROOM_STORAGE_RESERVE_ENERGY } from "@ralphschuler/screeps-economy/reserves";
 import { updateWorkingState } from "./common/stateManagement";
@@ -73,6 +74,10 @@ export function upgrader(ctx: CreepContext): CreepAction {
   // OPTIMIZATION: Find closest energy source ONCE and cache for long time (30 ticks)
   // Upgraders are stationary, so their energy source rarely changes
   // Priority: links near controller > containers near controller > storage > any container
+  const shouldReserveCriticalDelivery = shouldUpgraderRefillCriticalStructures(ctx);
+  const reserveCollection = (action: CreepAction): CreepAction => shouldReserveCriticalDelivery
+    ? reserveCriticalEnergyDeliveryBeforeCollection(ctx, action)
+    : action;
   
   // Check for links near controller first (most efficient energy source)
   // Links are filled automatically by LinkManager from source links
@@ -89,7 +94,7 @@ export function upgrader(ctx: CreepContext): CreepAction {
       const bestLink = nearbyLinks.reduce((a, b) => 
         a.store.getUsedCapacity(RESOURCE_ENERGY) > b.store.getUsedCapacity(RESOURCE_ENERGY) ? a : b
       );
-      return { type: "withdraw", target: bestLink, resourceType: RESOURCE_ENERGY };
+      return reserveCollection({ type: "withdraw", target: bestLink, resourceType: RESOURCE_ENERGY });
     }
   }
   
@@ -123,12 +128,12 @@ export function upgrader(ctx: CreepContext): CreepAction {
   if (nearbyContainers.length > 0) {
     // Use the closest nearby container - this should be stable for idle detection
     const closest = findCachedClosest(ctx.creep, nearbyContainers, "upgrader_nearby", 30);
-    if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    if (closest) return reserveCollection({ type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY });
   }
 
   // Fallback to storage only after mature-room reserves are safe.
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > MATURE_ROOM_STORAGE_RESERVE_ENERGY) {
-    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    return reserveCollection({ type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY });
   }
 
   // Fallback to any container with energy
@@ -138,7 +143,7 @@ export function upgrader(ctx: CreepContext): CreepAction {
   );
   if (containersWithEnergy.length > 0) {
     const closest = findCachedClosest(ctx.creep, containersWithEnergy, "upgrader_cont", 30);
-    if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
+    if (closest) return reserveCollection({ type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY });
   }
 
   // Last resort: harvest from source (cache for 30 ticks)
@@ -146,7 +151,7 @@ export function upgrader(ctx: CreepContext): CreepAction {
   const sources = cachedFindSources(ctx.room).filter(source => source.energy > 0);
   if (sources.length > 0) {
     const source = findCachedClosest(ctx.creep, sources, "upgrader_source", 30);
-    if (source) return { type: "harvest", target: source };
+    if (source) return reserveCollection({ type: "harvest", target: source });
   }
 
   return { type: "idle" };
