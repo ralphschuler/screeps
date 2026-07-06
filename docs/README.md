@@ -27,7 +27,9 @@ This directory is the entry point for maintained documentation. Legacy reports a
 npm run build:docs
 ```
 
-The build aggregates docs into `wiki/` for GitHub wiki publishing. `wiki/` is generated output and should not be hand-edited.
+The build aggregates docs into `wiki/` for optional GitHub wiki publishing. `wiki/` is generated output and should not be hand-edited.
+
+GitHub Pages is the canonical automated documentation publication path (`.github/workflows/docs.yml`). The wiki publish workflow (`.github/workflows/wiki-publish.yml`) is best-effort: it builds docs, checks whether the repository wiki is available to `GITHUB_TOKEN`, and skips the wiki upload with a clear workflow summary when `${owner}/${repo}.wiki` is absent or inaccessible.
 
 ## Writing rules
 
