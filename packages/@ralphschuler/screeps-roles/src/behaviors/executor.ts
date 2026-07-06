@@ -34,6 +34,7 @@ import { getCollectionPoint } from "../utils/common";
 import { taskBoard } from "../tasks";
 import {
   decideRangeActionExecution,
+  shouldAttemptIdleCollectionMove,
   shouldClearStateForMoveResult,
   type ActionResultCode,
 } from "./actionExecutionPolicy";
@@ -501,22 +502,32 @@ export function executeAction(
         moveTo(creep, roomCenter, { priority: 2 });
         break;
       }
-      // Try to move to collection point if available
+      // Try to move to collection point if available. Idle scouts are throttled
+      // because repeated collection-point pathing was a live #3104 CPU hotspot;
+      // non-scout idle movement keeps the previous every-tick behavior.
       const room = Game.rooms[creep.pos.roomName];
       if (room && room.controller?.my) {
         const collectionPoint = getCollectionPoint(room.name);
-        if (collectionPoint) {
-          // Move to collection point if not already there
-          if (!creep.pos.isEqualTo(collectionPoint)) {
-            const idleMoveResult = moveTo(creep, collectionPoint, {
-              priority: 2,
-            });
-            // Clear state if pathfinding fails
-            if (shouldClearStateForMoveResult(idleMoveResult)) {
-              shouldClearState = true;
-            }
-            break;
+        if (
+          collectionPoint &&
+          !creep.pos.isEqualTo(collectionPoint) &&
+          shouldAttemptIdleCollectionMove({
+            role: ctx.memory.role,
+            currentTick: Game.time,
+            lastIdleCollectionMoveTick: ctx.memory.lastIdleCollectionMoveTick,
+          })
+        ) {
+          if (ctx.memory.role === "scout") {
+            ctx.memory.lastIdleCollectionMoveTick = Game.time;
           }
+          const idleMoveResult = moveTo(creep, collectionPoint, {
+            priority: 2,
+          });
+          // Clear state if pathfinding fails
+          if (shouldClearStateForMoveResult(idleMoveResult)) {
+            shouldClearState = true;
+          }
+          break;
         }
       }
       // Fallback: move away from spawns to prevent blocking new creeps

@@ -14,6 +14,33 @@ export interface RangeActionExecutionDecision extends ActionExecutionDecision {
   trackMetrics: boolean;
 }
 
+export const SCOUT_IDLE_COLLECTION_MOVE_INTERVAL = 25;
+
+export interface IdleCollectionMoveInput {
+  role: string;
+  currentTick: number;
+  lastIdleCollectionMoveTick?: number;
+  throttleInterval?: number;
+}
+
+/**
+ * Idle scouts can dominate CPU when the executor repeatedly paths them back to
+ * owned-room collection points. Non-scout idle movement remains unchanged;
+ * scouts get a small per-creep cooldown while still allowing corrupt/future
+ * timestamps to self-heal on the next idle tick.
+ */
+export function shouldAttemptIdleCollectionMove({
+  role,
+  currentTick,
+  lastIdleCollectionMoveTick,
+  throttleInterval = SCOUT_IDLE_COLLECTION_MOVE_INTERVAL,
+}: IdleCollectionMoveInput): boolean {
+  if (role !== "scout") return true;
+  if (lastIdleCollectionMoveTick === undefined) return true;
+  if (lastIdleCollectionMoveTick > currentTick) return true;
+  return currentTick - lastIdleCollectionMoveTick >= throttleInterval;
+}
+
 /**
  * Result policy for primary Screeps actions.
  */
