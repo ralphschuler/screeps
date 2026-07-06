@@ -70,8 +70,45 @@ jobs:
       - name: Deploy preflight
         run: npm run deploy:preflight
 
+      - name: Set up Docker Buildx for production smoke
+        if: ${{ matrix.target.required == true }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run production private-server smoke
+        if: ${{ matrix.target.required == true }}
+        working-directory: packages/screeps-server
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=3000 --project=screeps-deploy-smoke-${{ github.run_id }}
+        timeout-minutes: 45
+
+      - name: Upload production smoke summary
+        if: ${{ always() && matrix.target.required == true }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: screeps-deploy-smoke-summary
+          path: |
+            packages/screeps-server/artifacts/smoke/summary.json
+            packages/screeps-server/artifacts/smoke/summary.md
+            packages/screeps-server/artifacts/smoke/harness.log
+            packages/screeps-server/artifacts/smoke/scenario-*.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload production smoke raw logs
+        if: ${{ always() && matrix.target.required == true }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: screeps-deploy-smoke-raw-logs
+          path: packages/screeps-server/artifacts/smoke/docker.log
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Cleanup production smoke Docker
+        if: ${{ always() && matrix.target.required == true }}
+        working-directory: packages/screeps-server
+        run: docker compose -f docker-compose.ci.yml -p screeps-deploy-smoke-${{ github.run_id }} down -v --remove-orphans || true
+
       # Keep deploy credentials scoped to the upload step so dependency installation,
-      # validation, and package lifecycle scripts cannot read Screeps secrets.
+      # validation, private-server smoke, and package lifecycle scripts cannot read Screeps secrets.
       - name: Push to Screeps
         env:
           SCREEPS_PASS: ${{ secrets.SCREEPS_PASS }}

@@ -56,6 +56,44 @@ test("deploy workflow runs preflight before secret-scoped upload", () => {
   assert.match(push, /run: npm run push/, "upload step should still run the Screeps push command");
 });
 
+test("deploy workflow gates production upload on private-server smoke without secrets", () => {
+  assert.ok(
+    stepIndex("Set up Docker Buildx for production smoke") > stepIndex("Deploy preflight"),
+    "Docker Buildx setup should run after preflight",
+  );
+  assert.ok(
+    stepIndex("Run production private-server smoke") > stepIndex("Set up Docker Buildx for production smoke"),
+    "production smoke should run after Docker setup",
+  );
+  assert.ok(
+    stepIndex("Push to Screeps") > stepIndex("Cleanup production smoke Docker"),
+    "Screeps upload should run only after smoke cleanup",
+  );
+
+  const dockerSetup = stepBlock("Set up Docker Buildx for production smoke");
+  assert.match(dockerSetup, /if:\s*\$\{\{\s*matrix\.target\.required\s*==\s*true\s*\}\}/, "Docker setup should run only for required production deploys");
+  assert.doesNotMatch(dockerSetup, /SCREEPS_(PASS|TOKEN)/, "Docker setup must not receive Screeps upload secrets");
+
+  const smoke = stepBlock("Run production private-server smoke");
+  assert.match(smoke, /if:\s*\$\{\{\s*matrix\.target\.required\s*==\s*true\s*\}\}/, "smoke should run only for required production deploys");
+  assert.match(smoke, /working-directory:\s*packages\/screeps-server/, "smoke should run from the server package");
+  assert.match(smoke, /run:\s*node scripts\/run-private-server-test\.js --mode=smoke/, "smoke should use the private-server smoke runner");
+  assert.doesNotMatch(smoke, /SCREEPS_(PASS|TOKEN)/, "smoke must not receive Screeps upload secrets");
+
+  const uploadSummary = stepBlock("Upload production smoke summary");
+  assert.match(uploadSummary, /if:\s*\$\{\{\s*always\(\)\s*&&\s*matrix\.target\.required\s*==\s*true\s*\}\}/, "smoke artifacts should upload for required production deploys even after failure");
+  assert.ok(
+    stepIndex("Upload production smoke summary") > stepIndex("Run production private-server smoke"),
+    "smoke summary upload should run after smoke",
+  );
+  assert.doesNotMatch(uploadSummary, /SCREEPS_(PASS|TOKEN)/, "artifact upload must not receive Screeps upload secrets");
+
+  const cleanup = stepBlock("Cleanup production smoke Docker");
+  assert.match(cleanup, /if:\s*\$\{\{\s*always\(\)\s*&&\s*matrix\.target\.required\s*==\s*true\s*\}\}/, "smoke Docker cleanup should run for required production deploys even after failure");
+  assert.match(cleanup, /docker compose .* down -v --remove-orphans \|\| true/, "cleanup should tear down the smoke project");
+  assert.doesNotMatch(cleanup, /SCREEPS_(PASS|TOKEN)/, "cleanup must not receive Screeps upload secrets");
+});
+
 test("deploy workflow keeps screeps.com required and marks optional targets non-blocking", () => {
   assert.match(
     workflow,

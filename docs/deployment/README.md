@@ -44,7 +44,7 @@ The deploy path is `npm run push` / `npm run deploy`. Build-only validation is `
 
 Workflow: `.github/workflows/deploy.yml`.
 
-Deploy can run from `workflow_dispatch` or after the release workflow succeeds. It uses GitHub environments for server-specific variables/secrets. Every deploy job runs `npm run deploy:preflight` before the secret-scoped Screeps upload step.
+Deploy can run from `workflow_dispatch` or after the release workflow succeeds. It uses GitHub environments for server-specific variables/secrets. Every deploy job runs `npm run deploy:preflight` before the secret-scoped Screeps upload step. The required production `screeps.com` target also runs the private-server smoke test before upload; optional community/simulation targets skip that smoke gate and remain non-blocking.
 
 Required environment variables/secrets:
 
