@@ -156,7 +156,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.13.2",
     "@types/screeps": "^3.4.0",
-    "@types/sinon": "^21.0.1",
+    "@types/sinon": "^22.0.0",
     "ajv": "^8.20.0",
     "chai": "^6.2.2",
     "jscpd": "^5.0.11",
