@@ -25452,7 +25452,15 @@ break;
 var m = Game.rooms[e.pos.roomName];
 if (m && (null === (o = m.controller) || void 0 === o ? void 0 : o.my)) {
 var d = tl(m.name);
-if (d && !e.pos.isEqualTo(d)) {
+if (d && !e.pos.isEqualTo(d) && function(e) {
+var t = e.currentTick, r = e.lastIdleCollectionMoveTick, o = e.throttleInterval;
+return "scout" !== e.role || void 0 === r || r > t || t - r >= (void 0 === o ? 25 : o);
+}({
+role: r.memory.role,
+currentTick: Game.time,
+lastIdleCollectionMoveTick: r.memory.lastIdleCollectionMoveTick
+})) {
+"scout" === r.memory.role && (r.memory.lastIdleCollectionMoveTick = Game.time),
 Fl(el.moveTo(e, d, {
 priority: 2
 })) && (i = !0);
