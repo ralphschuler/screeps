@@ -76,6 +76,11 @@ import { Game, Memory } from "./mock";
 (global as any).RESOURCE_KEANIUM_BAR = "keanium_bar";
 (global as any).RESOURCE_OXIDANT = "oxidant";
 
+// Power constants required when pheromone integration tests import roles behaviors.
+(global as any).PWR_DISRUPT_SPAWN = 9;
+(global as any).PWR_DISRUPT_TOWER = 11;
+(global as any).PWR_DISRUPT_TERMINAL = 15;
+
 // Return codes
 (global as any).OK = 0;
 (global as any).ERR_NOT_OWNER = -1;
