@@ -11,6 +11,9 @@ on:
       - '.github/workflows/wiki-publish.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -28,8 +31,23 @@ jobs:
       
       - name: Build documentation
         run: npm run build:docs
+
+      - name: Check wiki repository availability
+        id: wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_REPOSITORY: ${{ github.repository }}.wiki
+        run: |
+          if git ls-remote "https://x-access-token:${GITHUB_TOKEN}@github.com/${WIKI_REPOSITORY}.git" HEAD >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "GitHub wiki repository ${WIKI_REPOSITORY} is available for publishing." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub wiki repository ${WIKI_REPOSITORY} is unavailable or inaccessible; skipping optional wiki publish." >> "$GITHUB_STEP_SUMMARY"
+          fi
       
       - name: Checkout wiki repository
+        if: steps.wiki.outputs.available == 'true'
         uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}.wiki
@@ -37,6 +55,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Copy documentation to wiki
+        if: steps.wiki.outputs.available == 'true'
         run: |
           # Remove old wiki files (except .git)
           find wiki-repo -type f ! -path 'wiki-repo/.git/*' -delete
@@ -45,6 +64,7 @@ jobs:
           cp -r wiki/*.md wiki-repo/
       
       - name: Commit and push to wiki
+        if: steps.wiki.outputs.available == 'true'
         run: |
           cd wiki-repo
           git config user.name "github-actions[bot]"
