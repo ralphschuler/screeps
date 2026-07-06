@@ -16,28 +16,9 @@ import type { SquadMemory, SwarmCreepMemory, SwarmState } from "../memory/schema
 import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { CreepContext } from "./types";
 import { createLogger } from "@ralphschuler/screeps-core";
+import { compareConstructionSitePriority } from "../economy/constructionPriority";
 
 const logger = createLogger("CreepContext");
-
-/**
- * Priority order for construction sites.
- * Higher values = higher priority.
- *
- * Recovery rooms need built defensive/economy anchors before spending builder
- * throughput on extension backlogs or noncritical perimeter work.
- */
-const CONSTRUCTION_PRIORITY: Record<string, number> = {
-  [STRUCTURE_SPAWN]: 100,
-  [STRUCTURE_TOWER]: 95,
-  [STRUCTURE_STORAGE]: 90,
-  [STRUCTURE_EXTENSION]: 80,
-  [STRUCTURE_TERMINAL]: 75,
-  [STRUCTURE_LINK]: 70,
-  [STRUCTURE_CONTAINER]: 65,
-  [STRUCTURE_RAMPART]: 55,
-  [STRUCTURE_WALL]: 50,
-  [STRUCTURE_ROAD]: 30
-};
 
 /** Threat detection range for hostiles */
 const HOSTILE_THREAT_RANGE = 10;
@@ -246,11 +227,7 @@ function getTowers(cache: RoomCache): StructureTower[] {
  */
 function getPrioritizedSites(cache: RoomCache): ConstructionSite[] {
   if (cache._prioritizedSites === undefined) {
-    cache._prioritizedSites = cache.room.find(FIND_MY_CONSTRUCTION_SITES).sort((a, b) => {
-      const priorityA = CONSTRUCTION_PRIORITY[a.structureType] ?? 50;
-      const priorityB = CONSTRUCTION_PRIORITY[b.structureType] ?? 50;
-      return priorityB - priorityA;
-    });
+    cache._prioritizedSites = cache.room.find(FIND_MY_CONSTRUCTION_SITES).sort(compareConstructionSitePriority);
   }
   return cache._prioritizedSites;
 }

@@ -131,7 +131,11 @@ describe("Behavior Contracts", () => {
     }) as Room["find"];
     const creep = createMockCreep("builder1", {
       room,
-      memory: { role: "builder", homeRoom: room.name, working: true }
+      memory: { role: "builder", homeRoom: room.name, working: true },
+      store: makeEnergyStore(50, 50),
+      pos: {
+        findClosestByRange: (candidateSites: ConstructionSite[]) => candidateSites[0] ?? null
+      }
     });
 
     Game.rooms[room.name] = room;
@@ -147,6 +151,11 @@ describe("Behavior Contracts", () => {
       STRUCTURE_WALL,
       STRUCTURE_ROAD
     ]);
+
+    const action = buildBehavior(ctx);
+
+    expect(action.type).to.equal("build");
+    expect(action.target).to.equal(ctx.prioritizedSites[0]);
   });
 
   it("keeps builder and upgrader critical energy delivery priority aligned", () => {

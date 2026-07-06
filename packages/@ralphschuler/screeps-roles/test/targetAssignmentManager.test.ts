@@ -10,6 +10,14 @@ describe("targetAssignmentManager memory initialization", () => {
     MockGame.getObjectById = () => null;
   });
 
+  function site(id: string, structureType: BuildableStructureConstant, x: number, y: number, roomName = "W1N1"): ConstructionSite {
+    return {
+      id: id as Id<ConstructionSite>,
+      structureType,
+      pos: new RoomPosition(x, y, roomName)
+    } as ConstructionSite;
+  }
+
   it("initializes missing core memory fields for assignment lookups", () => {
     const creep = createMockCreep("worker1", {
       memory: {}
@@ -64,5 +72,50 @@ describe("targetAssignmentManager memory initialization", () => {
 
     expect(result).to.equal(source);
     expect(creep.memory.sourceId).to.equal("SRC1");
+  });
+
+  it("assigns the highest-priority recovery construction type instead of the closest site", () => {
+    const extension = site("EXT_SITE", STRUCTURE_EXTENSION, 10, 10);
+    const tower = site("TOWER_SITE", STRUCTURE_TOWER, 40, 40);
+    const wall = site("WALL_SITE", STRUCTURE_WALL, 5, 5);
+    const homeRoom = createMockRoom("W1N1");
+    (homeRoom as unknown as { find: Room["find"] }).find = (type: FindConstant) =>
+      type === FIND_MY_CONSTRUCTION_SITES ? [wall, extension, tower] : [];
+
+    const creep = createMockCreep("builder-priority", {
+      room: homeRoom,
+      memory: { role: "builder", homeRoom: "W1N1" },
+      pos: {
+        findClosestByRange: (sites: ConstructionSite[]) => sites[0] ?? null
+      }
+    });
+
+    const result = getAssignedBuildTarget(creep);
+
+    expect(result).to.equal(tower);
+    expect(creep.memory.targetId).to.equal("TOWER_SITE");
+  });
+
+  it("replaces a stale lower-priority assignment when recovery-critical sites are available", () => {
+    const extension = site("EXT_SITE", STRUCTURE_EXTENSION, 10, 10);
+    const storage = site("STORAGE_SITE", STRUCTURE_STORAGE, 11, 11);
+    const tower = site("TOWER_SITE", STRUCTURE_TOWER, 12, 12);
+    const homeRoom = createMockRoom("W1N1");
+    (homeRoom as unknown as { find: Room["find"] }).find = (type: FindConstant) =>
+      type === FIND_MY_CONSTRUCTION_SITES ? [extension, storage, tower] : [];
+    MockGame.getObjectById = (id) => (id === "EXT_SITE" ? extension : null);
+
+    const creep = createMockCreep("builder-reassign", {
+      room: homeRoom,
+      memory: { role: "builder", homeRoom: "W1N1", targetId: "EXT_SITE" },
+      pos: {
+        findClosestByRange: (sites: ConstructionSite[]) => sites[0] ?? null
+      }
+    });
+
+    const result = getAssignedBuildTarget(creep);
+
+    expect(result).to.equal(tower);
+    expect(creep.memory.targetId).to.equal("TOWER_SITE");
   });
 });
