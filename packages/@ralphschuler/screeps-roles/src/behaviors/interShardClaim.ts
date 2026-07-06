@@ -1,4 +1,8 @@
-import { createDefaultInterShardMemory, deserializeInterShardMemory, serializeInterShardMemory } from "@ralphschuler/screeps-intershard";
+import {
+  createDefaultInterShardMemory,
+  loadLocalInterShardMemory,
+  writeLocalInterShardMemory
+} from "@ralphschuler/screeps-intershard";
 import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import type { CreepAction, CreepContext } from "./types";
 
@@ -12,8 +16,7 @@ interface InterShardClaimMemory {
 function updateFootprint(status: "reached" | "claimTargetSelected" | "claimed" | "blocked", roomName?: string, blockedReason?: string): void {
   try {
     const shard = Game.shard?.name ?? "shard0";
-    const raw = InterShardMemory.getLocal();
-    const memory = raw ? (deserializeInterShardMemory(raw) ?? createDefaultInterShardMemory()) : createDefaultInterShardMemory();
+    const memory = loadLocalInterShardMemory(createDefaultInterShardMemory());
     const op = memory.footprintOperation;
     if (!op?.targets[shard]) return;
     const target = op.targets[shard];
@@ -24,7 +27,7 @@ function updateFootprint(status: "reached" | "claimTargetSelected" | "claimed" |
     target.lastUpdate = Game.time;
     if (status === "claimed") target.claimedAt = Game.time;
     op.updatedAt = Game.time;
-    InterShardMemory.setLocal(serializeInterShardMemory(memory));
+    writeLocalInterShardMemory(memory, { updatedSections: ["footprintOperation"] });
   } catch {
     // InterShardMemory can be unavailable in tests/private servers.
   }

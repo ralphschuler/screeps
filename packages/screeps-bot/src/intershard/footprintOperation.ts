@@ -1,5 +1,12 @@
 import { logger } from "@ralphschuler/screeps-core";
-import { deserializeInterShardMemory, serializeInterShardMemory, createDefaultInterShardMemory, type InterShardFootprintTarget } from "@ralphschuler/screeps-intershard";
+import {
+  createDefaultInterShardMemory,
+  deserializeInterShardMemory,
+  loadLocalInterShardMemory as loadFrameworkLocalInterShardMemory,
+  writeLocalInterShardMemory,
+  type InterShardFootprintTarget,
+  type InterShardMemoryWriteSection
+} from "@ralphschuler/screeps-intershard";
 import { runEconomyRole, runUtilityRole } from "@ralphschuler/screeps-roles";
 import { spawnQueue, SpawnPriority } from "@ralphschuler/screeps-spawn";
 import type { BodyTemplate } from "@ralphschuler/screeps-spawn";
@@ -54,22 +61,14 @@ function ensureMemory(): OperationMemory {
 }
 
 function loadLocalInterShardMemory() {
-  try {
-    if (typeof InterShardMemory === "undefined") return createDefaultInterShardMemory();
-    const raw = InterShardMemory.getLocal();
-    return raw ? (deserializeInterShardMemory(raw) ?? createDefaultInterShardMemory()) : createDefaultInterShardMemory();
-  } catch {
-    return createDefaultInterShardMemory();
-  }
+  return loadFrameworkLocalInterShardMemory(createDefaultInterShardMemory());
 }
 
-function saveLocalInterShardMemory(memory: ReturnType<typeof createDefaultInterShardMemory>): void {
-  try {
-    if (typeof InterShardMemory === "undefined") return;
-    InterShardMemory.setLocal(serializeInterShardMemory(memory));
-  } catch {
-    // InterShardMemory can be unavailable in tests/private servers.
-  }
+function saveLocalInterShardMemory(
+  memory: ReturnType<typeof createDefaultInterShardMemory>,
+  updatedSections: readonly InterShardMemoryWriteSection[] = ["footprintOperation"]
+): void {
+  writeLocalInterShardMemory(memory, { updatedSections });
 }
 
 function ensureOperationState() {
@@ -125,7 +124,7 @@ function ensureOperationState() {
     };
   }
 
-  saveLocalInterShardMemory(local);
+  saveLocalInterShardMemory(local, ["footprintOperation", "shards"]);
   return local.footprintOperation;
 }
 

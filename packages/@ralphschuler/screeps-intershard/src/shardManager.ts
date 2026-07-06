@@ -25,6 +25,7 @@ import {
   deserializeInterShardMemory,
   serializeInterShardMemory
 } from "./schema";
+import { serializeInterShardMemoryForWrite } from "./localMemory";
 import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
 import { logger as frameworkLogger } from "@ralphschuler/screeps-kernel";
 
@@ -619,22 +620,10 @@ export class ShardManager {
         this.repairInterShardMemory();
       }
 
-      // Preserve operation state written by the footprint manager between shard-manager ticks.
-      // ShardManager owns the normal periodic InterShardMemory write; without this merge,
-      // its cached memory would erase same-tick operation progress.
-      try {
-        const currentRaw = InterShardMemory.getLocal();
-        const current = currentRaw ? deserializeInterShardMemory(currentRaw) : null;
-        const currentOp = current?.footprintOperation;
-        const cachedOp = this.interShardMemory.footprintOperation;
-        if (currentOp && (!cachedOp || currentOp.updatedAt >= cachedOp.updatedAt)) {
-          this.interShardMemory.footprintOperation = currentOp;
-        }
-      } catch {
-        // Non-fatal: continue with cached state.
-      }
-
-      const serialized = serializeInterShardMemory(this.interShardMemory);
+      const existingPayload = InterShardMemory.getLocal();
+      const serialized = serializeInterShardMemoryForWrite(this.interShardMemory, existingPayload, {
+        updatedSections: ["shards", "tasks", "lastSync"]
+      });
 
       // Check size limit
       if (serialized.length > INTERSHARD_MEMORY_LIMIT) {
@@ -646,7 +635,9 @@ export class ShardManager {
         this.trimInterShardMemory();
         
         // Try serializing again after trim
-        const trimmedSerialized = serializeInterShardMemory(this.interShardMemory);
+        const trimmedSerialized = serializeInterShardMemoryForWrite(this.interShardMemory, existingPayload, {
+          updatedSections: ["shards", "tasks", "lastSync"]
+        });
         if (trimmedSerialized.length > INTERSHARD_MEMORY_LIMIT) {
           logger.error(
             `InterShardMemory still too large after trim: ${trimmedSerialized.length}/${INTERSHARD_MEMORY_LIMIT}`,
