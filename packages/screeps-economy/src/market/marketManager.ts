@@ -193,6 +193,13 @@ export class MarketManager {
   private lastRun = 0;
   private cachedEmpireTick = -1;
   private cachedEmpire: EmpireMemory | null = null;
+  private cachedTick = -1;
+  private cachedMarketOrders = new Map<string, Order[]>();
+  private cachedMarketOrderDealAmounts = new Map<string, number>();
+  private cachedOwnedRooms: Room[] | null = null;
+  private cachedOwnedTerminalRooms: Room[] | null = null;
+  private cachedReadyOwnedTerminalRooms: Room[] | null = null;
+  private cachedOwnedStorageTerminalRooms: Room[] | null = null;
 
   public constructor(config: Partial<MarketConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -269,6 +276,94 @@ export class MarketManager {
       this.cachedEmpireTick = Game.time;
     }
     return this.cachedEmpire;
+  }
+
+  private ensureTickCaches(): void {
+    if (this.cachedTick === Game.time) return;
+
+    this.cachedTick = Game.time;
+    this.cachedMarketOrders.clear();
+    this.cachedMarketOrderDealAmounts.clear();
+    this.cachedOwnedRooms = null;
+    this.cachedOwnedTerminalRooms = null;
+    this.cachedReadyOwnedTerminalRooms = null;
+    this.cachedOwnedStorageTerminalRooms = null;
+  }
+
+  private getMarketOrderCacheKey(filter: OrderFilter): string {
+    return [
+      filter.id ?? "",
+      filter.created ?? "",
+      filter.type ?? "",
+      filter.resourceType ?? "",
+      filter.roomName ?? "",
+      filter.amount ?? "",
+      filter.remainingAmount ?? "",
+      filter.price ?? ""
+    ].join("|");
+  }
+
+  private getMarketOrders(filter: OrderFilter): Order[] {
+    this.ensureTickCaches();
+    const key = this.getMarketOrderCacheKey(filter);
+    let orders = this.cachedMarketOrders.get(key);
+
+    if (!orders) {
+      orders = Game.market.getAllOrders(filter);
+      this.cachedMarketOrders.set(key, orders);
+    }
+
+    if (this.cachedMarketOrderDealAmounts.size === 0) return orders.slice();
+
+    return orders.map(order => {
+      const reservedAmount = this.cachedMarketOrderDealAmounts.get(order.id) ?? 0;
+      if (reservedAmount <= 0) return order;
+
+      return {
+        ...order,
+        amount: Math.max(0, order.amount - reservedAmount),
+        remainingAmount: Math.max(0, order.remainingAmount - reservedAmount)
+      };
+    });
+  }
+
+  private recordMarketDeal(orderId: string, amount: number): void {
+    if (amount <= 0) return;
+
+    this.ensureTickCaches();
+    this.cachedMarketOrderDealAmounts.set(orderId, (this.cachedMarketOrderDealAmounts.get(orderId) ?? 0) + amount);
+  }
+
+  private getOwnedRooms(): Room[] {
+    this.ensureTickCaches();
+    if (!this.cachedOwnedRooms) {
+      this.cachedOwnedRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
+    }
+    return this.cachedOwnedRooms;
+  }
+
+  private getOwnedTerminalRooms(): Room[] {
+    this.ensureTickCaches();
+    if (!this.cachedOwnedTerminalRooms) {
+      this.cachedOwnedTerminalRooms = this.getOwnedRooms().filter(room => room.terminal);
+    }
+    return this.cachedOwnedTerminalRooms;
+  }
+
+  private getReadyOwnedTerminalRooms(): Room[] {
+    this.ensureTickCaches();
+    if (!this.cachedReadyOwnedTerminalRooms) {
+      this.cachedReadyOwnedTerminalRooms = this.getOwnedTerminalRooms().filter(room => room.terminal?.cooldown === 0);
+    }
+    return this.cachedReadyOwnedTerminalRooms;
+  }
+
+  private getOwnedStorageTerminalRooms(): Room[] {
+    this.ensureTickCaches();
+    if (!this.cachedOwnedStorageTerminalRooms) {
+      this.cachedOwnedStorageTerminalRooms = this.getOwnedTerminalRooms().filter(room => room.storage);
+    }
+    return this.cachedOwnedStorageTerminalRooms;
   }
 
   /**
@@ -406,9 +501,7 @@ export class MarketManager {
   private getOwnedResourceTotals(): Record<string, number> {
     const totals: Record<string, number> = {};
 
-    for (const room of Object.values(Game.rooms)) {
-      if (!room.controller?.my) continue;
-
+    for (const room of this.getOwnedRooms()) {
       for (const store of [room.storage?.store, room.terminal?.store]) {
         if (!store) continue;
 
@@ -491,8 +584,8 @@ export class MarketManager {
   }
 
   private handleEnergyOverflowSales(): void {
-    const rooms = Object.values(Game.rooms)
-      .filter(room => room.controller?.my && room.storage && room.terminal)
+    const rooms = this.getOwnedStorageTerminalRooms()
+      .slice()
       .sort(
         (a, b) =>
           (b.storage?.store.getUsedCapacity(RESOURCE_ENERGY) ?? 0) -
@@ -639,7 +732,7 @@ export class MarketManager {
     }
 
     // Find a room with terminal to place order
-    const roomWithTerminal = Object.values(Game.rooms).find(r => r.terminal && r.controller?.my);
+    const roomWithTerminal = this.getOwnedTerminalRooms()[0];
     if (!roomWithTerminal?.terminal) return;
 
     // Create order
@@ -664,9 +757,9 @@ export class MarketManager {
   private buyMissingResource(resource: ResourceConstant, amount: number, isWarMode: boolean): boolean {
     if (Game.market.credits < this.config.minCredits) return false;
 
-    const sellOrders = Game.market
-      .getAllOrders({ type: ORDER_SELL, resourceType: resource })
-      .filter(o => o.remainingAmount > 0 && o.roomName);
+    const sellOrders = this.getMarketOrders({ type: ORDER_SELL, resourceType: resource }).filter(
+      o => o.remainingAmount > 0 && o.roomName
+    );
     if (sellOrders.length === 0) return false;
 
     const marketData = this.getMarketData(resource);
@@ -674,7 +767,7 @@ export class MarketManager {
       ? (marketData?.avgPrice ?? sellOrders[0]?.price ?? 0) * this.config.warPriceMultiplier
       : (marketData?.avgPrice ?? sellOrders[0]?.price ?? 0) * this.config.buyOpportunityAdjustment;
 
-    const terminalRooms = Object.values(Game.rooms).filter(r => r.controller?.my && r.terminal && r.terminal.cooldown === 0);
+    const terminalRooms = this.getReadyOwnedTerminalRooms();
     if (terminalRooms.length === 0) return false;
 
     sellOrders.sort((a, b) => a.price - b.price);
@@ -698,6 +791,7 @@ export class MarketManager {
 
         const result = Game.market.deal(order.id, dealAmount, room.name);
         if (result === OK) {
+          this.recordMarketDeal(order.id, dealAmount);
           logger.info(`Bought ${dealAmount} ${resource} at ${order.price.toFixed(3)} credits/unit`, {
             subsystem: "Market"
           });
@@ -775,7 +869,7 @@ export class MarketManager {
         price = history[history.length - 1].avgPrice * 0.95;
       } else {
         // No price data, check current market orders
-        const buyOrders = Game.market.getAllOrders({
+        const buyOrders = this.getMarketOrders({
           type: ORDER_BUY,
           resourceType: resource
         });
@@ -818,9 +912,9 @@ export class MarketManager {
     const terminal = room.terminal;
     if (!terminal || terminal.cooldown > 0) return false;
 
-    const buyOrders = Game.market
-      .getAllOrders({ type: ORDER_BUY, resourceType: resource })
-      .filter(o => o.remainingAmount > 0 && o.roomName);
+    const buyOrders = this.getMarketOrders({ type: ORDER_BUY, resourceType: resource }).filter(
+      o => o.remainingAmount > 0 && o.roomName
+    );
     if (buyOrders.length === 0) return false;
 
     const candidates = rankActiveSellOrders({
@@ -847,6 +941,7 @@ export class MarketManager {
 
       const result = Game.market.deal(order.id, dealAmount, room.name);
       if (result === OK) {
+        this.recordMarketDeal(order.id, dealAmount);
         const empire = this.getEmpireMemory();
         const value = order.price * dealAmount;
         if (empire.market) {
@@ -928,9 +1023,7 @@ export class MarketManager {
     }
 
     // Find a room with terminal and this resource
-    const roomWithResource = Object.values(Game.rooms).find(
-      r => r.terminal && r.controller?.my && r.terminal.store[resource] > 1000
-    );
+    const roomWithResource = this.getOwnedTerminalRooms().find(room => room.terminal!.store[resource] > 1000);
 
     if (!roomWithResource?.terminal) return;
 
@@ -1016,14 +1109,14 @@ export class MarketManager {
       ];
 
       for (const resource of boostResources) {
-        const orders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+        const orders = this.getMarketOrders({ type: ORDER_SELL, resourceType: resource });
 
         if (orders.length > 0) {
           // Sort by price
           orders.sort((a, b) => a.price - b.price);
 
           const bestOrder = orders[0];
-          const roomWithTerminal = Object.values(Game.rooms).find(r => r.terminal && r.controller?.my);
+          const roomWithTerminal = this.getOwnedTerminalRooms()[0];
 
           if (roomWithTerminal && bestOrder.price < 10) {
             // Buy if price is reasonable
@@ -1031,6 +1124,7 @@ export class MarketManager {
             const result = Game.market.deal(bestOrder.id, amount, roomWithTerminal.name);
 
             if (result === OK) {
+              this.recordMarketDeal(bestOrder.id, amount);
               logger.info(`Bought ${amount} ${resource} for ${bestOrder.price.toFixed(3)} credits/unit`, {
                 subsystem: "Market"
               });
@@ -1072,12 +1166,11 @@ export class MarketManager {
     const deficits: Array<{ roomName: string; deficit: number }> = [];
     const threshold = this.config.emergencyBuyThreshold;
 
-    for (const room of Object.values(Game.rooms)) {
-      if (!room.controller?.my || !room.terminal) {
-        continue;
-      }
+    for (const room of this.getOwnedTerminalRooms()) {
+      const terminal = room.terminal;
+      if (!terminal) continue;
 
-      const terminalAmount = room.terminal.store.getUsedCapacity(resource);
+      const terminalAmount = terminal.store.getUsedCapacity(resource);
       const storageAmount = room.storage?.store.getUsedCapacity(resource) ?? 0;
       const current = terminalAmount + storageAmount;
       const deficit = threshold - current;
@@ -1102,7 +1195,7 @@ export class MarketManager {
 
     const requestedAmount = Math.max(1, Math.floor(amount));
 
-    const orders = Game.market.getAllOrders({ type: ORDER_SELL, resourceType: resource });
+    const orders = this.getMarketOrders({ type: ORDER_SELL, resourceType: resource });
     if (orders.length === 0) return false;
     if (destinationTerminal.cooldown > 0) return false;
 
@@ -1155,6 +1248,7 @@ export class MarketManager {
       const result = Game.market.deal(order.id, purchaseAmount, destinationRoom.name);
 
       if (result === OK) {
+        this.recordMarketDeal(order.id, purchaseAmount);
         logger.warn(
           `EMERGENCY BUY: ${purchaseAmount} ${resource} for ${destinationRoom.name} at ${order.price.toFixed(3)} credits/unit`,
           { subsystem: "Market" }
@@ -1270,6 +1364,7 @@ export class MarketManager {
             const result = Game.market.deal(order.id, dealAmount, terminal.room.name);
 
             if (result === OK) {
+              this.recordMarketDeal(order.id, dealAmount);
               const proportionalTransportCost = trade.transportCost * (dealAmount / trade.amount);
               const profit = (order.price - trade.buyPrice) * dealAmount - proportionalTransportCost * this.config.energyCreditValue;
               market.totalProfit = (market.totalProfit ?? 0) + profit;
@@ -1329,7 +1424,7 @@ export class MarketManager {
 
     const empire = this.getEmpireMemory();
     const market = empire.market;
-    const terminals = Object.values(Game.rooms).filter(r => r.terminal && r.controller?.my);
+    const terminals = this.getOwnedTerminalRooms();
 
     if (!market || terminals.length === 0) return;
 
@@ -1339,12 +1434,12 @@ export class MarketManager {
     for (const resource of this.config.trackedResources) {
       if (tradesStarted >= this.config.maxArbitrageTradesPerRun) return;
 
-      const buyOrders = Game.market
-        .getAllOrders({ type: ORDER_BUY, resourceType: resource })
-        .filter(o => o.remainingAmount > 0 && o.roomName);
-      const sellOrders = Game.market
-        .getAllOrders({ type: ORDER_SELL, resourceType: resource })
-        .filter(o => o.remainingAmount > 0 && o.roomName);
+      const buyOrders = this.getMarketOrders({ type: ORDER_BUY, resourceType: resource }).filter(
+        o => o.remainingAmount > 0 && o.roomName
+      );
+      const sellOrders = this.getMarketOrders({ type: ORDER_SELL, resourceType: resource }).filter(
+        o => o.remainingAmount > 0 && o.roomName
+      );
 
       if (buyOrders.length === 0 || sellOrders.length === 0) continue;
 
@@ -1396,6 +1491,7 @@ export class MarketManager {
         const result = Game.market.deal(lowestSell.id, tradeAmount, room.name);
 
         if (result !== OK) continue;
+        this.recordMarketDeal(lowestSell.id, tradeAmount);
 
         const pendingTrade: PendingArbitrageTrade = {
           id: `${resource}-${Game.time}-${lowestSell.id}`,
@@ -1429,7 +1525,7 @@ export class MarketManager {
    * Balance resources across rooms via terminal transfers
    */
   private balanceResourcesAcrossRooms(): void {
-    const rooms = Object.values(Game.rooms).filter(r => r.terminal && r.controller?.my);
+    const rooms = this.getOwnedTerminalRooms();
 
     if (rooms.length < 2) return; // Need at least 2 rooms
 
