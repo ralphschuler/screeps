@@ -1141,6 +1141,135 @@ describe("TaskBoard", () => {
     expect(taskBoard.describeAssignments(room.name)).to.not.contain("remoteHauler2 -> refillExtension");
   });
 
+  it("reserves refill work for an empty hauler before collecting energy", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    const container = {
+      id: "container1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      room,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: makeStore(500, 2000)
+    } as unknown as StructureContainer;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === container.id ? container : null;
+
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const collectContext = makeContext(creep, room);
+    collectContext.containers = [container];
+    const collectAction = evaluateEconomyBehavior(collectContext);
+
+    expect(collectAction.type).to.equal("withdraw");
+    expect((collectAction as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(container);
+    expect(taskBoard.describeAssignments(room.name)).to.contain("hauler1 -> refillExtension");
+
+    (creep as unknown as { store: StoreDefinition }).store = makeStore(50, 50);
+    creep.memory.working = true;
+    const deliverAction = evaluateEconomyBehavior(makeContext(creep, room));
+
+    expect(deliverAction.type).to.equal("transfer");
+    expect((deliverAction as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+  });
+
+  it("does not reserve energy delivery work before collecting minerals", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    const mineralContainer = {
+      id: "mineralContainer1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      room,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: {
+        [RESOURCE_UTRIUM]: 1000,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === RESOURCE_UTRIUM ? 1000 : 0,
+        getFreeCapacity: () => 1000,
+        getCapacity: () => 2000
+      }
+    } as unknown as StructureContainer;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === mineralContainer.id ? mineralContainer : null;
+
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50)
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const context = makeContext(creep, room);
+    context.mineralContainers = [mineralContainer];
+    const action = evaluateEconomyBehavior(context);
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_UTRIUM);
+    expect(taskBoard.describeAssignments(room.name)).to.not.contain("hauler1 -> refillExtension");
+  });
+
+  it("refreshes reserved refill work while a hauler continues energy collection state", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    const container = {
+      id: "container1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      room,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: makeStore(500, 2000)
+    } as unknown as StructureContainer;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === container.id ? container : null;
+
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, inRangeTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const initialContext = makeContext(creep, room);
+    initialContext.containers = [container];
+    const firstAction = evaluateWithStateMachine(initialContext, evaluateEconomyBehavior);
+    expect(firstAction.type).to.equal("withdraw");
+
+    const assignedTaskId = (creep.memory as any).assignedTaskId;
+    const task = (Memory as any).creepTaskBoard.rooms[room.name].tasks[assignedTaskId];
+    task.reservations[creep.name].expiresTick = Game.time + 1;
+    Game.time += 1;
+
+    const continuedAction = evaluateWithStateMachine(makeContext(creep, room), evaluateEconomyBehavior);
+
+    expect(continuedAction.type).to.equal("withdraw");
+    expect(task.reservations[creep.name].expiresTick).to.equal(Game.time + 15);
+  });
+
   it("does not divert a full upgrader into storage when the controller can be upgraded", () => {
     const controller = makeController("controller1" as Id<StructureController>);
     const storage = makeStorage("storage1" as Id<StructureStorage>, 0, 1000000);

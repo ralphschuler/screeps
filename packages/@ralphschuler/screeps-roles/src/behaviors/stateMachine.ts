@@ -497,6 +497,13 @@ function commitNewAction(ctx: CreepContext, newAction: CreepAction, logMessage: 
  * @param behaviorFn Behavior function to call when evaluating new action
  * @returns Action to execute
  */
+function isEnergyCollectionAction(action: CreepAction): boolean {
+  return (
+    (action.type === "withdraw" && action.resourceType === RESOURCE_ENERGY) ||
+    (action.type === "pickup" && action.target.resourceType === RESOURCE_ENERGY)
+  );
+}
+
 export function evaluateWithStateMachine(
   ctx: CreepContext,
   behaviorFn: (ctx: CreepContext) => CreepAction,
@@ -542,6 +549,9 @@ export function evaluateWithStateMachine(
             return { ...action, amount: reservationAmount };
           }
         } else {
+          if (ctx.memory.assignedTaskId && isEnergyCollectionAction(action)) {
+            taskBoard.refreshAssignedDeliveryReservation(ctx);
+          }
           return action;
         }
       }

@@ -151,7 +151,7 @@ export function hauler(ctx: CreepContext): CreepAction {
   // Collects all resource types, not just energy
   if (ctx.droppedResources.length > 0) {
     const closest = findCachedClosest(ctx.creep, ctx.droppedResources, "hauler_drop", 5);
-    if (closest) return { type: "pickup", target: closest };
+    if (closest) return reserveForEnergyCollection(ctx, { type: "pickup", target: closest });
   }
 
   // 2. Tombstones (use cached - transient targets)
@@ -166,7 +166,7 @@ export function hauler(ctx: CreepContext): CreepAction {
     if (tombstone) {
       // Prioritize energy first, then other resources
       if (tombstone.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-        return { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY };
+        return reserveForEnergyCollection(ctx, { type: "withdraw", target: tombstone, resourceType: RESOURCE_ENERGY });
       }
       // If no energy, pick up any other resource type
       const resourceTypes = Object.keys(tombstone.store) as ResourceConstant[];
@@ -187,14 +187,14 @@ export function hauler(ctx: CreepContext): CreepAction {
     const distributed = getCachedDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
     if (distributed) {
       logger.debug(`${ctx.creep.name} hauler withdrawing from container ${distributed.id} with ${distributed.store.getUsedCapacity(RESOURCE_ENERGY)} energy`);
-      return { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY };
+      return reserveForEnergyCollection(ctx, { type: "withdraw", target: distributed, resourceType: RESOURCE_ENERGY });
     } else {
       // BUGFIX: If distribution returns null (shouldn't happen but defensive), fall back to closest container
       logger.warn(`${ctx.creep.name} hauler found ${containersWithEnergy.length} containers but distribution returned null, falling back to closest`);
       const fallback = ctx.creep.pos.findClosestByRange(containersWithEnergy);
       if (fallback) {
         logger.debug(`${ctx.creep.name} hauler using fallback container ${fallback.id}`);
-        return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
+        return reserveForEnergyCollection(ctx, { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY });
       }
     }
   }
@@ -230,16 +230,26 @@ export function hauler(ctx: CreepContext): CreepAction {
   }
 
   const terminalSupplyAction = collectTerminalBufferFromStorage(ctx);
-  if (terminalSupplyAction) return terminalSupplyAction;
+  if (terminalSupplyAction) return reserveForEnergyCollection(ctx, terminalSupplyAction);
 
   // 5. Storage (single target, no distribution needed)
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
     logger.debug(`${ctx.creep.name} hauler withdrawing from storage`);
-    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    return reserveForEnergyCollection(ctx, { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY });
   }
 
   logger.warn(`${ctx.creep.name} hauler idle (no energy sources found)`);
   return { type: "idle" };
+}
+
+function reserveForEnergyCollection(ctx: CreepContext, action: CreepAction): CreepAction {
+  if (action.type === "withdraw" && action.resourceType === RESOURCE_ENERGY) {
+    taskBoard.reserveDeliveryWork(ctx);
+  }
+  if (action.type === "pickup" && action.target.resourceType === RESOURCE_ENERGY) {
+    taskBoard.reserveDeliveryWork(ctx);
+  }
+  return action;
 }
 
 function findDefenseRefuelDelivery(ctx: CreepContext): CreepAction | null {
