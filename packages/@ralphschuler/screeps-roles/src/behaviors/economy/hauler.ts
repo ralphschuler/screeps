@@ -16,11 +16,15 @@ import { createLogger } from "@ralphschuler/screeps-core";
 import { taskBoard, type TaskType } from "../../tasks";
 import { hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
 import { getTerminalEnergyExportRequest } from "../../tasks/energyExport";
+import {
+  MATURE_ROOM_STORAGE_RESERVE_ENERGY,
+  MATURE_ROOM_TERMINAL_RESERVE_ENERGY
+} from "@ralphschuler/screeps-economy/reserves";
 
 const logger = createLogger("HaulerBehavior");
 
-const TERMINAL_ENERGY_TARGET = 20000;
-const STORAGE_ENERGY_RESERVE = 50000;
+const TERMINAL_ENERGY_TARGET = MATURE_ROOM_TERMINAL_RESERVE_ENERGY;
+const STORAGE_ENERGY_RESERVE = MATURE_ROOM_STORAGE_RESERVE_ENERGY;
 const MINERAL_STORAGE_BUFFER = 5000;
 const TERMINAL_MINERAL_TARGET = 10000;
 const HAULER_DISTRIBUTED_TARGET_CACHE_TTL = 5;

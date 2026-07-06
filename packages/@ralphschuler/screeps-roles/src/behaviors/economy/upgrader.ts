@@ -7,7 +7,12 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { findCachedClosest , cachedFindSources } from "../../cache";
-import { findAssignedCriticalEnergyDelivery, findCriticalEnergyDelivery, hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
+import {
+  findAssignedCriticalEnergyDelivery,
+  findCriticalEnergyDelivery,
+  hasTaskBoardCriticalEnergyDelivery
+} from "./common/energyManagement";
+import { MATURE_ROOM_STORAGE_RESERVE_ENERGY } from "@ralphschuler/screeps-economy/reserves";
 import { updateWorkingState } from "./common/stateManagement";
 
 const CRITICAL_SPAWN_FREE_CAPACITY = 250;
@@ -121,8 +126,8 @@ export function upgrader(ctx: CreepContext): CreepAction {
     if (closest) return { type: "withdraw", target: closest, resourceType: RESOURCE_ENERGY };
   }
 
-  // Fallback to storage if available and has enough energy
-  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 1000) {
+  // Fallback to storage only after mature-room reserves are safe.
+  if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > MATURE_ROOM_STORAGE_RESERVE_ENERGY) {
     return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
   }
 

@@ -631,6 +631,37 @@ describe("Behavior Contracts", () => {
     expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
   });
 
+  it("preserves low mature storage reserves for builders by harvesting instead", () => {
+    const ctx = createContext("builder");
+    const roomName = `W9N${Game.time}`;
+    (ctx.room as unknown as { name: string }).name = roomName;
+    (ctx.creep.pos as unknown as { roomName: string }).roomName = roomName;
+    ctx.homeRoom = roomName;
+    ctx.memory.homeRoom = roomName;
+
+    const storage = {
+      id: "storage1",
+      pos: { x: 20, y: 20, roomName },
+      store: makeEnergyStore(1000, 1000000)
+    } as unknown as StructureStorage;
+    const source = {
+      id: "source1" as Id<Source>,
+      energy: 3000,
+      pos: { x: 10, y: 10, roomName }
+    } as unknown as Source;
+    Game.rooms[roomName] = ctx.room;
+    ctx.room.controller = { my: true, level: 6 } as StructureController;
+    ctx.room.storage = storage;
+    ctx.storage = storage;
+    (ctx.room as unknown as { find: (type: FindConstant) => unknown[] }).find = type => type === FIND_SOURCES ? [source] : [];
+    clearRoomCaches();
+
+    const action = evaluateEconomyBehavior(ctx);
+
+    expect(action.type).to.equal("harvest");
+    expect((action as Extract<CreepAction, { type: "harvest" }>).target).to.equal(source);
+  });
+
   it("withdraws storage energy for terminal export when storage exceeds overflow threshold", () => {
     const storage = {
       id: "storage1",

@@ -12,6 +12,10 @@ import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { type CrossShardTransferRequest, resourceTransferCoordinator } from "./botIntegration";
 import { countCreepsByRole, countCreepsOfRole, countRemoteCreepsByTargetRoom } from "./creepCounts";
 import { memoryManager } from "@ralphschuler/screeps-memory";
+import {
+  MATURE_ROOM_RESERVE_RECOVERY_UPGRADER_LIMIT,
+  hasDepletedMatureEnergyReserve
+} from "@ralphschuler/screeps-economy/reserves";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
 import {
   canSpawnIdleLocalMilitary,
@@ -111,20 +115,26 @@ export function getRoleTargetCount(roomName: string, role: string, swarm: SwarmS
   let maxForRoom = def.maxPerRoom;
   const room = Game.rooms[roomName];
 
-  if (role === "upgrader" && room?.controller && swarm.danger === 0 && swarm.posture !== "war" && swarm.posture !== "siege") {
-    if (room.controller.level <= 3) {
-      maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.EARLY;
-    } else if (room.controller.level <= 6) {
-      maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.MID;
-    } else {
-      maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.LATE;
+  if (role === "upgrader" && room?.controller) {
+    if (swarm.danger === 0 && swarm.posture !== "war" && swarm.posture !== "siege") {
+      if (room.controller.level <= 3) {
+        maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.EARLY;
+      } else if (room.controller.level <= 6) {
+        maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.MID;
+      } else {
+        maxForRoom = AGGRESSIVE_UPGRADER_LIMITS.LATE;
+      }
+
+      if (swarm.clusterId) {
+        const cluster = memoryManager.getCluster(swarm.clusterId);
+        if (cluster?.focusRoom === roomName) {
+          maxForRoom += 2;
+        }
+      }
     }
 
-    if (swarm.clusterId) {
-      const cluster = memoryManager.getCluster(swarm.clusterId);
-      if (cluster?.focusRoom === roomName) {
-        maxForRoom += 2;
-      }
+    if (hasDepletedMatureEnergyReserve(room)) {
+      maxForRoom = Math.min(maxForRoom, MATURE_ROOM_RESERVE_RECOVERY_UPGRADER_LIMIT);
     }
   }
 

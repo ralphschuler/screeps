@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "private": true,
   "scripts": {
-    "prebuild": "npm run build -w @ralphschuler/screeps-cache -w @ralphschuler/screeps-core -w @ralphschuler/screeps-defense -w @ralphschuler/screeps-empire -w @ralphschuler/screeps-intershard -w @ralphschuler/screeps-memory -w @ralphschuler/screeps-utils --if-present",
+    "prebuild": "npm run build -w @ralphschuler/screeps-cache -w @ralphschuler/screeps-core -w @ralphschuler/screeps-defense -w @ralphschuler/screeps-economy -w @ralphschuler/screeps-empire -w @ralphschuler/screeps-intershard -w @ralphschuler/screeps-memory -w @ralphschuler/screeps-utils --if-present",
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
     "prepublishOnly": "npm run build",
@@ -36,6 +36,7 @@
     "@ralphschuler/screeps-cache": "*",
     "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-defense": "*",
+    "@ralphschuler/screeps-economy": "*",
     "@ralphschuler/screeps-empire": "*",
     "@ralphschuler/screeps-intershard": "*",
     "@ralphschuler/screeps-memory": "*",

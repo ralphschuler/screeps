@@ -50,5 +50,24 @@
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./reserves": {
+      "types": "./dist/reserves/index.d.ts",
+      "require": "./dist/reserves/index.js",
+      "default": "./dist/reserves/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "reserves": [
+        "dist/reserves/index.d.ts"
+      ]
+    }
   }
 }

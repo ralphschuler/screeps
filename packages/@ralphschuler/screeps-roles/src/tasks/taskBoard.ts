@@ -1,5 +1,6 @@
 import { getActualHostileCreeps, isKnownAllyOwned } from "@ralphschuler/screeps-defense";
 import type { CreepAction, CreepContext } from "../behaviors/types";
+import { MATURE_ROOM_STORAGE_RESERVE_ENERGY } from "@ralphschuler/screeps-economy/reserves";
 import { getTerminalEnergyExportRequest } from "./energyExport";
 import { TaskPriority, type CreepTask, type RoomTaskBoardMemory, type TaskBoardMemory, type TaskBoardStats, type TaskType, type TaskAssignmentOptions } from "./types";
 
@@ -255,8 +256,11 @@ function generateTasks(room: Room, board: RoomTaskBoardMemory): void {
 
   const storageFreeCapacity = room.storage?.store.getFreeCapacity(RESOURCE_ENERGY) ?? 0;
   if (room.storage && storageFreeCapacity > 0) {
+    const storageEnergy = room.storage.store.getUsedCapacity(RESOURCE_ENERGY);
+    const isMatureReserveRebuild = (room.controller?.level ?? 0) >= 4 && storageEnergy < MATURE_ROOM_STORAGE_RESERVE_ENERGY;
+    const priority = isMatureReserveRebuild ? TaskPriority.NORMAL : TaskPriority.LOW;
     const actionableAmount = Math.min(storageFreeCapacity, STORE_ENERGY_TASK_AMOUNT_CAP);
-    updateOrCreateTask(board, createRefillTask(room.name, "storeEnergy", room.storage, actionableAmount, TaskPriority.LOW));
+    updateOrCreateTask(board, createRefillTask(room.name, "storeEnergy", room.storage, actionableAmount, priority));
   }
 
   const hostiles = measureCpuDetail("taskBoard.findHostiles", () => getActualHostileCreeps(room));

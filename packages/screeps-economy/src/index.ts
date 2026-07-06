@@ -39,6 +39,18 @@ export { MarketManager, marketManager } from './market/marketManager';
 export type { MarketConfig } from './market/marketManager';
 export { MarketTrendAnalyzer } from './market/marketTrendAnalyzer';
 
+// Reserve policy
+export {
+  MATURE_ROOM_MIN_RCL,
+  MATURE_ROOM_STORAGE_RESERVE_ENERGY,
+  MATURE_ROOM_TERMINAL_RESERVE_ENERGY,
+  MATURE_ROOM_RESERVE_RECOVERY_UPGRADER_LIMIT,
+  getStoredEnergy,
+  getMatureRoomEnergyReserveState,
+  hasDepletedMatureEnergyReserve
+} from './reserves/energyReserves';
+export type { MatureRoomEnergyReserveState } from './reserves/energyReserves';
+
 // TODO: Add spawning exports once spawning files are moved
 // Issue URL: https://github.com/ralphschuler/screeps/issues/853
 // TODO: Add other economy utilities (energyFlowPredictor, etc.)
