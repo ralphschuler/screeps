@@ -15,6 +15,14 @@ const logger = createLogger("EnergyCollection");
 const CRITICAL_DELIVERY_TASK_TYPES: TaskType[] = ["refillSpawn", "refillExtension", "refillTower"];
 const STORAGE_RESERVE_PRESERVING_ROLES = new Set(["builder", "pioneer", "interShardPioneer"]);
 
+function isEnergyCollectionAction(action: CreepAction): boolean {
+  return (
+    action.type === "harvest" ||
+    (action.type === "withdraw" && action.resourceType === RESOURCE_ENERGY) ||
+    (action.type === "pickup" && action.target.resourceType === RESOURCE_ENERGY)
+  );
+}
+
 function shouldPreserveStorageReserve(ctx: CreepContext, storageEnergy: number): boolean {
   const controllerLevel = ctx.room.controller?.level ?? 0;
   return (
@@ -117,6 +125,13 @@ export function findAssignedCriticalEnergyDelivery(
 
 export function hasTaskBoardCriticalEnergyDelivery(ctx: CreepContext): boolean {
   return taskBoard.hasActiveTask(ctx.room.name, CRITICAL_DELIVERY_TASK_TYPES);
+}
+
+export function reserveCriticalEnergyDeliveryBeforeCollection(ctx: CreepContext, action: CreepAction): CreepAction {
+  if (isEnergyCollectionAction(action)) {
+    taskBoard.reserveCriticalDeliveryWork(ctx);
+  }
+  return action;
 }
 
 export function findCriticalEnergyDelivery(

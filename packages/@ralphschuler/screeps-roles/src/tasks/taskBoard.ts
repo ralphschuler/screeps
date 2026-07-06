@@ -452,6 +452,9 @@ function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: Inte
   } else if (!current && ctx.memory.assignedTaskId) {
     delete ctx.memory.assignedTaskId;
   }
+
+  let task: CreepTask | null = null;
+
   if (current && isAllowedTaskType(current, options) && isTargetStillValid(current) && canPerformTask(ctx, current, options)) {
     if (!shouldCheckForPreemption(ctx, current)) {
       return current;
@@ -464,11 +467,18 @@ function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: Inte
     if (!highest || delta < stickinessDelta || !criticalPreempt) {
       return current;
     }
+
+    task = highest;
     releaseReservation(board, current, ctx.creep.name);
     board.stats.preemptions++;
+  } else if (current) {
+    task = findBestTask(board, ctx, options);
+    releaseReservation(board, current, ctx.creep.name);
+    board.stats.preemptions++;
+    if (!task) return null;
   }
 
-  const task = findBestTask(board, ctx, options);
+  task ??= findBestTask(board, ctx, options);
   if (!task) return null;
 
   const assignmentAmount = getAssignmentAmount(ctx.creep, task, options);
@@ -612,6 +622,20 @@ export class TaskBoard {
     return Boolean(assignTask(board, ctx, {
       allowedTypes: ["refillSpawn", "refillExtension", "refillTower", "fillTerminalEnergy", "storeEnergy"],
       preemptPriority: TaskPriority.NORMAL,
+      priorityStickinessDelta: 25,
+      reserveEmptyEnergyDelivery: true
+    }));
+  }
+
+  public reserveCriticalDeliveryWork(ctx: CreepContext): boolean {
+    if (!this.isEnabled() || !getRuntimeGame()) return false;
+    const board = getRoomBoard(ctx.room.name);
+    measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
+    measureCpuDetail("taskBoard.generate", () => generateTasks(ctx.room, board));
+
+    return Boolean(assignTask(board, ctx, {
+      allowedTypes: ["refillSpawn", "refillExtension", "refillTower"],
+      preemptPriority: TaskPriority.HIGH,
       priorityStickinessDelta: 25,
       reserveEmptyEnergyDelivery: true
     }));

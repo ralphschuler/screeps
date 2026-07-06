@@ -7,7 +7,7 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
-import { deliverEnergy, findEnergy } from "./common/energyManagement";
+import { deliverEnergy, findEnergy, reserveCriticalEnergyDeliveryBeforeCollection } from "./common/energyManagement";
 import { findQuestBuildAction, findQuestBuildRecoveryAction } from "./common/questBuild";
 import { getPheromones, needsBuilding, needsUpgrading } from "../pheromoneHelper";
 import { createLogger } from "@ralphschuler/screeps-core";
@@ -76,5 +76,5 @@ export function larvaWorker(ctx: CreepContext): CreepAction {
     }
   }
 
-  return findEnergy(ctx);
+  return reserveCriticalEnergyDeliveryBeforeCollection(ctx, findEnergy(ctx));
 }

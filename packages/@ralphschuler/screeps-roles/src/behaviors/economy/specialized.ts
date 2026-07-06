@@ -7,7 +7,7 @@
 import type { CreepAction, CreepContext } from "../types";
 import { labSupply } from "../labSupply";
 import { updateWorkingState } from "./common/stateManagement";
-import { deliverEnergy } from "./common/energyManagement";
+import { deliverEnergy, reserveCriticalEnergyDeliveryBeforeCollection } from "./common/energyManagement";
 
 /**
  * QueenCarrier - Energy distributor for spawn structures.
@@ -35,16 +35,16 @@ export function queenCarrier(ctx: CreepContext): CreepAction {
   // LinkManager pushes storage-link energy here; queenCarrier turns it into local spawn delivery.
   const spawnLink = findSpawnLinkWithEnergy(ctx.room);
   if (spawnLink) {
-    return { type: "withdraw", target: spawnLink, resourceType: RESOURCE_ENERGY };
+    return reserveCriticalEnergyDeliveryBeforeCollection(ctx, { type: "withdraw", target: spawnLink, resourceType: RESOURCE_ENERGY });
   }
 
   // Get energy from storage or terminal
   if (ctx.storage && ctx.storage.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-    return { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY };
+    return reserveCriticalEnergyDeliveryBeforeCollection(ctx, { type: "withdraw", target: ctx.storage, resourceType: RESOURCE_ENERGY });
   }
 
   if (ctx.terminal && ctx.terminal.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-    return { type: "withdraw", target: ctx.terminal, resourceType: RESOURCE_ENERGY };
+    return reserveCriticalEnergyDeliveryBeforeCollection(ctx, { type: "withdraw", target: ctx.terminal, resourceType: RESOURCE_ENERGY });
   }
 
   return { type: "idle" };

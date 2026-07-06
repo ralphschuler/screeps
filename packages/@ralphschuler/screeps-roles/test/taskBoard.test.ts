@@ -1185,6 +1185,322 @@ describe("TaskBoard", () => {
     expect((deliverAction as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
   });
 
+  it("reserves critical refill work for an empty builder before collecting energy", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W1N1");
+    const container = {
+      id: "container1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      room,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: makeStore(500, 2000)
+    } as unknown as StructureContainer;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === container.id ? container : null;
+
+    const creep = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const context = makeContext(creep, room);
+    context.containers = [container];
+    const collectAction = evaluateEconomyBehavior(context);
+
+    expect(collectAction.type).to.equal("withdraw");
+    expect((collectAction as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(container);
+    expect(taskBoard.describeAssignments(room.name)).to.contain("builder1 -> refillExtension");
+
+    (creep as unknown as { store: StoreDefinition }).store = makeStore(50, 50);
+    creep.memory.working = true;
+    const deliverAction = evaluateEconomyBehavior(makeContext(creep, room));
+
+    expect(deliverAction.type).to.equal("transfer");
+    expect((deliverAction as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+  });
+
+  it("reserves critical refill work for a queen carrier before withdrawing energy", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 1000, 1000000);
+    const room = createMockRoom("W1N1", { storage });
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_SPAWNS) return [];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === extension.id) return extension;
+      if (id === storage.id) return storage;
+      return null;
+    };
+
+    const creep = createMockCreep("queen1", {
+      room,
+      memory: { role: "queenCarrier", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const collectContext = makeContext(creep, room);
+    collectContext.storage = storage;
+    const collectAction = evaluateEconomyBehavior(collectContext);
+
+    expect(collectAction.type).to.equal("withdraw");
+    expect((collectAction as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(storage);
+    expect(taskBoard.describeAssignments(room.name)).to.contain("queen1 -> refillExtension");
+
+    (creep as unknown as { store: StoreDefinition }).store = makeStore(50, 50);
+    creep.memory.working = true;
+    const deliverContext = makeContext(creep, room);
+    deliverContext.storage = storage;
+    const deliverAction = evaluateEconomyBehavior(deliverContext);
+
+    expect(deliverAction.type).to.equal("transfer");
+    expect((deliverAction as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+  });
+
+  it("reserves critical refill work for an empty upgrader before collecting energy when no local hauler is active", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const controller = {
+      ...makeController("controller1" as Id<StructureController>),
+      pos: { x: 40, y: 40, roomName: "W1N1", findInRange: () => [] }
+    } as unknown as StructureController;
+    const room = createMockRoom("W1N1", { controller });
+    const container = {
+      id: "container1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      room,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: makeStore(500, 2000)
+    } as unknown as StructureContainer;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === extension.id) return extension;
+      if (id === container.id) return container;
+      if (id === controller.id) return controller;
+      return null;
+    };
+
+    const creep = createMockCreep("upgrader1", {
+      room,
+      memory: { role: "upgrader", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, findInRange: () => [] }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const collectContext = makeContext(creep, room);
+    collectContext.containers = [container];
+    const collectAction = evaluateEconomyBehavior(collectContext);
+
+    expect(collectAction.type).to.equal("withdraw");
+    expect((collectAction as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(container);
+    expect(taskBoard.describeAssignments(room.name)).to.contain("upgrader1 -> refillExtension");
+
+    (creep as unknown as { store: StoreDefinition }).store = makeStore(50, 50);
+    creep.memory.working = true;
+    const deliverAction = evaluateEconomyBehavior(makeContext(creep, room));
+
+    expect(deliverAction.type).to.equal("transfer");
+    expect((deliverAction as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+  });
+
+  it("releases stale non-core delivery reservations before defense refuel core assignment", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 1000, 1000000);
+    const room = createMockRoom("W1N1", { storage });
+    const extensionTaskId = `${room.name}:refillExtension:${extension.id}`;
+    const storageTaskId = `${room.name}:storeEnergy:${storage.id}`;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === extension.id) return extension;
+      if (id === storage.id) return storage;
+      return null;
+    };
+
+    const creep = createMockCreep("defenseHauler1", {
+      room,
+      memory: {
+        role: "hauler",
+        family: "economy",
+        homeRoom: room.name,
+        task: "defenseRefuel",
+        version: 1,
+        working: true,
+        assignedTaskId: storageTaskId
+      } as any,
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const baseTask = {
+      roomName: room.name,
+      targetPos: { x: 20, y: 20, roomName: room.name },
+      resourceType: RESOURCE_ENERGY,
+      createdTick: Game.time - 1,
+      updatedTick: Game.time - 1,
+      expiresTick: Game.time + 50,
+      allowedRoles: ["hauler", "builder", "queenCarrier"],
+    };
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          tasks: {
+            [storageTaskId]: {
+              ...baseTask,
+              id: storageTaskId,
+              type: "storeEnergy",
+              priority: TaskPriority.LOW,
+              targetId: storage.id,
+              amount: 1000,
+              reservedAmount: 50,
+              maxAssignments: 20,
+              status: "assigned",
+              assignedCreeps: [creep.name],
+              reservations: { [creep.name]: { creepName: creep.name, amount: 50, assignedTick: Game.time - 1, expiresTick: Game.time + 10 } }
+            },
+            [extensionTaskId]: {
+              ...baseTask,
+              id: extensionTaskId,
+              type: "refillExtension",
+              priority: TaskPriority.HIGH,
+              targetId: extension.id,
+              targetPos: { x: 12, y: 10, roomName: room.name },
+              amount: 50,
+              reservedAmount: 0,
+              maxAssignments: 1,
+              status: "open",
+              assignedCreeps: [],
+              reservations: {}
+            }
+          },
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: 0,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    const action = evaluateEconomyBehavior(makeContext(creep, room));
+    const board = (Memory as any).creepTaskBoard.rooms[room.name];
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+    expect(board.tasks[storageTaskId].reservations[creep.name]).to.equal(undefined);
+    expect(board.tasks[storageTaskId].reservedAmount).to.equal(0);
+    expect(board.tasks[extensionTaskId].reservations[creep.name]).to.not.equal(undefined);
+    expect((creep.memory as any).assignedTaskId).to.equal(extensionTaskId);
+  });
+
+  it("releases stale non-core delivery reservations before defense refuel direct fallback", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const storage = makeStorage("storage1" as Id<StructureStorage>, 1000, 1000000);
+    const room = createMockRoom("W1N1", { storage });
+    const storageTaskId = `${room.name}:storeEnergy:${storage.id}`;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => {
+      if (id === extension.id) return extension;
+      if (id === storage.id) return storage;
+      return null;
+    };
+
+    const creep = createMockCreep("defenseHauler1", {
+      room,
+      memory: {
+        role: "hauler",
+        family: "economy",
+        homeRoom: room.name,
+        task: "defenseRefuel",
+        version: 1,
+        working: true,
+        assignedTaskId: storageTaskId
+      } as any,
+      store: makeStore(50, 50)
+    });
+    MockGame.creeps[creep.name] = creep;
+    (Memory as any).creepTaskBoard = {
+      enabled: true,
+      rooms: {
+        [room.name]: {
+          roomName: room.name,
+          tasks: {
+            [storageTaskId]: {
+              id: storageTaskId,
+              roomName: room.name,
+              type: "storeEnergy",
+              priority: TaskPriority.LOW,
+              targetId: storage.id,
+              targetPos: { x: 20, y: 20, roomName: room.name },
+              resourceType: RESOURCE_ENERGY,
+              amount: 1000,
+              reservedAmount: 50,
+              maxAssignments: 20,
+              allowedRoles: ["hauler"],
+              status: "assigned",
+              assignedCreeps: [creep.name],
+              reservations: { [creep.name]: { creepName: creep.name, amount: 50, assignedTick: Game.time - 1, expiresTick: Game.time + 10 } },
+              createdTick: Game.time - 1,
+              updatedTick: Game.time - 1,
+              expiresTick: Game.time + 50
+            }
+          },
+          lastGeneratedTick: Game.time,
+          lastCleanedTick: 0,
+          stats: { generated: 0, assigned: 0, completed: 0, invalidated: 0, staleReservations: 0, preemptions: 0 }
+        }
+      }
+    };
+
+    const context = makeContext(creep, room);
+    context.spawnStructures = [extension];
+    const action = evaluateEconomyBehavior(context);
+    const board = (Memory as any).creepTaskBoard.rooms[room.name];
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+    expect(board.tasks[storageTaskId].reservations[creep.name]).to.equal(undefined);
+    expect(board.tasks[storageTaskId].reservedAmount).to.equal(0);
+    expect((creep.memory as any).assignedTaskId).to.equal(undefined);
+  });
+
   it("does not reserve energy delivery work before collecting minerals", () => {
     const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
     const room = createMockRoom("W1N1");
@@ -1267,6 +1583,48 @@ describe("TaskBoard", () => {
     const continuedAction = evaluateWithStateMachine(makeContext(creep, room), evaluateEconomyBehavior);
 
     expect(continuedAction.type).to.equal("withdraw");
+    expect(task.reservations[creep.name].expiresTick).to.equal(Game.time + 15);
+  });
+
+  it("refreshes reserved refill work while a builder continues source harvesting", () => {
+    const extension = makeExtension("extension1" as Id<StructureExtension>, 50);
+    const room = createMockRoom("W8N8");
+    (extension as unknown as { pos: RoomPosition }).pos = { x: 12, y: 10, roomName: room.name } as RoomPosition;
+    const source = {
+      ...makeSource("source1" as Id<Source>, 10, 10),
+      pos: { x: 10, y: 10, roomName: room.name },
+      room
+    } as Source;
+    (room as any).find = (type: number) => {
+      if (type === FIND_MY_STRUCTURES) return [extension];
+      if (type === FIND_SOURCES) return [source];
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [];
+      if (type === FIND_STRUCTURES) return [];
+      if (type === FIND_MY_CREEPS) return [];
+      return [];
+    };
+    MockGame.rooms[room.name] = room;
+    MockGame.getObjectById = (id: string) => id === extension.id ? extension : id === source.id ? source : null;
+
+    const creep = createMockCreep("builder1", {
+      room,
+      memory: { role: "builder", family: "economy", homeRoom: room.name, version: 1, working: false },
+      store: makeStore(0, 50),
+      pos: { x: 25, y: 25, roomName: room.name, getRangeTo: () => 10, isNearTo: () => false, inRangeTo: () => false, findInRange: () => [], findClosestByRange: () => source }
+    });
+    MockGame.creeps[creep.name] = creep;
+
+    const firstAction = evaluateWithStateMachine(makeContext(creep, room), evaluateEconomyBehavior);
+    expect(firstAction.type).to.equal("harvest");
+
+    const assignedTaskId = (creep.memory as any).assignedTaskId;
+    const task = (Memory as any).creepTaskBoard.rooms[room.name].tasks[assignedTaskId];
+    task.reservations[creep.name].expiresTick = Game.time + 1;
+    Game.time += 1;
+
+    const continuedAction = evaluateWithStateMachine(makeContext(creep, room), evaluateEconomyBehavior);
+
+    expect(continuedAction.type).to.equal("harvest");
     expect(task.reservations[creep.name].expiresTick).to.equal(Game.time + 15);
   });
 
