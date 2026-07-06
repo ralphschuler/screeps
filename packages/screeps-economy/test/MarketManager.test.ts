@@ -363,6 +363,104 @@ describe("MarketManager", () => {
     expect(deals).to.deep.equal([{ orderId: "buy-high", amount: 5000, roomName: "W1N1" }]);
   });
 
+  it("reuses active market order scans for identical filters during one tick", () => {
+    let buyOrderScanCount = 0;
+    const deals: Array<{ orderId: string; amount: number; roomName?: string }> = [];
+    setupGame({
+      getAllOrders: filter => {
+        const typedFilter = filter as OrderFilter;
+        if (typedFilter.type === ORDER_BUY && typedFilter.resourceType === RESOURCE_ENERGY) {
+          buyOrderScanCount++;
+          return [
+            { id: "buy-energy", type: ORDER_BUY, resourceType: RESOURCE_ENERGY, price: 0.04, remainingAmount: 20000, amount: 20000, created: 1, roomName: "W9N9" }
+          ] as Order[];
+        }
+        return [];
+      },
+      calcTransactionCost: () => 100,
+      deal: (orderId, amount, roomName) => {
+        deals.push({ orderId, amount, roomName });
+        return OK;
+      }
+    });
+
+    const firstOverflowRoom = createRoom(
+      "W1N1",
+      createStore({ [RESOURCE_ENERGY]: 100000 }, 300000),
+      createStore({ [RESOURCE_ENERGY]: 850000 }, 1000000)
+    );
+    const secondOverflowRoom = createRoom(
+      "W2N1",
+      createStore({ [RESOURCE_ENERGY]: 100000 }, 300000),
+      createStore({ [RESOURCE_ENERGY]: 900000 }, 1000000)
+    );
+    (Game.rooms as Record<string, Room>).W1N1 = firstOverflowRoom;
+    (Game.rooms as Record<string, Room>).W2N1 = secondOverflowRoom;
+
+    new MarketManager({
+      minBucket: 0,
+      buyThresholds: {},
+      sellThresholds: {},
+      criticalResources: [],
+      trackedResources: [RESOURCE_ENERGY],
+      terminalEnergyReserve: 10000,
+      maxActiveSellAmount: 5000,
+      priceUpdateInterval: 9999
+    }).run();
+
+    expect(deals).to.have.length(2);
+    expect(buyOrderScanCount).to.equal(1);
+  });
+
+  it("caps repeated cached active sells by amount already dealt this tick", () => {
+    const deals: Array<{ orderId: string; amount: number; roomName?: string }> = [];
+    setupGame({
+      getAllOrders: filter => {
+        const typedFilter = filter as OrderFilter;
+        if (typedFilter.type === ORDER_BUY && typedFilter.resourceType === RESOURCE_ENERGY) {
+          return [
+            { id: "buy-energy", type: ORDER_BUY, resourceType: RESOURCE_ENERGY, price: 0.04, remainingAmount: 6000, amount: 6000, created: 1, roomName: "W9N9" }
+          ] as Order[];
+        }
+        return [];
+      },
+      calcTransactionCost: () => 100,
+      deal: (orderId, amount, roomName) => {
+        deals.push({ orderId, amount, roomName });
+        return OK;
+      }
+    });
+
+    const firstOverflowRoom = createRoom(
+      "W1N1",
+      createStore({ [RESOURCE_ENERGY]: 100000 }, 300000),
+      createStore({ [RESOURCE_ENERGY]: 850000 }, 1000000)
+    );
+    const secondOverflowRoom = createRoom(
+      "W2N1",
+      createStore({ [RESOURCE_ENERGY]: 100000 }, 300000),
+      createStore({ [RESOURCE_ENERGY]: 900000 }, 1000000)
+    );
+    (Game.rooms as Record<string, Room>).W1N1 = firstOverflowRoom;
+    (Game.rooms as Record<string, Room>).W2N1 = secondOverflowRoom;
+
+    new MarketManager({
+      minBucket: 0,
+      buyThresholds: {},
+      sellThresholds: {},
+      criticalResources: [],
+      trackedResources: [RESOURCE_ENERGY],
+      terminalEnergyReserve: 10000,
+      maxActiveSellAmount: 5000,
+      priceUpdateInterval: 9999
+    }).run();
+
+    expect(deals).to.deep.equal([
+      { orderId: "buy-energy", amount: 5000, roomName: "W2N1" },
+      { orderId: "buy-energy", amount: 1000, roomName: "W1N1" }
+    ]);
+  });
+
   it("stops room-scoped overflow energy selling at the lower storage hysteresis threshold", () => {
     const deals: Array<{ roomName?: string }> = [];
     setupGame({
