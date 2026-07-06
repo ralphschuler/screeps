@@ -45,6 +45,11 @@ interface MemoryWithTaskBoard extends Memory {
   creepTaskBoard?: TaskBoardMemory;
 }
 
+interface InternalTaskAssignmentOptions extends TaskAssignmentOptions {
+  /** Reserve delivery work before the creep has collected energy. */
+  reserveEmptyEnergyDelivery?: boolean;
+}
+
 function getRuntimeGame(): typeof Game | null {
   const game = (globalThis as unknown as { Game?: typeof Game }).Game;
   return game && typeof game === "object" ? game : null;
@@ -123,9 +128,13 @@ function getCreepEnergyCapacity(creep: Creep): number {
   return Math.max(0, creep.store.getCapacity(RESOURCE_ENERGY));
 }
 
-function getAssignmentAmount(creep: Creep, task: CreepTask): number {
+function getAssignmentAmount(creep: Creep, task: CreepTask, options: InternalTaskAssignmentOptions = {}): number {
   if (task.type === "harvest") return getCreepEnergyCapacity(creep);
-  return Math.max(1, getCreepEnergy(creep));
+  const energy = getCreepEnergy(creep);
+  if (options.reserveEmptyEnergyDelivery && isEnergyDeliveryTaskType(task.type)) {
+    return getCreepEnergyCapacity(creep);
+  }
+  return Math.max(1, energy);
 }
 
 function getReservationAmount(task: CreepTask, creepName: string): number | undefined {
@@ -133,7 +142,7 @@ function getReservationAmount(task: CreepTask, creepName: string): number | unde
   return typeof amount === "number" && Number.isFinite(amount) && amount > 0 ? amount : undefined;
 }
 
-function canPerformTask(ctx: CreepContext, task: CreepTask): boolean {
+function canPerformTask(ctx: CreepContext, task: CreepTask, options: InternalTaskAssignmentOptions = {}): boolean {
   if (!task.allowedRoles.includes(ctx.memory.role)) return false;
 
   switch (task.type) {
@@ -142,7 +151,7 @@ function canPerformTask(ctx: CreepContext, task: CreepTask): boolean {
     case "refillTower":
     case "fillTerminalEnergy":
     case "storeEnergy":
-      return getCreepEnergy(ctx.creep) > 0;
+      return getCreepEnergy(ctx.creep) > 0 || (options.reserveEmptyEnergyDelivery === true && getCreepEnergyCapacity(ctx.creep) > 0);
     case "build":
     case "repair":
     case "upgrade":
@@ -436,14 +445,14 @@ function isAllowedTaskType(task: CreepTask, options: TaskAssignmentOptions): boo
   return !options.allowedTypes || options.allowedTypes.includes(task.type);
 }
 
-function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: TaskAssignmentOptions = {}): CreepTask | null {
+function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: InternalTaskAssignmentOptions = {}): CreepTask | null {
   const current = getCurrentAssignedTask(board, ctx.creep.name, ctx.memory.assignedTaskId);
   if (current && ctx.memory.assignedTaskId !== current.id) {
     ctx.memory.assignedTaskId = current.id;
   } else if (!current && ctx.memory.assignedTaskId) {
     delete ctx.memory.assignedTaskId;
   }
-  if (current && isAllowedTaskType(current, options) && isTargetStillValid(current) && canPerformTask(ctx, current)) {
+  if (current && isAllowedTaskType(current, options) && isTargetStillValid(current) && canPerformTask(ctx, current, options)) {
     if (!shouldCheckForPreemption(ctx, current)) {
       return current;
     }
@@ -462,7 +471,10 @@ function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: Task
   const task = findBestTask(board, ctx, options);
   if (!task) return null;
 
-  const amount = Math.min(Math.max(1, remainingAmount(task)), getAssignmentAmount(ctx.creep, task));
+  const assignmentAmount = getAssignmentAmount(ctx.creep, task, options);
+  if (assignmentAmount <= 0) return null;
+
+  const amount = Math.min(Math.max(1, remainingAmount(task)), assignmentAmount);
   ctx.memory.assignedTaskId = task.id;
   task.reservations[ctx.creep.name] = {
     creepName: ctx.creep.name,
@@ -476,13 +488,13 @@ function assignTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: Task
   return task;
 }
 
-function findBestTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: TaskAssignmentOptions = {}): CreepTask | null {
+function findBestTask(board: RoomTaskBoardMemory, ctx: CreepContext, options: InternalTaskAssignmentOptions = {}): CreepTask | null {
   let best: CreepTask | null = null;
   let bestScore = -Infinity;
 
   for (const task of Object.values(board.tasks)) {
     if (!isAllowedTaskType(task, options)) continue;
-    if (!canPerformTask(ctx, task)) continue;
+    if (!canPerformTask(ctx, task, options)) continue;
     if (!isTargetStillValid(task)) continue;
     if (remainingAmount(task) <= 0) continue;
     if (task.assignedCreeps.length >= task.maxAssignments && !isEnergyDeliveryTaskType(task.type)) continue;
@@ -591,6 +603,20 @@ export class TaskBoard {
     return null;
   }
 
+  public reserveDeliveryWork(ctx: CreepContext): boolean {
+    if (!this.isEnabled() || !getRuntimeGame()) return false;
+    const board = getRoomBoard(ctx.room.name);
+    measureCpuDetail("taskBoard.cleanup", () => cleanupBoard(board));
+    measureCpuDetail("taskBoard.generate", () => generateTasks(ctx.room, board));
+
+    return Boolean(assignTask(board, ctx, {
+      allowedTypes: ["refillSpawn", "refillExtension", "refillTower", "fillTerminalEnergy", "storeEnergy"],
+      preemptPriority: TaskPriority.NORMAL,
+      priorityStickinessDelta: 25,
+      reserveEmptyEnergyDelivery: true
+    }));
+  }
+
   public hasActiveTask(roomName: string, allowedTypes: TaskType[]): boolean {
     const game = getRuntimeGame();
     if (!this.isEnabled() || !game) return false;
@@ -658,6 +684,34 @@ export class TaskBoard {
     task.updatedTick = Game.time;
     recomputeReservationTotals(task);
     return reservation.amount;
+  }
+
+  public refreshAssignedDeliveryReservation(ctx: CreepContext): boolean {
+    const assignedTaskId = ctx.memory.assignedTaskId;
+    if (!assignedTaskId) return false;
+
+    const memory = getTaskMemory();
+    const assignedRoomName = assignedTaskId.split(":", 1)[0];
+    const board = memory.rooms[assignedRoomName] ?? memory.rooms[ctx.room.name];
+    const task = board?.tasks[assignedTaskId];
+    const reservation = task?.reservations[ctx.creep.name];
+
+    if (!board || !task || !reservation || !isEnergyDeliveryTaskType(task.type) || !isTargetStillValid(task)) {
+      delete ctx.memory.assignedTaskId;
+      return false;
+    }
+
+    const assignmentAmount = getAssignmentAmount(ctx.creep, task, { reserveEmptyEnergyDelivery: true });
+    if (assignmentAmount <= 0) {
+      delete ctx.memory.assignedTaskId;
+      return false;
+    }
+
+    reservation.amount = Math.min(Math.max(1, remainingAmount(task) + reservation.amount), assignmentAmount);
+    reservation.expiresTick = Game.time + DEFAULT_RESERVATION_TTL;
+    task.updatedTick = Game.time;
+    recomputeReservationTotals(task);
+    return true;
   }
 
   public clear(roomName?: string): void {
