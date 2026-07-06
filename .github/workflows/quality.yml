@@ -30,41 +30,54 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Framework packages
-          - package-name: screeps-kernel
-            workspace: "@ralphschuler/screeps-kernel"
-            lint-script: "lint:kernel"
-          - package-name: screeps-roles
-            workspace: "@ralphschuler/screeps-roles"
-            lint-script: "lint:roles"
-          - package-name: screeps-pathfinding
-            workspace: "@ralphschuler/screeps-pathfinding"
-            lint-script: "lint:pathfinding"
-          - package-name: screeps-remote-mining
-            workspace: "@ralphschuler/screeps-remote-mining"
-            lint-script: "lint:remote-mining"
-          - package-name: screeps-spawn
-            workspace: "@ralphschuler/screeps-spawn"
-            lint-script: "lint:spawn"
-          - package-name: screeps-economy
-            workspace: "@ralphschuler/screeps-economy"
-            lint-script: "lint:economy"
-          - package-name: screeps-defense
-            workspace: "@ralphschuler/screeps-defense"
-            lint-script: "lint:defense"
+          # Framework packages with a lint script. Keep synchronized via scripts/test/lint-workspace-coverage.test.mjs.
+          - package-name: screeps-cache
+            workspace: "@ralphschuler/screeps-cache"
           - package-name: screeps-chemistry
             workspace: "@ralphschuler/screeps-chemistry"
-            lint-script: "lint:chemistry"
-          - package-name: screeps-utils
-            workspace: "@ralphschuler/screeps-utils"
-            lint-script: "lint:utils"
+          - package-name: screeps-clusters
+            workspace: "@ralphschuler/screeps-clusters"
+          - package-name: screeps-console
+            workspace: "@ralphschuler/screeps-console"
+          - package-name: screeps-core
+            workspace: "@ralphschuler/screeps-core"
+          - package-name: screeps-defense
+            workspace: "@ralphschuler/screeps-defense"
+          - package-name: screeps-economy
+            workspace: "@ralphschuler/screeps-economy"
+          - package-name: screeps-empire
+            workspace: "@ralphschuler/screeps-empire"
+          - package-name: screeps-intershard
+            workspace: "@ralphschuler/screeps-intershard"
+          - package-name: screeps-kernel
+            workspace: "@ralphschuler/screeps-kernel"
+          - package-name: screeps-layouts
+            workspace: "@ralphschuler/screeps-layouts"
+          - package-name: screeps-memory
+            workspace: "@ralphschuler/screeps-memory"
+          - package-name: screeps-pathfinding
+            workspace: "@ralphschuler/screeps-pathfinding"
+          - package-name: screeps-pheromones
+            workspace: "@ralphschuler/screeps-pheromones"
           - package-name: screeps-posis
             workspace: "@ralphschuler/screeps-posis"
-            lint-script: "lint:posis"
-          # Main bot (already has linting in ci.yml but included for completeness)
+          - package-name: screeps-remote-mining
+            workspace: "@ralphschuler/screeps-remote-mining"
+          - package-name: screeps-roles
+            workspace: "@ralphschuler/screeps-roles"
+          - package-name: screeps-spawn
+            workspace: "@ralphschuler/screeps-spawn"
+          - package-name: screeps-standards
+            workspace: "@ralphschuler/screeps-standards"
+          - package-name: screeps-stats
+            workspace: "@ralphschuler/screeps-stats"
+          - package-name: screeps-utils
+            workspace: "@ralphschuler/screeps-utils"
+          - package-name: screeps-visuals
+            workspace: "@ralphschuler/screeps-visuals"
+          # Main bot workspace
           - package-name: screeps-bot
             workspace: "screeps-typescript-starter"
-            lint-script: "lint"
 
     steps:
       - name: Checkout
@@ -81,7 +94,7 @@ jobs:
 
       - name: Lint ${{ matrix.package-name }}
         id: lint-step
-        run: npm run ${{ matrix.lint-script }}
+        run: npm run lint -w "${{ matrix.workspace }}" -- --max-warnings=0
 
       - name: Lint Summary
         if: always()
@@ -92,7 +105,7 @@ jobs:
           else
             echo "❌ Lint warnings or errors found" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Run \`npm run ${{ matrix.lint-script }}\` locally to see details." >> $GITHUB_STEP_SUMMARY
+            echo "Run \`npm run lint -w \"${{ matrix.workspace }}\" -- --max-warnings=0\` locally to see details." >> $GITHUB_STEP_SUMMARY
           fi
 
   # ============================================================================

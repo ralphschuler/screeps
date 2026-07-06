@@ -106,7 +106,7 @@
     "lint:chemistry": "npm run lint -w @ralphschuler/screeps-chemistry",
     "lint:utils": "npm run lint -w @ralphschuler/screeps-utils",
     "lint:posis": "npm run lint -w @ralphschuler/screeps-posis",
-    "lint:all": "npm run lint && npm run lint:kernel && npm run lint:roles && npm run lint:pathfinding && npm run lint:remote-mining && npm run lint:pheromones && npm run lint:spawn && npm run lint:economy && npm run lint:defense && npm run lint:chemistry && npm run lint:utils && npm run lint:posis",
+    "lint:all": "npm run lint --workspaces --if-present -- --max-warnings=0",
     "deploy": "npm run push",
     "push": "DEPLOY=true npm run push -w screeps-typescript-starter",
     "watch": "npm run watch -w screeps-typescript-starter",
