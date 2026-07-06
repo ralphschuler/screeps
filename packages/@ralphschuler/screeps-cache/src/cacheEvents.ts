@@ -13,18 +13,102 @@
  * - spawn.completed, rcl.upgrade
  */
 
-import { createLogger, eventBus, EventPriority } from "@ralphschuler/screeps-core";
-import { cacheCoherence, InvalidationScope } from "./CacheCoherence";
+import { createLogger } from "@ralphschuler/screeps-core";
+import { eventBus as defaultEventBus } from "@ralphschuler/screeps-kernel";
+import { cacheCoherence, CacheCoherenceManager, InvalidationScope } from "./CacheCoherence";
 
 const logger = createLogger("CacheEvents");
+
+const CacheEventPriority = {
+  CRITICAL: 100,
+  HIGH: 75,
+  NORMAL: 50
+} as const;
+
+interface CacheRuntimeEventMap {
+  "creep.died": {
+    creepName: string;
+  };
+  "structure.destroyed": {
+    roomName: string;
+    structureType: StructureConstant;
+    structureId: string;
+  };
+  "construction.complete": {
+    roomName: string;
+    structureType: StructureConstant;
+  };
+  "hostile.detected": {
+    roomName: string;
+  };
+  "hostile.cleared": {
+    roomName: string;
+  };
+  "remote.lost": {
+    remoteRoom: string;
+  };
+  "spawn.completed": {
+    roomName: string;
+  };
+  "rcl.upgrade": {
+    roomName: string;
+    newLevel: number;
+  };
+}
+
+type CacheRuntimeEventName = keyof CacheRuntimeEventMap;
+type CacheRuntimeEventHandler<T extends CacheRuntimeEventName> = (event: CacheRuntimeEventMap[T]) => void;
+
+export interface CacheEventBusPort {
+  on<T extends CacheRuntimeEventName>(
+    eventName: T,
+    handler: CacheRuntimeEventHandler<T>,
+    options?: {
+      priority?: number;
+      minBucket?: number;
+      once?: boolean;
+    }
+  ): unknown;
+}
+
+export interface CacheEventInitializationOptions {
+  /** Runtime event bus to subscribe to. Defaults to the kernel event bus. */
+  eventBus?: CacheEventBusPort;
+  /** Cache coherence manager to invalidate. Defaults to the shared cache coherence manager. */
+  coherenceManager?: CacheCoherenceManager;
+}
+
+const initializedCoherenceManagersByBus = new WeakMap<CacheEventBusPort, WeakSet<CacheCoherenceManager>>();
+
+function isInitialized(eventBus: CacheEventBusPort, coherenceManager: CacheCoherenceManager): boolean {
+  return initializedCoherenceManagersByBus.get(eventBus)?.has(coherenceManager) ?? false;
+}
+
+function markInitialized(eventBus: CacheEventBusPort, coherenceManager: CacheCoherenceManager): void {
+  let initializedManagers = initializedCoherenceManagersByBus.get(eventBus);
+  if (!initializedManagers) {
+    initializedManagers = new WeakSet<CacheCoherenceManager>();
+    initializedCoherenceManagersByBus.set(eventBus, initializedManagers);
+  }
+
+  initializedManagers.add(coherenceManager);
+}
 
 /**
  * Initialize event handlers for cache invalidation.
  * Call this once during bot initialization.
  */
-export function initializeCacheEvents(): void {
+export function initializeCacheEvents(options: CacheEventInitializationOptions = {}): void {
+  const runtimeEventBus = options.eventBus ?? defaultEventBus;
+  const coherenceManager = options.coherenceManager ?? cacheCoherence;
+
+  if (isInitialized(runtimeEventBus, coherenceManager)) {
+    logger.debug("Cache event handlers already initialized");
+    return;
+  }
+
   // Creep died - invalidate creep-related caches
-  eventBus.on(
+  runtimeEventBus.on(
     "creep.died",
     (event) => {
       const scope: InvalidationScope = {
@@ -33,7 +117,7 @@ export function initializeCacheEvents(): void {
         namespaces: ["object", "role", "closest"]
       };
       
-      const invalidated = cacheCoherence.invalidate(scope);
+      const invalidated = coherenceManager.invalidate(scope);
       
       if (invalidated > 0) {
         logger.debug(
@@ -41,11 +125,11 @@ export function initializeCacheEvents(): void {
         );
       }
     },
-    { priority: EventPriority.HIGH }
+    { priority: CacheEventPriority.HIGH }
   );
 
   // Structure destroyed - invalidate structure and path caches
-  eventBus.on(
+  runtimeEventBus.on(
     "structure.destroyed",
     (event) => {
       const { roomName, structureType, structureId } = event;
@@ -56,7 +140,7 @@ export function initializeCacheEvents(): void {
         objectId: structureId,
         namespaces: ["object"]
       };
-      cacheCoherence.invalidate(objectScope);
+      coherenceManager.invalidate(objectScope);
       
       // Invalidate paths in the room (structure may have blocked paths)
       const pathScope: InvalidationScope = {
@@ -64,7 +148,7 @@ export function initializeCacheEvents(): void {
         roomName,
         namespaces: ["path"]
       };
-      cacheCoherence.invalidate(pathScope);
+      coherenceManager.invalidate(pathScope);
       
       // Invalidate find caches for this structure type
       const structureScope: InvalidationScope = {
@@ -73,18 +157,18 @@ export function initializeCacheEvents(): void {
         structureType,
         namespaces: ["roomFind"]
       };
-      const invalidated = cacheCoherence.invalidate(structureScope);
+      const invalidated = coherenceManager.invalidate(structureScope);
       
       logger.debug(
         `Invalidated caches for destroyed ${structureType} in ${roomName}`,
         { meta: { invalidated, structureType, roomName } }
       );
     },
-    { priority: EventPriority.HIGH }
+    { priority: CacheEventPriority.HIGH }
   );
 
   // Construction complete - invalidate room and path caches
-  eventBus.on(
+  runtimeEventBus.on(
     "construction.complete",
     (event) => {
       const { roomName, structureType } = event;
@@ -95,7 +179,7 @@ export function initializeCacheEvents(): void {
         roomName,
         namespaces: ["path"]
       };
-      cacheCoherence.invalidate(pathScope);
+      coherenceManager.invalidate(pathScope);
       
       // Invalidate room find caches
       const findScope: InvalidationScope = {
@@ -103,18 +187,18 @@ export function initializeCacheEvents(): void {
         roomName,
         namespaces: ["roomFind"]
       };
-      const invalidated = cacheCoherence.invalidate(findScope);
+      const invalidated = coherenceManager.invalidate(findScope);
       
       logger.debug(
         `Invalidated caches for completed ${structureType} in ${roomName}`,
         { meta: { invalidated, structureType, roomName } }
       );
     },
-    { priority: EventPriority.NORMAL }
+    { priority: CacheEventPriority.NORMAL }
   );
 
   // Hostile detected - invalidate closest and room find caches
-  eventBus.on(
+  runtimeEventBus.on(
     "hostile.detected",
     (event) => {
       const { roomName } = event;
@@ -125,18 +209,18 @@ export function initializeCacheEvents(): void {
         namespaces: ["closest", "roomFind"]
       };
       
-      const invalidated = cacheCoherence.invalidate(scope);
+      const invalidated = coherenceManager.invalidate(scope);
       
       logger.debug(
         `Invalidated ${invalidated} cache entries for hostile in ${roomName}`,
         { meta: { invalidated, roomName } }
       );
     },
-    { priority: EventPriority.CRITICAL }
+    { priority: CacheEventPriority.CRITICAL }
   );
 
   // Hostile cleared - invalidate closest and room find caches
-  eventBus.on(
+  runtimeEventBus.on(
     "hostile.cleared",
     (event) => {
       const { roomName } = event;
@@ -147,13 +231,13 @@ export function initializeCacheEvents(): void {
         namespaces: ["closest", "roomFind"]
       };
       
-      cacheCoherence.invalidate(scope);
+      coherenceManager.invalidate(scope);
     },
-    { priority: EventPriority.NORMAL }
+    { priority: CacheEventPriority.NORMAL }
   );
 
   // Remote room lost - invalidate all caches for that room
-  eventBus.on(
+  runtimeEventBus.on(
     "remote.lost",
     (event) => {
       const { remoteRoom } = event;
@@ -163,18 +247,18 @@ export function initializeCacheEvents(): void {
         roomName: remoteRoom
       };
       
-      const invalidated = cacheCoherence.invalidate(scope);
+      const invalidated = coherenceManager.invalidate(scope);
       
       logger.info(
         `Invalidated ${invalidated} cache entries for lost remote ${remoteRoom}`,
         { meta: { invalidated, remoteRoom } }
       );
     },
-    { priority: EventPriority.NORMAL }  // Match default priority from events.ts
+    { priority: CacheEventPriority.NORMAL }  // Match default priority from events.ts
   );
 
   // Spawn completed - invalidate role caches
-  eventBus.on(
+  runtimeEventBus.on(
     "spawn.completed",
     (event) => {
       const { roomName } = event;
@@ -186,13 +270,13 @@ export function initializeCacheEvents(): void {
         namespaces: ["role"]
       };
       
-      cacheCoherence.invalidate(scope);
+      coherenceManager.invalidate(scope);
     },
-    { priority: EventPriority.NORMAL }
+    { priority: CacheEventPriority.NORMAL }
   );
 
   // RCL upgrade - invalidate room caches (new structures may be available)
-  eventBus.on(
+  runtimeEventBus.on(
     "rcl.upgrade",
     (event) => {
       const { roomName } = event;
@@ -203,16 +287,17 @@ export function initializeCacheEvents(): void {
         namespaces: ["roomFind", "path"]
       };
       
-      const invalidated = cacheCoherence.invalidate(scope);
+      const invalidated = coherenceManager.invalidate(scope);
       
       logger.info(
         `Invalidated ${invalidated} cache entries for RCL upgrade in ${roomName}`,
         { meta: { invalidated, roomName, newLevel: event.newLevel } }
       );
     },
-    { priority: EventPriority.NORMAL }
+    { priority: CacheEventPriority.NORMAL }
   );
 
+  markInitialized(runtimeEventBus, coherenceManager);
   logger.info("Cache event handlers initialized");
 }
 

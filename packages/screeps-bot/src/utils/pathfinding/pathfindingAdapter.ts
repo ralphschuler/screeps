@@ -6,8 +6,7 @@
  */
 
 import { cacheCommonRoutes, invalidateRoom as invalidatePathCacheRoom } from "@ralphschuler/screeps-cache";
-import { eventBus as botEventBus, createLogger } from "@ralphschuler/screeps-core";
-import type { EventHandler } from "@ralphschuler/screeps-core";
+import { createLogger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type {
   ICache,
@@ -18,6 +17,8 @@ import type {
   PathCacheEventHandler,
   PathCacheEventName
 } from "@ralphschuler/screeps-pathfinding";
+import { eventBus as botEventBus } from "../../core/events";
+import type { EventHandler } from "../../core/events";
 import { getRemoteRoomsForRoom as getRemoteRooms, precacheRemoteRoutes as precacheRemotes } from "../remote-mining";
 
 /**

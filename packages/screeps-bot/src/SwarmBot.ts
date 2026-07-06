@@ -3,6 +3,7 @@
  */
 
 
+import { initializeCacheEvents, registerAllCaches } from "@ralphschuler/screeps-cache";
 import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
 import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
@@ -17,6 +18,7 @@ import { getConfig } from "./config";
 import { botKernelRuntime } from "./core/botKernelRuntime";
 import { getOwnedRoomsForTick, selectRoomsForPeriodicWork, shouldRunOptionalTickWork } from "./core/botTickLifecycle";
 import { creepProcessManager } from "./core/creepProcessManager";
+import { eventBus } from "./core/events";
 import { kernel } from "./core/kernel";
 import { LogLevel, configureLogger, logger } from "./core/logger";
 import { initializeNativeCallsTracking } from "./core/nativeCallsTracker";
@@ -142,6 +144,10 @@ function initializeSystems(): void {
   if (config.profiling) {
     initializeNativeCallsTracking();
   }
+
+  // Register cache namespaces and subscribe cache invalidation to the runtime kernel event bus.
+  registerAllCaches();
+  initializeCacheEvents({ eventBus });
 
   // Initialize pheromone event handlers for event-driven updates
   initializePheromoneEventHandlers(kernel, memoryManager, pheromoneManager);
