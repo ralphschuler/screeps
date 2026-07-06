@@ -39,17 +39,33 @@ Under "Require status checks to pass before merging", search for and add the cur
 - `Check Alliance Safety` - Guards against hostile behavior toward configured allies (`quality.yml`).
 
 #### Package Lint Matrix (Required)
-- `Lint screeps-kernel`
-- `Lint screeps-roles`
-- `Lint screeps-pathfinding`
-- `Lint screeps-remote-mining`
-- `Lint screeps-spawn`
-- `Lint screeps-economy`
-- `Lint screeps-defense`
+- `Lint screeps-cache`
 - `Lint screeps-chemistry`
-- `Lint screeps-utils`
+- `Lint screeps-clusters`
+- `Lint screeps-console`
+- `Lint screeps-core`
+- `Lint screeps-defense`
+- `Lint screeps-economy`
+- `Lint screeps-empire`
+- `Lint screeps-intershard`
+- `Lint screeps-kernel`
+- `Lint screeps-layouts`
+- `Lint screeps-memory`
+- `Lint screeps-pathfinding`
+- `Lint screeps-pheromones`
 - `Lint screeps-posis`
+- `Lint screeps-remote-mining`
+- `Lint screeps-roles`
+- `Lint screeps-spawn`
+- `Lint screeps-standards`
+- `Lint screeps-stats`
+- `Lint screeps-utils`
+- `Lint screeps-visuals`
 - `Lint screeps-bot`
+
+The lint matrix covers every workspace with a `lint` script and enforces `--max-warnings=0`. Workspaces intentionally outside this matrix because they do not currently expose standalone lint scripts:
+- `@ralphschuler/screeps-server` — private-server harness/integration package covered by typecheck and server test workflows.
+- `screepsmod-testing` — local test mod package covered by its TypeScript build path.
 
 #### Runtime Checks (Required for runtime-changing PRs)
 - `Real private-server smoke` - Private-server smoke test (`integration-tests.yml`).
@@ -59,7 +75,7 @@ Under "Require status checks to pass before merging", search for and add the cur
 - `Check Code Duplication` - Transitional informational quality gate.
 - `Check Code Complexity` - Transitional informational quality gate.
 
-**Total Required Checks**: 15 when all modular workflows apply (4 core + 11 lint), plus runtime checks for path-matched PRs.
+**Total Required Checks**: 27 when all modular workflows apply (4 core + 23 lint), plus runtime checks for path-matched PRs.
 
 ### Step 4: Additional Recommended Settings
 
@@ -163,12 +179,14 @@ When adding a new package with tests:
    ```yaml
    - package-name: new-package
      workspace: "@ralphschuler/new-package"
-     lint-script: "lint:new-package"
    ```
+   Keep local coverage synchronized through `npm run lint:all` and `scripts/test/lint-workspace-coverage.test.mjs`.
 
-4. **Update `integration-tests.yml` path filters** if the package affects runtime behavior and should trigger private-server smoke tests.
+4. **Document any workspace without a lint script** in the package-lint exclusion note above, or add a lint script before merging.
 
-5. **Update branch protection** if new job names are added. The shared `Build and Typecheck` job usually covers new packages without adding per-package required checks; add targeted test jobs only when needed.
+5. **Update `integration-tests.yml` path filters** if the package affects runtime behavior and should trigger private-server smoke tests.
+
+6. **Update branch protection** if new job names are added. The shared `Build and Typecheck` job usually covers new packages without adding per-package required checks; add targeted test jobs only when needed.
 
 ### Removing Packages
 
