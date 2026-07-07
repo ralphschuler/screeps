@@ -60,8 +60,10 @@ interface RoomCache {
   _factoryChecked?: boolean;
   _minerals?: Mineral[];
   _activeSources?: Source[];
+  _sources?: Source[];
   _tombstones?: Tombstone[];
   _mineralContainers?: StructureContainer[];
+  _sourceContainers?: StructureContainer[];
 }
 
 /** Per-room cache storage - cleared at the start of each tick via clearRoomCaches() */
@@ -299,6 +301,34 @@ function getActiveSources(cache: RoomCache): Source[] {
 }
 
 /**
+ * Get all visible sources from cache (lazy evaluation)
+ */
+function getSources(cache: RoomCache): Source[] {
+  if (cache._sources === undefined) {
+    cache._sources = cache.room.find(FIND_SOURCES);
+  }
+  return cache._sources;
+}
+
+/**
+ * Get source-adjacent containers from cache (lazy evaluation).
+ * Uses the same range contract as defenseRefuel spawn demand.
+ */
+function getSourceContainers(cache: RoomCache): StructureContainer[] {
+  if (cache._sourceContainers === undefined) {
+    const sources = getSources(cache);
+    if (sources.length === 0) {
+      cache._sourceContainers = [];
+    } else {
+      cache._sourceContainers = getContainers(cache).filter(container =>
+        sources.some(source => source.pos.getRangeTo(container.pos) <= 2)
+      );
+    }
+  }
+  return cache._sourceContainers;
+}
+
+/**
  * Get tombstones with energy from cache (lazy evaluation)
  * OPTIMIZATION: Tombstones with energy are common pickup targets for haulers.
  * This caching avoids expensive uncached room.find(FIND_TOMBSTONES) calls that
@@ -478,6 +508,9 @@ export function createContext(creep: Creep): CreepContext {
     },
     get containers() {
       return getContainers(roomCache);
+    },
+    get sourceContainers() {
+      return getSourceContainers(roomCache);
     },
     get depositContainers() {
       return getDepositContainers(roomCache);

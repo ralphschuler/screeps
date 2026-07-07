@@ -282,17 +282,17 @@ function findDefenseRefuelDelivery(ctx: CreepContext): CreepAction | null {
 }
 
 function findDefenseRefuelCollection(ctx: CreepContext): CreepAction | null {
-  // Spawn demand only creates defenseRefuel haulers when helper-room source containers
-  // hold useful energy; role behavior consumes the context's container contract here.
-  const containersWithEnergy = ctx.containers.filter(
+  // Spawn demand only creates defenseRefuel haulers when source-adjacent containers
+  // hold useful energy; prefer that same cached source-container set here.
+  const sourceContainersWithEnergy = ctx.sourceContainers.filter(
     c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
   );
-  if (containersWithEnergy.length === 0) return null;
+  if (sourceContainersWithEnergy.length === 0) return null;
 
-  const target = getCachedDistributedTarget(ctx.creep, containersWithEnergy, "energy_container");
+  const target = getCachedDistributedTarget(ctx.creep, sourceContainersWithEnergy, "energy_container");
   if (target) return { type: "withdraw", target, resourceType: RESOURCE_ENERGY };
 
-  const fallback = ctx.creep.pos.findClosestByRange(containersWithEnergy);
+  const fallback = ctx.creep.pos.findClosestByRange(sourceContainersWithEnergy);
   if (fallback) return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
 
   return null;

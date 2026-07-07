@@ -65,6 +65,7 @@ function makeContext(role: "builder" | "larvaWorker", room: Room, energy = 50, c
     damagedStructureCount: 0,
     droppedResources: [],
     containers: [],
+    sourceContainers: [],
     depositContainers: [],
     spawnStructures: [],
     towers: [],

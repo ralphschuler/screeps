@@ -27,6 +27,7 @@ describe("Action execution ally-safety guard", () => {
       damagedStructureCount: 0,
       droppedResources: [],
       containers: [],
+      sourceContainers: [],
       depositContainers: [],
       spawnStructures: [],
       towers: [],
