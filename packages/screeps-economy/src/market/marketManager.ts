@@ -1184,6 +1184,54 @@ export class MarketManager {
     return deficits;
   }
 
+  private getTerminalEnergyBudget(terminal: StructureTerminal): number {
+    return Math.max(0, terminal.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve);
+  }
+
+  private canAffordEmergencyBuyEnergy(
+    resource: ResourceConstant,
+    amount: number,
+    transportCost: number,
+    terminalEnergyBudget: number
+  ): boolean {
+    return resource === RESOURCE_ENERGY
+      ? amount + transportCost <= terminalEnergyBudget
+      : transportCost <= terminalEnergyBudget;
+  }
+
+  private findAffordableEmergencyBuyAmount(
+    resource: ResourceConstant,
+    candidate: { order: Order & { roomName: string }; cappedOrderAmount: number; transportCost: number },
+    destinationTerminal: StructureTerminal
+  ): number {
+    const terminalEnergyBudget = this.getTerminalEnergyBudget(destinationTerminal);
+    let high = Math.floor(candidate.cappedOrderAmount);
+
+    if (high <= 0) return 0;
+    if (this.canAffordEmergencyBuyEnergy(resource, high, candidate.transportCost, terminalEnergyBudget)) {
+      return high;
+    }
+    if (terminalEnergyBudget <= 0) return 0;
+
+    let low = 0;
+    while (low < high) {
+      const amount = Math.ceil((low + high) / 2);
+      const transportCost = Game.market.calcTransactionCost(
+        amount,
+        candidate.order.roomName,
+        destinationTerminal.room.name
+      );
+
+      if (this.canAffordEmergencyBuyEnergy(resource, amount, transportCost, terminalEnergyBudget)) {
+        low = amount;
+      } else {
+        high = amount - 1;
+      }
+    }
+
+    return low;
+  }
+
   /**
    * Execute emergency buy at best available price for a specific room.
    */
@@ -1192,12 +1240,13 @@ export class MarketManager {
     const destinationTerminal = destinationRoom?.terminal;
 
     if (!destinationRoom?.controller?.my || !destinationTerminal) return false;
+    if (destinationTerminal.cooldown > 0) return false;
 
     const requestedAmount = Math.max(1, Math.floor(amount));
+    if (resource === RESOURCE_ENERGY && this.getTerminalEnergyBudget(destinationTerminal) <= 0) return false;
 
     const orders = this.getMarketOrders({ type: ORDER_SELL, resourceType: resource });
     if (orders.length === 0) return false;
-    if (destinationTerminal.cooldown > 0) return false;
 
     const candidateOrders = rankEmergencyBuyOrders({
       orders,
@@ -1212,32 +1261,7 @@ export class MarketManager {
 
     for (const candidate of candidateOrders) {
       const order = candidate.order;
-      let purchaseAmount = Math.min(requestedAmount, candidate.cappedOrderAmount);
-      if (purchaseAmount <= 0) continue;
-
-      let transportCost = Game.market.calcTransactionCost(purchaseAmount, order.roomName!, destinationRoom.name);
-      if (resource === RESOURCE_ENERGY) {
-        // Need ENERGY both for purchased units + transport.
-        while (purchaseAmount > 0) {
-          const budget = Math.max(0, destinationTerminal.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve);
-          if (purchaseAmount + transportCost <= budget) break;
-
-          purchaseAmount -= 1;
-          if (purchaseAmount <= 0) break;
-          transportCost = Game.market.calcTransactionCost(purchaseAmount, order.roomName!, destinationRoom.name);
-        }
-      } else {
-        // Non-energy purchase only needs terminal energy for transport.
-        while (purchaseAmount > 0) {
-          const budget = Math.max(0, destinationTerminal.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve);
-          if (transportCost <= budget) break;
-
-          purchaseAmount -= 1;
-          if (purchaseAmount <= 0) break;
-          transportCost = Game.market.calcTransactionCost(purchaseAmount, order.roomName!, destinationRoom.name);
-        }
-      }
-
+      let purchaseAmount = this.findAffordableEmergencyBuyAmount(resource, candidate, destinationTerminal);
       if (purchaseAmount <= 0) continue;
 
       // Credits required should stay above emergency reserve.

@@ -770,6 +770,146 @@ describe("MarketManager", () => {
     expect(getEmpireMarket().pendingArbitrage).to.deep.equal([]);
   });
 
+  it("skips emergency energy market scans when terminal reserve leaves no transaction budget", () => {
+    let getAllOrdersCalls = 0;
+    setupGame({
+      credits: 50000,
+      getAllOrders: () => {
+        getAllOrdersCalls++;
+        return [
+          {
+            id: "sell-energy",
+            type: ORDER_SELL,
+            resourceType: RESOURCE_ENERGY,
+            roomName: "W9N9",
+            price: 1,
+            amount: 10000,
+            remainingAmount: 10000,
+            created: 1
+          } as Order
+        ];
+      }
+    });
+    const room = createRoom("W1N1", createStore({ [RESOURCE_ENERGY]: 1000 }), createStore({}));
+    (Game.rooms as Record<string, Room>).W1N1 = room;
+
+    new MarketManager({
+      minBucket: 0,
+      criticalResources: [RESOURCE_ENERGY],
+      emergencyBuyThreshold: 5000,
+      emergencyCredits: 0,
+      terminalEnergyReserve: 1000,
+      buyThresholds: {},
+      sellThresholds: {},
+      trackedResources: [RESOURCE_ENERGY],
+      activeTradingMinBucket: 10001,
+      priceUpdateInterval: 9999
+    }).run();
+
+    expect(getAllOrdersCalls).to.equal(0);
+  });
+
+  it("bounds emergency energy affordability search instead of decrementing per unit", () => {
+    let transactionCostCalls = 0;
+    const deals: Array<{ id: string; amount: number; roomName?: string }> = [];
+    setupGame({
+      credits: 50000,
+      getAllOrders: filter => {
+        const typedFilter = filter as OrderFilter;
+        if (typedFilter.type === ORDER_SELL && typedFilter.resourceType === RESOURCE_ENERGY) {
+          return [
+            {
+              id: "sell-energy",
+              type: ORDER_SELL,
+              resourceType: RESOURCE_ENERGY,
+              roomName: "W9N9",
+              price: 1,
+              amount: 10000,
+              remainingAmount: 10000,
+              created: 1
+            } as Order
+          ];
+        }
+        return [];
+      },
+      calcTransactionCost: amount => {
+        transactionCostCalls++;
+        return Math.ceil(amount / 2);
+      },
+      deal: (id, amount, roomName) => {
+        deals.push({ id, amount, roomName });
+        return OK;
+      }
+    });
+    const room = createRoom("W1N1", createStore({ [RESOURCE_ENERGY]: 1200 }), createStore({}));
+    (Game.rooms as Record<string, Room>).W1N1 = room;
+
+    new MarketManager({
+      minBucket: 0,
+      criticalResources: [RESOURCE_ENERGY],
+      emergencyBuyThreshold: 5000,
+      emergencyCredits: 0,
+      terminalEnergyReserve: 1000,
+      buyThresholds: {},
+      sellThresholds: {},
+      trackedResources: [RESOURCE_ENERGY],
+      maxActiveBuyAmount: 5000,
+      activeTradingMinBucket: 10001,
+      priceUpdateInterval: 9999
+    }).run();
+
+    expect(deals).to.deep.equal([{ id: "sell-energy", amount: 133, roomName: "W1N1" }]);
+    expect(transactionCostCalls).to.be.lessThan(30);
+  });
+
+  it("preserves zero-cost non-energy emergency buys at terminal reserve", () => {
+    const deals: Array<{ id: string; amount: number; roomName?: string }> = [];
+    setupGame({
+      credits: 50000,
+      getAllOrders: filter => {
+        const typedFilter = filter as OrderFilter;
+        if (typedFilter.type === ORDER_SELL && typedFilter.resourceType === RESOURCE_GHODIUM) {
+          return [
+            {
+              id: "sell-ghodium",
+              type: ORDER_SELL,
+              resourceType: RESOURCE_GHODIUM,
+              roomName: "W9N9",
+              price: 1,
+              amount: 10000,
+              remainingAmount: 10000,
+              created: 1
+            } as Order
+          ];
+        }
+        return [];
+      },
+      calcTransactionCost: () => 0,
+      deal: (id, amount, roomName) => {
+        deals.push({ id, amount, roomName });
+        return OK;
+      }
+    });
+    const room = createRoom("W1N1", createStore({ [RESOURCE_ENERGY]: 1000 }), createStore({}));
+    (Game.rooms as Record<string, Room>).W1N1 = room;
+
+    new MarketManager({
+      minBucket: 0,
+      criticalResources: [RESOURCE_GHODIUM],
+      emergencyBuyThreshold: 5000,
+      emergencyCredits: 0,
+      terminalEnergyReserve: 1000,
+      buyThresholds: {},
+      sellThresholds: {},
+      trackedResources: [RESOURCE_GHODIUM],
+      maxActiveBuyAmount: 5000,
+      activeTradingMinBucket: 10001,
+      priceUpdateInterval: 9999
+    }).run();
+
+    expect(deals).to.deep.equal([{ id: "sell-ghodium", amount: 5000, roomName: "W1N1" }]);
+  });
+
   it("skips discretionary active trading scans while CPU bucket is recovering", () => {
     let getAllOrdersCalls = 0;
     setupGame({
