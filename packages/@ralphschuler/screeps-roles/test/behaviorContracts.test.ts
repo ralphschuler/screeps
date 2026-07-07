@@ -67,6 +67,7 @@ describe("Behavior Contracts", () => {
       damagedStructureCount: 0,
       droppedResources: [],
       containers: [],
+      sourceContainers: [],
       depositContainers: [],
       spawnStructures: [],
       towers: [],
@@ -204,6 +205,50 @@ describe("Behavior Contracts", () => {
     expect(action.target).to.equal(ctx.prioritizedSites[0]);
   });
 
+  it("derives source-adjacent containers from cached visible sources and structures", () => {
+    const room = createMockRoom("W1N1");
+    const sourceContainer = {
+      id: "source-container" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: { x: 20, y: 20, roomName: room.name },
+      store: makeEnergyStore(500, 2000)
+    } as unknown as StructureContainer;
+    const genericContainer = {
+      id: "generic-container" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: makeEnergyStore(500, 2000)
+    } as unknown as StructureContainer;
+    const source = {
+      id: "source1" as Id<Source>,
+      pos: {
+        getRangeTo: (target: RoomPosition) => target === sourceContainer.pos ? 2 : 8
+      }
+    } as unknown as Source;
+    const findCounts = new Map<FindConstant, number>();
+    (room as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      findCounts.set(type, (findCounts.get(type) ?? 0) + 1);
+      if (type === FIND_SOURCES) return [source];
+      if (type === FIND_STRUCTURES) return [genericContainer, sourceContainer];
+      return [];
+    }) as Room["find"];
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: false }
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    clearRoomCaches();
+
+    const ctx = createRuntimeContext(creep);
+
+    expect(ctx.sourceContainers).to.deep.equal([sourceContainer]);
+    expect(ctx.sourceContainers).to.deep.equal([sourceContainer]);
+    expect(findCounts.get(FIND_SOURCES)).to.equal(1);
+    expect(findCounts.get(FIND_STRUCTURES)).to.equal(1);
+  });
+
   it("keeps builder and upgrader critical energy delivery priority aligned", () => {
     const extension = {
       id: "extension1",
@@ -300,7 +345,7 @@ describe("Behavior Contracts", () => {
     expect(action.type).to.equal("idle");
   });
 
-  it("prioritizes source-container energy for defenseRefuel haulers before dropped resources", () => {
+  it("prioritizes source-adjacent container energy for defenseRefuel haulers before closer generic containers", () => {
     const ctx = createContext("hauler");
     ctx.memory.task = "defenseRefuel";
 
@@ -310,7 +355,13 @@ describe("Behavior Contracts", () => {
       amount: 500,
       pos: new RoomPosition(24, 25, ctx.room.name)
     } as Resource<RESOURCE_ENERGY>;
-    const sourceContainer = {
+    const closerGenericContainer = {
+      id: "genericContainer1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: new RoomPosition(24, 25, ctx.room.name),
+      store: makeEnergyStore(500, 2000)
+    } as unknown as StructureContainer;
+    const fartherSourceContainer = {
       id: "sourceContainer1" as Id<StructureContainer>,
       structureType: STRUCTURE_CONTAINER,
       pos: new RoomPosition(20, 20, ctx.room.name),
@@ -320,11 +371,12 @@ describe("Behavior Contracts", () => {
     const action = evaluateEconomyBehavior({
       ...ctx,
       droppedResources: [dropped],
-      containers: [sourceContainer]
+      containers: [closerGenericContainer, fartherSourceContainer],
+      sourceContainers: [fartherSourceContainer]
     });
 
     expect(action.type).to.equal("withdraw");
-    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(sourceContainer);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(fartherSourceContainer);
     expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
   });
 
@@ -488,7 +540,13 @@ describe("Behavior Contracts", () => {
     expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
   });
 
-  it("falls back to normal hauler energy collection when defenseRefuel has no source container", () => {
+  it("falls back to normal hauler energy collection when defenseRefuel has no usable source-container energy", () => {
+    const lowEnergySourceContainer = {
+      id: "sourceContainer1" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: new RoomPosition(20, 20, "W1N1"),
+      store: makeEnergyStore(100, 2000)
+    } as unknown as StructureContainer;
     const storage = {
       id: "storage1",
       store: makeEnergyStore(1000, 100000)
@@ -498,6 +556,8 @@ describe("Behavior Contracts", () => {
 
     const action = evaluateEconomyBehavior({
       ...ctx,
+      sourceContainers: [lowEnergySourceContainer],
+      containers: [lowEnergySourceContainer],
       storage
     });
 

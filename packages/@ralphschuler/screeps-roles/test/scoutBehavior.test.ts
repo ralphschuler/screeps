@@ -85,6 +85,7 @@ function createScoutContext(room: Room, memory: Record<string, unknown> = {}, ra
     damagedStructureCount: 0,
     droppedResources: [],
     containers: [],
+    sourceContainers: [],
     depositContainers: [],
     spawnStructures: [],
     towers: [],

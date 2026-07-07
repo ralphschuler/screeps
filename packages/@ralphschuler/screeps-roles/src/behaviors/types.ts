@@ -19,6 +19,9 @@ export interface CreepContext extends FrameworkCreepContext<SwarmCreepMemory> {
   // Room state
   swarmState: SwarmState | undefined;
   squadMemory: SquadMemory | undefined;
+
+  /** Containers adjacent to visible room sources, derived from the per-tick room cache. */
+  sourceContainers: StructureContainer[];
 }
 
 /**

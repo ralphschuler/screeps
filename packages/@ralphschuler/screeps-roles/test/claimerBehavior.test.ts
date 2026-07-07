@@ -22,6 +22,7 @@ function createContext(creep: Creep, room: Room): CreepContext {
     damagedStructureCount: 0,
     droppedResources: [],
     containers: [],
+    sourceContainers: [],
     depositContainers: [],
     spawnStructures: [],
     towers: [],
