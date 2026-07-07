@@ -19,6 +19,8 @@
     "check-versions": "node scripts/check-versions.js",
     "sync:deps": "node scripts/sync-framework-deps.js",
     "sync:deps:check": "node scripts/sync-framework-deps.js --check",
+    "publish:framework:check": "node scripts/publish-framework-package.mjs --all --check",
+    "publish:framework:dry-run": "node scripts/publish-framework-package.mjs --all --dry-run",
     "check:no-deep-dist-imports": "node scripts/check-no-deep-dist-imports.js",
     "check:bot-bundle-drift": "node scripts/check-bot-bundle-drift.mjs",
     "quality:duplication": "jscpd . --config .jscpd.json",
