@@ -31,14 +31,16 @@ The deploy path is `npm run push` / `npm run deploy`. Build-only validation is `
 
    `npm run deploy:preflight` runs dependency sync validation, alliance-safety checks, a full repository build, and a generated bundle drift check so framework package outputs exist and `packages/screeps-bot/dist/main.js` matches the committed artifact before upload.
 
-4. Upload:
+4. Upload with an explicit target:
 
    ```bash
-   npm run push
-   # same as: npm run deploy
+   SCREEPS_HOSTNAME=screeps.com SCREEPS_BRANCH=main npm run push
+   # same target guard applies to: npm run deploy
    ```
 
-`npm run build` prints deploy configuration but does not upload. `npm run push` sets `DEPLOY=true` and uploads through the Screeps API.
+   If `SCREEPS_HOSTNAME` and `SCREEPS_BRANCH` are already exported in the shell, `npm run push` is equivalent. Without both explicit variables, the deploy guard fails before upload and prints the exact command to run.
+
+`npm run build` prints deploy configuration but does not upload. `npm run push` sets `DEPLOY=true` and uploads through the Screeps API only when `SCREEPS_HOSTNAME` and `SCREEPS_BRANCH` are explicit.
 
 ## GitHub Actions deploy
 
@@ -87,7 +89,7 @@ Build-only mode creates `packages/screeps-bot/dist/main.js`, checks bundle size,
    npm run test:server:smoke
    ```
 
-4. Deploy with `npm run push`.
+4. Deploy with `SCREEPS_HOSTNAME=screeps.com SCREEPS_BRANCH=main npm run push` or with both variables already exported.
 5. Monitor console/errors/stats for at least one creep lifecycle or the incident-specific window.
 
 ## Safety

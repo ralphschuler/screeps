@@ -53,6 +53,16 @@ const cfg = {
 
 // Check if we have valid credentials (either token or email+password)
 const hasValidCredentials = cfg.token || (cfg.email && cfg.password);
+const explicitDeployCommand = `SCREEPS_HOSTNAME=${cfg.hostname} SCREEPS_BRANCH=${cfg.branch} npm run push`;
+
+if (shouldDeploy && (!explicitHostname || !explicitBranch)) {
+  console.error("\nERROR: DEPLOY=true requires explicit SCREEPS_HOSTNAME and SCREEPS_BRANCH.");
+  console.error("This safety guard prevents accidental uploads to an implicit target.");
+  console.error("Use an explicit deploy target, for example:");
+  console.error(`  ${explicitDeployCommand}`);
+  console.error("For private/community servers, replace both values explicitly.");
+  process.exit(1);
+}
 
 // Debug logging for deployment troubleshooting
 console.log("=== Screeps Deploy Configuration ===");
@@ -62,11 +72,6 @@ console.log("Credentials type:", cfg.token ? "token" : cfg.email && cfg.password
 console.log("Target server:", cfg.hostname);
 console.log("Target branch:", cfg.branch);
 console.log("====================================");
-
-if (shouldDeploy && (!explicitHostname || !explicitBranch)) {
-  console.error("\nERROR: DEPLOY=true requires explicit SCREEPS_HOSTNAME and SCREEPS_BRANCH.");
-  process.exit(1);
-}
 
 if (shouldDeploy && !hasValidCredentials) {
   console.error("\nERROR: DEPLOY=true was set, but Screeps credentials are not configured.");

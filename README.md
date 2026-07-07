@@ -63,10 +63,10 @@ Configure Screeps credentials through environment variables or the package `.env
 
 ```bash
 npm run deploy:preflight
-npm run push
+SCREEPS_HOSTNAME=screeps.com SCREEPS_BRANCH=main npm run push
 ```
 
-`npm run build` is safe build-only mode. `npm run deploy:preflight` runs deploy-gate validation without secrets. `npm run push` sets `DEPLOY=true` and uploads the bundle to the configured Screeps branch.
+`npm run build` is safe build-only mode. `npm run deploy:preflight` runs deploy-gate validation without secrets. `npm run push` sets `DEPLOY=true` and uploads the bundle only when `SCREEPS_HOSTNAME` and `SCREEPS_BRANCH` are explicit; if they are missing, it fails closed and prints the exact command to run.
 
 ## Documentation
 
