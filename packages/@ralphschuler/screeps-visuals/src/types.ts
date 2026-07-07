@@ -95,6 +95,7 @@ export interface Kernel {
   getConfig(): {
     enableAdaptiveBudgets?: boolean;
     adaptiveBudgetConfig?: AdaptiveBudgetConfig;
+    frequencyCpuBudgets?: Partial<Record<"high" | "medium" | "low", number>>;
   };
   getProcesses(): Array<{
     name: string;
@@ -134,5 +135,5 @@ export interface AdaptiveBudgetInfo {
  * Stats integration interface for optional budget dashboard
  */
 export interface StatsIntegration {
-  getAdaptiveBudgetInfo?(config: AdaptiveBudgetConfig): AdaptiveBudgetInfo;
+  getAdaptiveBudgetInfo?(config?: AdaptiveBudgetConfig): AdaptiveBudgetInfo;
 }

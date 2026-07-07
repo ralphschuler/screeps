@@ -12,7 +12,27 @@
  * - Utilization ratio gauge
  */
 
-import type { Kernel, StatsIntegration } from "./types";
+import type { AdaptiveBudgetInfo, Kernel, StatsIntegration } from "./types";
+
+type FrequencyBudgets = AdaptiveBudgetInfo["budgets"];
+
+function alignBudgetInfoWithKernelBudgets(
+  budgetInfo: AdaptiveBudgetInfo,
+  frequencyCpuBudgets: Partial<FrequencyBudgets> | undefined
+): AdaptiveBudgetInfo {
+  if (!frequencyCpuBudgets) {
+    return budgetInfo;
+  }
+
+  return {
+    ...budgetInfo,
+    budgets: {
+      high: frequencyCpuBudgets.high ?? budgetInfo.budgets.high,
+      medium: frequencyCpuBudgets.medium ?? budgetInfo.budgets.medium,
+      low: frequencyCpuBudgets.low ?? budgetInfo.budgets.low
+    }
+  };
+}
 
 export interface BudgetDashboardOptions {
   /** Room to display dashboard in (defaults to first owned room) */
@@ -62,7 +82,10 @@ export function renderBudgetDashboard(options: BudgetDashboardOptions = {}): num
 
   // Get kernel config and budget info
   const config = options.kernel.getConfig();
-  const budgetInfo = options.stats.getAdaptiveBudgetInfo(config.adaptiveBudgetConfig || {});
+  const budgetInfo = alignBudgetInfoWithKernelBudgets(
+    options.stats.getAdaptiveBudgetInfo(config.adaptiveBudgetConfig),
+    config.frequencyCpuBudgets
+  );
   const processes = options.kernel.getProcesses();
 
   // Calculate utilization
@@ -300,7 +323,10 @@ export function renderCompactBudgetStatus(roomName?: string, kernel?: Kernel, st
 
   // Get budget info
   const config = kernel.getConfig();
-  const budgetInfo = stats.getAdaptiveBudgetInfo(config.adaptiveBudgetConfig || {});
+  const budgetInfo = alignBudgetInfoWithKernelBudgets(
+    stats.getAdaptiveBudgetInfo(config.adaptiveBudgetConfig),
+    config.frequencyCpuBudgets
+  );
   const processes = kernel.getProcesses();
 
   // Calculate utilization

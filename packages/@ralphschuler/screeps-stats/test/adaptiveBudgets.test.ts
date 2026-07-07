@@ -5,13 +5,52 @@ import {
   calculateBucketMultiplier,
   calculateRoomScalingMultiplier,
   DEFAULT_ADAPTIVE_CONFIG,
-  getAdaptiveBudgetInfo
+  getAdaptiveBudgetInfo,
+  type FrequencyUtilizationSnapshot
 } from "../src/adaptiveBudgets.ts";
+import {
+  calculateAdaptiveBudgets as calculateKernelAdaptiveBudgets,
+  DEFAULT_ADAPTIVE_CONFIG as KERNEL_DEFAULT_ADAPTIVE_CONFIG
+} from "../../screeps-kernel/src/adaptiveBudgets.ts";
 
 describe("Adaptive CPU Budgets", () => {
   beforeEach(() => {
     Game.rooms = {};
     Game.cpu.bucket = 5000;
+  });
+
+  it("keeps stats and kernel adapters in parity for representative runtime states", () => {
+    expect(DEFAULT_ADAPTIVE_CONFIG).to.deep.equal(KERNEL_DEFAULT_ADAPTIVE_CONFIG);
+
+    const scenarios: Array<{
+      roomCount: number;
+      bucket: number;
+      utilization: FrequencyUtilizationSnapshot;
+    }> = [
+      { roomCount: 1, bucket: 300, utilization: { high: 1.4 } },
+      { roomCount: 10, bucket: 5000, utilization: { medium: 0.1 } },
+      { roomCount: 50, bucket: 9500, utilization: { high: 0.75, low: 1.2 } },
+      { roomCount: 100, bucket: 1500, utilization: {} }
+    ];
+
+    for (const scenario of scenarios) {
+      const statsBudgets = calculateAdaptiveBudgets(
+        scenario.roomCount,
+        scenario.bucket,
+        DEFAULT_ADAPTIVE_CONFIG,
+        scenario.utilization
+      );
+      const kernelBudgets = calculateKernelAdaptiveBudgets(
+        scenario.roomCount,
+        scenario.bucket,
+        KERNEL_DEFAULT_ADAPTIVE_CONFIG,
+        scenario.utilization
+      );
+
+      expect(statsBudgets.high).to.be.closeTo(kernelBudgets.high, 1e-12);
+      expect(statsBudgets.medium).to.be.closeTo(kernelBudgets.medium, 1e-12);
+      expect(statsBudgets.low).to.be.closeTo(kernelBudgets.low, 1e-12);
+    }
   });
 
   it("keeps default room scaling inside the intended empire-size envelope", () => {
