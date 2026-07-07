@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+const explicitProductionPushCommand = "SCREEPS_HOSTNAME=screeps.com SCREEPS_BRANCH=main npm run push";
 const workflow = readFileSync(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8");
 const rootPackage = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+const deployDocs = readFileSync(new URL("../../docs/deployment/README.md", import.meta.url), "utf8");
 
 function parseDeployTargets() {
   const matrixBlock = workflow.match(/matrix:\n(?<block>[\s\S]*?)\n\s{4}env:/)?.groups?.block;
@@ -29,6 +34,42 @@ function stepBlock(name) {
   const next = workflow.indexOf("\n      - name:", start + 1);
   return workflow.slice(start, next === -1 ? workflow.length : next);
 }
+
+test("local push guard fails closed with an exact explicit target command", () => {
+  assert.equal(
+    rootPackage.scripts.push,
+    "DEPLOY=true npm run push -w screeps-typescript-starter",
+    "root push should be the guarded deploy entry point",
+  );
+  assert.match(
+    deployDocs,
+    new RegExp(explicitProductionPushCommand.replaceAll(".", "\\.")),
+    "deployment docs should show the canonical explicit production push command",
+  );
+
+  const env = {
+    ...process.env,
+    DEPLOY: "true",
+    SCREEPS_TOKEN: "fake-token-for-guard-test",
+  };
+  delete env.SCREEPS_HOSTNAME;
+  delete env.SCREEPS_BRANCH;
+  delete env.SCREEPS_USER;
+  delete env.SCREEPS_PASS;
+
+  const result = spawnSync(process.execPath, ["-e", "import('./packages/screeps-bot/rollup.config.js')"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env,
+  });
+  const output = `${result.stdout}\n${result.stderr}`;
+
+  assert.equal(result.status, 1, `deploy guard should reject missing explicit target:\n${output}`);
+  assert.match(output, /DEPLOY=true requires explicit SCREEPS_HOSTNAME and SCREEPS_BRANCH/);
+  assert.match(output, new RegExp(explicitProductionPushCommand.replaceAll(".", "\\.")));
+  assert.doesNotMatch(output, /Target server:/, "guard should fail before printing default target server");
+  assert.doesNotMatch(output, /Target branch:/, "guard should fail before printing default target branch");
+});
 
 test("deploy workflow runs preflight before secret-scoped upload", () => {
   assert.equal(
