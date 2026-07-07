@@ -164,25 +164,25 @@ All tests must pass before publishing.
 
 #### 5. Validate Package Contents
 
-Preview what will be published:
+Preview the normalized publish artifact:
 
 ```bash
-npm pack --dry-run
+node scripts/publish-framework-package.mjs --package packages/@ralphschuler/screeps-kernel --dry-run
 ```
 
-This shows exactly which files will be included in the published package.
+This stages the package, rewrites internal monorepo dependency ranges to concrete package versions, and runs the same normalized packaging path used by CI checks and release publishing.
 
 #### 6. Test Local Installation
 
 Create a test package and install:
 
 ```bash
-npm pack
+node scripts/publish-framework-package.mjs --package packages/@ralphschuler/screeps-kernel --check --stage-root /tmp/screeps-publish-check --keep-stage
 cd /tmp
 mkdir test-install
 cd test-install
 npm init -y
-npm install /path/to/ralphschuler-screeps-kernel-0.1.1.tgz
+npm install /tmp/screeps-publish-check/scope_ralphschuler__screeps-kernel/verify-pack/ralphschuler-screeps-kernel-<version>.tgz
 ```
 
 Verify the package works:
@@ -193,10 +193,10 @@ node -e "const kernel = require('@ralphschuler/screeps-kernel'); console.log(ker
 #### 7. Publish to npm
 
 ```bash
-npm publish --access public
+node scripts/publish-framework-package.mjs --package packages/@ralphschuler/screeps-kernel --publish --access public
 ```
 
-For scoped packages (`@ralphschuler/*`), you must use `--access public` unless you have a paid npm account.
+For scoped packages (`@ralphschuler/*`), the script passes `--access public` and publishes from the normalized staging directory.
 
 #### 8. Verify Publication
 
@@ -223,15 +223,10 @@ To publish all packages at once:
 
 ```bash
 # From repository root
-for pkg in kernel pathfinding remote-mining roles console stats; do
-  echo "Publishing screeps-$pkg..."
-  cd packages/@ralphschuler/screeps-$pkg
-  npm version patch
-  npm run build
-  npm test
-  npm publish --access public
-  cd ../../..
-done
+npm run build
+npm run test:all
+npm run publish:framework:check
+node scripts/publish-framework-package.mjs --all --publish --access public
 ```
 
 ## Automated Publishing (CI/CD)
@@ -283,9 +278,9 @@ The automated workflow performs:
 3. ✅ Install dependencies
 4. ✅ Build all packages (ensures dependencies are available)
 5. ✅ Run tests
-6. ✅ Check if package is publishable (skip if `private: true`)
-7. ✅ Publish to npm with provenance
-8. ✅ Dry-run mode for PRs (doesn't actually publish)
+6. ✅ Stage each package through `scripts/publish-framework-package.mjs`
+7. ✅ Normalize internal monorepo dependency ranges in the staged package manifest
+8. ✅ Publish to npm with provenance, or dry-run through the same staging path
 
 ### Workflow Security
 
@@ -404,11 +399,13 @@ All tests must pass. If tests fail, fix them before publishing.
 
 ### 3. Package Contents
 
-Verify `.npmignore` excludes dev files:
+Verify the publish staging path and packed manifests:
 
 ```bash
-npm pack --dry-run
+npm run publish:framework:check
 ```
+
+This fails if any packed package manifest still contains `workspace:*` or an internal `@ralphschuler/screeps-*` wildcard dependency.
 
 Should NOT include:
 - `src/` (only `dist/` should be published)
@@ -611,9 +608,8 @@ When publishing multiple packages, follow this order to satisfy dependencies:
 
 ### Internal Package References
 
-When one package depends on another from the same monorepo:
+When one package depends on another from the same monorepo, keep the source manifest on the repository-local range:
 
-**Option 1: Workspace reference (development)**
 ```json
 {
   "dependencies": {
@@ -622,14 +618,14 @@ When one package depends on another from the same monorepo:
 }
 ```
 
-**Option 2: Version range (published)**
-```json
-{
-  "dependencies": {
-    "@ralphschuler/screeps-defense": "^0.1.0"
-  }
-}
+Do not publish that source manifest directly. Use the publish staging script:
+
+```bash
+node scripts/publish-framework-package.mjs --package packages/@ralphschuler/screeps-roles --dry-run
+node scripts/publish-framework-package.mjs --package packages/@ralphschuler/screeps-roles --publish --access public
 ```
+
+The staging script packs the source package, extracts it, rewrites internal `@ralphschuler/screeps-*` dependencies from `*`/`workspace:*` to the current concrete package versions, repacks for validation, and publishes from the normalized staging directory. Source manifests remain unchanged.
 
 ### External Dependencies
 

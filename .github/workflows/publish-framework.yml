@@ -94,20 +94,14 @@ jobs:
             echo "No tests defined for ${{ matrix.package.name }}"
           fi
 
-      - name: Check package is publishable
-        run: |
-          PRIVATE=$(node -p "require('./package.json').private || false")
-          if [ "$PRIVATE" = "true" ]; then
-            echo "Package ${{ matrix.package.name }} is marked as private, skipping publish"
-            exit 0
-          fi
-
       - name: Publish to npm
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.publish_scope == 'all' || contains(matrix.package.name, github.event.inputs.publish_scope)))
-        run: npm publish --access public --provenance
+        run: node scripts/publish-framework-package.mjs --package "${{ matrix.package.path }}" --publish --access public --provenance
+        working-directory: .
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run publish (for PRs and testing)
         if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
-        run: npm publish --dry-run --access public
+        run: node scripts/publish-framework-package.mjs --package "${{ matrix.package.path }}" --dry-run --access public
+        working-directory: .
