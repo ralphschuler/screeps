@@ -29,3 +29,4 @@ export * from './compressor';
 export * from './pruner';
 export * from './migrations';
 export * from './manager';
+export * from './fastMemoryHack';

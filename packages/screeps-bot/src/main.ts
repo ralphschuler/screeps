@@ -1,4 +1,5 @@
 import "./visuals/roomVisualExtensions";
+import { fastMemoryHack } from "@ralphschuler/screeps-memory";
 import { getConfig } from "./config";
 import { registerAllConsoleCommands } from "./core/consoleCommands";
 import { runGlobalRuntimeDiagnostics } from "./core/globalRuntimeDiagnostics";
@@ -138,6 +139,8 @@ declare global {
 }
 
 // Console commands registered via @Command decorator (see consoleCommands.ts)
+fastMemoryHack.register();
+
 const config = getConfig();
 registerAllConsoleCommands(config.lazyLoadConsoleCommands);
 
@@ -147,6 +150,7 @@ registerAllConsoleCommands(config.lazyLoadConsoleCommands);
 
 export const loop = (): void => {
   try {
+    fastMemoryHack.run();
     runGlobalRuntimeDiagnostics({ logger });
     swarmLoop();
   } catch (error) {

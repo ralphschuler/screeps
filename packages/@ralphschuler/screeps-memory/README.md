@@ -64,6 +64,23 @@ Visualization configuration and helper functions.
 - Keys prefixed with `memory:` are heap-only references and are intentionally not persisted back into `Memory._heapCache`.
 - `src/heap-cache/entries.ts` owns entry conversion and TTL checks so public cache operations stay small and consistent.
 
+## Fast Memory Hack
+
+`FastMemoryHack` keeps the parsed `Memory` object in heap and restores it into `RawMemory._parsed` at the start of later ticks. This avoids the normal lazy `JSON.parse` cost while the same Screeps global survives.
+
+```typescript
+import { fastMemoryHack } from "@ralphschuler/screeps-memory";
+
+fastMemoryHack.register(); // once after global reset
+
+export const loop = () => {
+  fastMemoryHack.run(); // first statement in the loop
+  // bot work...
+};
+```
+
+The helper no-ops when `RawMemory` is unavailable (unit tests/non-Screeps runtimes) and re-registers on non-monotonic `Game.time` to avoid restoring stale heap memory after test harness resets or shard/global switches.
+
 ## RawMemory Segment Store
 
 `RawSegmentStore` supports large serialized data sources outside normal `Memory` while keeping writes atomic at the source-id level.
