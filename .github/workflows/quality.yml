@@ -232,13 +232,15 @@ jobs:
             # Parse the JSON report
             TOTAL_FILES=$(jq -r '.totalFiles' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
             FILES_OVER_LIMIT=$(jq -r '.filesOverLimit' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
+            FILES_OVER_LIMIT_PERCENT=$(jq -r '.filesOverLimitPercent // "N/A"' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
             AVG_LINES=$(jq -r '.averageLines' reports/complexity-baseline.json 2>/dev/null || echo "N/A")
             
             echo "📊 **Total Files**: ${TOTAL_FILES}" >> $GITHUB_STEP_SUMMARY
-            echo "📊 **Files Over 300 Lines**: ${FILES_OVER_LIMIT}" >> $GITHUB_STEP_SUMMARY
+            echo "📊 **Files Over 300 Lines**: ${FILES_OVER_LIMIT} (${FILES_OVER_LIMIT_PERCENT}%)" >> $GITHUB_STEP_SUMMARY
             echo "📊 **Average Lines per File**: ${AVG_LINES}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🎯 **Target**: < 20% files over 300 lines" >> $GITHUB_STEP_SUMMARY
+            echo "📊 **Budget**: transitional hard gate allows up to 22% files over 300 lines" >> $GITHUB_STEP_SUMMARY
+            echo "🎯 **Long-term target**: < 20% files over 300 lines" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "View full report in the uploaded artifacts." >> $GITHUB_STEP_SUMMARY
           else
