@@ -768,6 +768,33 @@ describe("defense spawn throttling", () => {
     assert.isTrue(defenderRequests.some(request => request.body.cost > room.energyAvailable));
   });
 
+  it("adds an affordable emergency local defender for one hard invader without war posture", () => {
+    const hardInvader = createHostile(createRepeatedParts([TOUGH, 5], [RANGED_ATTACK, 25], [MOVE, 10], [HEAL, 10]));
+    const room = createRoom([hardInvader], "W9N6", 1800, 300, 4);
+    Game.rooms.W9N6 = room;
+    Game.creeps = {
+      worker1: { spawning: false, memory: { role: "harvester", homeRoom: "W9N6" } }
+    } as unknown as typeof Game.creeps;
+
+    populateSpawnQueue(room, { danger: 2, posture: "defense" } as any);
+
+    const defenderRequests = spawnQueue.getPendingRequests("W9N6")
+      .filter(request => request.role === "guard" || request.role === "ranger" || request.role === "healer");
+    const affordableEmergencyDefenders = defenderRequests.filter(request =>
+      request.priority === SpawnPriority.EMERGENCY && request.body.cost <= room.energyAvailable
+    );
+    const next = spawnQueue.getNextRequest("W9N6", room.energyAvailable);
+
+    assert.isTrue(defenderRequests.some(request => request.body.cost > room.energyAvailable));
+    assert.lengthOf(affordableEmergencyDefenders, 1);
+    assert.includeMembers(affordableEmergencyDefenders[0]!.body.parts, [MOVE]);
+    assert.isTrue(
+      affordableEmergencyDefenders[0]!.body.parts.includes(ATTACK) ||
+      affordableEmergencyDefenders[0]!.body.parts.includes(RANGED_ATTACK)
+    );
+    assert.equal(next?.id, affordableEmergencyDefenders[0]!.id);
+  });
+
   it("queues an emergency refuel hauler before defense assists when helper energy is trapped in source containers", () => {
     const hardInvaders = [
       createHostile(createRepeatedParts([RANGED_ATTACK, 14], [MOVE, 25], [HEAL, 11])),

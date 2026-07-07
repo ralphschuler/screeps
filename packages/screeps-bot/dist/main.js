@@ -38997,10 +38997,10 @@ return e.priority >= mv.EMERGENCY && "hauler" === e.role && "defenseRefuel" === 
 }
 
 function zg(e, t, r, n) {
-var i, s, c, u = e.energyCapacityAvailable, l = dg(e), m = r.urgency >= 2 || t.danger >= 3 ? mv.EMERGENCY : mv.HIGH, d = Ro(X(e)), p = function(e) {
+var i, s, c, u = e.energyCapacityAvailable, l = dg(e), m = Ro(X(e)), d = function(e) {
 var t = null == e ? void 0 : e.strongest;
 return Boolean(t && (t.partCount >= 25 || t.score >= 250));
-}(d) ? u : m === mv.EMERGENCY ? l : u, f = function(e, t) {
+}(m), p = d || r.urgency >= 2 || t.danger >= 3 ? mv.EMERGENCY : mv.HIGH, f = d ? u : p === mv.EMERGENCY ? l : u, y = function(e, t) {
 var r, o, n = {
 guards: 0,
 rangers: 0,
@@ -39028,7 +39028,7 @@ return {
 counts: n,
 power: i
 };
-}(e.name, u), y = function(e) {
+}(e.name, u), v = function(e) {
 var t, r, o, n = {};
 try {
 for (var i = a(e.find(FIND_MY_CREEPS)), s = i.next(); !s.done; s = i.next()) {
@@ -39055,7 +39055,7 @@ if (t) throw t.error;
 }
 }
 return n;
-}(e), v = function(e, t) {
+}(e), g = function(e, t) {
 var r, n, i = o({}, e);
 try {
 for (var s = a([ "guard", "ranger", "healer" ]), c = s.next(); !c.done; c = s.next()) {
@@ -39074,16 +39074,16 @@ if (r) throw r.error;
 }
 }
 return i;
-}(y, f.power), g = Mo(p, d, {
-guard: Math.max(0, r.guards - n.guards - f.counts.guards),
-ranger: Math.max(0, r.rangers - n.rangers - f.counts.rangers),
-healer: Math.max(0, r.healers - n.healers - f.counts.healers)
-}, v), h = g.counts.guard, R = null !== (i = g.bodies.guard) && void 0 !== i ? i : Xg("guard", p, d);
-if (h > 0 && R) for (var E = 0; E < h; E++) $g(e, "guard", "military", m, p, "guard_defense_".concat(Game.time, "_").concat(E), R);
-var T = g.counts.ranger, C = null !== (s = g.bodies.ranger) && void 0 !== s ? s : Xg("ranger", p, d);
-if (T > 0 && C) for (E = 0; E < T; E++) $g(e, "ranger", "military", m, p, "ranger_defense_".concat(Game.time, "_").concat(E), C);
-var S = g.counts.healer, w = null !== (c = g.bodies.healer) && void 0 !== c ? c : Xg("healer", p, d);
-if (S > 0 && w && (r.urgency >= 1.5 || g.healerFloor > 0)) for (E = 0; E < S; E++) $g(e, "healer", "military", mv.HIGH, p, "healer_defense_".concat(Game.time, "_").concat(E), w);
+}(v, y.power), h = Mo(f, m, {
+guard: Math.max(0, r.guards - n.guards - y.counts.guards),
+ranger: Math.max(0, r.rangers - n.rangers - y.counts.rangers),
+healer: Math.max(0, r.healers - n.healers - y.counts.healers)
+}, g), R = h.counts.guard, E = null !== (i = h.bodies.guard) && void 0 !== i ? i : Xg("guard", f, m);
+if (R > 0 && E) for (var T = 0; T < R; T++) $g(e, "guard", "military", p, f, "guard_defense_".concat(Game.time, "_").concat(T), E);
+var C = h.counts.ranger, S = null !== (s = h.bodies.ranger) && void 0 !== s ? s : Xg("ranger", f, m);
+if (C > 0 && S) for (T = 0; T < C; T++) $g(e, "ranger", "military", p, f, "ranger_defense_".concat(Game.time, "_").concat(T), S);
+var w = h.counts.healer, x = null !== (c = h.bodies.healer) && void 0 !== c ? c : Xg("healer", f, m);
+if (w > 0 && x && (r.urgency >= 1.5 || h.healerFloor > 0)) for (T = 0; T < w; T++) $g(e, "healer", "military", mv.HIGH, f, "healer_defense_".concat(Game.time, "_").concat(T), x);
 !function(e, t, r, o) {
 if (!(t < mv.EMERGENCY || function(e, t) {
 var r, o, n = e.find(FIND_MY_CREEPS).filter(function(e) {
@@ -39131,7 +39131,7 @@ return 0 !== r ? r : (null == n ? void 0 : n.ranged) && e.role !== t.role ? "ran
 }(r, o);
 n && $g(e, n.role, "military", mv.EMERGENCY, r, "".concat(n.role, "_defense_affordable_").concat(Game.time), n.body);
 }
-}(e, m, l, d), (h > 0 || T > 0 || S > 0) && U.info("Added defender spawn requests: ".concat(h, " guards, ").concat(T, " rangers, ").concat(S, " healers (priority: ").concat(m, ")"), {
+}(e, p, l, m), (R > 0 || C > 0 || w > 0) && U.info("Added defender spawn requests: ".concat(R, " guards, ").concat(C, " rangers, ").concat(w, " healers (priority: ").concat(p, ")"), {
 subsystem: "SpawnPipeline"
 });
 }
