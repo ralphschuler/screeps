@@ -4,6 +4,24 @@ interface SpawnEnergySettings {
   structureEnergyFallback?: boolean;
 }
 
+interface EffectiveRoomEnergyCacheEntry {
+  fallbackEnabled: boolean;
+  value: number;
+}
+
+const effectiveRoomEnergyCache = new Map<string, EffectiveRoomEnergyCacheEntry>();
+let effectiveRoomEnergyCacheGame: Game | undefined;
+let effectiveRoomEnergyCacheTick: number | undefined;
+
+function resetEffectiveRoomEnergyCacheForCurrentTick(): void {
+  const tick = Game.time;
+  if (effectiveRoomEnergyCacheGame === Game && effectiveRoomEnergyCacheTick === tick) return;
+
+  effectiveRoomEnergyCache.clear();
+  effectiveRoomEnergyCacheGame = Game;
+  effectiveRoomEnergyCacheTick = tick;
+}
+
 function isStructureEnergyFallbackEnabled(): boolean {
   const mem = Memory as unknown as { spawnSettings?: SpawnEnergySettings };
   return mem.spawnSettings?.structureEnergyFallback !== false;
@@ -59,8 +77,15 @@ function getStoredSpawnExtensionEnergy(room: Room): number {
  * `Memory.spawnSettings = { structureEnergyFallback: false }`.
  */
 export function getEffectiveRoomEnergyAvailable(room: Room): number {
-  const roomEnergy = room.energyAvailable ?? 0;
-  if (!isStructureEnergyFallbackEnabled()) return roomEnergy;
+  resetEffectiveRoomEnergyCacheForCurrentTick();
 
-  return Math.max(roomEnergy, getStoredSpawnExtensionEnergy(room));
+  const fallbackEnabled = isStructureEnergyFallbackEnabled();
+  const cached = effectiveRoomEnergyCache.get(room.name);
+  if (cached && cached.fallbackEnabled === fallbackEnabled) return cached.value;
+
+  const roomEnergy = room.energyAvailable ?? 0;
+  const value = fallbackEnabled ? Math.max(roomEnergy, getStoredSpawnExtensionEnergy(room)) : roomEnergy;
+  effectiveRoomEnergyCache.set(room.name, { fallbackEnabled, value });
+
+  return value;
 }
