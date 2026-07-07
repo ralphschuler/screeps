@@ -11,7 +11,15 @@ const { execSync } = require('child_process');
 
 // Configuration
 const MAX_FILE_LINES = 300;
+const MAX_FILES_OVER_LIMIT_PERCENT = 22;
 const MAX_FUNCTION_COMPLEXITY_WARNING = 15;
+
+function countLogicalLines(content) {
+  if (content.length === 0) {
+    return 0;
+  }
+  return content.split('\n').length - (content.endsWith('\n') ? 1 : 0);
+}
 
 async function analyzeComplexity() {
   console.log('🔍 Analyzing code complexity...\n');
@@ -27,13 +35,15 @@ async function analyzeComplexity() {
     complexFunctions: [],
     totalLines: 0,
     averageLines: 0,
-    filesOverLimit: 0
+    filesOverLimit: 0,
+    filesOverLimitPercent: 0,
+    filesOverLimitPercentRaw: 0,
+    filesOverLimitBudgetPercent: MAX_FILES_OVER_LIMIT_PERCENT
   };
 
   for (const file of files) {
     const content = fs.readFileSync(file, 'utf-8');
-    const lines = content.split('\n');
-    const lineCount = lines.length;
+    const lineCount = countLogicalLines(content);
     const relativePath = path.relative(process.cwd(), file);
 
     results.totalFiles++;
@@ -70,7 +80,9 @@ async function analyzeComplexity() {
     }
   }
 
-  results.averageLines = Math.round(results.totalLines / results.totalFiles);
+  results.averageLines = results.totalFiles > 0 ? Math.round(results.totalLines / results.totalFiles) : 0;
+  results.filesOverLimitPercentRaw = results.totalFiles > 0 ? results.filesOverLimit / results.totalFiles * 100 : 0;
+  results.filesOverLimitPercent = Number(results.filesOverLimitPercentRaw.toFixed(4));
 
   // Sort by size/complexity
   results.largeFiles.sort((a, b) => b.lines - a.lines);
@@ -82,7 +94,8 @@ async function analyzeComplexity() {
   console.log(`Total Files Analyzed: ${results.totalFiles}`);
   console.log(`Total Lines of Code: ${results.totalLines.toLocaleString()}`);
   console.log(`Average Lines per File: ${results.averageLines}`);
-  console.log(`Files over ${MAX_FILE_LINES} lines: ${results.filesOverLimit} (${Math.round(results.filesOverLimit / results.totalFiles * 100)}%)`);
+  console.log(`Files over ${MAX_FILE_LINES} lines: ${results.filesOverLimit} (${results.filesOverLimitPercent}%)`);
+  console.log(`Files-over-limit budget: ${MAX_FILES_OVER_LIMIT_PERCENT}%`);
   console.log('='.repeat(80));
   console.log('');
 
@@ -108,6 +121,17 @@ async function analyzeComplexity() {
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
   console.log(`📄 Full report saved to: ${path.relative(process.cwd(), reportPath)}`);
+
+  if (results.filesOverLimitPercentRaw > MAX_FILES_OVER_LIMIT_PERCENT) {
+    console.log(
+      `❌ Complexity budget exceeded: ${results.filesOverLimitPercent}% files over ${MAX_FILE_LINES} lines exceeds the ${MAX_FILES_OVER_LIMIT_PERCENT}% transitional budget.`
+    );
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `✅ Complexity budget met: ${results.filesOverLimitPercent}% files over ${MAX_FILE_LINES} lines is within the ${MAX_FILES_OVER_LIMIT_PERCENT}% transitional budget.`
+    );
+  }
 
   return results;
 }

@@ -23,7 +23,7 @@
     "publish:framework:dry-run": "node scripts/publish-framework-package.mjs --all --dry-run",
     "check:no-deep-dist-imports": "node scripts/check-no-deep-dist-imports.js",
     "check:bot-bundle-drift": "node scripts/check-bot-bundle-drift.mjs",
-    "quality:duplication": "jscpd . --config .jscpd.json",
+    "quality:duplication": "node scripts/check-duplication-budget.cjs",
     "quality:complexity": "node scripts/analyze-complexity.cjs",
     "quality:baseline": "npm run quality:duplication && npm run quality:complexity",
     "profile:live:cpu": "node scripts/live-cpu-profile.mjs --samples 20 --interval 3000 --shards shard0,shard1,shard2,shard3 --out-dir artifacts/cpu-profile",

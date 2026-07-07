@@ -78,8 +78,8 @@ A passing smoke run must show tick progression, bot upload/load, room survival, 
 
 ## Quality gates
 
-- `quality:duplication` uses JSCPD and currently has a transitional threshold while framework extraction continues.
-- `quality:complexity` writes complexity artifacts under `reports/`.
+- `quality:duplication` uses JSCPD and fails when total duplication exceeds the 22% transitional threshold while framework extraction continues. The long-term target remains < 5% duplication.
+- `quality:complexity` writes complexity artifacts under `reports/` and fails when more than 22% of analyzed files exceed 300 lines. The long-term target remains < 20% files over 300 lines.
 - `build:docs` validates documentation aggregation.
 - `verify` runs the primary local gate plus alliance safety and production dependency audit.
 
