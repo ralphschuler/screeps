@@ -51,6 +51,23 @@ export {
   type SubsystemType
 } from "./cpuBudgetManager";
 
+// Adaptive CPU budget policy
+export {
+  DEFAULT_ADAPTIVE_CONFIG,
+  calculateAdaptiveBudget,
+  calculateAdaptiveBudgets,
+  calculateBucketMultiplier,
+  calculateRoomScalingMultiplier,
+  getAdaptiveBudgetInfo,
+  getAdaptiveBudgets,
+  getCurrentBucket,
+  getCurrentRoomCount,
+  type AdaptiveBudgetConfig,
+  type AdaptiveBudgetInfo,
+  type FrequencyUtilizationSnapshot,
+  type ProcessFrequency
+} from "./adaptiveBudgets";
+
 // Alliance safety
 export {
   NON_AGGRESSION_PACT_PLAYERS,

@@ -1,3 +1,15 @@
+import {
+  DEFAULT_ADAPTIVE_CONFIG,
+  calculateAdaptiveBudget,
+  calculateAdaptiveBudgets,
+  calculateBucketMultiplier,
+  calculateRoomScalingMultiplier,
+  getAdaptiveBudgetInfo,
+  getAdaptiveBudgets,
+  getCurrentBucket,
+  getCurrentRoomCount
+} from '../../@ralphschuler/screeps-core/src/adaptiveBudgets.ts';
+
 // Provide minimal lodash-like utilities for tests without depending on lodash
 // Note: _.clone() is a SHALLOW clone (same as lodash's default behavior, not _.cloneDeep())
 global._ = {
@@ -591,6 +603,15 @@ const stubs = {
       getProcess: () => ({}),
       tick: () => {}
     },
+    DEFAULT_ADAPTIVE_CONFIG,
+    calculateAdaptiveBudget,
+    calculateAdaptiveBudgets,
+    calculateBucketMultiplier,
+    calculateRoomScalingMultiplier,
+    getAdaptiveBudgetInfo,
+    getAdaptiveBudgets,
+    getCurrentBucket,
+    getCurrentRoomCount,
     ProcessClass: () => (target) => target,
     HighFrequencyProcess: () => (_target, _propertyKey, descriptor) => descriptor,
     MediumFrequencyProcess: () => (_target, _propertyKey, descriptor) => descriptor,
@@ -615,6 +636,15 @@ const stubs = {
       error: () => {},
       debug: () => {}
     }),
+    DEFAULT_ADAPTIVE_CONFIG,
+    calculateAdaptiveBudget,
+    calculateAdaptiveBudgets,
+    calculateBucketMultiplier,
+    calculateRoomScalingMultiplier,
+    getAdaptiveBudgetInfo,
+    getAdaptiveBudgets,
+    getCurrentBucket,
+    getCurrentRoomCount,
     NON_AGGRESSION_PACT_PLAYERS: ['TooAngel', 'TedRoastBeef'],
     getConfiguredAllyPlayers: getConfiguredTestAllies,
     getKnownAllyPlayers: (options = {}) => [...new Set(['TooAngel', 'TedRoastBeef', ...getConfiguredTestAllies(options)])],
@@ -652,6 +682,15 @@ const stubs = {
   '@ralphschuler/screeps-stats': {
     StatsCollector: class {},
     StatsManager: class {},
+    DEFAULT_ADAPTIVE_CONFIG,
+    calculateAdaptiveBudget,
+    calculateAdaptiveBudgets,
+    calculateBucketMultiplier,
+    calculateRoomScalingMultiplier,
+    getAdaptiveBudgetInfo,
+    getAdaptiveBudgets,
+    getCurrentBucket,
+    getCurrentRoomCount,
     recordStat: () => {},
     getStat: () => ({})
   }

@@ -40,7 +40,11 @@ export {
 
 // Export types
 export * from './statsTypes';
-export type { AdaptiveBudgetConfig } from './adaptiveBudgets';
+export type {
+  AdaptiveBudgetConfig,
+  AdaptiveBudgetInfo,
+  FrequencyUtilizationSnapshot
+} from './adaptiveBudgets';
 export type { 
   StatsConfig,
   MetricPoint,

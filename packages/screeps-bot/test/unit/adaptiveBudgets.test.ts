@@ -6,13 +6,49 @@ import {
   calculateAdaptiveBudgets,
   getAdaptiveBudgetInfo,
   DEFAULT_ADAPTIVE_CONFIG,
-  type AdaptiveBudgetConfig
+  type AdaptiveBudgetConfig,
+  type FrequencyUtilizationSnapshot
 } from "@ralphschuler/screeps-stats";
-import { DEFAULT_ADAPTIVE_CONFIG as KERNEL_DEFAULT_ADAPTIVE_CONFIG } from "@ralphschuler/screeps-kernel";
+import {
+  DEFAULT_ADAPTIVE_CONFIG as KERNEL_DEFAULT_ADAPTIVE_CONFIG,
+  calculateAdaptiveBudgets as calculateKernelAdaptiveBudgets
+} from "@ralphschuler/screeps-kernel";
 
 describe("Adaptive CPU Budgets", () => {
   it("should keep stats and kernel adaptive defaults in parity", () => {
     expect(KERNEL_DEFAULT_ADAPTIVE_CONFIG).to.deep.equal(DEFAULT_ADAPTIVE_CONFIG);
+  });
+
+  it("should keep stats and kernel budget calculations in parity for representative runtime states", () => {
+    const scenarios: Array<{
+      roomCount: number;
+      bucket: number;
+      utilization: FrequencyUtilizationSnapshot;
+    }> = [
+      { roomCount: 1, bucket: 300, utilization: { high: 1.4 } },
+      { roomCount: 10, bucket: 5000, utilization: { medium: 0.1 } },
+      { roomCount: 50, bucket: 9500, utilization: { high: 0.75, low: 1.2 } },
+      { roomCount: 100, bucket: 1500, utilization: {} }
+    ];
+
+    for (const scenario of scenarios) {
+      const statsBudgets = calculateAdaptiveBudgets(
+        scenario.roomCount,
+        scenario.bucket,
+        DEFAULT_ADAPTIVE_CONFIG,
+        scenario.utilization
+      );
+      const kernelBudgets = calculateKernelAdaptiveBudgets(
+        scenario.roomCount,
+        scenario.bucket,
+        KERNEL_DEFAULT_ADAPTIVE_CONFIG,
+        scenario.utilization
+      );
+
+      expect(statsBudgets.high).to.be.closeTo(kernelBudgets.high, 1e-12);
+      expect(statsBudgets.medium).to.be.closeTo(kernelBudgets.medium, 1e-12);
+      expect(statsBudgets.low).to.be.closeTo(kernelBudgets.low, 1e-12);
+    }
   });
 
   describe("calculateRoomScalingMultiplier", () => {

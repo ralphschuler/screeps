@@ -52,9 +52,14 @@ export {
 // Export adaptive budgets
 export {
   type AdaptiveBudgetConfig,
+  type AdaptiveBudgetInfo,
+  type FrequencyUtilizationSnapshot,
   DEFAULT_ADAPTIVE_CONFIG,
+  calculateAdaptiveBudget,
+  calculateAdaptiveBudgets,
   calculateRoomScalingMultiplier,
   calculateBucketMultiplier,
+  getAdaptiveBudgetInfo,
   getAdaptiveBudgets
 } from './adaptiveBudgets';
 
