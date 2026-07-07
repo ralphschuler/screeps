@@ -13,8 +13,10 @@ import {
   parseHarnessArgs,
   parseRuntimeWarmupTicks,
   parseScenarioList,
+  parseScenarioSeedConfirmationOutput,
   parseTickRate,
   prepareArtifactsDir,
+  recordScenarioSeedConfirmation,
   resolveAvailablePorts,
   resolveScreepsApiConstructor,
   restartScreepsRuntime,
@@ -647,6 +649,66 @@ describe("private-server harness module", () => {
     expect(command).to.include("type:'lab'");
     expect(command).to.include("economy:'W2N1'");
     expect(command).to.include("screepsmodTestingScenarios");
+    expect(command).to.include("__PI_SCENARIO_SEED__");
+  });
+
+  it("records object-level hard invader seed evidence from CLI output", () => {
+    const parsed = parseScenarioSeedConfirmationOutput(
+      "noise\n__PI_SCENARIO_SEED__{\"scenarios\":[\"defense-hard-invader\"],\"hardInvader\":{\"seeded\":true,\"objectId\":\"abc123\",\"name\":\"ScenarioHardInvader\",\"room\":\"E1N1\",\"user\":\"enemy1\",\"username\":\"ScenarioHardInvader\",\"bodyParts\":50,\"bodyTypes\":[\"tough\",\"ranged_attack\"]}}\n__PI_CLI_DONE_OK__",
+    );
+
+    expect(parsed).to.deep.include({ scenarios: ["defense-hard-invader"] });
+    expect(parsed?.hardInvader).to.deep.include({
+      seeded: true,
+      objectId: "abc123",
+      name: "ScenarioHardInvader",
+      room: "E1N1",
+      user: "enemy1",
+      username: "ScenarioHardInvader",
+      bodyParts: 50,
+    });
+  });
+
+  it("persists scenario seed confirmation artifacts immediately after seeding", () => {
+    const artifactsDir = fs.mkdtempSync(path.join(os.tmpdir(), "screeps-seed-"));
+    const options = parseHarnessArgs([`--artifactsDir=${artifactsDir}`], {});
+    const summary = createInitialSummary(options, new Date("2026-07-07T00:00:00.000Z"));
+
+    recordScenarioSeedConfirmation(
+      options,
+      summary,
+      "__PI_SCENARIO_SEED__{\"hardInvader\":{\"seeded\":true,\"objectId\":\"hard1\",\"bodyParts\":50}}\n__PI_CLI_DONE_OK__",
+    );
+
+    expect(summary.metrics.scenarioSeedConfirmation).to.deep.include({
+      hardInvader: { seeded: true, objectId: "hard1", bodyParts: 50 },
+    });
+    expect(
+      JSON.parse(fs.readFileSync(path.join(artifactsDir, "scenario-seed-confirmation.json"), "utf8")),
+    ).to.deep.include({ hardInvader: { seeded: true, objectId: "hard1", bodyParts: 50 } });
+  });
+
+  it("persists scenario seed failure artifacts when CLI seeding fails", () => {
+    const artifactsDir = fs.mkdtempSync(path.join(os.tmpdir(), "screeps-seed-fail-"));
+    const options = parseHarnessArgs([`--artifactsDir=${artifactsDir}`, "--scenarios=defense-hard-invader"], {});
+    const summary = createInitialSummary(options, new Date("2026-07-07T00:00:00.000Z"));
+
+    recordScenarioSeedConfirmation(
+      options,
+      summary,
+      "__PI_CLI_DONE_ERR__ Error: token=abc123 password=hunter2 hard invader seed failed",
+    );
+
+    const artifact = JSON.parse(fs.readFileSync(path.join(artifactsDir, "scenario-seed-confirmation.json"), "utf8"));
+    expect(artifact).to.deep.include({
+      ok: false,
+      scenarios: ["defense-hard-invader"],
+      requestedRoom: "W1N1",
+    });
+    expect(artifact.errorOutput).to.include("token=[REDACTED]");
+    expect(artifact.errorOutput).to.include("password=[REDACTED]");
+    expect(artifact.errorOutput).to.not.include("abc123");
+    expect(artifact.errorOutput).to.not.include("hunter2");
   });
 
   it("seeds the hostile defense scenario in the owned home room for deterministic smoke visibility", () => {
@@ -665,7 +727,8 @@ describe("private-server harness module", () => {
     expect(command).to.include("type:'extension'");
     expect(command).to.include("level:4");
     expect(command).to.include("safeMode:null");
-    expect(command).to.include("hardInvader:hasScenario('defense-hard-invader')?{room:homeRoom,bodyParts:50}:undefined");
+    expect(command).to.include("hardInvader:hasScenario('defense-hard-invader')?(seedEvidence.hardInvader||{room:homeRoom,bodyParts:50}):undefined");
+    expect(command).to.include("objectId:hardInvaderObject&&hardInvaderObject._id");
   });
 
   it("fails the run when screepsmod-testing reports failed tests", () => {

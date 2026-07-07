@@ -118,6 +118,32 @@ function hardDefenseCreepsAreNotTiny(memory: any, creeps: any[]): boolean {
   });
 }
 
+function summarizeHardInvaderCreep(creep: any): Record<string, unknown> {
+  const body = Array.isArray(creep?.body) ? creep.body : [];
+  return {
+    objectId: creep?._id ? String(creep._id) : undefined,
+    name: creep?.name,
+    room: creep?.room,
+    user: creep?.user ? String(creep.user) : undefined,
+    bodyParts: body.length,
+    bodyTypes: body.map((part: any) => part?.type ?? part),
+    hits: creep?.hits,
+    hitsMax: creep?.hitsMax,
+    ticksToLive: creep?.ticksToLive,
+    x: creep?.x,
+    y: creep?.y,
+    spawning: Boolean(creep?.spawning),
+  };
+}
+
+function hasConfirmedHardInvaderSeed(hardInvaders: any[], hardInvaderSeed: any): boolean {
+  if (hardInvaders.some(creep => (creep?.body ?? []).length >= 50)) return true;
+
+  return (hardInvaderSeed?.bodyParts ?? 0) >= 50
+    && typeof hardInvaderSeed?.objectId === 'string'
+    && hardInvaderSeed.objectId.length > 0;
+}
+
 function collectRemoteAssignments(memory: any): Record<string, string[]> {
   const assignments: Record<string, string[]> = {};
   const rooms = memory.rooms ?? {};
@@ -257,12 +283,14 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     terminalRooms: terminalStructures.map(terminal => terminal.room),
     labRooms: labStructures.map(lab => lab.room)
   };
-  diagnostics.defenseHardInvader = {
+  const hardInvaderDiagnostics = {
     count: hardInvaders.length,
     bodyParts: hardInvaders.map(creep => (creep?.body ?? []).length),
     rooms: hardInvaders.map(creep => creep?.room),
-    seed: hardInvaderSeed
+    creeps: hardInvaders.map(summarizeHardInvaderCreep),
+    seed: hardInvaderSeed ?? null
   };
+  diagnostics.defenseHardInvader = hardInvaderDiagnostics;
 
   if (input.scenarios.indexOf('default-bootstrap') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario','default-bootstrap'], () => input.ownedControllers.length > 0 && input.spawns.length > 0, 'default bootstrap scenario lacks owned controller or spawn');
@@ -277,7 +305,14 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hostile emits defensive runtime signal', ['scenario','defense-hostile'], () => hasDefenseSignal(input.memory), 'defense scenario has no danger, defense task, or defense request signal');
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
-    runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario defense-hard-invader seeds a 50-part hostile', ['scenario','defense-hard-invader','seed'], () => hardInvaders.some(creep => (creep?.body ?? []).length >= 50) || (hardInvaderSeed?.bodyParts ?? 0) >= 50, 'hard invader scenario did not seed a 50-part hostile');
+    runtimeAssertCounter(
+      counters,
+      input.botRuntimeWarmed,
+      'scenario defense-hard-invader seeds a 50-part hostile',
+      ['scenario','defense-hard-invader','seed'],
+      () => hasConfirmedHardInvaderSeed(hardInvaders, hardInvaderSeed),
+      `hard invader scenario did not seed a 50-part hostile; diagnostics=${JSON.stringify(hardInvaderDiagnostics)}`
+    );
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader emits defensive runtime signal', ['scenario','defense-hard-invader'], () => hasDefenseSignal(input.memory), 'hard invader scenario has no danger, defense task, or defense request signal');
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader avoids tiny ranger defenders', ['scenario','defense-hard-invader','body'], () => hardDefenseCreepsAreNotTiny(input.memory, input.creeps), 'hard invader scenario spawned a tiny ranger defender');
   }

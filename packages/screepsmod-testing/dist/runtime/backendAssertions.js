@@ -212,6 +212,31 @@ function hardDefenseCreepsAreNotTiny(memory, creeps) {
         return ((_p = creep === null || creep === void 0 ? void 0 : creep.body) !== null && _p !== void 0 ? _p : []).length >= 6;
     });
 }
+function summarizeHardInvaderCreep(creep) {
+    var body = Array.isArray(creep === null || creep === void 0 ? void 0 : creep.body) ? creep.body : [];
+    return {
+        objectId: (creep === null || creep === void 0 ? void 0 : creep._id) ? String(creep._id) : undefined,
+        name: creep === null || creep === void 0 ? void 0 : creep.name,
+        room: creep === null || creep === void 0 ? void 0 : creep.room,
+        user: (creep === null || creep === void 0 ? void 0 : creep.user) ? String(creep.user) : undefined,
+        bodyParts: body.length,
+        bodyTypes: body.map(function (part) { var _a; return (_a = part === null || part === void 0 ? void 0 : part.type) !== null && _a !== void 0 ? _a : part; }),
+        hits: creep === null || creep === void 0 ? void 0 : creep.hits,
+        hitsMax: creep === null || creep === void 0 ? void 0 : creep.hitsMax,
+        ticksToLive: creep === null || creep === void 0 ? void 0 : creep.ticksToLive,
+        x: creep === null || creep === void 0 ? void 0 : creep.x,
+        y: creep === null || creep === void 0 ? void 0 : creep.y,
+        spawning: Boolean(creep === null || creep === void 0 ? void 0 : creep.spawning),
+    };
+}
+function hasConfirmedHardInvaderSeed(hardInvaders, hardInvaderSeed) {
+    var _a;
+    if (hardInvaders.some(function (creep) { var _a; return ((_a = creep === null || creep === void 0 ? void 0 : creep.body) !== null && _a !== void 0 ? _a : []).length >= 50; }))
+        return true;
+    return ((_a = hardInvaderSeed === null || hardInvaderSeed === void 0 ? void 0 : hardInvaderSeed.bodyParts) !== null && _a !== void 0 ? _a : 0) >= 50
+        && typeof (hardInvaderSeed === null || hardInvaderSeed === void 0 ? void 0 : hardInvaderSeed.objectId) === 'string'
+        && hardInvaderSeed.objectId.length > 0;
+}
 function collectRemoteAssignments(memory) {
     var e_3, _a;
     var _b, _c, _d;
@@ -344,7 +369,7 @@ function assertBaselineRuntime(counters, input, ownedRoomNames) {
 }
 function assertScenarios(counters, input) {
     return __awaiter(this, void 0, void 0, function () {
-        var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, hardInvaderSeed, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
+        var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, hardInvaderSeed, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hardInvaderDiagnostics, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
         var e_6, _q;
         var _r, _s, _t, _u, _v;
         return __generator(this, function (_w) {
@@ -470,12 +495,14 @@ function assertScenarios(counters, input) {
                         terminalRooms: terminalStructures.map(function (terminal) { return terminal.room; }),
                         labRooms: labStructures.map(function (lab) { return lab.room; })
                     };
-                    diagnostics.defenseHardInvader = {
+                    hardInvaderDiagnostics = {
                         count: hardInvaders.length,
                         bodyParts: hardInvaders.map(function (creep) { var _a; return ((_a = creep === null || creep === void 0 ? void 0 : creep.body) !== null && _a !== void 0 ? _a : []).length; }),
                         rooms: hardInvaders.map(function (creep) { return creep === null || creep === void 0 ? void 0 : creep.room; }),
-                        seed: hardInvaderSeed
+                        creeps: hardInvaders.map(summarizeHardInvaderCreep),
+                        seed: hardInvaderSeed !== null && hardInvaderSeed !== void 0 ? hardInvaderSeed : null
                     };
+                    diagnostics.defenseHardInvader = hardInvaderDiagnostics;
                     if (input.scenarios.indexOf('default-bootstrap') >= 0) {
                         runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario', 'default-bootstrap'], function () { return input.ownedControllers.length > 0 && input.spawns.length > 0; }, 'default bootstrap scenario lacks owned controller or spawn');
                     }
@@ -489,7 +516,7 @@ function assertScenarios(counters, input) {
                         runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hostile emits defensive runtime signal', ['scenario', 'defense-hostile'], function () { return hasDefenseSignal(input.memory); }, 'defense scenario has no danger, defense task, or defense request signal');
                     }
                     if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
-                        runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario defense-hard-invader seeds a 50-part hostile', ['scenario', 'defense-hard-invader', 'seed'], function () { var _a; return hardInvaders.some(function (creep) { var _a; return ((_a = creep === null || creep === void 0 ? void 0 : creep.body) !== null && _a !== void 0 ? _a : []).length >= 50; }) || ((_a = hardInvaderSeed === null || hardInvaderSeed === void 0 ? void 0 : hardInvaderSeed.bodyParts) !== null && _a !== void 0 ? _a : 0) >= 50; }, 'hard invader scenario did not seed a 50-part hostile');
+                        runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario defense-hard-invader seeds a 50-part hostile', ['scenario', 'defense-hard-invader', 'seed'], function () { return hasConfirmedHardInvaderSeed(hardInvaders, hardInvaderSeed); }, "hard invader scenario did not seed a 50-part hostile; diagnostics=".concat(JSON.stringify(hardInvaderDiagnostics)));
                         runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader emits defensive runtime signal', ['scenario', 'defense-hard-invader'], function () { return hasDefenseSignal(input.memory); }, 'hard invader scenario has no danger, defense task, or defense request signal');
                         runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader avoids tiny ranger defenders', ['scenario', 'defense-hard-invader', 'body'], function () { return hardDefenseCreepsAreNotTiny(input.memory, input.creeps); }, 'hard invader scenario spawned a tiny ranger defender');
                     }
