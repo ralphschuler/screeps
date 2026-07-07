@@ -10,6 +10,8 @@ export { redactScreepsApiMessage };
 
 const DEFAULT_SHARDS = ["shard0", "shard1", "shard2", "shard3"];
 const DEFAULT_MAX_STATS_AGE = 100;
+const DEFAULT_SOURCE = "console";
+const VALID_SOURCES = new Set(["console", "memory"]);
 
 export function formatHelp() {
   return `Usage: node scripts/live-cpu-profile.mjs [options]
@@ -23,18 +25,20 @@ Options:
   --protocol <http|https>    Screeps API protocol (default SCREEPS_PROTOCOL or https)
   --port <n>                 Screeps API port (default SCREEPS_PORT or 443)
   --max-stats-age <ticks>    Maximum api.time - Memory.stats.tick age allowed (default ${DEFAULT_MAX_STATS_AGE})
+  --source <console|memory>  Stats source: console WebSocket stream or Memory polling (default ${DEFAULT_SOURCE})
+  --console-timeout <ms>     Max wait for console stats samples (default max(15000, samples * max(interval, 1000) + 5000))
   --allow-empty              Allow zero-sample degraded artifact collection (default fail closed)
   --allow-stale              Allow stale/missing stats artifacts as degraded instead of failed
   --help, -h                 Show this help
 
 Environment:
-  SCREEPS_TOKEN              Required API token; read-only Memory.stats access is enough
+  SCREEPS_TOKEN              Required API token; console source only needs console WebSocket access
   SCREEPS_HOSTNAME           Default hostname override
   SCREEPS_PROTOCOL           Default protocol override
   SCREEPS_PORT               Default port override
   SCREEPS_PATH               API path override (default /)
 
-Read-only: fetches api.time and Memory.stats.`;
+Read-only: console source subscribes once to user console logs and fetches api.time; memory source polls api.time and Memory.stats.`;
 }
 
 export function parseArgs(argv) {
@@ -47,6 +51,8 @@ export function parseArgs(argv) {
     protocol: process.env.SCREEPS_PROTOCOL || "https",
     port: Number(process.env.SCREEPS_PORT || 443),
     maxStatsAge: DEFAULT_MAX_STATS_AGE,
+    source: DEFAULT_SOURCE,
+    consoleTimeout: null,
     allowEmpty: false,
     allowStale: false
   };
@@ -62,6 +68,8 @@ export function parseArgs(argv) {
     else if (arg === "--protocol" && next) args.protocol = next, i++;
     else if (arg === "--port" && next) args.port = Number(next), i++;
     else if (arg === "--max-stats-age" && next) args.maxStatsAge = Number(next), i++;
+    else if (arg === "--source" && next) args.source = next, i++;
+    else if (arg === "--console-timeout" && next) args.consoleTimeout = Number(next), i++;
     else if (arg === "--allow-empty") args.allowEmpty = true;
     else if (arg === "--allow-stale") args.allowStale = true;
     else if (arg === "--help" || arg === "-h") {
@@ -81,6 +89,11 @@ export function parseArgs(argv) {
     throw new Error("--port must be between 1 and 65535");
   }
   if (!Number.isFinite(args.maxStatsAge) || args.maxStatsAge < 1) throw new Error("--max-stats-age must be >= 1");
+  if (!VALID_SOURCES.has(args.source)) throw new Error("--source must be console or memory");
+  if (args.consoleTimeout === null) {
+    args.consoleTimeout = Math.max(15000, args.samples * Math.max(args.interval, 1000) + 5000);
+  }
+  if (!Number.isFinite(args.consoleTimeout) || args.consoleTimeout < 1) throw new Error("--console-timeout must be >= 1");
   return args;
 }
 
@@ -277,18 +290,290 @@ export function evaluateTelemetryHealth(summary, { allowEmpty = false, allowStal
   };
 }
 
-async function fetchStats(api, shard) {
-  const response = await api.memory.get("stats", shard);
-  const stats = response?.data ?? response;
+function unwrapMemoryResponse(response) {
+  return response?.data ?? response;
+}
+
+async function fetchStats(apiClient, shard) {
+  const stats = unwrapMemoryResponse(await apiClient.memoryGet("stats", shard));
   if (!stats || stats.ok === 1 && !stats.cpu) return null;
   return stats;
 }
 
-async function fetchGameTick(api, shard) {
-  const response = await api.time(shard);
+async function fetchGameTick(apiClient, shard) {
+  const response = await apiClient.gameTime(shard);
   const tick = Number(response?.time ?? response?.gameTime);
   if (!Number.isFinite(tick)) throw new Error(`api.time returned invalid tick for ${shard}`);
   return tick;
+}
+
+async function fetchGameTicks(apiClient, shards) {
+  const gameTicksByShard = Object.fromEntries(shards.map(shard => [shard, null]));
+  const timeErrorsByShard = Object.fromEntries(shards.map(shard => [shard, []]));
+  await Promise.all(shards.map(async shard => {
+    try {
+      gameTicksByShard[shard] = await fetchGameTick(apiClient, shard);
+    } catch (error) {
+      const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
+      timeErrorsByShard[shard].push({ message });
+      console.warn(`WARN ${shard} api.time: ${message}`);
+    }
+  }));
+  return { gameTicksByShard, timeErrorsByShard };
+}
+
+function decodeConsoleLine(line) {
+  return String(line ?? "")
+    .replace(/&quot;|&#34;|&#x22;/gi, '"')
+    .replace(/&#39;|&#x27;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
+export function parseConsoleStatsLine(line) {
+  const trimmed = decodeConsoleLine(line).trim();
+  if (!trimmed.startsWith("{")) return null;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (!parsed || parsed.type !== "stats" || !parsed.data || typeof parsed.data !== "object" || Array.isArray(parsed.data)) {
+    return null;
+  }
+
+  if (!isFiniteNumber(parsed.data.tick) && isFiniteNumber(parsed.tick)) {
+    return { ...parsed.data, tick: parsed.tick };
+  }
+  return parsed.data;
+}
+
+export function extractConsoleStatsSamples(event, requestedShards = DEFAULT_SHARDS) {
+  const data = event?.data ?? {};
+  const eventShard = typeof data.shard === "string" && data.shard ? data.shard : null;
+  const shard = eventShard ?? (requestedShards.length === 1 ? requestedShards[0] : null);
+  if (!shard || !requestedShards.includes(shard)) return [];
+
+  const logs = Array.isArray(data.messages?.log) ? data.messages.log : [];
+  const results = Array.isArray(data.messages?.results) ? data.messages.results : [];
+  return [...logs, ...results]
+    .flatMap(line => String(line ?? "").split(/\r?\n/))
+    .map(line => parseConsoleStatsLine(line))
+    .filter(Boolean)
+    .map(stats => ({ shard, stats }));
+}
+
+function hasRequestedSamples(byShard, shards, samples) {
+  return shards.every(shard => (byShard[shard]?.length ?? 0) >= samples);
+}
+
+async function subscribeConsole(socket, onConsole) {
+  if (!socket) throw new Error("Screeps API client does not expose a WebSocket console stream");
+  if (typeof socket.subscribeUserConsole === "function") return socket.subscribeUserConsole(onConsole);
+  if (typeof socket.subscribe === "function") return socket.subscribe("console", onConsole);
+  throw new Error("Screeps API socket does not support console subscription");
+}
+
+function disconnectSocket(socket) {
+  if (!socket) return;
+  if (typeof socket.disconnect === "function") socket.disconnect();
+  else if (typeof socket.close === "function") socket.close();
+}
+
+function remainingTimeoutMs(deadline) {
+  return Math.max(1, deadline - Date.now());
+}
+
+async function withTimeout(promise, ms, message) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function collectConsoleSamples(apiClient, args) {
+  const byShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
+  const errorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
+  let finished = false;
+  let finish;
+  let status = "timeout";
+  const result = new Promise(resolve => {
+    finish = nextStatus => {
+      if (finished) return;
+      finished = true;
+      status = nextStatus;
+      resolve();
+    };
+  });
+
+  const onConsole = event => {
+    const data = event?.data ?? {};
+    const eventShard = typeof data.shard === "string" && data.shard ? data.shard : null;
+    const targetShards = eventShard && args.shards.includes(eventShard) ? [eventShard] : (!eventShard && args.shards.length === 1 ? [args.shards[0]] : []);
+    if (data.error) {
+      const message = redactScreepsApiMessage(data.error);
+      for (const shard of targetShards.length > 0 ? targetShards : args.shards) {
+        errorsByShard[shard].push({ sample: byShard[shard].length + 1, source: "console", message });
+      }
+    }
+
+    for (const { shard, stats } of extractConsoleStatsSamples(event, args.shards)) {
+      if (byShard[shard].length < args.samples) byShard[shard].push(stats);
+    }
+
+    if (hasRequestedSamples(byShard, args.shards, args.samples)) finish("complete");
+  };
+
+  const deadline = Date.now() + args.consoleTimeout;
+  try {
+    await withTimeout(
+      subscribeConsole(apiClient.socket, onConsole),
+      remainingTimeoutMs(deadline),
+      `Timed out waiting for Screeps console subscription after ${args.consoleTimeout}ms`
+    );
+    if (!finished) {
+      await withTimeout(
+        apiClient.socket.connect(),
+        remainingTimeoutMs(deadline),
+        `Timed out connecting to Screeps console WebSocket after ${args.consoleTimeout}ms`
+      );
+    }
+    if (!finished) {
+      try {
+        await withTimeout(
+          result,
+          remainingTimeoutMs(deadline),
+          `Timed out waiting for Screeps console stats samples after ${args.consoleTimeout}ms`
+        );
+      } catch (error) {
+        if (!String(error instanceof Error ? error.message : error).startsWith("Timed out")) throw error;
+        finish("timeout");
+      }
+    }
+  } catch (error) {
+    const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
+    status = message.startsWith("Timed out") ? "timeout" : "error";
+    for (const shard of args.shards) {
+      errorsByShard[shard].push({ sample: byShard[shard].length + 1, source: "console", message });
+    }
+  } finally {
+    disconnectSocket(apiClient.socket);
+  }
+
+  const { gameTicksByShard, timeErrorsByShard } = await fetchGameTicks(apiClient, args.shards);
+  return {
+    source: "console",
+    status,
+    apiMethods: ["api.auth/me", "socket.subscribeUserConsole", "api.time|api.gameTime"],
+    byShard,
+    errorsByShard,
+    gameTicksByShard,
+    timeErrorsByShard
+  };
+}
+
+async function collectMemorySamples(apiClient, args) {
+  const byShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
+  const errorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
+  for (let sample = 1; sample <= args.samples; sample++) {
+    await Promise.all(args.shards.map(async shard => {
+      try {
+        const stats = await fetchStats(apiClient, shard);
+        if (stats) byShard[shard].push(stats);
+      } catch (error) {
+        const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
+        errorsByShard[shard].push({ sample, message });
+        console.warn(`WARN ${shard}: ${message}`);
+      }
+    }));
+    if (sample < args.samples && args.interval > 0) await sleep(args.interval);
+  }
+
+  const { gameTicksByShard, timeErrorsByShard } = await fetchGameTicks(apiClient, args.shards);
+  return {
+    source: "memory",
+    status: "complete",
+    apiMethods: ["api.memory.get|api.userMemoryGet", "api.time|api.gameTime"],
+    byShard,
+    errorsByShard,
+    gameTicksByShard,
+    timeErrorsByShard
+  };
+}
+
+export function createLiveApiClient(apiModule, args, token) {
+  const options = {
+    token,
+    protocol: args.protocol,
+    hostname: args.hostname,
+    port: args.port,
+    path: process.env.SCREEPS_PATH || "/"
+  };
+
+  const LegacyApi = apiModule?.ScreepsAPI ?? apiModule?.default?.ScreepsAPI;
+  if (typeof LegacyApi === "function") {
+    const api = new LegacyApi(options);
+    return {
+      transport: "ScreepsAPI",
+      socket: api.socket,
+      memoryGet: (memoryPath, shard) => api.memory.get(memoryPath, shard),
+      gameTime: shard => api.time(shard)
+    };
+  }
+
+  const HttpClient = apiModule?.ScreepsHttpClient ?? apiModule?.default?.ScreepsHttpClient;
+  if (typeof HttpClient === "function") {
+    const api = new HttpClient(options);
+    return {
+      transport: "ScreepsHttpClient",
+      socket: api.socket,
+      memoryGet: (memoryPath, shard) => api.userMemoryGet(memoryPath, shard),
+      gameTime: shard => api.gameTime(shard)
+    };
+  }
+
+  throw new Error("screeps-api module did not expose a supported API client");
+}
+
+function buildSummary(args, collection) {
+  const summary = {
+    generated_at: new Date().toISOString(),
+    hostname: args.hostname,
+    source: collection.source,
+    collection_status: collection.status,
+    api_policy: {
+      read_only: true,
+      methods_used: collection.apiMethods,
+      state_changing_endpoints_used: false
+    },
+    samples_requested: args.samples,
+    interval_ms: args.interval,
+    console_timeout_ms: args.consoleTimeout,
+    allow_empty: args.allowEmpty,
+    allow_stale: args.allowStale,
+    max_stats_age: args.maxStatsAge,
+    shards: Object.fromEntries(Object.entries(collection.byShard).map(([shard, samples]) => [shard, summarizeShard(samples, collection.errorsByShard[shard] || [], {
+      gameTick: collection.gameTicksByShard[shard],
+      maxStatsAge: args.maxStatsAge,
+      timeErrors: collection.timeErrorsByShard[shard] || []
+    })]))
+  };
+  summary.health = evaluateTelemetryHealth(summary, { allowEmpty: args.allowEmpty, allowStale: args.allowStale });
+  if (collection.source === "console" && summary.health.total_samples === 0) {
+    summary.health.message = summary.health.message.replace("Memory.stats telemetry is unavailable", "console stats telemetry is unavailable");
+  }
+  return summary;
 }
 
 function printSummary(summary) {
@@ -312,58 +597,13 @@ async function main() {
   const args = parseArgs(process.argv);
   if (!process.env.SCREEPS_TOKEN) throw new Error("SCREEPS_TOKEN is required");
 
-  const { ScreepsAPI } = createRequire(import.meta.url)("screeps-api");
-  const api = new ScreepsAPI({
-    token: process.env.SCREEPS_TOKEN,
-    protocol: args.protocol,
-    hostname: args.hostname,
-    port: args.port,
-    path: process.env.SCREEPS_PATH || "/"
-  });
-
-  const byShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
-  const errorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
-  const gameTicksByShard = Object.fromEntries(args.shards.map(shard => [shard, null]));
-  const timeErrorsByShard = Object.fromEntries(args.shards.map(shard => [shard, []]));
-  for (let sample = 1; sample <= args.samples; sample++) {
-    await Promise.all(args.shards.map(async shard => {
-      try {
-        const stats = await fetchStats(api, shard);
-        if (stats) byShard[shard].push(stats);
-      } catch (error) {
-        const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
-        errorsByShard[shard].push({ sample, message });
-        console.warn(`WARN ${shard}: ${message}`);
-      }
-    }));
-    if (sample < args.samples && args.interval > 0) await sleep(args.interval);
-  }
-
-  await Promise.all(args.shards.map(async shard => {
-    try {
-      gameTicksByShard[shard] = await fetchGameTick(api, shard);
-    } catch (error) {
-      const message = redactScreepsApiMessage(error instanceof Error ? error.message : String(error));
-      timeErrorsByShard[shard].push({ message });
-      console.warn(`WARN ${shard} api.time: ${message}`);
-    }
-  }));
-
-  const summary = {
-    generated_at: new Date().toISOString(),
-    hostname: args.hostname,
-    samples_requested: args.samples,
-    interval_ms: args.interval,
-    allow_empty: args.allowEmpty,
-    allow_stale: args.allowStale,
-    max_stats_age: args.maxStatsAge,
-    shards: Object.fromEntries(Object.entries(byShard).map(([shard, samples]) => [shard, summarizeShard(samples, errorsByShard[shard] || [], {
-      gameTick: gameTicksByShard[shard],
-      maxStatsAge: args.maxStatsAge,
-      timeErrors: timeErrorsByShard[shard] || []
-    })]))
-  };
-  summary.health = evaluateTelemetryHealth(summary, { allowEmpty: args.allowEmpty, allowStale: args.allowStale });
+  const apiModule = createRequire(import.meta.url)("screeps-api");
+  const apiClient = createLiveApiClient(apiModule, args, process.env.SCREEPS_TOKEN);
+  const collection = args.source === "memory"
+    ? await collectMemorySamples(apiClient, args)
+    : await collectConsoleSamples(apiClient, args);
+  const summary = buildSummary(args, collection);
+  summary.api_policy.transport = apiClient.transport;
 
   fs.mkdirSync(args.outDir, { recursive: true });
   const outPath = path.join(args.outDir, `live-cpu-profile-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);

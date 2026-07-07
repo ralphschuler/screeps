@@ -23,10 +23,10 @@ Stats are output to console as a single JSON object per tick containing the enti
 {"type":"stats","data":{"tick":12345,"cpu":{"used":15.5},"empire":{"rooms":3}}}
 ```
 
-The graphite exporter's console listener subscribes to the Screeps console stream and:
-1. Parses the JSON object
-2. Flattens the nested structure (same as memory mode)
-3. Sends metrics to Grafana Cloud in real-time
+The graphite exporter's console listener and `scripts/live-cpu-profile.mjs --source console` subscribe to the Screeps console stream and:
+1. Parse the JSON object
+2. Flatten or summarize the nested structure (same stats shape as memory mode)
+3. Send metrics to Grafana Cloud or write bounded diagnostics artifacts in real-time
 
 This is the recommended method as it:
 - Provides real-time stats updates (every tick)
@@ -36,7 +36,7 @@ This is the recommended method as it:
 - Uses the same flattening logic as memory mode
 
 ### 2. Memory Polling (Backward Compatibility)
-Stats are also written to `Memory.stats` in a nested object structure. The graphite exporter can poll this via the Screeps API, but this method:
+Stats are also written to `Memory.stats` in a nested object structure. The graphite exporter or `scripts/live-cpu-profile.mjs --source memory` can poll this via the Screeps API, but this method:
 - Has API rate limits (1440 requests/day for `/api/user/memory`)
 - Has higher latency (polling interval)
 - May miss rapid changes between polls

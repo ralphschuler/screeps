@@ -5,8 +5,8 @@ Operate the bot with CPU, bucket, spawn health, room survival, and error rate as
 ## Monitoring sources
 
 - Screeps console output.
-- `Memory.stats` / unified stats package output. Screeps memory polling is rate-limited; use a no-rate-limit API token for bounded live-analysis automation when available.
-- `scripts/live-cpu-profile.mjs` for read-only CPU/bucket/process samples from `Memory.stats`; its logs redact token-bearing API error fragments.
+- `Memory.stats` / unified stats package output. Screeps memory polling is rate-limited; prefer the console WebSocket stream for bounded live-analysis automation.
+- `scripts/live-cpu-profile.mjs` for read-only CPU/bucket/process samples from console stats logs by default, with explicit Memory polling fallback; its logs redact token-bearing API error fragments.
 - Grafana dashboards linked from the root README when available.
 - Private-server artifacts under `packages/screeps-server/artifacts/<mode>/`.
 - GitHub Actions validation artifacts for duplication, complexity, coverage, and smoke tests.
@@ -33,10 +33,10 @@ Operate the bot with CPU, bucket, spawn health, room survival, and error rate as
 
 ## Live CPU profiling
 
-Use the bounded root script for read-only live CPU, bucket, process, room, role, and CPU-detail samples from `Memory.stats`:
+Use the bounded root script for read-only live CPU, bucket, process, room, role, and CPU-detail samples. The default path subscribes once to the Screeps console WebSocket stream and parses the bot's `{"type":"stats","data":...}` logs, avoiding `/api/user/memory` polling limits:
 
 ```bash
-SCREEPS_TOKEN=<read-only-or-no-rate-limit-token> npm run profile:live:cpu
+SCREEPS_TOKEN=<read-only-token-with-console-access> npm run profile:live:cpu
 ```
 
 Override the target safely with CLI flags or env vars when profiling a private server:
@@ -45,12 +45,12 @@ Override the target safely with CLI flags or env vars when profiling a private s
 SCREEPS_TOKEN=<token> npm run profile:live:cpu -- --samples 5 --interval 1000 --shards shard0 --hostname 127.0.0.1 --protocol http --port 21025
 ```
 
-Supported environment variables: `SCREEPS_TOKEN` (required), `SCREEPS_HOSTNAME`, `SCREEPS_PROTOCOL`, `SCREEPS_PORT`, and `SCREEPS_PATH`. The profiler only reads `Memory.stats`; do not paste token-bearing Screeps URLs into issues or logs.
+Supported environment variables: `SCREEPS_TOKEN` (required), `SCREEPS_HOSTNAME`, `SCREEPS_PROTOCOL`, `SCREEPS_PORT`, and `SCREEPS_PATH`. Use `--source memory` only when console stats are unavailable or a no-rate-limit token is configured; do not paste token-bearing Screeps URLs into issues or logs.
 
-By default, the profiler fails closed when every requested shard returns zero samples, which usually means the Memory API is rate-limited or unavailable. Use `--allow-empty` only when you intentionally want degraded artifacts for investigation:
+By default, the profiler fails closed when every requested shard returns zero samples. For console mode, this usually means the bot did not emit stats logs on that shard before `--console-timeout`. For Memory mode, it usually means `/api/user/memory` is rate-limited or unavailable. Use `--allow-empty` only when you intentionally want degraded artifacts for investigation:
 
 ```bash
-SCREEPS_TOKEN=<token> node scripts/live-cpu-profile.mjs --samples 1 --interval 0 --shards shard1 --allow-empty
+SCREEPS_TOKEN=<token> node scripts/live-cpu-profile.mjs --source console --samples 1 --interval 0 --shards shard1 --allow-empty
 ```
 
 For structural live snapshots, deployment gates can fail when Memory reads are unavailable while still writing redacted artifacts:
@@ -88,7 +88,7 @@ Treat these as failures: no tick progression, bot upload failure, missing test m
 - **Global reset loop:** inspect first thrown error in console/harness logs, then add a regression test around initialization.
 - **Global heap switch:** check `Memory.runtimeDiagnostics.global.switchCount`; repeated increments mean heap globals may be stale.
 - **Bucket drain:** disable expensive visuals/planning first, then profile process metrics and hot path pathfinding.
-- **Live Memory API rate limits:** reduce sample count/interval pressure or configure a no-rate-limit `SCREEPS_TOKEN`; do not paste token-bearing Screeps account URLs into issues or logs.
+- **Live Memory API rate limits:** use `scripts/live-cpu-profile.mjs --source console` first; reserve `--source memory` for no-rate-limit tokens or very low-frequency checks. Do not paste token-bearing Screeps account URLs into issues or logs.
 - **Allied target risk:** use shared alliance helpers from core/defense and add tests for `TooAngel`/`TedRoastBeef`.
 
 ## Deploy/version marker
