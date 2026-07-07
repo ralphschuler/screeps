@@ -36,19 +36,41 @@ function writePackage(
   writeFileSync(path.join(packageDir, "src", "index.ts"), source);
 }
 
+function writeBotPackage(packagesDir, { dependencies = {}, source = "" } = {}) {
+  const packageDir = path.join(packagesDir, "screeps-bot");
+  mkdirSync(path.join(packageDir, "src"), { recursive: true });
+  writeFileSync(
+    path.join(packageDir, "package.json"),
+    JSON.stringify(
+      {
+        name: "screeps-typescript-starter",
+        version: "0.0.0-test",
+        dependencies,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  writeFileSync(path.join(packageDir, "src", "main.ts"), source);
+}
+
 function makePackagesFixture() {
   return mkdtempSync(path.join(tmpdir(), "screeps-framework-deps-"));
 }
 
 function runSyncDeps(packagesDir, args = ["--check"]) {
-  return spawnSync(process.execPath, ["scripts/sync-framework-deps.js", ...args], {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      FRAMEWORK_DEPS_PACKAGES_DIR: packagesDir,
+  return spawnSync(
+    process.execPath,
+    ["scripts/sync-framework-deps.js", ...args],
+    {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        FRAMEWORK_DEPS_PACKAGES_DIR: packagesDir,
+      },
+      encoding: "utf8",
     },
-    encoding: "utf8",
-  });
+  );
 }
 
 function runSyncDepsCheck(packagesDir) {
@@ -58,7 +80,8 @@ function runSyncDepsCheck(packagesDir) {
 test("sync deps check fails when a framework package imports an undeclared internal workspace dependency", () => {
   const packagesDir = makePackagesFixture();
   writePackage(packagesDir, "screeps-alpha", {
-    source: 'import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = beta;\n',
+    source:
+      'import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = beta;\n',
   });
   writePackage(packagesDir, "screeps-beta", {
     source: "export const beta = 1;\n",
@@ -67,7 +90,10 @@ test("sync deps check fails when a framework package imports an undeclared inter
   const result = runSyncDepsCheck(packagesDir);
 
   assert.notEqual(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stdout + result.stderr, /missing internal workspace dependenc/i);
+  assert.match(
+    result.stdout + result.stderr,
+    /missing internal workspace dependenc/i,
+  );
   assert.match(result.stdout + result.stderr, /@ralphschuler\/screeps-alpha/);
   assert.match(result.stdout + result.stderr, /@ralphschuler\/screeps-beta/);
 });
@@ -76,7 +102,8 @@ test("sync deps check passes when internal workspace imports are declared in pac
   const packagesDir = makePackagesFixture();
   writePackage(packagesDir, "screeps-alpha", {
     dependencies: { "@ralphschuler/screeps-beta": "*" },
-    source: 'import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = beta;\n',
+    source:
+      'import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = beta;\n',
   });
   writePackage(packagesDir, "screeps-beta", {
     source: "export const beta = 1;\n",
@@ -87,11 +114,78 @@ test("sync deps check passes when internal workspace imports are declared in pac
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
+test("sync deps check fails when the bot imports an undeclared internal workspace dependency", () => {
+  const packagesDir = makePackagesFixture();
+  writePackage(packagesDir, "screeps-alpha", {
+    source: "export const alpha = 1;\n",
+  });
+  writePackage(packagesDir, "screeps-beta", {
+    source: "export const beta = 1;\n",
+  });
+  writeBotPackage(packagesDir, {
+    source:
+      'import { beta } from "@ralphschuler/screeps-beta";\nexport const main = beta;\n',
+  });
+
+  const result = runSyncDepsCheck(packagesDir);
+
+  assert.notEqual(result.status, 0, result.stdout + result.stderr);
+  assert.match(
+    result.stdout + result.stderr,
+    /missing internal workspace dependenc/i,
+  );
+  assert.match(result.stdout + result.stderr, /screeps-typescript-starter/);
+  assert.match(result.stdout + result.stderr, /@ralphschuler\/screeps-beta/);
+});
+
+test("sync deps check fails when the bot references an undeclared internal package with import types", () => {
+  const packagesDir = makePackagesFixture();
+  writePackage(packagesDir, "screeps-alpha", {
+    source: "export const alpha = 1;\n",
+  });
+  writePackage(packagesDir, "screeps-beta", {
+    source: "export interface Beta { value: number; }\n",
+  });
+  writeBotPackage(packagesDir, {
+    source:
+      'export type BotBeta = import("@ralphschuler/screeps-beta").Beta;\n',
+  });
+
+  const result = runSyncDepsCheck(packagesDir);
+
+  assert.notEqual(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout + result.stderr, /screeps-typescript-starter/);
+  assert.match(result.stdout + result.stderr, /@ralphschuler\/screeps-beta/);
+});
+
+test("sync deps check fails when the bot imports an internal dependency with a non-workspace manifest version", () => {
+  const packagesDir = makePackagesFixture();
+  writePackage(packagesDir, "screeps-alpha", {
+    source: "export const alpha = 1;\n",
+  });
+  writePackage(packagesDir, "screeps-beta", {
+    source: "export const beta = 1;\n",
+  });
+  writeBotPackage(packagesDir, {
+    dependencies: { "@ralphschuler/screeps-beta": "^0.1.0" },
+    source:
+      'import { beta } from "@ralphschuler/screeps-beta";\nexport const main = beta;\n',
+  });
+
+  const result = runSyncDepsCheck(packagesDir);
+
+  assert.notEqual(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout + result.stderr, /screeps-typescript-starter/);
+  assert.match(result.stdout + result.stderr, /@ralphschuler\/screeps-beta/);
+  assert.match(result.stdout + result.stderr, /\^0\.1\.0 → \*/);
+});
+
 test("devDependencies do not satisfy framework source imports", () => {
   const packagesDir = makePackagesFixture();
   writePackage(packagesDir, "screeps-alpha", {
     devDependencies: { "@ralphschuler/screeps-beta": "*" },
-    source: 'import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = beta;\n',
+    source:
+      'import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = beta;\n',
   });
   writePackage(packagesDir, "screeps-beta", {
     source: "export const beta = 1;\n",
@@ -100,13 +194,17 @@ test("devDependencies do not satisfy framework source imports", () => {
   const result = runSyncDepsCheck(packagesDir);
 
   assert.notEqual(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stdout + result.stderr, /missing internal workspace dependenc/i);
+  assert.match(
+    result.stdout + result.stderr,
+    /missing internal workspace dependenc/i,
+  );
 });
 
 test("commented internal import examples are ignored", () => {
   const packagesDir = makePackagesFixture();
   writePackage(packagesDir, "screeps-alpha", {
-    source: '// import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = 1;\n',
+    source:
+      '// import { beta } from "@ralphschuler/screeps-beta";\nexport const alpha = 1;\n',
   });
   writePackage(packagesDir, "screeps-beta", {
     source: "export const beta = 1;\n",
@@ -130,7 +228,53 @@ test("sync deps writes missing internal imports into package dependencies", () =
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const packageJson = JSON.parse(
-    readFileSync(path.join(packagesDir, "@ralphschuler", "screeps-alpha", "package.json"), "utf8"),
+    readFileSync(
+      path.join(packagesDir, "@ralphschuler", "screeps-alpha", "package.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(packageJson.dependencies["@ralphschuler/screeps-beta"], "*");
+});
+
+test("sync deps writes missing bot internal imports into bot dependencies", () => {
+  const packagesDir = makePackagesFixture();
+  writePackage(packagesDir, "screeps-alpha", {
+    source: "export const alpha = 1;\n",
+  });
+  writePackage(packagesDir, "screeps-beta", {
+    source: "export const beta = 1;\n",
+  });
+  writeBotPackage(packagesDir, {
+    source: 'export { beta } from "@ralphschuler/screeps-beta";\n',
+  });
+
+  const result = runSyncDeps(packagesDir, []);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const packageJson = JSON.parse(
+    readFileSync(path.join(packagesDir, "screeps-bot", "package.json"), "utf8"),
+  );
+  assert.equal(packageJson.dependencies["@ralphschuler/screeps-beta"], "*");
+});
+
+test("sync deps normalizes bot internal dependency versions", () => {
+  const packagesDir = makePackagesFixture();
+  writePackage(packagesDir, "screeps-alpha", {
+    source: "export const alpha = 1;\n",
+  });
+  writePackage(packagesDir, "screeps-beta", {
+    source: "export const beta = 1;\n",
+  });
+  writeBotPackage(packagesDir, {
+    dependencies: { "@ralphschuler/screeps-beta": "^0.1.0" },
+    source: 'export { beta } from "@ralphschuler/screeps-beta";\n',
+  });
+
+  const result = runSyncDeps(packagesDir, []);
+
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const packageJson = JSON.parse(
+    readFileSync(path.join(packagesDir, "screeps-bot", "package.json"), "utf8"),
   );
   assert.equal(packageJson.dependencies["@ralphschuler/screeps-beta"], "*");
 });

@@ -3,8 +3,9 @@
  * Framework Package Dependency Synchronization Script
  *
  * This script ensures all @ralphschuler/screeps-* framework packages have
- * consistent devDependencies by reading from a shared configuration file
- * and updating all package.json files.
+ * consistent devDependencies by reading from a shared configuration file,
+ * and verifies internal workspace imports are declared in framework and bot
+ * package.json files.
  *
  * Usage:
  *   node scripts/sync-framework-deps.js [--check]
@@ -66,6 +67,10 @@ if (
 }
 
 const sharedDevDeps = sharedDepsConfig.framework.devDependencies;
+// This npm-workspace repository currently represents local workspace links with
+// "*" in source manifests. Publish-time workspace normalization is tracked
+// separately from this dependency-declaration guard.
+const INTERNAL_WORKSPACE_DEPENDENCY_VERSION = "*";
 
 // Find all framework packages: any package.json under packages/ whose name starts with @ralphschuler/screeps-
 // Excludes server, tasks, and posis packages which have different dependency requirements
@@ -80,16 +85,11 @@ if (!fs.existsSync(packagesDir)) {
 }
 
 /**
- * Recursively find all package.json files under a root directory whose
- * package name starts with @ralphschuler/screeps- but exclude non-framework packages.
+ * Recursively find all package.json files under a root directory matching a
+ * package predicate.
  */
-function findFrameworkPackageJsons(rootDir) {
+function findPackageJsons(rootDir, predicate) {
   const results = [];
-  const excludedPackages = [
-    "@ralphschuler/screeps-server",
-    "@ralphschuler/screeps-tasks",
-    "@ralphschuler/screeps-posis",
-  ];
 
   function walk(dir) {
     let entries;
@@ -114,11 +114,7 @@ function findFrameworkPackageJsons(rootDir) {
         try {
           const pkgContent = fs.readFileSync(fullPath, "utf8");
           const pkgJson = JSON.parse(pkgContent);
-          if (
-            typeof pkgJson.name === "string" &&
-            pkgJson.name.startsWith("@ralphschuler/screeps-") &&
-            !excludedPackages.includes(pkgJson.name)
-          ) {
+          if (predicate(pkgJson)) {
             results.push(fullPath);
           }
         } catch {
@@ -130,6 +126,42 @@ function findFrameworkPackageJsons(rootDir) {
 
   walk(rootDir);
   return results;
+}
+
+/**
+ * Recursively find all package.json files under a root directory whose
+ * package name starts with @ralphschuler/screeps- but exclude non-framework packages.
+ */
+function findFrameworkPackageJsons(rootDir) {
+  const excludedPackages = [
+    "@ralphschuler/screeps-server",
+    "@ralphschuler/screeps-tasks",
+    "@ralphschuler/screeps-posis",
+  ];
+
+  return findPackageJsons(
+    rootDir,
+    (pkgJson) =>
+      typeof pkgJson.name === "string" &&
+      pkgJson.name.startsWith("@ralphschuler/screeps-") &&
+      !excludedPackages.includes(pkgJson.name),
+  );
+}
+
+function findInternalPackageJsons(rootDir) {
+  return findPackageJsons(
+    rootDir,
+    (pkgJson) =>
+      typeof pkgJson.name === "string" &&
+      pkgJson.name.startsWith("@ralphschuler/screeps-"),
+  );
+}
+
+function findBotPackageJsons(rootDir) {
+  return findPackageJsons(
+    rootDir,
+    (pkgJson) => pkgJson.name === "screeps-typescript-starter",
+  );
 }
 
 const SOURCE_FILE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs"]);
@@ -181,7 +213,10 @@ function findSourceFiles(packageRoot) {
         if (!SOURCE_DIR_EXCLUDES.has(entry.name)) walk(fullPath);
         continue;
       }
-      if (entry.isFile() && SOURCE_FILE_EXTENSIONS.has(path.extname(entry.name))) {
+      if (
+        entry.isFile() &&
+        SOURCE_FILE_EXTENSIONS.has(path.extname(entry.name))
+      ) {
         files.push(fullPath);
       }
     }
@@ -223,11 +258,19 @@ function collectImportSpecifiers(sourceFile, source) {
   function visit(node) {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
       addModuleSpecifier(node.moduleSpecifier);
+    } else if (ts.isImportTypeNode(node)) {
+      const argument = node.argument;
+      if (ts.isLiteralTypeNode(argument)) {
+        addModuleSpecifier(argument.literal);
+      }
     } else if (ts.isCallExpression(node)) {
       const [firstArg] = node.arguments;
-      const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
-      const isRequire = ts.isIdentifier(node.expression) && node.expression.text === "require";
-      if ((isDynamicImport || isRequire) && firstArg) addModuleSpecifier(firstArg);
+      const isDynamicImport =
+        node.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const isRequire =
+        ts.isIdentifier(node.expression) && node.expression.text === "require";
+      if ((isDynamicImport || isRequire) && firstArg)
+        addModuleSpecifier(firstArg);
     }
     ts.forEachChild(node, visit);
   }
@@ -248,30 +291,52 @@ function collectInternalImports(packageRoot, internalPackageNames) {
 
     for (const specifier of collectImportSpecifiers(sourceFile, source)) {
       const packageName = extractPackageName(specifier);
-      if (packageName && internalPackageNames.has(packageName)) imports.add(packageName);
+      if (packageName && internalPackageNames.has(packageName))
+        imports.add(packageName);
     }
   }
   return imports;
 }
 
-function collectDeclaredPackageDependencies(pkg) {
-  return new Set([
-    ...Object.keys(pkg.dependencies ?? {}),
-    ...Object.keys(pkg.peerDependencies ?? {}),
-    ...Object.keys(pkg.optionalDependencies ?? {}),
-  ]);
+function collectDeclaredPackageDependencyVersions(pkg) {
+  const versions = new Map();
+  for (const dependencies of [
+    pkg.dependencies,
+    pkg.peerDependencies,
+    pkg.optionalDependencies,
+  ]) {
+    for (const [packageName, version] of Object.entries(
+      dependencies ?? {},
+    )) {
+      if (!versions.has(packageName)) versions.set(packageName, version);
+    }
+  }
+  return versions;
 }
 
-function findMissingInternalDependencies(pkgPath, pkg, internalPackageNames) {
+function findInternalDependencyIssues(pkgPath, pkg, internalPackageNames) {
   const importedPackages = collectInternalImports(
     path.dirname(pkgPath),
     internalPackageNames,
   );
-  const declaredPackages = collectDeclaredPackageDependencies(pkg);
+  const declaredPackageVersions = collectDeclaredPackageDependencyVersions(pkg);
   importedPackages.delete(pkg.name);
-  return [...importedPackages]
-    .filter((packageName) => !declaredPackages.has(packageName))
-    .sort();
+
+  const missing = [];
+  const invalidVersions = [];
+  for (const packageName of [...importedPackages].sort()) {
+    const declaredVersion = declaredPackageVersions.get(packageName);
+    if (declaredVersion === undefined) {
+      missing.push(packageName);
+    } else if (declaredVersion !== INTERNAL_WORKSPACE_DEPENDENCY_VERSION) {
+      invalidVersions.push({
+        packageName,
+        currentVersion: String(declaredVersion),
+      });
+    }
+  }
+
+  return { missing, invalidVersions };
 }
 
 function loadInternalPackageNames(packageJsonPaths) {
@@ -288,8 +353,12 @@ function loadInternalPackageNames(packageJsonPaths) {
 }
 
 let packageDirs;
+let internalPackageDirs;
+let botPackageDirs;
 try {
   packageDirs = findFrameworkPackageJsons(packagesDir);
+  internalPackageDirs = findInternalPackageJsons(packagesDir);
+  botPackageDirs = findBotPackageJsons(packagesDir);
 } catch (error) {
   exitWithError(`Failed to scan packages directory: ${error.message}`);
 }
@@ -300,7 +369,7 @@ if (packageDirs.length === 0) {
   );
 }
 
-const internalPackageNames = loadInternalPackageNames(packageDirs);
+const internalPackageNames = loadInternalPackageNames(internalPackageDirs);
 
 // Check if running in check-only mode
 const checkOnly = process.argv.includes("--check");
@@ -314,6 +383,7 @@ console.log("━━━━━━━━━━━━━━━━━━━━━━�
 console.log("");
 console.log(`Mode: ${checkOnly ? "CHECK ONLY" : "SYNC"}`);
 console.log(`Found ${packageDirs.length} framework packages`);
+console.log(`Found ${botPackageDirs.length} bot packages`);
 console.log("");
 
 packageDirs.forEach((pkgPath) => {
@@ -356,14 +426,20 @@ packageDirs.forEach((pkgPath) => {
 
   // Check for missing internal workspace package declarations. Framework packages
   // should be independently buildable/publishable from their package manifests.
-  const missingInternalDependencies = findMissingInternalDependencies(
+  const internalDependencyIssues = findInternalDependencyIssues(
     pkgPath,
     pkg,
     internalPackageNames,
   );
-  for (const depName of missingInternalDependencies) {
+  for (const depName of internalDependencyIssues.missing) {
     inconsistencies.push(
-      `  + ${depName}: * (missing internal workspace dependency)`,
+      `  + ${depName}: ${INTERNAL_WORKSPACE_DEPENDENCY_VERSION} (missing internal workspace dependency)`,
+    );
+  }
+  for (const { packageName: depName, currentVersion } of
+    internalDependencyIssues.invalidVersions) {
+    inconsistencies.push(
+      `  ~ ${depName}: ${currentVersion} → ${INTERNAL_WORKSPACE_DEPENDENCY_VERSION} (internal workspace dependency version)`,
     );
   }
 
@@ -395,12 +471,19 @@ packageDirs.forEach((pkgPath) => {
         ...sharedDevDeps,
       };
 
-      if (missingInternalDependencies.length > 0) {
+      if (
+        internalDependencyIssues.missing.length > 0 ||
+        internalDependencyIssues.invalidVersions.length > 0
+      ) {
         pkg.dependencies = {
           ...(pkg.dependencies ?? {}),
         };
-        for (const depName of missingInternalDependencies) {
-          pkg.dependencies[depName] = "*";
+        for (const depName of internalDependencyIssues.missing) {
+          pkg.dependencies[depName] = INTERNAL_WORKSPACE_DEPENDENCY_VERSION;
+        }
+        for (const { packageName: depName } of
+          internalDependencyIssues.invalidVersions) {
+          pkg.dependencies[depName] = INTERNAL_WORKSPACE_DEPENDENCY_VERSION;
         }
         pkg.dependencies = sortObjectByKey(pkg.dependencies);
       }
@@ -409,6 +492,74 @@ packageDirs.forEach((pkgPath) => {
       pkg.devDependencies = sortObjectByKey(pkg.devDependencies);
 
       // Write back to file with consistent formatting
+      try {
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+        updatedCount++;
+        console.log(`   ✅ Updated`);
+        console.log("");
+      } catch (error) {
+        console.error(`   ❌ Failed to write: ${error.message}`);
+        console.error("");
+      }
+    }
+  }
+});
+
+botPackageDirs.forEach((pkgPath) => {
+  let pkg;
+  try {
+    const pkgContent = fs.readFileSync(pkgPath, "utf8");
+    pkg = JSON.parse(pkgContent);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      console.error(`⚠️  Skipping ${pkgPath}: Invalid JSON - ${error.message}`);
+    } else {
+      console.error(`⚠️  Skipping ${pkgPath}: ${error.message}`);
+    }
+    return;
+  }
+
+  const packageName = pkg.name;
+  const relativePath = path.relative(process.cwd(), pkgPath);
+  const internalDependencyIssues = findInternalDependencyIssues(
+    pkgPath,
+    pkg,
+    internalPackageNames,
+  );
+
+  if (
+    internalDependencyIssues.missing.length > 0 ||
+    internalDependencyIssues.invalidVersions.length > 0
+  ) {
+    hasInconsistencies = true;
+    console.log(`📦 ${packageName}`);
+    console.log(`   ${relativePath}`);
+    for (const depName of internalDependencyIssues.missing) {
+      console.log(
+        `  + ${depName}: ${INTERNAL_WORKSPACE_DEPENDENCY_VERSION} (missing internal workspace dependency)`,
+      );
+    }
+    for (const { packageName: depName, currentVersion } of
+      internalDependencyIssues.invalidVersions) {
+      console.log(
+        `  ~ ${depName}: ${currentVersion} → ${INTERNAL_WORKSPACE_DEPENDENCY_VERSION} (internal workspace dependency version)`,
+      );
+    }
+    console.log("");
+
+    if (!checkOnly) {
+      pkg.dependencies = {
+        ...(pkg.dependencies ?? {}),
+      };
+      for (const depName of internalDependencyIssues.missing) {
+        pkg.dependencies[depName] = INTERNAL_WORKSPACE_DEPENDENCY_VERSION;
+      }
+      for (const { packageName: depName } of
+        internalDependencyIssues.invalidVersions) {
+        pkg.dependencies[depName] = INTERNAL_WORKSPACE_DEPENDENCY_VERSION;
+      }
+      pkg.dependencies = sortObjectByKey(pkg.dependencies);
+
       try {
         fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
         updatedCount++;
@@ -434,14 +585,17 @@ if (checkOnly) {
     console.log("Run `npm run sync:deps` to synchronize all packages");
     process.exit(1);
   } else {
-    console.log("✅ PASS: All framework packages have consistent dependencies");
+    console.log("✅ PASS: All package dependency checks passed");
   }
 } else {
   if (updatedCount > 0) {
-    console.log(`✨ Synchronized ${updatedCount} framework packages`);
+    console.log(`✨ Synchronized ${updatedCount} package manifests`);
     console.log("");
-    console.log("All packages now have consistent devDependencies from:");
+    console.log("Framework packages now have consistent devDependencies from:");
     console.log(`   ${sharedDepsPath}`);
+    console.log(
+      "Internal workspace imports are declared in package dependencies.",
+    );
   } else {
     console.log("✅ All packages already synchronized");
   }
