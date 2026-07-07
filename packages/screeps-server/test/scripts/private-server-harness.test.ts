@@ -22,6 +22,7 @@ import {
   summarizeServerLogDiagnostics,
   updatePollingProgress,
   validateSmokeSummary,
+  writeFailedSummaryForError,
 } from "../../scripts/private-server-harness.js";
 
 describe("private-server harness module", () => {
@@ -550,6 +551,26 @@ describe("private-server harness module", () => {
     expect(summary.finishedGameTime).to.equal(150);
     expect(summary.metrics.polls).to.equal(4);
     expect(summary.metrics.ticksAdvanced).to.equal(50);
+  });
+
+  it("rewrites a passed summary as failed when a post-validation error is caught", async () => {
+    const artifactsDir = fs.mkdtempSync(path.join(os.tmpdir(), "screeps-harness-failed-summary-"));
+    const options = parseHarnessArgs([`--artifactsDir=${artifactsDir}`], {});
+    const summary = createInitialSummary(options, new Date("2026-07-05T00:00:00.000Z"));
+    summary.status = "passed";
+
+    await writeFailedSummaryForError(options, summary, new Error("late smoke cleanup failure"));
+
+    expect(summary.status).to.equal("failed");
+    expect(summary.errors).to.have.length(1);
+    expect(summary.errors[0]).to.include("late smoke cleanup failure");
+
+    const summaryJson = JSON.parse(fs.readFileSync(path.join(artifactsDir, "summary.json"), "utf8"));
+    const summaryMarkdown = fs.readFileSync(path.join(artifactsDir, "summary.md"), "utf8");
+    expect(summaryJson.status).to.equal("failed");
+    expect(summaryJson.errors[0]).to.include("late smoke cleanup failure");
+    expect(summaryMarkdown).to.include("Status: failed");
+    expect(summaryMarkdown).to.include("late smoke cleanup failure");
   });
 
   it("restarts only the Screeps service before post-spawn runtime validation", async () => {

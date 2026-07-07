@@ -305,6 +305,20 @@ export function prepareArtifactsDir(options) {
   fs.writeFileSync(path.join(options.artifactsDir, "harness.log"), "");
 }
 
+export function formatHarnessError(error) {
+  if (error && typeof error === "object") {
+    if (typeof error.stack === "string" && error.stack.length > 0) return error.stack;
+    if (typeof error.message === "string" && error.message.length > 0) return error.message;
+  }
+  return String(error);
+}
+
+export function recordHarnessError(summary, error) {
+  const message = formatHarnessError(error);
+  if (!summary.errors.includes(message)) summary.errors.push(message);
+  return message;
+}
+
 function createLogger(options) {
   return function log(message) {
     const line = `[${new Date().toISOString()}] ${message}`;
@@ -779,6 +793,12 @@ async function writeSummary(options, summary, status) {
   );
 }
 
+export async function writeFailedSummaryForError(options, summary, error) {
+  recordHarnessError(summary, error);
+  await writeSummary(options, summary, "failed");
+  return summary;
+}
+
 export async function runPrivateServerTest(options = parseHarnessArgs()) {
   prepareArtifactsDir(options);
   const summary = createInitialSummary(options);
@@ -860,11 +880,11 @@ export async function runPrivateServerTest(options = parseHarnessArgs()) {
     await writeSummary(options, summary, "passed");
     return summary;
   } catch (error) {
-    summary.errors.push(error.stack || error.message || String(error));
+    recordHarnessError(summary, error);
     try {
       await collectLogs(options, summary, log);
     } catch {}
-    await writeSummary(options, summary, "failed");
+    await writeFailedSummaryForError(options, summary, error);
     throw error;
   } finally {
     await compose(options, log, "down", "-v", "--remove-orphans").catch(

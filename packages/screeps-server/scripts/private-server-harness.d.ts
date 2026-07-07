@@ -32,6 +32,9 @@ export function createInitialSummary(options: HarnessOptions, now?: Date): any;
 export function decodeMemoryData(data: unknown): any;
 export function inspectMemorySnapshot(memory: any, summary: any, now?: Date, options?: HarnessOptions): void;
 export function prepareArtifactsDir(options: { artifactsDir: string }): void;
+export function formatHarnessError(error: unknown): string;
+export function recordHarnessError(summary: any, error: unknown): string;
+export function writeFailedSummaryForError(options: HarnessOptions, summary: any, error: unknown): Promise<any>;
 export function resolveAvailablePorts(options: {
   serverPort: number;
   cliPort: number;
