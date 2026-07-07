@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const installTestingMod = require('../../../screepsmod-testing/src/backend.ts');
+const { runBackendRuntimeAssertions } = require('../../../screepsmod-testing/src/runtime/backendAssertions.ts');
 
 function createWarmRuntimeMemory(overrides: Record<string, any> = {}): any {
   const base = {
@@ -409,6 +410,91 @@ describe('screepsmod-testing backend mod', () => {
       memory.screepsmodTestingPlayer,
       JSON.stringify(memory.screepsmodTestingPlayer.failures, null, 2)
     ).to.deep.include({ failed: 0, skipped: 0, tick: 2000 });
+  });
+
+  it('records object-level hard-invader seed diagnostics in backend summaries', async () => {
+    const hardBody = [
+      ...Array(5).fill('tough'),
+      ...Array(25).fill('ranged_attack'),
+      ...Array(10).fill('move'),
+      ...Array(10).fill('heal'),
+    ].map(type => ({ type, hits: 100 }));
+    const hardInvader = {
+      _id: 'hard1',
+      type: 'creep',
+      room: 'W1N1',
+      name: 'ScenarioHardInvader',
+      user: 'enemy1',
+      body: hardBody,
+      hits: 5000,
+      hitsMax: 5000,
+      ticksToLive: 4999,
+      x: 23,
+      y: 25,
+      spawning: false,
+    };
+    const memory = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: {
+        names: ['defense-hard-invader'],
+        rooms: { home: 'W1N1' },
+        hardInvader: {
+          seeded: true,
+          objectId: 'hard1',
+          name: 'ScenarioHardInvader',
+          room: 'W1N1',
+          user: 'enemy1',
+          username: 'ScenarioHardInvader',
+          bodyParts: 50,
+          bodyTypes: hardBody.map(part => part.type),
+        },
+      },
+    });
+
+    const summary = await runBackendRuntimeAssertions({
+      config: {},
+      storage: {
+        db: {
+          'rooms.objects': {
+            find: async (query: any) => {
+              if (query.type === 'creep' && query.name === 'ScenarioHardInvader') return [hardInvader];
+              return [];
+            },
+          },
+        },
+      },
+      memory,
+      tick: 600,
+      runtimeWarmupTicks: 100,
+      botRuntimeWarmed: true,
+      user: { cpuAvailable: 9000 },
+      userId: 'user1',
+      userIdFilter: { user: 'user1' },
+      ownedControllers: [{ room: 'W1N1', user: 'user1' }],
+      spawns: [{ room: 'W1N1', user: 'user1' }],
+      creeps: [{ room: 'W1N1', user: 'user1', name: 'Worker1', body: [{ type: 'work', hits: 100 }] }],
+      errorSamples: [],
+      scenarios: ['defense-hard-invader'],
+      startedAt: Date.now(),
+    });
+
+    expect(summary.failed).to.equal(0);
+    expect(summary.diagnostics.scenarios.defenseHardInvader.creeps[0]).to.deep.include({
+      objectId: 'hard1',
+      name: 'ScenarioHardInvader',
+      room: 'W1N1',
+      user: 'enemy1',
+      bodyParts: 50,
+      hits: 5000,
+      hitsMax: 5000,
+      ticksToLive: 4999,
+      x: 23,
+      y: 25,
+      spawning: false,
+    });
+    expect(summary.diagnostics.scenarios.defenseHardInvader.seed).to.deep.include({
+      objectId: 'hard1',
+      bodyParts: 50,
+    });
   });
 
   it('records failed bot assertions in Memory instead of throwing out of the sandbox hook', () => {

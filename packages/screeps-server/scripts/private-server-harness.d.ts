@@ -30,6 +30,8 @@ export function parseRuntimeWarmupTicks(rawValue?: unknown, configPath?: string 
 export function parseHarnessArgs(argv?: string[], env?: Record<string, string | undefined>, roots?: Record<string, string>): HarnessOptions;
 export function createInitialSummary(options: HarnessOptions, now?: Date): any;
 export function decodeMemoryData(data: unknown): any;
+export function parseScenarioSeedConfirmationOutput(output: unknown): any | null;
+export function recordScenarioSeedConfirmation(options: HarnessOptions, summary: any, output: unknown): any | null;
 export function inspectMemorySnapshot(memory: any, summary: any, now?: Date, options?: HarnessOptions): void;
 export function prepareArtifactsDir(options: { artifactsDir: string }): void;
 export function formatHarnessError(error: unknown): string;
