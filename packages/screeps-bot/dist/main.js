@@ -15968,15 +15968,31 @@ if (t) throw t.error;
 return i.sort(function(e, t) {
 return t.deficit - e.deficit;
 }), i;
+}, e.prototype.getTerminalEnergyBudget = function(e) {
+return Math.max(0, e.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve);
+}, e.prototype.canAffordEmergencyBuyEnergy = function(e, t, r, o) {
+return e === RESOURCE_ENERGY ? t + r <= o : r <= o;
+}, e.prototype.findAffordableEmergencyBuyAmount = function(e, t, r) {
+var o = this.getTerminalEnergyBudget(r), n = Math.floor(t.cappedOrderAmount);
+if (n <= 0) return 0;
+if (this.canAffordEmergencyBuyEnergy(e, n, t.transportCost, o)) return n;
+if (o <= 0) return 0;
+for (var a = 0; a < n; ) {
+var i = Math.ceil((a + n) / 2), s = Game.market.calcTransactionCost(i, t.order.roomName, r.room.name);
+this.canAffordEmergencyBuyEnergy(e, i, s, o) ? a = i : n = i - 1;
+}
+return a;
 }, e.prototype.executeEmergencyBuy = function(e, t, r) {
 var o, n, i, s = Game.rooms[r], c = null == s ? void 0 : s.terminal;
 if (!(null === (i = null == s ? void 0 : s.controller) || void 0 === i ? void 0 : i.my) || !c) return !1;
-var u = Math.max(1, Math.floor(t)), l = this.getMarketOrders({
+if (c.cooldown > 0) return !1;
+var u = Math.max(1, Math.floor(t));
+if (e === RESOURCE_ENERGY && this.getTerminalEnergyBudget(c) <= 0) return !1;
+var l = this.getMarketOrders({
 type: ORDER_SELL,
 resourceType: e
 });
 if (0 === l.length) return !1;
-if (c.cooldown > 0) return !1;
 var m, d = (m = {
 orders: l,
 requestedAmount: u,
@@ -16004,17 +16020,13 @@ return e.emergencyScore - t.emergencyScore;
 if (0 === d.length) return !1;
 try {
 for (var p = a(d), f = p.next(); !f.done; f = p.next()) {
-var y = f.value, v = y.order, g = Math.min(u, y.cappedOrderAmount);
+var y = f.value, v = y.order, g = this.findAffordableEmergencyBuyAmount(e, y, c);
 if (!(g <= 0)) {
-var h = Game.market.calcTransactionCost(g, v.roomName, s.name);
-if (e === RESOURCE_ENERGY) for (;g > 0 && !(g + h <= Math.max(0, c.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve)) && !((g -= 1) <= 0); ) h = Game.market.calcTransactionCost(g, v.roomName, s.name); else for (;g > 0 && !(h <= Math.max(0, c.store.getUsedCapacity(RESOURCE_ENERGY) - this.config.terminalEnergyReserve)) && !((g -= 1) <= 0); ) h = Game.market.calcTransactionCost(g, v.roomName, s.name);
-if (!(g <= 0)) {
-var R = Math.max(0, Math.floor((Game.market.credits - this.config.emergencyCredits) / v.price));
-if (!((g = Math.min(g, R)) <= 0) && Game.market.deal(v.id, g, s.name) === OK) return this.recordMarketDeal(v.id, g),
+var h = Math.max(0, Math.floor((Game.market.credits - this.config.emergencyCredits) / v.price));
+if (!((g = Math.min(g, h)) <= 0) && Game.market.deal(v.id, g, s.name) === OK) return this.recordMarketDeal(v.id, g),
 U.warn("EMERGENCY BUY: ".concat(g, " ").concat(e, " for ").concat(s.name, " at ").concat(v.price.toFixed(3), " credits/unit"), {
 subsystem: "Market"
 }), !0;
-}
 }
 }
 } catch (e) {
