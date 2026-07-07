@@ -259,10 +259,13 @@ function addDefenderRequests(
 ): void {
   const maxEnergy = room.energyCapacityAvailable;
   const emergencyEnergy = getEffectiveRoomEnergyAvailable(room);
-  const priority = needs.urgency >= 2.0 || swarm.danger >= 3 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH;
-
   const threatProfile = analyzeDefenseAssistThreat(getActualHostileCreeps(room));
-  const defenderEnergy = isHardDefenseThreat(threatProfile)
+  const hardDefenseThreat = isHardDefenseThreat(threatProfile);
+  const priority = hardDefenseThreat || needs.urgency >= 2.0 || swarm.danger >= 3
+    ? SpawnPriority.EMERGENCY
+    : SpawnPriority.HIGH;
+
+  const defenderEnergy = hardDefenseThreat
     ? maxEnergy
     : priority === SpawnPriority.EMERGENCY
       ? emergencyEnergy
