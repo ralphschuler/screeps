@@ -434,6 +434,6 @@ test("allow-stale does not hide api.time freshness failures", () => {
 test("root package exposes a bounded read-only live CPU profile script", () => {
   assert.equal(
     rootPackage.scripts["profile:live:cpu"],
-    "node scripts/live-cpu-profile.mjs --source console --samples 20 --interval 3000 --shards shard0,shard1,shard2,shard3 --out-dir artifacts/cpu-profile"
+    "node scripts/live-cpu-profile.mjs --source console --samples 20 --interval 3000 --shards shard0,shard1,shard2,shard3 --out-dir .tmp/artifacts/cpu-profile"
   );
 });

@@ -125,5 +125,26 @@ performance-baselines/strategic/collected-metrics*.json
 
 # Local agent scratch/debug files
 tmp/
+.tmp/
 *-debug.ts
 *_debug.ts
+
+# Generated Screeps/live-analysis artifacts
+# Historical curated artifacts under artifacts/ remain tracked. New generated
+# live/postdeploy/refinement outputs stay local unless intentionally force-added.
+artifacts/agent/
+artifacts/subagents/
+artifacts/autonomous-live-*/
+artifacts/code-refinement-*.md
+artifacts/code-refinement-*/
+artifacts/cpu-profile*/
+artifacts/deploy-*/
+artifacts/issue-*
+artifacts/live-500-*/
+artifacts/live-analysis-*
+artifacts/postdeploy-*/
+artifacts/postdeploy-*.stderr.txt
+artifacts/postdeploy-*.stdout.json
+artifacts/postdeploy-*.log
+artifacts/triage-scout-*.md
+packages/screeps-server/artifacts/
