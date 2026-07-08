@@ -6,6 +6,7 @@ import {
   calculateThreatParitySquadSize,
   createDefenseRequest
 } from "@ralphschuler/screeps-defense";
+import { collectDefenseAssistTelemetry } from "../src/defenseAssistTelemetry.ts";
 import { analyzeDefenderNeeds } from "../src/defenderManager.ts";
 import {
   canSpawnIdleLocalMilitary,
@@ -98,6 +99,150 @@ describe("defense spawn throttling", () => {
 
   afterEach(() => {
     delete (global as any).Game;
+  });
+
+  it("collects compact defense-assist queue and staging telemetry", () => {
+    const helper = createRoom([], "W17S29", 800, 300);
+    const target = createRoom([createHostile([ATTACK, MOVE])], "W19S28", 800, 800, 3, false);
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = target;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      { roomName: "W19S28", guardsNeeded: 1, rangersNeeded: 1, healersNeeded: 0, urgency: 2, createdAt: 990 }
+    ];
+
+    spawnQueue.addRequest({
+      id: "assist_guard",
+      roomName: "W17S29",
+      role: "guard",
+      family: "military",
+      body: { parts: [ATTACK, MOVE], cost: 130, minCapacity: 130 },
+      priority: SpawnPriority.EMERGENCY,
+      targetRoom: "W19S28",
+      additionalMemory: {
+        task: "defenseAssist",
+        assistTarget: "W19S28",
+        defenseSquadId: "defenseAssist:W17S29:W19S28:990",
+        defenseSquadSize: 2,
+        defenseSquadCreatedAt: 990
+      },
+      createdAt: Game.time
+    });
+
+    Game.creeps = {
+      stagedRanger: {
+        name: "stagedRanger",
+        spawning: false,
+        room: helper,
+        body: [RANGED_ATTACK, MOVE].map(type => ({ type, hits: 100 })),
+        memory: {
+          role: "ranger",
+          homeRoom: "W17S29",
+          task: "defenseAssist",
+          assistTarget: "W19S28",
+          targetRoom: "W19S28",
+          defenseSquadId: "defenseAssist:W17S29:W19S28:990",
+          defenseSquadSize: 2,
+          defenseSquadCreatedAt: 990
+        }
+      } as unknown as Creep,
+      releasedHealer: {
+        name: "releasedHealer",
+        spawning: false,
+        room: helper,
+        body: [HEAL, MOVE].map(type => ({ type, hits: 100 })),
+        memory: {
+          role: "healer",
+          homeRoom: "W17S29",
+          task: "defenseAssist",
+          assistTarget: "W19S28",
+          targetRoom: "W19S28",
+          defenseSquadId: "defenseAssist:W17S29:W19S28:990",
+          defenseSquadSize: 2,
+          defenseSquadCreatedAt: 990,
+          defenseAssistReleasedAt: 1000,
+          defenseAssistReleaseReason: "squad-quorum"
+        }
+      } as unknown as Creep
+    } as typeof Game.creeps;
+
+    const entry = collectDefenseAssistTelemetry("W17S29").find(item => item.targetRoom === "W19S28");
+
+    assert.isOk(entry);
+    assert.deepInclude(entry!.requested, { guard: 1, ranger: 1, healer: 0, total: 2 });
+    assert.deepInclude(entry!.queued, { guard: 1, total: 1 });
+    assert.deepInclude(entry!.staged, { ranger: 1, total: 1 });
+    assert.deepInclude(entry!.moving, { healer: 1, total: 1 });
+    assert.equal(entry!.released.byReason["squad-quorum"], 1);
+    assert.equal(entry!.bodyCost.guard, 130);
+    assert.equal(entry!.affordable.guard, true);
+    assert.isAbove(entry!.assignedPower.score, 0);
+    assert.equal(entry!.blockReason, "none");
+  });
+
+  it("derives defense-assist defer reasons for blocked helper-room waves", () => {
+    const helper = createRoom([], "W17S29", 800, 0);
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W18S28 = createRoom([], "W18S28", 800, 800, 3, false);
+    Game.rooms.W19S28 = createRoom([createHostile([ATTACK, ATTACK, MOVE])], "W19S28", 800, 800, 3, false);
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      { roomName: "W18S28", guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, urgency: 2, createdAt: 990 },
+      { roomName: "W19S28", guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, urgency: 3, createdAt: 990 },
+      { roomName: "W18S29", guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, urgency: 3, createdAt: 1 }
+    ];
+
+    spawnQueue.addRequest({
+      id: "unaffordable_guard",
+      roomName: "W17S29",
+      role: "guard",
+      family: "military",
+      body: { parts: [ATTACK, MOVE], cost: 130, minCapacity: 130 },
+      priority: SpawnPriority.EMERGENCY,
+      targetRoom: "W18S28",
+      additionalMemory: {
+        task: "defenseAssist",
+        assistTarget: "W18S28"
+      },
+      createdAt: Game.time
+    });
+    Game.creeps = {
+      waitingGuard: {
+        name: "waitingGuard",
+        spawning: false,
+        room: helper,
+        body: [ATTACK, MOVE].map(type => ({ type, hits: 100 })),
+        memory: {
+          role: "guard",
+          homeRoom: "W17S29",
+          task: "defenseAssist",
+          assistTarget: "W19S28",
+          targetRoom: "W19S28"
+        }
+      } as unknown as Creep,
+      movingGuard: {
+        name: "movingGuard",
+        spawning: false,
+        room: createRoom([], "W18S29", 800, 800, 3, false),
+        body: [ATTACK, ATTACK, MOVE, MOVE].map(type => ({ type, hits: 100 })),
+        memory: {
+          role: "guard",
+          homeRoom: "W17S29",
+          task: "defenseAssist",
+          assistTarget: "W19S28",
+          targetRoom: "W19S28"
+        }
+      } as unknown as Creep
+    } as typeof Game.creeps;
+
+    const entries = collectDefenseAssistTelemetry("W17S29");
+    const unaffordable = entries.find(item => item.targetRoom === "W18S28");
+    const waitingForParity = entries.find(item => item.targetRoom === "W19S28");
+
+    assert.isUndefined(entries.find(item => item.targetRoom === "W18S29"));
+    assert.equal(unaffordable?.blockReason, "unaffordable");
+    assert.equal(unaffordable?.affordable.guard, false);
+    assert.equal(waitingForParity?.blockReason, "waiting-for-parity");
+    assert.isAbove(waitingForParity!.assignedPower.score, waitingForParity!.targetScore);
+    assert.isBelow(waitingForParity!.parityPercent, 100);
   });
 
   it("does not create high-priority defender requirements for peaceful RCL3+ rooms", () => {

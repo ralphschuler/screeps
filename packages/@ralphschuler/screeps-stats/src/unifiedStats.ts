@@ -35,7 +35,8 @@ import type {
   CPUBudgetReport,
   StatsSnapshot,
   ProfilerMemory,
-  CpuDetailStatsEntry
+  CpuDetailStatsEntry,
+  DefenseAssistTargetStatsEntry
 } from "./statsTypes";
 
 // ============================================================================
@@ -156,6 +157,7 @@ export class UnifiedStatsManager {
   private segmentRequested = false;
   private skippedProcessesThisTick = 0;
   private spawnIdleTickState: Map<string, { lastRecordedTick: number; idleSpawnTicks: number }> = new Map();
+  private defenseAssistTelemetry: Map<string, Record<string, DefenseAssistTargetStatsEntry>> = new Map();
 
   public constructor(config: Partial<UnifiedStatsConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -230,6 +232,7 @@ export class UnifiedStatsManager {
     this.subsystemMeasurements.clear();
     this.cpuDetailMeasurements.clear();
     this.roomMeasurements.clear();
+    this.defenseAssistTelemetry.clear();
     this.skippedProcessesThisTick = 0;
     
     // Drop idle-time counters for rooms no longer visible/owned in Game.rooms.
@@ -897,6 +900,32 @@ export class UnifiedStatsManager {
   }
 
   /**
+   * Record compact defense-assist queue/staging telemetry for one helper room.
+   */
+  public recordDefenseAssist(
+    roomName: string,
+    entries: DefenseAssistTargetStatsEntry[] | Record<string, DefenseAssistTargetStatsEntry>
+  ): void {
+    if (!this.config.enabled) return;
+
+    const byTarget = Array.isArray(entries)
+      ? Object.fromEntries(entries.map(entry => [entry.targetRoom, entry]))
+      : entries;
+    const roomStats = this.currentSnapshot.rooms[roomName];
+
+    if (Object.keys(byTarget).length === 0) {
+      this.defenseAssistTelemetry.delete(roomName);
+      if (roomStats?.defense) delete roomStats.defense.assist;
+      return;
+    }
+
+    this.defenseAssistTelemetry.set(roomName, byTarget);
+    if (roomStats?.defense) {
+      roomStats.defense.assist = byTarget;
+    }
+  }
+
+  /**
    * Record room statistics (call at end of room processing)
    */
   public recordRoom(room: Room, cpuUsed: number): void {
@@ -908,6 +937,7 @@ export class UnifiedStatsManager {
     const taskBoardStats = this.getRoomTaskBoardStats(room.name);
     const remoteStats = this.getRemoteStats(room.name, swarm);
     const defenseStats = this.getDefenseStats(room, hostiles, swarm);
+    const defenseAssistStats = this.defenseAssistTelemetry.get(room.name);
     const controllerDowngradeStats = this.getControllerDowngradeStats(room);
 
     // Get or create room stats entry
@@ -953,7 +983,7 @@ export class UnifiedStatsManager {
         },
         taskBoard: taskBoardStats,
         remote: remoteStats,
-        defense: defenseStats,
+        defense: defenseAssistStats ? { ...defenseStats, assist: defenseAssistStats } : defenseStats,
         profiler: {
           avgCpu: cpuUsed,
           peakCpu: cpuUsed,
@@ -970,7 +1000,7 @@ export class UnifiedStatsManager {
 
     roomStats.taskBoard = taskBoardStats;
     roomStats.remote = remoteStats;
-    roomStats.defense = defenseStats;
+    roomStats.defense = defenseAssistStats ? { ...defenseStats, assist: defenseAssistStats } : defenseStats;
     roomStats.rcl = room.controller?.level ?? 0;
     roomStats.energy.available = room.energyAvailable;
     roomStats.energy.capacity = room.energyCapacityAvailable;
@@ -1856,7 +1886,39 @@ export class UnifiedStatsManager {
           tower_energy_capacity: room.defense.towerEnergyCapacity,
           tower_energy_percent: room.defense.towerEnergyPercent,
           tower_reserve_energy: room.defense.towerReserveEnergy,
-          tower_reserve_deficit: room.defense.towerReserveDeficit
+          tower_reserve_deficit: room.defense.towerReserveDeficit,
+          ...(room.defense.assist ? {
+            assist: Object.fromEntries(Object.entries(room.defense.assist).map(([targetRoom, assist]) => [targetRoom, {
+              helper_room: assist.helperRoom,
+              target_room: assist.targetRoom,
+              urgency: assist.urgency,
+              requested: { ...assist.requested },
+              queued: { ...assist.queued },
+              spawning: { ...assist.spawning },
+              staged: { ...assist.staged },
+              moving: { ...assist.moving },
+              arrived: { ...assist.arrived },
+              released: {
+                total: assist.released.total,
+                by_reason: { ...assist.released.byReason },
+                last_reason: assist.released.lastReason,
+                last_released_at: assist.released.lastReleasedAt
+              },
+              body_cost: { ...assist.bodyCost },
+              affordable: { ...assist.affordable },
+              assigned_power: {
+                part_count: assist.assignedPower.partCount,
+                attack: assist.assignedPower.attack,
+                ranged: assist.assignedPower.ranged,
+                heal: assist.assignedPower.heal,
+                dismantle: assist.assignedPower.dismantle,
+                score: assist.assignedPower.score
+              },
+              target_score: assist.targetScore,
+              parity_percent: assist.parityPercent,
+              block_reason: assist.blockReason
+            }]))
+          } : {})
         } : undefined,
         profiler: {
           avg_cpu: room.profiler.avgCpu,
@@ -2215,5 +2277,11 @@ export type {
   CPUBudgetReport,
   CreepMetrics,
   StatsSnapshot,
-  ProfilerMemory
+  ProfilerMemory,
+  DefenseAssistTelemetryRole,
+  DefenseAssistRoleCountsStats,
+  DefenseAssistReleaseStats,
+  DefenseAssistBlockReason,
+  DefenseAssistPowerStats,
+  DefenseAssistTargetStatsEntry
 } from "./statsTypes";

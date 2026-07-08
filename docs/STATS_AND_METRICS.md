@@ -237,6 +237,22 @@ statsManager.recordRoom(room, 0.5, 0.7, {
 
 **When Updated**: Manually via `recordRoom()` calls, typically in room manager.
 
+#### Defense-assist diagnostics
+
+Helper rooms publish compact defense-assist state under:
+
+`Memory.stats.rooms[helperRoom].defense.assist[targetRoom]`
+
+Key fields:
+- `requested`, `queued`, `spawning`, `staged`, `moving`, `arrived`: `{ guard, ranger, healer, total }`
+- `body_cost` and `affordable`: planned/queued helper-room body cost and current affordability by role
+- `assigned_power`: aggregate queued/live combat power assigned by this helper room
+- `target_score` and `parity_percent`: visible threat parity when target vision exists
+- `released.by_reason`, `last_reason`, `last_released_at`: why staged creeps started traveling
+- `block_reason`: `none`, `unaffordable`, `waiting-for-parity`, `waiting-for-quorum`, or `no-local-assist`
+
+Use this during post-deploy defense checks to distinguish queued, unaffordable, staged, traveling, and released defense assists without polling raw `Memory.defenseRequests` or creep memory.
+
 ---
 
 ### 6. Pheromone Statistics

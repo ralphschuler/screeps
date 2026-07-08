@@ -497,6 +497,59 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('uses durable hard-invader seed confirmation when runtime Memory lost the seed details', async () => {
+    const memory = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: {
+        names: ['defense-hard-invader'],
+        rooms: { home: 'W1N1' },
+      },
+    });
+
+    const summary = await runBackendRuntimeAssertions({
+      config: {},
+      storage: {
+        db: {
+          'rooms.objects': {
+            find: async () => [],
+          },
+        },
+      },
+      memory,
+      tick: 600,
+      runtimeWarmupTicks: 100,
+      botRuntimeWarmed: true,
+      user: { cpuAvailable: 9000 },
+      userId: 'user1',
+      userIdFilter: { user: 'user1' },
+      ownedControllers: [{ room: 'W1N1', user: 'user1' }],
+      spawns: [{ room: 'W1N1', user: 'user1' }],
+      creeps: [{ room: 'W1N1', user: 'user1', name: 'Worker1', body: [{ type: 'work', hits: 100 }] }],
+      errorSamples: [],
+      scenarios: ['defense-hard-invader'],
+      startedAt: Date.now(),
+      scenarioSeedConfirmation: {
+        hardInvader: {
+          seeded: true,
+          objectId: 'hard1',
+          name: 'ScenarioHardInvader',
+          room: 'W1N1',
+          bodyParts: 50,
+        },
+      },
+    });
+
+    expect(summary.failed).to.equal(0);
+    expect(summary.diagnostics.scenarios.defenseHardInvader).to.deep.include({ count: 0 });
+    expect(summary.diagnostics.scenarios.defenseHardInvader.seed).to.deep.include({
+      objectId: 'hard1',
+      bodyParts: 50,
+    });
+    expect(memory.screepsmodTestingScenarios.hardInvader).to.deep.include({
+      objectId: 'hard1',
+      bodyParts: 50,
+    });
+  });
+
   it('records failed bot assertions in Memory instead of throwing out of the sandbox hook', () => {
     const engine = new EventEmitter();
     installTestingMod({ engine });
@@ -570,6 +623,65 @@ describe('screepsmod-testing backend mod', () => {
     });
     expect(memory.screepsmodTestingBackend.diagnostics.errorNotifications).to.equal(1);
     expect(memory.screepsmodTestingBackend.diagnostics.errorSamples[0]).to.include('ReferenceError');
+  });
+
+  it('loads durable scenario seed confirmation from backend storage env', async () => {
+    const envStore = new Map<string, string>([
+      ['gameTime', '600'],
+      ['memory:user1', JSON.stringify(createWarmRuntimeMemory({
+        screepsmodTestingScenarios: { names: ['defense-hard-invader'], rooms: { home: 'W1N1' } },
+      }))],
+      ['screepsmodTestingScenarioSeed:user1', JSON.stringify({
+        hardInvader: {
+          seeded: true,
+          objectId: 'hard1',
+          name: 'ScenarioHardInvader',
+          room: 'W1N1',
+          bodyParts: 50,
+        },
+      })],
+    ]);
+    const config = {
+      cronjobs: {},
+      screepsmod: { testing: { scenarios: ['defense-hard-invader'] } },
+      common: {
+        storage: {
+          env: {
+            keys: { GAMETIME: 'gameTime', MEMORY: 'memory:' },
+            get: async (key: string) => envStore.get(key),
+            set: async (key: string, value: string) => { envStore.set(key, value); },
+          },
+          db: {
+            users: { findOne: async ({ username }: any) => username === 'swarm-bot' ? { _id: 'user1', username, cpuAvailable: 9000 } : null },
+            'rooms.objects': {
+              find: async (query: any) => {
+                if (query.type === 'controller') return [{ room: 'W1N1', user: 'user1' }];
+                if (query.type === 'spawn') return [{ room: 'W1N1', user: 'user1' }];
+                if (query.type === 'creep' && query.name === 'ScenarioHardInvader') return [];
+                if (query.type === 'creep') return [{ room: 'W1N1', user: 'user1' }];
+                return [];
+              },
+            },
+          },
+        },
+      },
+    };
+
+    installTestingMod(config);
+    (config.cronjobs as any).screepsmodTesting[1]();
+    await new Promise(resolve => setImmediate(resolve));
+
+    const memory = JSON.parse(envStore.get('memory:user1') ?? '{}');
+    expect(memory.screepsmodTestingBackend).to.deep.include({ failed: 0, skipped: 0, tick: 600 });
+    expect(memory.screepsmodTestingBackend.diagnostics.scenarios.defenseHardInvader).to.deep.include({ count: 0 });
+    expect(memory.screepsmodTestingBackend.diagnostics.scenarios.defenseHardInvader.seed).to.deep.include({
+      objectId: 'hard1',
+      bodyParts: 50,
+    });
+    expect(memory.screepsmodTestingScenarios.hardInvader).to.deep.include({
+      objectId: 'hard1',
+      bodyParts: 50,
+    });
   });
 
   it('preserves player-sandbox results when the backend cronjob records fallback diagnostics', async () => {

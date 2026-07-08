@@ -335,14 +335,19 @@ function runtimeAssertCounterAfter(counters, input, minTick, name, tags, predica
     }
     assertCounter(counters, name, tags, predicate, message);
 }
-function ensureScenarioMemory(memory, scenarios, ownedRoomNames, tick) {
-    var _a, _b, _c, _d, _e, _f, _g;
+function ensureScenarioMemory(memory, scenarios, ownedRoomNames, tick, scenarioSeedConfirmation) {
+    var _a, _b, _c, _d, _e, _f;
     if (scenarios.length === 0)
         return;
     var homeRoom = ownedRoomNames[0];
-    memory.screepsmodTestingScenarios = __assign(__assign({}, ((_a = memory.screepsmodTestingScenarios) !== null && _a !== void 0 ? _a : {})), { names: scenarios, checkedAt: tick, rooms: __assign(__assign({}, ((_c = (_b = memory.screepsmodTestingScenarios) === null || _b === void 0 ? void 0 : _b.rooms) !== null && _c !== void 0 ? _c : {})), { home: homeRoom, remote: DEFAULT_SCENARIO_REMOTE_ROOM, economy: (_f = (_e = (_d = memory.screepsmodTestingScenarios) === null || _d === void 0 ? void 0 : _d.rooms) === null || _e === void 0 ? void 0 : _e.economy) !== null && _f !== void 0 ? _f : 'W2N1' }) });
+    var existingScenarioMemory = (_a = memory.screepsmodTestingScenarios) !== null && _a !== void 0 ? _a : {};
+    var hardInvaderSeed = (_b = existingScenarioMemory.hardInvader) !== null && _b !== void 0 ? _b : scenarioSeedConfirmation === null || scenarioSeedConfirmation === void 0 ? void 0 : scenarioSeedConfirmation.hardInvader;
+    memory.screepsmodTestingScenarios = __assign(__assign({}, existingScenarioMemory), { names: scenarios, checkedAt: tick, rooms: __assign(__assign({}, ((_c = existingScenarioMemory.rooms) !== null && _c !== void 0 ? _c : {})), { home: homeRoom, remote: DEFAULT_SCENARIO_REMOTE_ROOM, economy: (_e = (_d = existingScenarioMemory.rooms) === null || _d === void 0 ? void 0 : _d.economy) !== null && _e !== void 0 ? _e : 'W2N1' }) });
+    if (scenarios.indexOf('defense-hard-invader') >= 0 && hardInvaderSeed) {
+        memory.screepsmodTestingScenarios.hardInvader = hardInvaderSeed;
+    }
     if (homeRoom && scenarios.indexOf('remote-mining') >= 0) {
-        var roomMemory = (_g = memory.rooms) === null || _g === void 0 ? void 0 : _g[homeRoom];
+        var roomMemory = (_f = memory.rooms) === null || _f === void 0 ? void 0 : _f[homeRoom];
         var swarm = roomMemory === null || roomMemory === void 0 ? void 0 : roomMemory.swarm;
         if (swarm && Array.isArray(swarm.remoteAssignments) && swarm.remoteAssignments.indexOf(DEFAULT_SCENARIO_REMOTE_ROOM) < 0) {
             swarm.remoteAssignments.push(DEFAULT_SCENARIO_REMOTE_ROOM);
@@ -371,9 +376,9 @@ function assertScenarios(counters, input) {
     return __awaiter(this, void 0, void 0, function () {
         var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, hardInvaderSeed, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hardInvaderDiagnostics, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
         var e_6, _q;
-        var _r, _s, _t, _u, _v;
-        return __generator(this, function (_w) {
-            switch (_w.label) {
+        var _r, _s, _t, _u, _v, _w, _x;
+        return __generator(this, function (_y) {
+            switch (_y.label) {
                 case 0:
                     diagnostics = {};
                     if (input.scenarios.length === 0)
@@ -382,95 +387,95 @@ function assertScenarios(counters, input) {
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 3];
                     _b = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'constructionSite' }, input.userIdFilter))];
-                case 1: return [4 /*yield*/, _b.apply(void 0, [_w.sent()])];
+                case 1: return [4 /*yield*/, _b.apply(void 0, [_y.sent()])];
                 case 2:
-                    _a = _w.sent();
+                    _a = _y.sent();
                     return [3 /*break*/, 4];
                 case 3:
                     _a = [];
-                    _w.label = 4;
+                    _y.label = 4;
                 case 4:
                     constructionSites = _a;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 7];
                     _d = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'link' }, input.userIdFilter))];
-                case 5: return [4 /*yield*/, _d.apply(void 0, [_w.sent()])];
+                case 5: return [4 /*yield*/, _d.apply(void 0, [_y.sent()])];
                 case 6:
-                    _c = _w.sent();
+                    _c = _y.sent();
                     return [3 /*break*/, 8];
                 case 7:
                     _c = [];
-                    _w.label = 8;
+                    _y.label = 8;
                 case 8:
                     linkStructures = _c;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 11];
                     _f = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'extension' }, input.userIdFilter))];
-                case 9: return [4 /*yield*/, _f.apply(void 0, [_w.sent()])];
+                case 9: return [4 /*yield*/, _f.apply(void 0, [_y.sent()])];
                 case 10:
-                    _e = _w.sent();
+                    _e = _y.sent();
                     return [3 /*break*/, 12];
                 case 11:
                     _e = [];
-                    _w.label = 12;
+                    _y.label = 12;
                 case 12:
                     extensionStructures = _e;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 15];
                     _h = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'storage' }, input.userIdFilter))];
-                case 13: return [4 /*yield*/, _h.apply(void 0, [_w.sent()])];
+                case 13: return [4 /*yield*/, _h.apply(void 0, [_y.sent()])];
                 case 14:
-                    _g = _w.sent();
+                    _g = _y.sent();
                     return [3 /*break*/, 16];
                 case 15:
                     _g = [];
-                    _w.label = 16;
+                    _y.label = 16;
                 case 16:
                     storageStructures = _g;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 19];
                     _k = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'terminal' }, input.userIdFilter))];
-                case 17: return [4 /*yield*/, _k.apply(void 0, [_w.sent()])];
+                case 17: return [4 /*yield*/, _k.apply(void 0, [_y.sent()])];
                 case 18:
-                    _j = _w.sent();
+                    _j = _y.sent();
                     return [3 /*break*/, 20];
                 case 19:
                     _j = [];
-                    _w.label = 20;
+                    _y.label = 20;
                 case 20:
                     terminalStructures = _j;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 23];
                     _m = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'lab' }, input.userIdFilter))];
-                case 21: return [4 /*yield*/, _m.apply(void 0, [_w.sent()])];
+                case 21: return [4 /*yield*/, _m.apply(void 0, [_y.sent()])];
                 case 22:
-                    _l = _w.sent();
+                    _l = _y.sent();
                     return [3 /*break*/, 24];
                 case 23:
                     _l = [];
-                    _w.label = 24;
+                    _y.label = 24;
                 case 24:
                     labStructures = _l;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 27];
                     _p = toArray;
                     return [4 /*yield*/, objects.find({ type: 'creep', name: 'ScenarioHardInvader' })];
-                case 25: return [4 /*yield*/, _p.apply(void 0, [_w.sent()])];
+                case 25: return [4 /*yield*/, _p.apply(void 0, [_y.sent()])];
                 case 26:
-                    _o = _w.sent();
+                    _o = _y.sent();
                     return [3 /*break*/, 28];
                 case 27:
                     _o = [];
-                    _w.label = 28;
+                    _y.label = 28;
                 case 28:
                     hardInvaders = _o;
-                    hardInvaderSeed = (_r = input.memory.screepsmodTestingScenarios) === null || _r === void 0 ? void 0 : _r.hardInvader;
+                    hardInvaderSeed = (_s = (_r = input.memory.screepsmodTestingScenarios) === null || _r === void 0 ? void 0 : _r.hardInvader) !== null && _s !== void 0 ? _s : (_t = input.scenarioSeedConfirmation) === null || _t === void 0 ? void 0 : _t.hardInvader;
                     linkSites = constructionSites.filter(function (site) { return (site === null || site === void 0 ? void 0 : site.structureType) === 'link'; });
                     siteTypes = {};
                     try {
                         for (constructionSites_1 = __values(constructionSites), constructionSites_1_1 = constructionSites_1.next(); !constructionSites_1_1.done; constructionSites_1_1 = constructionSites_1.next()) {
                             site = constructionSites_1_1.value;
-                            type = String((_s = site === null || site === void 0 ? void 0 : site.structureType) !== null && _s !== void 0 ? _s : 'unknown');
-                            siteTypes[type] = ((_t = siteTypes[type]) !== null && _t !== void 0 ? _t : 0) + 1;
+                            type = String((_u = site === null || site === void 0 ? void 0 : site.structureType) !== null && _u !== void 0 ? _u : 'unknown');
+                            siteTypes[type] = ((_v = siteTypes[type]) !== null && _v !== void 0 ? _v : 0) + 1;
                         }
                     }
                     catch (e_6_1) { e_6 = { error: e_6_1 }; }
@@ -536,7 +541,7 @@ function assertScenarios(counters, input) {
                             });
                         };
                         hasOHLabProduct_1 = function () { return labStructures.some(function (lab) { var _a, _b, _c; return (lab === null || lab === void 0 ? void 0 : lab.mineralType) === 'OH' || ((_b = (_a = lab === null || lab === void 0 ? void 0 : lab.store) === null || _a === void 0 ? void 0 : _a.OH) !== null && _b !== void 0 ? _b : 0) > 0 || ((_c = lab === null || lab === void 0 ? void 0 : lab.cooldown) !== null && _c !== void 0 ? _c : 0) > 0; }); };
-                        economyRoom_1 = (_v = (_u = input.memory.screepsmodTestingScenarios) === null || _u === void 0 ? void 0 : _u.rooms) === null || _v === void 0 ? void 0 : _v.economy;
+                        economyRoom_1 = (_x = (_w = input.memory.screepsmodTestingScenarios) === null || _w === void 0 ? void 0 : _w.rooms) === null || _x === void 0 ? void 0 : _x.economy;
                         hasTerminalMovement = function () { return terminalStructures.some(function (terminal) {
                             var _a, _b, _c, _d, _e, _f, _g, _h;
                             if (economyRoom_1 && (terminal === null || terminal === void 0 ? void 0 : terminal.room) === economyRoom_1 && ((_b = (_a = terminal === null || terminal === void 0 ? void 0 : terminal.store) === null || _a === void 0 ? void 0 : _a.energy) !== null && _b !== void 0 ? _b : 0) > 5000)
@@ -563,7 +568,7 @@ function runBackendRuntimeAssertions(input) {
                 case 0:
                     counters = { passed: 0, skipped: 0, failures: [] };
                     ownedRoomNames = input.ownedControllers.map(function (controller) { return String(controller.room); }).filter(Boolean);
-                    ensureScenarioMemory(input.memory, input.scenarios, ownedRoomNames, input.tick);
+                    ensureScenarioMemory(input.memory, input.scenarios, ownedRoomNames, input.tick, input.scenarioSeedConfirmation);
                     assertCounter(counters, 'server exposes storage and advances ticks', ['smoke', 'server'], function () { return input.tick > 0; }, 'gameTime did not advance');
                     assertCounter(counters, 'our bot has at least one owned room controller', ['smoke', 'bot'], function () { return input.ownedControllers.length > 0; }, 'no owned controllers');
                     assertCounter(counters, 'owned room has a spawn after initialization', ['smoke', 'spawn'], function () { return input.spawns.length > 0; }, 'no owned spawns');

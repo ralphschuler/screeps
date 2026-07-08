@@ -154,6 +154,14 @@ export {
   type SpawnPlan
 } from "./spawnIntentCompiler";
 
+export {
+  collectDefenseAssistTelemetry,
+  type DefenseAssistBlockReason,
+  type DefenseAssistReleaseTelemetry,
+  type DefenseAssistTelemetryEntry,
+  type DefenseAssistTelemetryRoleCounts
+} from "./defenseAssistTelemetry";
+
 // Bot integration (interfaces for bot-specific dependencies)
 export type {
   IKernel,
