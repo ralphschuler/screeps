@@ -11,6 +11,7 @@
  * Addresses Issue: Factory automation missing
  */
 
+import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 
@@ -102,9 +103,8 @@ export class FactoryManager {
     }
 
     // Process all rooms with factories
-    const roomsWithFactories = Object.values(Game.rooms).filter(r => {
-      if (!r.controller?.my) return false;
-      const factories = r.find(FIND_MY_STRUCTURES, {
+    const roomsWithFactories = getOwnedRooms().filter(room => {
+      const factories = room.find(FIND_MY_STRUCTURES, {
         filter: s => s.structureType === STRUCTURE_FACTORY
       });
       return factories.length > 0;

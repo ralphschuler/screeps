@@ -18,6 +18,7 @@
  * - Market integration for surplus/deficit handling
  */
 
+import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { memoryManager } from "@ralphschuler/screeps-memory";
@@ -171,8 +172,8 @@ export class TerminalManager {
     }
 
     // Process terminals in all owned rooms
-    const roomsWithTerminals = Object.values(Game.rooms).filter(
-      r => r.controller?.my && r.terminal && r.terminal.my && r.terminal.isActive()
+    const roomsWithTerminals = getOwnedRooms().filter(
+      room => room.terminal && room.terminal.my && room.terminal.isActive()
     );
 
     if (roomsWithTerminals.length === 0) {

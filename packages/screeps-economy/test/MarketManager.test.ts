@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { clearGameObjectCache } from "@ralphschuler/screeps-cache";
 import { MarketManager } from "../src/market/marketManager";
 
 function createStore(contents: Partial<Record<ResourceConstant, number>>, capacity = 100000): StoreDefinition {
@@ -74,7 +75,10 @@ function getEmpireMarket(): any {
 }
 
 describe("MarketManager", () => {
-  beforeEach(() => setupGame());
+  beforeEach(() => {
+    setupGame();
+    clearGameObjectCache();
+  });
 
   it("counts storage plus terminal resources before creating buy orders", () => {
     let createOrderCount = 0;

@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "private": false,
   "scripts": {
-    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-kernel -w @ralphschuler/screeps-memory --if-present",
+    "prebuild": "npm run build -w @ralphschuler/screeps-core -w @ralphschuler/screeps-kernel -w @ralphschuler/screeps-cache -w @ralphschuler/screeps-memory --if-present",
     "build": "tsc",
     "test": "mocha test/**/*.test.ts",
     "test:watch": "mocha --watch test/**/*.test.ts",
@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/screeps-economy#readme",
   "dependencies": {
+    "@ralphschuler/screeps-cache": "*",
     "@ralphschuler/screeps-core": "*",
     "@ralphschuler/screeps-kernel": "*",
     "@ralphschuler/screeps-memory": "*",

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { clearGameObjectCache, getGameObjectCacheStats } from "@ralphschuler/screeps-cache";
 import { TerminalManager } from "../src/terminals/terminalManager";
 import { marketManager } from "../src/market/marketManager";
 
@@ -15,6 +16,13 @@ function createStore(contents: Partial<Record<ResourceConstant, number>>, capaci
     },
     getCapacity: () => capacity
   } as unknown as StoreDefinition;
+}
+
+function createOwnedRoom(name: string): Room {
+  return {
+    name,
+    controller: { my: true, level: 8 }
+  } as unknown as Room;
 }
 
 function createRoom(name: string, terminalStore: StoreDefinition, send?: StructureTerminal["send"]): Room {
@@ -36,6 +44,7 @@ function createRoom(name: string, terminalStore: StoreDefinition, send?: Structu
 
 describe("TerminalManager", () => {
   beforeEach(() => {
+    clearGameObjectCache();
     (global as any).Memory = { rooms: {}, creeps: {}, spawns: {}, flags: {}, powerCreeps: {}, clusters: {}, empire: undefined };
     (global as any).Game = {
       time: 20,
@@ -46,6 +55,25 @@ describe("TerminalManager", () => {
         calcTransactionCost: () => 100
       }
     };
+  });
+
+  it("shares the framework owned-room snapshot within a tick and refreshes next tick", () => {
+    const manager = new TerminalManager({ minBucket: 0 });
+    (Game.rooms as Record<string, Room>).W1N1 = createOwnedRoom("W1N1");
+
+    manager.run();
+
+    expect(getGameObjectCacheStats()).to.include({ hits: 0, misses: 1, size: 1 });
+
+    (Game.rooms as Record<string, Room>).W2N2 = createOwnedRoom("W2N2");
+    manager.run();
+
+    expect(getGameObjectCacheStats()).to.include({ hits: 1, misses: 1, size: 1 });
+
+    Game.time += 1;
+    manager.run();
+
+    expect(getGameObjectCacheStats()).to.include({ hits: 1, misses: 2, size: 1 });
   });
 
   it("runs terminal capacity clearing even with one owned terminal", () => {

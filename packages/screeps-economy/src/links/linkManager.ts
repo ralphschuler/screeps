@@ -15,6 +15,7 @@
  * - Each link has 800 energy capacity and cooldown after transfer
  */
 
+import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { logger } from "@ralphschuler/screeps-core";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 
@@ -92,8 +93,8 @@ export class LinkManager {
     }
 
     // Process links in all owned rooms with RCL >= 5
-    const roomsWithLinks = Object.values(Game.rooms).filter(
-      r => r.controller?.my && r.controller.level >= 5
+    const roomsWithLinks = getOwnedRooms().filter(
+      room => (room.controller?.level ?? 0) >= 5
     );
 
     for (const room of roomsWithLinks) {
