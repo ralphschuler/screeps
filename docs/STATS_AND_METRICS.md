@@ -221,6 +221,30 @@ Per-room operational metrics including energy, creeps, hostiles, and danger leve
     energyHarvested: number;        // Energy harvested (rolling avg)
     damageReceived: number;         // Damage from hostiles (rolling avg)
     danger: number;                 // Danger level (0-3)
+    taskBoard?: {
+      tasks: number;                // Total task records
+      open_tasks: number;           // Unassigned task records
+      assigned_tasks: number;       // Task records with active assignment
+      reservations: number;         // Creep reservation records
+      stale_reservations: number;   // Reservations whose creeps/tasks are stale
+      blocked_reservations: number; // Reservations blocked by invalid targets or state
+      amount: number;               // Total requested task amount
+      reserved_amount: number;      // Amount reserved by creeps
+      remaining_amount: number;     // Unreserved amount still needing work
+      delivery_amount: number;      // Requested amount for delivery task types
+      delivery_reserved_amount: number;
+      delivery_remaining_amount: number;
+      critical_delivery_remaining_amount: number; // High-priority delivery remainder
+      by_type: Record<string, {
+        tasks: number;
+        open_tasks: number;
+        assigned_tasks: number;
+        reservations: number;
+        amount: number;
+        reserved_amount: number;
+        remaining_amount: number;
+      }>;
+    };
   }
 }
 ```
@@ -235,7 +259,64 @@ statsManager.recordRoom(room, 0.5, 0.7, {
 });
 ```
 
-**When Updated**: Manually via `recordRoom()` calls, typically in room manager.
+**When Updated**: Manually via `recordRoom()` calls, typically in room manager. `taskBoard` is sampled from `Memory.creepTaskBoard.rooms[roomName]` when room stats are recorded, then published to `Memory.stats` during stats finalization.
+
+#### Task-board amount telemetry
+
+Room task-board stats expose both count backlog and amount backlog under `Memory.stats.rooms[roomName].taskBoard`:
+
+| Field | Meaning |
+| --- | --- |
+| `tasks`, `open_tasks`, `assigned_tasks` | Task counts. Use these to detect scheduler backlog by record count. |
+| `reservations`, `stale_reservations`, `blocked_reservations` | Reservation health by count. |
+| `amount` | Sum of requested task amounts. Missing, invalid, or negative amounts count as `0`. |
+| `reserved_amount` | Sum reserved by creeps for those tasks. |
+| `remaining_amount` | Unreserved amount left, computed per task as `max(0, amount - reserved_amount)`. |
+| `delivery_amount`, `delivery_reserved_amount`, `delivery_remaining_amount` | Amount totals restricted to delivery work (`refillSpawn`, `refillExtension`, `refillTower`, `fillTerminalEnergy`, `storeEnergy`). |
+| `critical_delivery_remaining_amount` | Remaining amount for high-priority delivery tasks only; this is the urgent refill pressure signal. |
+| `by_type` | Per task-type counts and amount totals for finding which task type dominates backlog. |
+
+Example:
+
+```json
+{
+  "taskBoard": {
+    "tasks": 5,
+    "open_tasks": 4,
+    "assigned_tasks": 1,
+    "reservations": 1,
+    "amount": 2300,
+    "reserved_amount": 100,
+    "remaining_amount": 2200,
+    "delivery_amount": 2300,
+    "delivery_reserved_amount": 100,
+    "delivery_remaining_amount": 2200,
+    "critical_delivery_remaining_amount": 200,
+    "by_type": {
+      "storeEnergy": {
+        "tasks": 2,
+        "open_tasks": 2,
+        "assigned_tasks": 0,
+        "reservations": 0,
+        "amount": 2000,
+        "reserved_amount": 0,
+        "remaining_amount": 2000
+      },
+      "refillSpawn": {
+        "tasks": 3,
+        "open_tasks": 2,
+        "assigned_tasks": 1,
+        "reservations": 1,
+        "amount": 300,
+        "reserved_amount": 100,
+        "remaining_amount": 200
+      }
+    }
+  }
+}
+```
+
+Interpretation: `storeEnergy` can dominate `remaining_amount` because it represents bulk storage logistics, while `refillSpawn`/`refillExtension` tasks can dominate immediate survival risk. Use `critical_delivery_remaining_amount` and `by_type.refillSpawn.remaining_amount` to separate urgent refill pressure from low-urgency bulk hauling.
 
 #### Defense-assist diagnostics
 
