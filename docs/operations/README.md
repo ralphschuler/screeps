@@ -59,10 +59,16 @@ By default, the profiler fails closed when every requested shard returns zero sa
 SCREEPS_TOKEN=<token> node scripts/live-cpu-profile.mjs --source console --samples 1 --interval 0 --shards shard1 --allow-empty
 ```
 
-For structural live snapshots, deployment gates can fail when Memory reads are unavailable while still writing redacted artifacts:
+For structural live snapshots, pass explicit rooms when possible. The default stats path reads one console WebSocket stats sample and skips `/api/user/memory` when those explicit rooms are enough; use `--stats-source memory --memory-paths all` only with no-rate-limit credentials or intentionally low-frequency checks:
 
 ```bash
-SCREEPS_TOKEN=<token> node packages/screeps-server/scripts/export-live-structural-snapshot.js --shard shard1 --rooms W18S28,W18S27 --fail-on-memory-errors
+SCREEPS_TOKEN=<token> node packages/screeps-server/scripts/export-live-structural-snapshot.js --shard shard1 --rooms W18S28,W18S27 --console-timeout 15000
+```
+
+Deployment gates can still fail when requested Memory reads are unavailable while writing redacted artifacts:
+
+```bash
+SCREEPS_TOKEN=<token> node packages/screeps-server/scripts/export-live-structural-snapshot.js --shard shard1 --rooms W18S28,W18S27 --stats-source memory --memory-paths all --fail-on-memory-errors
 ```
 
 ## Runtime triage
@@ -94,7 +100,7 @@ Treat these as failures: no tick progression, bot upload failure, missing test m
 - **Global reset loop:** inspect first thrown error in console/harness logs, then add a regression test around initialization.
 - **Global heap switch:** check `Memory.runtimeDiagnostics.global.switchCount`; repeated increments mean heap globals may be stale.
 - **Bucket drain:** disable expensive visuals/planning first, then profile process metrics and hot path pathfinding.
-- **Live Memory API rate limits:** use `scripts/live-cpu-profile.mjs --source console` first; reserve `--source memory` for no-rate-limit tokens or very low-frequency checks. Do not paste token-bearing Screeps account URLs into issues or logs.
+- **Live Memory API rate limits:** use `scripts/live-cpu-profile.mjs --source console` first, and use structural snapshots with `--rooms ...` so they can rely on console stats plus room-object endpoints. Reserve Memory modes for no-rate-limit tokens or very low-frequency checks. Do not paste token-bearing Screeps account URLs into issues or logs.
 - **Allied target risk:** use shared alliance helpers from core/defense and add tests for `TooAngel`/`TedRoastBeef`.
 
 ## Deploy/version marker

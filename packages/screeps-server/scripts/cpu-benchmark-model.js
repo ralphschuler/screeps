@@ -371,6 +371,8 @@ export function summarizeMemoryForSnapshot(memory) {
   const statsRooms = {};
   for (const [roomName, stats] of Object.entries(safeObject(memory.stats?.rooms))) {
     if (!isRoomName(roomName)) continue;
+    const taskBoard = safeObject(stats?.taskBoard ?? stats?.task_board);
+    const defense = safeObject(stats?.defense);
     statsRooms[roomName] = {
       rcl: toNumber(stats?.rcl, undefined),
       creeps: toNumber(stats?.creeps, undefined),
@@ -378,6 +380,22 @@ export function summarizeMemoryForSnapshot(memory) {
       remoteAssigned: toNumber(stats?.remote?.assigned, undefined),
       avgCpu: toNumber(stats?.profiler?.avg_cpu ?? stats?.profiler?.avgCpu, undefined),
       spawnQueueTotal: toNumber(stats?.spawn_queue?.total ?? stats?.spawnQueue?.total, undefined),
+      taskBoard: Object.keys(taskBoard).length > 0 ? {
+        tasks: toNumber(taskBoard.tasks, undefined),
+        openTasks: toNumber(taskBoard.openTasks ?? taskBoard.open_tasks, undefined),
+        assignedTasks: toNumber(taskBoard.assignedTasks ?? taskBoard.assigned_tasks, undefined),
+        reservations: toNumber(taskBoard.reservations, undefined),
+        staleReservations: toNumber(taskBoard.staleReservations ?? taskBoard.stale_reservations, undefined),
+        blockedReservations: toNumber(taskBoard.blockedReservations ?? taskBoard.blocked_reservations, undefined),
+        remainingAmount: toNumber(taskBoard.remainingAmount ?? taskBoard.remaining_amount, undefined),
+        criticalDeliveryRemainingAmount: toNumber(taskBoard.criticalDeliveryRemainingAmount ?? taskBoard.critical_delivery_remaining_amount, undefined),
+      } : undefined,
+      defense: Object.keys(defense).length > 0 ? {
+        towers: toNumber(defense.towers, undefined),
+        towerEnergy: toNumber(defense.towerEnergy ?? defense.tower_energy, undefined),
+        towerEnergyPercent: toNumber(defense.towerEnergyPercent ?? defense.tower_energy_percent, undefined),
+        towerReserveDeficit: toNumber(defense.towerReserveDeficit ?? defense.tower_reserve_deficit, undefined),
+      } : undefined,
     };
   }
 
@@ -394,7 +412,7 @@ export function summarizeMemoryForSnapshot(memory) {
   };
 }
 
-export function buildStructuralSnapshot({ hostname, shard, tick, myUserName, memory, roomResponses, roomStatus = {} }) {
+export function buildStructuralSnapshot({ hostname, shard, tick, myUserName, memory, roomResponses, roomStatus = {}, apiMethods, statsSource, apiTransport }) {
   const sourceRooms = Object.keys(roomResponses).sort();
   const roomMapping = translateRoomNames(sourceRooms);
   const rooms = sourceRooms.map((sourceName) => {
@@ -417,7 +435,9 @@ export function buildStructuralSnapshot({ hostname, shard, tick, myUserName, mem
       user: myUserName,
       apiPolicy: {
         readOnly: true,
-        methodsUsed: ["api.time", "api.memory.get", "api.raw.game.roomObjects", "api.raw.game.roomStatus", "api.me"],
+        methodsUsed: apiMethods ? [...new Set(apiMethods)] : ["api.time", "api.memory.get", "api.raw.game.roomObjects", "api.raw.game.roomStatus", "api.me"],
+        statsSource,
+        transport: apiTransport,
         stateChangingEndpointsUsed: false,
       },
       permanentAlliesNeverHostile: PERMANENT_ALLIES.slice(),
