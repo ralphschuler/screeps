@@ -186,6 +186,31 @@ function findRemoteContainerCached(creep: Creep, source: Source): StructureConta
   return container;
 }
 
+function getCarriedNonEnergyResource(creep: Creep): ResourceConstant | undefined {
+  return (Object.keys(creep.store) as ResourceConstant[]).find(
+    resource => resource !== RESOURCE_ENERGY && creep.store.getUsedCapacity(resource) > 0
+  );
+}
+
+function findRemoteHaulerCargoDelivery(ctx: CreepContext): CreepAction | null {
+  if (ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+    const energyDelivery = deliverEnergy(ctx);
+    if (energyDelivery) return energyDelivery;
+  }
+
+  const resourceType = getCarriedNonEnergyResource(ctx.creep);
+  if (!resourceType) return null;
+
+  const fallbackTargets: AnyStoreStructure[] = [
+    ...(ctx.storage ? [ctx.storage] : []),
+    ...(ctx.terminal ? [ctx.terminal] : []),
+    ...ctx.depositContainers
+  ];
+  const target = fallbackTargets.find(structure => (structure.store.getFreeCapacity(resourceType) ?? 0) > 0);
+
+  return target ? { type: "transfer", target, resourceType } : null;
+}
+
 /**
  * RemoteHauler - Transports energy from remote room to home room.
  * Picks up from remote containers/ground, delivers to home storage.
@@ -197,12 +222,18 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
   const isWorking = updateWorkingState(ctx);
   const targetRoom = ctx.memory.targetRoom;
   const homeRoom = ctx.memory.homeRoom;
+  const hasCargo = ctx.creep.store.getUsedCapacity() > 0;
 
   // SAFETY: If no valid target room, idle (executor will move away from spawn)
   // This should not happen with proper spawn logic, but provides a failsafe
   if (!targetRoom || targetRoom === homeRoom) {
     // Idle action triggers move-away-from-spawn logic in executor
     return { type: "idle" };
+  }
+
+  if (hasCargo && ctx.room.name === homeRoom) {
+    const deliverAction = findRemoteHaulerCargoDelivery(ctx);
+    if (deliverAction) return deliverAction;
   }
 
   // SAFETY: Check for nearby hostiles and flee if threatened
@@ -213,8 +244,8 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     );
     
     if (dangerousHostiles.length > 0) {
-      // If carrying energy, prioritize getting home
-      if (isWorking && ctx.room.name !== homeRoom) {
+      // If carrying cargo, prioritize getting home even before reaching full capacity.
+      if (hasCargo && ctx.room.name !== homeRoom) {
         return { type: "remoteMoveToRoom", roomName: homeRoom, routeType: "hauler" };
       }
       // Otherwise flee from hostiles
@@ -222,20 +253,20 @@ export function remoteHauler(ctx: CreepContext): CreepAction {
     }
   }
 
-  if (isWorking) {
-    // Has energy - return to home room and deliver
+  if (isWorking || (hasCargo && ctx.room.name === homeRoom)) {
+    // Has cargo - return to home room and deliver
     if (ctx.room.name !== homeRoom) {
       return { type: "remoteMoveToRoom", roomName: homeRoom, routeType: "hauler" };
     }
 
-    const deliverAction = deliverEnergy(ctx);
+    const deliverAction = findRemoteHaulerCargoDelivery(ctx);
     if (deliverAction) return deliverAction;
 
-    // FIX: No valid delivery targets found, but creep still has energy
-    // If in home room with energy but no targets, switch to collection mode
+    // FIX: No valid delivery targets found, but creep still has cargo
+    // If in home room with cargo but no targets, switch to collection mode
     // to go back to remote room and top off capacity
     // This prevents deadlock where remote haulers get stuck idle in home room
-    if (!ctx.isEmpty && ctx.room.name === homeRoom) {
+    if (hasCargo && ctx.room.name === homeRoom) {
       switchToCollectionMode(ctx);
       // Switch to collection mode and return to remote room
       return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "hauler" };

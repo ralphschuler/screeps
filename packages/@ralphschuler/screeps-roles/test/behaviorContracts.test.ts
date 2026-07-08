@@ -10,6 +10,7 @@ import {
   haulBehavior,
   healer,
   remoteHarvester,
+  remoteHauler,
   remoteWorker,
   evaluateWithStateMachine,
   TaskPriority,
@@ -249,7 +250,7 @@ describe("Behavior Contracts", () => {
     expect(findCounts.get(FIND_STRUCTURES)).to.equal(1);
   });
 
-  it("keeps builder and upgrader critical energy delivery priority aligned", () => {
+  it("keeps builder, upgrader, and hauler critical energy delivery priority aligned", () => {
     const extension = {
       id: "extension1",
       structureType: STRUCTURE_EXTENSION,
@@ -263,17 +264,14 @@ describe("Behavior Contracts", () => {
 
     const behaviors: Array<[string, (ctx: CreepContext) => CreepAction]> = [
       ["builder", buildBehavior],
-      ["upgrader", upgradeBehavior]
+      ["upgrader", upgradeBehavior],
+      ["hauler", haulBehavior]
     ];
 
     for (const [role, behavior] of behaviors) {
       const ctx = createContext(role);
       ctx.memory.working = true;
-      (ctx.creep as unknown as { store: Creep["store"] }).store = {
-        getUsedCapacity: () => 50,
-        getFreeCapacity: () => 0,
-        getCapacity: () => 50
-      } as Creep["store"];
+      (ctx.creep as unknown as { store: Creep["store"] }).store = makeEnergyStore(50, 50) as Creep["store"];
       ctx.spawnStructures = [fullSpawn, extension];
 
       const action = behavior(ctx);
@@ -281,6 +279,48 @@ describe("Behavior Contracts", () => {
       expect(action.type).to.equal("transfer");
       expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
     }
+  });
+
+  it("keeps hauler critical delivery ordering at spawn, extension, then tower before storage", () => {
+    const ctx = createContext("hauler");
+    ctx.memory.working = true;
+    (ctx.creep as unknown as { store: Creep["store"] }).store = makeEnergyStore(50, 50) as Creep["store"];
+    const spawn = {
+      id: "spawn-needs-energy",
+      structureType: STRUCTURE_SPAWN,
+      store: { getFreeCapacity: () => 0 }
+    } as unknown as StructureSpawn;
+    const extension = {
+      id: "extension-needs-energy",
+      structureType: STRUCTURE_EXTENSION,
+      store: { getFreeCapacity: () => 0 }
+    } as unknown as StructureExtension;
+    const tower = {
+      id: "tower-needs-energy",
+      structureType: STRUCTURE_TOWER,
+      store: { getFreeCapacity: () => 0 }
+    } as unknown as StructureTower;
+    const storage = {
+      id: "storage-fallback",
+      store: { getFreeCapacity: () => 1000 }
+    } as unknown as StructureStorage;
+    ctx.spawnStructures = [spawn, extension];
+    ctx.towers = [tower];
+    ctx.storage = storage;
+
+    (spawn.store as unknown as { getFreeCapacity: () => number }).getFreeCapacity = () => 300;
+    expect((haulBehavior(ctx) as Extract<CreepAction, { type: "transfer" }>).target).to.equal(spawn);
+
+    (spawn.store as unknown as { getFreeCapacity: () => number }).getFreeCapacity = () => 0;
+    (extension.store as unknown as { getFreeCapacity: () => number }).getFreeCapacity = () => 50;
+    expect((haulBehavior(ctx) as Extract<CreepAction, { type: "transfer" }>).target).to.equal(extension);
+
+    (extension.store as unknown as { getFreeCapacity: () => number }).getFreeCapacity = () => 0;
+    (tower.store as unknown as { getFreeCapacity: () => number }).getFreeCapacity = () => 100;
+    expect((haulBehavior(ctx) as Extract<CreepAction, { type: "transfer" }>).target).to.equal(tower);
+
+    (tower.store as unknown as { getFreeCapacity: () => number }).getFreeCapacity = () => 0;
+    expect((haulBehavior(ctx) as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
   });
 
   it("routes labTech through configured lab resource needs", () => {
@@ -977,6 +1017,110 @@ describe("Behavior Contracts", () => {
 
     expect(action.type).to.equal("transfer");
     expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+  });
+
+  it("remoteHauler unloads partial cargo to home storage before returning remote", () => {
+    const homeRoom = createMockRoom("W1N1");
+    const storage = {
+      id: "home-storage" as Id<StructureStorage>,
+      structureType: STRUCTURE_STORAGE,
+      pos: new RoomPosition(25, 25, "W1N1"),
+      room: homeRoom,
+      store: { getUsedCapacity: () => 0, getFreeCapacity: () => 1000 }
+    } as unknown as StructureStorage;
+    const creep = createMockCreep("remoteHauler1", {
+      room: homeRoom,
+      memory: { role: "remoteHauler", homeRoom: "W1N1", targetRoom: "W2N1", working: false },
+      store: makeEnergyStore(25, 100)
+    });
+
+    const action = remoteHauler({
+      ...createContext("remoteHauler"),
+      creep,
+      room: homeRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: true,
+      isFull: false,
+      isEmpty: false,
+      storage,
+      hostiles: []
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "transfer" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
+  it("remoteHauler unloads partial cargo to home deposit containers when storage is unavailable", () => {
+    const homeRoom = createMockRoom("W1N1");
+    const container = {
+      id: "home-container" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: new RoomPosition(24, 25, "W1N1"),
+      room: homeRoom,
+      store: { getUsedCapacity: () => 0, getFreeCapacity: () => 1500 }
+    } as unknown as StructureContainer;
+    const creep = createMockCreep("remoteHauler2", {
+      room: homeRoom,
+      memory: { role: "remoteHauler", homeRoom: "W1N1", targetRoom: "W2N1", working: false },
+      store: makeEnergyStore(25, 100)
+    });
+
+    const action = remoteHauler({
+      ...createContext("remoteHauler"),
+      creep,
+      room: homeRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: true,
+      isFull: false,
+      isEmpty: false,
+      depositContainers: [container],
+      hostiles: []
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(container);
+    expect((action as Extract<CreepAction, { type: "transfer" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
+  it("remoteHauler unloads non-energy cargo to home storage", () => {
+    const homeRoom = createMockRoom("W1N1");
+    const storage = {
+      id: "home-storage" as Id<StructureStorage>,
+      structureType: STRUCTURE_STORAGE,
+      pos: new RoomPosition(25, 25, "W1N1"),
+      room: homeRoom,
+      store: { getUsedCapacity: () => 0, getFreeCapacity: () => 1000 }
+    } as unknown as StructureStorage;
+    const creep = createMockCreep("remoteHauler3", {
+      room: homeRoom,
+      memory: { role: "remoteHauler", homeRoom: "W1N1", targetRoom: "W2N1", working: false },
+      store: {
+        [RESOURCE_HYDROGEN]: 25,
+        getUsedCapacity: (resource?: ResourceConstant) => resource === undefined || resource === RESOURCE_HYDROGEN ? 25 : 0,
+        getFreeCapacity: (resource?: ResourceConstant) => resource === undefined || resource === RESOURCE_HYDROGEN ? 75 : 0,
+        getCapacity: () => 100
+      } as unknown as Store<ResourceConstant, false>
+    });
+
+    const action = remoteHauler({
+      ...createContext("remoteHauler"),
+      creep,
+      room: homeRoom,
+      memory: creep.memory as CreepContext["memory"],
+      homeRoom: "W1N1",
+      isInHomeRoom: true,
+      isFull: false,
+      isEmpty: false,
+      storage,
+      hostiles: []
+    });
+
+    expect(action.type).to.equal("transfer");
+    expect((action as Extract<CreepAction, { type: "transfer" }>).target).to.equal(storage);
+    expect((action as Extract<CreepAction, { type: "transfer" }>).resourceType).to.equal(RESOURCE_HYDROGEN);
   });
 
   it("interrupts committed remoteWorker work when dangerous remote hostiles appear", () => {
