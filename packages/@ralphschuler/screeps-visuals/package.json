@@ -29,6 +29,7 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-visuals#readme",
   "dependencies": {
+    "@ralphschuler/screeps-cache": "*",
     "@ralphschuler/screeps-core": "*"
   },
   "devDependencies": {

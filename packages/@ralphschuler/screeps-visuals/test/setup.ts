@@ -14,6 +14,30 @@ let mockCpuUsed = 0;
   mockCpuUsed = value;
 };
 
+// Mock Screeps find constants required by framework package imports
+Object.assign(global, {
+  FIND_SOURCES: 105,
+  FIND_MINERALS: 116,
+  FIND_DEPOSITS: 122,
+  FIND_STRUCTURES: 107,
+  FIND_MY_STRUCTURES: 108,
+  FIND_HOSTILE_STRUCTURES: 109,
+  FIND_MY_SPAWNS: 112,
+  FIND_MY_CONSTRUCTION_SITES: 114,
+  FIND_CONSTRUCTION_SITES: 111,
+  FIND_CREEPS: 101,
+  FIND_MY_CREEPS: 102,
+  FIND_HOSTILE_CREEPS: 103,
+  FIND_DROPPED_RESOURCES: 106,
+  FIND_TOMBSTONES: 118,
+  FIND_RUINS: 123,
+  FIND_FLAGS: 110,
+  FIND_NUKES: 117,
+  FIND_POWER_CREEPS: 125,
+  FIND_MY_POWER_CREEPS: 126,
+  FIND_HOSTILE_POWER_CREEPS: 127
+});
+
 // Mock global Game object
 (global as typeof globalThis & { Game?: unknown }).Game = {
   time: 1000,
