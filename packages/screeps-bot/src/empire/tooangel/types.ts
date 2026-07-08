@@ -95,6 +95,18 @@ export interface TooAngelReputation {
 }
 
 /**
+ * Bounded TooAngel manager error throttle metadata.
+ */
+export interface TooAngelErrorThrottle {
+  /** Last tick where the manager emitted an error log. */
+  lastErrorTick: number;
+  /** Errors observed since the last emitted log, including suppressed errors. */
+  count: number;
+  /** Last observed error message for diagnostics. */
+  lastMessage: string;
+}
+
+/**
  * Main TooAngel memory structure
  */
 export interface TooAngelMemory {
@@ -106,4 +118,6 @@ export interface TooAngelMemory {
   lastProcessedTick: number;
   /** Bounded ring of recent terminal transaction identities for replay protection. */
   recentTransactionIds: string[];
+  /** Bounded TooAngel manager error throttle. */
+  errorThrottle?: TooAngelErrorThrottle;
 }

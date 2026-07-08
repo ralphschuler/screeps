@@ -18,6 +18,7 @@ import { logger } from "@ralphschuler/screeps-core";
 import { getConfig } from "../../config";
 import { ProcessPriority } from "../../core/kernel";
 import { LowFrequencyProcess, ProcessClass } from "../../core/processDecorators";
+import { getTooAngelMemory } from "./memoryInit";
 import { scanForNPCRooms, updateNPCRoom } from "./npcDetector";
 import { cleanupQuestCreeps, executeQuests } from "./questExecutor";
 import {
@@ -44,8 +45,41 @@ const TOOANGEL_CONFIG = {
   /** How often to request reputation (in ticks) */
   reputationInterval: 2000,
   /** How often to auto-discover quests (in ticks) */
-  questDiscoveryInterval: 1000
+  questDiscoveryInterval: 1000,
+  /** Minimum ticks between manager error logs */
+  errorLogInterval: 100
 };
+
+const LEGACY_TOOANGEL_ERROR_KEY = /^tooangel_error_\d+$/;
+
+function clearLegacyTooAngelErrorKeys(): void {
+  const memory = Memory as unknown as Record<string, unknown>;
+  for (const key in memory) {
+    if (LEGACY_TOOANGEL_ERROR_KEY.test(key)) {
+      delete memory[key];
+    }
+  }
+}
+
+function shouldLogManagerError(errorMessage: string): boolean {
+  clearLegacyTooAngelErrorKeys();
+
+  const memory = getTooAngelMemory();
+  const previous = memory.errorThrottle;
+  const previousLastErrorTick = typeof previous?.lastErrorTick === "number" ? previous.lastErrorTick : undefined;
+  const previousCount = typeof previous?.count === "number" ? previous.count : 0;
+  const ticksSinceLastError =
+    previousLastErrorTick === undefined ? Number.POSITIVE_INFINITY : Game.time - previousLastErrorTick;
+  const shouldLog = previousLastErrorTick === undefined || ticksSinceLastError < 0 || ticksSinceLastError >= TOOANGEL_CONFIG.errorLogInterval;
+
+  memory.errorThrottle = {
+    lastErrorTick: shouldLog ? Game.time : previousLastErrorTick,
+    count: shouldLog ? 1 : previousCount + 1,
+    lastMessage: errorMessage
+  };
+
+  return shouldLog;
+}
 
 /**
  * TooAngel Manager Process
@@ -140,13 +174,11 @@ export class TooAngelManager {
         this.lastQuestDiscoveryTick = Game.time;
       }
     } catch (error) {
-      // Track error count to prevent log spam
-      const errorKey = `tooangel_error_${Game.time % 100}`;
-      if (!(Memory as any)[errorKey]) {
-        logger.error(`TooAngel manager error: ${error}`, {
+      const errorMessage = String(error);
+      if (shouldLogManagerError(errorMessage)) {
+        logger.error(`TooAngel manager error: ${errorMessage}`, {
           subsystem: "TooAngel"
         });
-        (Memory as any)[errorKey] = true;
       }
     }
   }

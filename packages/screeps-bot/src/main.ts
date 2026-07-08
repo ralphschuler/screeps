@@ -106,6 +106,12 @@ declare global {
       >;
       completedQuests: string[];
       lastProcessedTick: number;
+      recentTransactionIds?: string[];
+      errorThrottle?: {
+        lastErrorTick: number;
+        count: number;
+        lastMessage: string;
+      };
     };
   }
 
