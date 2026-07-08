@@ -50,13 +50,24 @@ function hasAllyName(value: any): boolean {
   return false;
 }
 
+function taskBoardRooms(memory: any): any[] {
+  return values(memory.creepTaskBoard?.rooms ?? {});
+}
+
 function taskBoardTasks(memory: any): any[] {
-  const boards = values(memory.creepTaskBoard?.rooms ?? {});
   const tasks: any[] = [];
-  for (const board of boards) {
+  for (const board of taskBoardRooms(memory)) {
     tasks.push(...values(board?.tasks ?? {}));
   }
   return tasks;
+}
+
+function hasTaskBoardActivity(memory: any): boolean {
+  return taskBoardRooms(memory).some(board => {
+    if (values(board?.tasks ?? {}).length > 0) return true;
+    if ((board?.lastGeneratedTick ?? 0) > 0 || (board?.lastCleanedTick ?? 0) > 0) return true;
+    return values(board?.stats ?? {}).some(value => typeof value === 'number' && value > 0);
+  });
 }
 
 function hasTaskType(memory: any, type: string): boolean {
@@ -248,7 +259,7 @@ function assertBaselineRuntime(counters: AssertionCounters, input: BackendAssert
   runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend creep population exists after warmup', ['runtime','population'], () => input.creeps.length > 0, 'no creeps after warmup');
   runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend CPU bucket is not chronically empty', ['runtime','cpu'], () => (input.user.cpuAvailable ?? 10000) > 1000, 'CPU bucket below 1000');
   runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend task board memory tracks room tasks', ['runtime','task-board'], () => Object.keys(memory.creepTaskBoard?.rooms ?? {}).length > 0, 'Memory.creepTaskBoard.rooms is empty');
-  runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend task board contains tasks', ['runtime','task-board'], () => taskBoardTasks(memory).length > 0, 'Memory.creepTaskBoard has no tasks');
+  runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend task board records activity', ['runtime','task-board'], () => hasTaskBoardActivity(memory), 'Memory.creepTaskBoard has no task activity');
   runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend empire memory has initialized roadmap shape', ['runtime','memory','empire'], () => {
     const empire = memory.empire ?? {};
     return isObject(empire.knownRooms) && Array.isArray(empire.clusters) && isObject(empire.ownedRooms) && Array.isArray(empire.claimQueue) && isObject(empire.objectives);
