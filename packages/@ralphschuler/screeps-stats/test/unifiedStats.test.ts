@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { UnifiedStatsManager } from "../src/unifiedStats.ts";
-import type { RoomStatsEntry } from "../src/statsTypes.ts";
+import type { DefenseAssistTargetStatsEntry, RoomStatsEntry } from "../src/statsTypes.ts";
 
 type RoomStatsOverrides = Omit<Partial<RoomStatsEntry>, "energy" | "controller" | "brain" | "metrics" | "profiler"> & {
   energy?: Partial<RoomStatsEntry["energy"]>;
@@ -349,6 +349,72 @@ describe("UnifiedStatsManager", () => {
       remaining_amount: 150,
       reserved_amount: 50
     });
+  });
+
+  it("publishes compact defense-assist telemetry to Memory.stats", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+    const assist: DefenseAssistTargetStatsEntry = {
+      helperRoom: "W1N1",
+      targetRoom: "W2N1",
+      urgency: 2,
+      requested: { guard: 1, ranger: 0, healer: 0, total: 1 },
+      queued: { guard: 1, ranger: 0, healer: 0, total: 1 },
+      spawning: { guard: 0, ranger: 0, healer: 0, total: 0 },
+      staged: { guard: 0, ranger: 1, healer: 0, total: 1 },
+      moving: { guard: 0, ranger: 0, healer: 1, total: 1 },
+      arrived: { guard: 0, ranger: 0, healer: 0, total: 0 },
+      released: {
+        total: 1,
+        byReason: { "squad-quorum": 1 },
+        lastReason: "squad-quorum",
+        lastReleasedAt: 1234
+      },
+      bodyCost: { guard: 130 },
+      affordable: { guard: true },
+      assignedPower: { partCount: 4, attack: 30, ranged: 0, heal: 12, dismantle: 0, score: 46 },
+      targetScore: 92,
+      parityPercent: 50,
+      blockReason: "waiting-for-parity"
+    };
+    const state = manager as unknown as { currentSnapshot: { rooms: Record<string, RoomStatsEntry> } };
+    state.currentSnapshot.rooms = {
+      W1N1: makeRoomStats({
+        name: "W1N1",
+        defense: {
+          towers: 1,
+          towerEnergy: 500,
+          towerEnergyCapacity: 1000,
+          towerEnergyPercent: 50,
+          towerReserveEnergy: 750,
+          towerReserveDeficit: 250
+        }
+      })
+    };
+
+    manager.recordDefenseAssist("W1N1", [assist]);
+    (manager as unknown as { publishToMemory(): void }).publishToMemory();
+
+    const published = (Memory as unknown as {
+      stats: { rooms: Record<string, { defense: { assist: Record<string, Record<string, unknown>> } }> };
+    }).stats.rooms.W1N1.defense.assist.W2N1;
+    expect(published).to.include({
+      helper_room: "W1N1",
+      target_room: "W2N1",
+      urgency: 2,
+      target_score: 92,
+      parity_percent: 50,
+      block_reason: "waiting-for-parity"
+    });
+    expect(published.queued).to.deep.equal({ guard: 1, ranger: 0, healer: 0, total: 1 });
+    expect(published.released).to.deep.include({
+      total: 1,
+      last_reason: "squad-quorum",
+      last_released_at: 1234
+    });
+    expect((published.released as { by_reason: Record<string, number> }).by_reason["squad-quorum"]).to.equal(1);
+    expect((published.body_cost as Record<string, number>).guard).to.equal(130);
+    expect((published.affordable as Record<string, boolean>).guard).to.equal(true);
+    expect((published.assigned_power as Record<string, number>).score).to.equal(46);
   });
 
   it("captures gated CPU detail samples and auto-disables after TTL", () => {

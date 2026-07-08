@@ -83,11 +83,15 @@ function runSpawns(): void {
 
     // Under bucket pressure, rooms with all spawns busy cannot start a new creep this tick.
     // Skip expensive spawn-need analysis there; re-evaluate as soon as any spawn is idle.
-    if (lowBucket && !hasIdleSpawn(room)) continue;
+    if (lowBucket && !hasIdleSpawn(room)) {
+      unifiedStats.recordDefenseAssist(room.name, []);
+      continue;
+    }
 
     const swarm = memoryManager.getOrInitSwarmState(room.name);
     const result = coordinateSpawning(room, swarm);
     unifiedStats.recordSpawnQueue(room.name, result.stats, result.spawned);
+    unifiedStats.recordDefenseAssist(room.name, result.defenseAssist);
   }
 }
 

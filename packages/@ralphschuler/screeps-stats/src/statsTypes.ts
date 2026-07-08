@@ -144,6 +144,57 @@ export interface EmpireStats {
   };
 }
 
+export type DefenseAssistTelemetryRole = "guard" | "ranger" | "healer";
+
+export interface DefenseAssistRoleCountsStats {
+  guard: number;
+  ranger: number;
+  healer: number;
+  total: number;
+}
+
+export interface DefenseAssistReleaseStats {
+  total: number;
+  byReason: Record<string, number>;
+  lastReason?: string;
+  lastReleasedAt?: number;
+}
+
+export type DefenseAssistBlockReason =
+  | "none"
+  | "unaffordable"
+  | "waiting-for-parity"
+  | "waiting-for-quorum"
+  | "no-local-assist";
+
+export interface DefenseAssistPowerStats {
+  partCount: number;
+  attack: number;
+  ranged: number;
+  heal: number;
+  dismantle: number;
+  score: number;
+}
+
+export interface DefenseAssistTargetStatsEntry {
+  helperRoom: string;
+  targetRoom: string;
+  urgency: number;
+  requested: DefenseAssistRoleCountsStats;
+  queued: DefenseAssistRoleCountsStats;
+  spawning: DefenseAssistRoleCountsStats;
+  staged: DefenseAssistRoleCountsStats;
+  moving: DefenseAssistRoleCountsStats;
+  arrived: DefenseAssistRoleCountsStats;
+  released: DefenseAssistReleaseStats;
+  bodyCost: Partial<Record<DefenseAssistTelemetryRole, number>>;
+  affordable: Partial<Record<DefenseAssistTelemetryRole, boolean>>;
+  assignedPower: DefenseAssistPowerStats;
+  targetScore: number;
+  parityPercent: number;
+  blockReason: DefenseAssistBlockReason;
+}
+
 /**
  * Per-room statistics
  */
@@ -258,6 +309,8 @@ export interface RoomStatsEntry {
     towerEnergyPercent: number;
     towerReserveEnergy: number;
     towerReserveDeficit: number;
+    /** Compact helper-room defense-assist telemetry keyed by target room. */
+    assist?: Record<string, DefenseAssistTargetStatsEntry>;
   };
 
   // CPU profiling

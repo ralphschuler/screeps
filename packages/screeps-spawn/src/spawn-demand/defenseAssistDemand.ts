@@ -23,8 +23,12 @@ import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import { getAffordableEmergencyDefenseAssistBody } from "../emergencyDefenseBody";
 import { getEffectiveRoomEnergyAvailable } from "../roomEnergy";
 import { spawnQueue, SpawnPriority } from "../spawnQueue";
+import {
+  getActiveDefenseAssistRequests,
+  hasCurrentDefenseThreat,
+  type DefenseAssistRequestMemory
+} from "./defenseAssistRequests";
 
-const DEFENSE_ASSIST_REQUEST_TTL = 500;
 const DEFENSE_ASSIST_WAVE_TTL = 1200;
 const DEFENSE_ASSIST_ROLES = ["guard", "ranger", "healer"] as const;
 
@@ -35,15 +39,6 @@ export interface DefenseAssistSpawnAssignment {
   defenseSquadId: string;
   defenseSquadSize: number;
   defenseSquadCreatedAt: number;
-}
-
-interface DefenseAssistRequestMemory {
-  roomName: string;
-  guardsNeeded?: number;
-  rangersNeeded?: number;
-  healersNeeded?: number;
-  urgency?: number;
-  createdAt?: number;
 }
 
 interface DefenseAssistWaveState {
@@ -136,12 +131,6 @@ function getDefenseRoleNeedForHelper(
 
 function isDefenseAssistRole(role: string): boolean {
   return isDefenseAssistMilitaryRole(role);
-}
-
-function hasCurrentDefenseThreat(request: DefenseAssistRequestMemory): boolean {
-  const targetRoom = Game.rooms[request.roomName];
-  if (targetRoom) return getActualHostileCreeps(targetRoom).length > 0;
-  return Game.time - (request.createdAt ?? 0) <= DEFENSE_ASSIST_REQUEST_TTL;
 }
 
 function getAssistTarget(memory: Partial<SwarmCreepMemory>): string | undefined {
@@ -279,15 +268,6 @@ function getAffordableEmergencyAssistFallbackNeed(
   return getAffordableEmergencyDefenseAssistBody("guard", availableEnergy, threatProfile) ? 1 : 0;
 }
 
-function getActiveDefenseAssistRequests(memory: { defenseRequests?: DefenseAssistRequestMemory[] }): DefenseAssistRequestMemory[] {
-  const requests = memory.defenseRequests ?? [];
-  const activeRequests = requests.filter(hasCurrentDefenseThreat);
-  if (activeRequests.length !== requests.length) {
-    memory.defenseRequests = activeRequests;
-  }
-  return activeRequests;
-}
-
 /**
  * Select the next helper-room military spawn for an active global defense request.
  *
@@ -304,7 +284,7 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
   const helperEnergyCapacity = home.energyCapacityAvailable;
   const memory = Memory as unknown as { defenseRequests?: DefenseAssistRequestMemory[] };
   pruneExpiredDefenseAssistWaves(Game.time);
-  const candidates = getActiveDefenseAssistRequests(memory)
+  const candidates = getActiveDefenseAssistRequests(memory, { prune: true })
     .filter(request => request.roomName !== homeRoom)
     .map(request => {
       const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);

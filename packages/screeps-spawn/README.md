@@ -149,6 +149,7 @@ This keeps the spawn facade stable while making each role family easier to read 
 - `spawn-demand/claimerDemand.ts` - recovery reclaim, expansion claim, and remote reservation assignment order
 - `spawn-demand/pioneerDemand.ts` - spawnless owned-room bootstrap assignment and closest-parent ownership
 - `spawn-demand/defenseAssistDemand.ts` - helper-room reinforcement demand, squad metadata, assigned-power accounting, and stale request pruning; defender need sizing and combat math/body sizing are consumed from `@ralphschuler/screeps-defense`
+- `defenseAssistTelemetry.ts` - compact helper-room telemetry for defense-assist queue, staging, affordability, assigned power, and release diagnostics
 - `spawn-demand/shared.ts` - map-distance fallback, remote safety gates, owned-spawn checks, and global utility queue enumeration
 
 Keep new demand policies behind the facade unless callers need a stable public contract. This protects spawn priority/order behavior while making individual demand rules easier to test.

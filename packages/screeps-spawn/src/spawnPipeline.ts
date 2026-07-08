@@ -15,6 +15,7 @@ import { optimizeBody } from "./bodyOptimizer";
 import { isBootstrapMode, isEmergencySpawnState } from "./bootstrapManager";
 import { analyzeDefenderNeeds, getCurrentDefenders } from "./defenderManager";
 import { getAffordableEmergencyDefenderFallback } from "./emergencyDefenseBody";
+import { collectDefenseAssistTelemetry, type DefenseAssistTelemetryEntry } from "./defenseAssistTelemetry";
 import { getEffectiveRoomEnergyAvailable } from "./roomEnergy";
 import { createSpawnPlan, ensureRoomVisibleForSpawnAnalysis } from "./spawnIntentCompiler";
 import { SpawnPriority, type SpawnRequest, spawnQueue } from "./spawnQueue";
@@ -66,6 +67,7 @@ export interface SpawnPipelineResult {
   queued: number;
   spawned: number;
   stats: ReturnType<typeof spawnQueue.getQueueStats>;
+  defenseAssist: DefenseAssistTelemetryEntry[];
 }
 
 /**
@@ -178,6 +180,7 @@ export function runSpawnPipeline(room: Room, swarm: SwarmState): SpawnPipelineRe
   populateSpawnQueue(room, swarm);
   const spawned = processSpawnQueue(room);
   const stats = spawnQueue.getQueueStats(room.name);
+  const defenseAssist = collectDefenseAssistTelemetry(room.name);
 
   if (spawned > 0) {
     logger.debug(`Spawned ${spawned} creeps in ${room.name}`, { subsystem: "SpawnPipeline" });
@@ -193,7 +196,8 @@ export function runSpawnPipeline(room: Room, swarm: SwarmState): SpawnPipelineRe
     roomName: room.name,
     queued: stats.total,
     spawned,
-    stats
+    stats,
+    defenseAssist
   };
 }
 

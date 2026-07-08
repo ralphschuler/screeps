@@ -7,6 +7,7 @@ Unified statistics collection and export system for Screeps bots. Provides compr
 - **Unified Stats Collection**: Consolidates all bot statistics into a single cohesive system
 - **CPU Profiling**: Track CPU usage by subsystem, role, and process
 - **Performance Metrics**: Monitor GCL/GPL progression, room stats, creep metrics
+- **Defense Diagnostics**: Compact defense-assist queue, staging, affordability, parity, and release telemetry
 - **Adaptive Budgets**: Dynamic CPU budget allocation based on empire size and bucket status
 - **Memory Segment Persistence**: Efficient stats storage using Memory Segments
 - **Pathfinding Metrics**: Track pathfinding performance and cache efficiency
