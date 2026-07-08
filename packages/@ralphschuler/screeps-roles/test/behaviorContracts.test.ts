@@ -250,6 +250,67 @@ describe("Behavior Contracts", () => {
     expect(findCounts.get(FIND_STRUCTURES)).to.equal(1);
   });
 
+  it("reuses cached structures for regular and mineral containers", () => {
+    const room = createMockRoom("W1N1");
+    const energyContainer = {
+      id: "energy-container" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: { x: 10, y: 10, roomName: room.name },
+      store: makeEnergyStore(500, 2000)
+    } as unknown as StructureContainer;
+    const mineralContainer = {
+      id: "mineral-container" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      pos: { x: 20, y: 20, roomName: room.name },
+      store: {
+        [RESOURCE_ENERGY]: 0,
+        [RESOURCE_HYDROGEN]: 100,
+        getUsedCapacity: (resource?: ResourceConstant) => {
+          if (resource === undefined) return 100;
+          if (resource === RESOURCE_HYDROGEN) return 100;
+          return 0;
+        },
+        getFreeCapacity: () => 1900,
+        getCapacity: () => 2000
+      }
+    } as unknown as StructureContainer;
+    const road = {
+      id: "road" as Id<StructureRoad>,
+      structureType: STRUCTURE_ROAD,
+      pos: { x: 15, y: 15, roomName: room.name }
+    } as unknown as StructureRoad;
+    const structures = [energyContainer, mineralContainer, road] as Structure[];
+    const findCounts = new Map<FindConstant, number>();
+    (room as unknown as { find: Room["find"] }).find = ((type: FindConstant, opts?: { filter?: (structure: Structure) => boolean }) => {
+      findCounts.set(type, (findCounts.get(type) ?? 0) + 1);
+      if (type !== FIND_STRUCTURES) return [];
+      return opts?.filter ? structures.filter(opts.filter) : structures;
+    }) as Room["find"];
+    const creep = createMockCreep("hauler1", {
+      room,
+      memory: { role: "hauler", homeRoom: room.name, working: false }
+    });
+
+    Game.rooms[room.name] = room;
+    Game.creeps[creep.name] = creep;
+    clearRoomCaches();
+
+    const ctx = createRuntimeContext(creep);
+
+    expect(ctx.containers).to.deep.equal([energyContainer, mineralContainer]);
+    expect(ctx.mineralContainers).to.deep.equal([mineralContainer]);
+    expect(ctx.mineralContainers).to.deep.equal([mineralContainer]);
+    expect(findCounts.get(FIND_STRUCTURES)).to.equal(1);
+
+    findCounts.clear();
+    clearRoomCaches();
+    const mineralFirstContext = createRuntimeContext(creep);
+
+    expect(mineralFirstContext.mineralContainers).to.deep.equal([mineralContainer]);
+    expect(mineralFirstContext.containers).to.deep.equal([energyContainer, mineralContainer]);
+    expect(findCounts.get(FIND_STRUCTURES)).to.equal(1);
+  });
+
   it("keeps builder, upgrader, and hauler critical energy delivery priority aligned", () => {
     const extension = {
       id: "extension1",

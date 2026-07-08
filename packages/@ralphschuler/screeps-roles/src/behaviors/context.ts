@@ -354,15 +354,14 @@ function getTombstones(cache: RoomCache): Tombstone[] {
  */
 function getMineralContainers(cache: RoomCache): StructureContainer[] {
   if (cache._mineralContainers === undefined) {
-    cache._mineralContainers = cache.room.find(FIND_STRUCTURES, {
-      filter: s => {
-        if (s.structureType !== STRUCTURE_CONTAINER) return false;
-        const container = s ;
-        // Check for any non-energy resources
-        const resources = Object.keys(container.store) as ResourceConstant[];
-        return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
-      }
-    }) ;
+    ensureAllStructuresLoaded(cache);
+    cache._mineralContainers = cache.allStructures.filter((s): s is StructureContainer => {
+      if (s.structureType !== STRUCTURE_CONTAINER) return false;
+      const container = s as StructureContainer;
+      // Check for any non-energy resources
+      const resources = Object.keys(container.store) as ResourceConstant[];
+      return resources.some(r => r !== RESOURCE_ENERGY && container.store.getUsedCapacity(r) > 0);
+    });
   }
   return cache._mineralContainers;
 }

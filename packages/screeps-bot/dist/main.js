@@ -22862,14 +22862,12 @@ e._tombstones;
 var e;
 },
 get mineralContainers() {
-return void 0 === (e = i)._mineralContainers && (e._mineralContainers = e.room.find(FIND_STRUCTURES, {
-filter: function(e) {
+return void 0 === (e = i)._mineralContainers && (rl(e), e._mineralContainers = e.allStructures.filter(function(e) {
 if (e.structureType !== STRUCTURE_CONTAINER) return !1;
 var t = e;
 return Object.keys(t.store).some(function(e) {
 return e !== RESOURCE_ENERGY && t.store.getUsedCapacity(e) > 0;
 });
-}
 })), e._mineralContainers;
 var e;
 }
