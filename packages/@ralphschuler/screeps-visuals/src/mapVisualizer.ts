@@ -11,6 +11,7 @@
  * Complements RoomVisualizer which handles room-specific details.
  */
 
+import { getOwnedRooms, getVisibleRooms } from "@ralphschuler/screeps-cache";
 import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-core";
 import {
   calculateMapThreatLevel,
@@ -142,11 +143,12 @@ export class MapVisualizer {
    * Draw room status indicators
    */
   private drawRoomStatus(visual: MapVisual): void {
-    for (const room of Object.values(Game.rooms)) {
-      if (!room.controller?.my) continue;
+    for (const room of getOwnedRooms()) {
+      const controller = room.controller;
+      if (!controller?.my) continue;
 
       const swarm = this.memoryManager?.getOrInitSwarmState(room.name);
-      const rcl = room.controller.level;
+      const rcl = controller.level;
       
       // Color based on danger level (bounds-checked by pure rule)
       const color = getDangerColor(swarm?.danger);
@@ -185,7 +187,7 @@ export class MapVisualizer {
    * Draw inter-room connections (remotes, military routes)
    */
   private drawConnections(visual: MapVisual): void {
-    for (const room of Object.values(Game.rooms)) {
+    for (const room of getOwnedRooms()) {
       if (!room.controller?.my) continue;
 
       const swarm = this.memoryManager?.getOrInitSwarmState(room.name);
@@ -220,7 +222,7 @@ export class MapVisualizer {
       if (swarm && (swarm.posture === "war" || swarm.posture === "siege")) {
         // Note: In a full implementation, we'd track war targets in memory
         // For now, we just show rooms with hostiles
-        const hostileRooms = Object.values(Game.rooms).filter(r => {
+        const hostileRooms = getVisibleRooms().filter(r => {
           const distance = this.getSafeRoomLinearDistance(room.name, r.name);
           return getActualHostileCreeps(r).length > 0 && distance !== null && distance <= 5;
         });
@@ -245,7 +247,7 @@ export class MapVisualizer {
    * Draw threat indicators
    */
   private drawThreats(visual: MapVisual): void {
-    for (const room of Object.values(Game.rooms)) {
+    for (const room of getVisibleRooms()) {
       const hostiles = getActualHostileCreeps(room);
       const hostileStructures = getActualHostileStructures(room);
 
@@ -297,9 +299,9 @@ export class MapVisualizer {
   private drawExpansionCandidates(visual: MapVisual): void {
     // In a full implementation, this would query expansion manager
     // For now, we show rooms with neutral controllers near our rooms
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const ownedRooms = getOwnedRooms();
     
-    for (const room of Object.values(Game.rooms)) {
+    for (const room of getVisibleRooms()) {
       if (!room.controller || room.controller.my || room.controller.owner) continue;
 
       // Check if near any owned room
@@ -331,7 +333,7 @@ export class MapVisualizer {
    * Draw resource flow between rooms
    */
   private drawResourceFlow(visual: MapVisual): void {
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const ownedRooms = getOwnedRooms();
 
     for (const room of ownedRooms) {
       if (!room.terminal) continue;
@@ -358,7 +360,7 @@ export class MapVisualizer {
    * Draw highway rooms
    */
   private drawHighways(visual: MapVisual): void {
-    for (const room of Object.values(Game.rooms)) {
+    for (const room of getVisibleRooms()) {
       const highway = classifyHighwayRoom(room.name);
 
       if (highway.isHighway) {
