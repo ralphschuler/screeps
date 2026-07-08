@@ -83,6 +83,7 @@ export interface SpawnQueueState {
  */
 class SpawnQueueManager {
   private queues: Map<string, SpawnQueueState> = new Map();
+  private revision = 0;
 
   /**
    * Get or create spawn queue for a room
@@ -111,6 +112,7 @@ class SpawnQueueManager {
 
     // Add to queue
     queue.requests.push(request);
+    this.revision++;
 
     // Sort by priority (highest first)
     queue.requests.sort((a, b) => b.priority - a.priority);
@@ -155,7 +157,9 @@ class SpawnQueueManager {
    */
   removeRequest(roomName: string, requestId: string): void {
     const queue = this.getQueue(roomName);
-    queue.requests = queue.requests.filter(r => r.id !== requestId);
+    const nextRequests = queue.requests.filter(r => r.id !== requestId);
+    if (nextRequests.length !== queue.requests.length) this.revision++;
+    queue.requests = nextRequests;
   }
 
   /**
@@ -213,8 +217,16 @@ class SpawnQueueManager {
    */
   clearQueue(roomName: string): void {
     const queue = this.getQueue(roomName);
+    if (queue.requests.length > 0) this.revision++;
     queue.requests = [];
     logger.debug(`Cleared spawn queue for room ${roomName}`, { subsystem: "SpawnQueue" });
+  }
+
+  /**
+   * Monotonic queue mutation counter used by per-tick planning caches.
+   */
+  getRevision(): number {
+    return this.revision;
   }
 
   /**

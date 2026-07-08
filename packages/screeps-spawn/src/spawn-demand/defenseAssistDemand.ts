@@ -16,16 +16,18 @@ import {
   getActualHostileCreeps,
   getVisibleDefenseAssistThreatProfile,
   isDefenseAssistMilitaryRole,
+  type DefenseAggregateResponsePlan,
   type DefenseAssistRole,
+  type DefenseAssistThreatProfile,
   type ExistingDefensePower
 } from "@ralphschuler/screeps-defense";
 import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import { getAffordableEmergencyDefenseAssistBody } from "../emergencyDefenseBody";
 import { getEffectiveRoomEnergyAvailable } from "../roomEnergy";
-import { spawnQueue, SpawnPriority } from "../spawnQueue";
+import { spawnQueue, SpawnPriority, type SpawnRequest } from "../spawnQueue";
 import {
-  getActiveDefenseAssistRequests,
   hasCurrentDefenseThreat,
+  readDefenseAssistRequests,
   type DefenseAssistRequestMemory
 } from "./defenseAssistRequests";
 
@@ -101,32 +103,133 @@ function getDefenseRoleNeed(request: DefenseAssistRequestMemory, role: string): 
   return 0;
 }
 
-function getDefenseRoleNeedForHelper(
-  request: DefenseAssistRequestMemory,
-  role: string,
-  helperEnergyCapacity: number,
-  threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName)
-): number {
-  const requestedNeed = getDefenseRoleNeed(request, role);
-  if (!isDefenseAssistMilitaryRole(role)) return requestedNeed;
-  if (!threatProfile) return requestedNeed;
+type DefenseAssistRoleCounts = Record<DefenseAssistRole, number>;
 
-  const assignedCounts = countAssignedDefenseAssistByRole(request.roomName);
-  const assigned = assignedCounts[role];
-  const aggregatePlan = calculateAggregateDefenseResponsePlan(
-    helperEnergyCapacity,
-    threatProfile,
-    {
-      guard: Math.max(0, getDefenseRoleNeed(request, "guard") - assignedCounts.guard),
-      ranger: Math.max(0, getDefenseRoleNeed(request, "ranger") - assignedCounts.ranger),
-      healer: Math.max(0, getDefenseRoleNeed(request, "healer") - assignedCounts.healer)
-    },
-    countAssignedDefenseAssistPower(request.roomName)
-  );
-  const aggregateNeed = assigned + aggregatePlan.counts[role];
-  const squadNeed = requestedNeed > 0 ? calculateDefenseAssistSquadSize(role, helperEnergyCapacity, threatProfile) : 0;
-  const helperWaveNeed = requestedNeed > 0 ? countCapableDefenseAssistHelpers(request, role, threatProfile) : 0;
-  return Math.max(requestedNeed, aggregateNeed, squadNeed, helperWaveNeed);
+type DefenseAssistBody = ReturnType<typeof buildDefenseAssistBody>;
+
+interface DefenseAssistRequestMemoryOwner {
+  defenseRequests?: DefenseAssistRequestMemory[] | Record<string, DefenseAssistRequestMemory>;
+}
+
+interface DefenseAssistThreatCacheEntry {
+  room: Room | undefined;
+  threatProfile: DefenseAssistThreatProfile | null;
+}
+
+interface DefenseAssistAssignmentAccounting {
+  counts: DefenseAssistRoleCounts;
+  power: ExistingDefensePower;
+}
+
+interface DefenseAssistHelperTargetPlan {
+  helperEnergyCapacity: number;
+  threatProfile: DefenseAssistThreatProfile | null;
+  assignedCounts: DefenseAssistRoleCounts;
+  assignedPower: ExistingDefensePower;
+  aggregatePlan: DefenseAggregateResponsePlan;
+  capableHelpers: DefenseAssistRoleCounts;
+  helperBodies: Partial<Record<DefenseAssistRole, DefenseAssistBody>>;
+}
+
+interface ActiveDefenseAssistRequestsCacheEntry {
+  signature: string;
+  requests: DefenseAssistRequestMemory[];
+}
+
+interface DefenseAssistPlanningCache {
+  game: typeof Game;
+  creeps: typeof Game.creeps;
+  tick: number;
+  queueRevision: number;
+  threats: Map<string, DefenseAssistThreatCacheEntry>;
+  assigned: Map<string, DefenseAssistAssignmentAccounting>;
+  helperPlans: Map<string, DefenseAssistHelperTargetPlan>;
+  capableHelpers: Map<string, DefenseAssistRoleCounts>;
+  canSpawn: Map<string, { room: Room | undefined; value: boolean }>;
+  activeRequests?: ActiveDefenseAssistRequestsCacheEntry;
+}
+
+let defenseAssistPlanningCache: DefenseAssistPlanningCache | null = null;
+
+function createRoleCounts(): DefenseAssistRoleCounts {
+  return { guard: 0, ranger: 0, healer: 0 };
+}
+
+function getDefenseAssistPlanningCache(): DefenseAssistPlanningCache {
+  const queueRevision = spawnQueue.getRevision();
+  if (
+    defenseAssistPlanningCache &&
+    defenseAssistPlanningCache.game === Game &&
+    defenseAssistPlanningCache.creeps === Game.creeps &&
+    defenseAssistPlanningCache.tick === Game.time &&
+    defenseAssistPlanningCache.queueRevision === queueRevision
+  ) {
+    return defenseAssistPlanningCache;
+  }
+
+  defenseAssistPlanningCache = {
+    game: Game,
+    creeps: Game.creeps,
+    tick: Game.time,
+    queueRevision,
+    threats: new Map(),
+    assigned: new Map(),
+    helperPlans: new Map(),
+    capableHelpers: new Map(),
+    canSpawn: new Map()
+  };
+  return defenseAssistPlanningCache;
+}
+
+function getCachedDefenseAssistThreatProfile(targetRoom: string): DefenseAssistThreatProfile | null {
+  const cache = getDefenseAssistPlanningCache();
+  const room = Game.rooms[targetRoom];
+  const cached = cache.threats.get(targetRoom);
+  if (cached && cached.room === room) return cached.threatProfile;
+
+  const threatProfile = getVisibleDefenseAssistThreatProfile(targetRoom);
+  cache.threats.set(targetRoom, { room, threatProfile });
+  return threatProfile;
+}
+
+function hasCachedCurrentDefenseThreat(request: DefenseAssistRequestMemory): boolean {
+  if (Game.rooms[request.roomName]) return getCachedDefenseAssistThreatProfile(request.roomName) !== null;
+  return hasCurrentDefenseThreat(request);
+}
+
+function getDefenseAssistRequestSignature(requests: DefenseAssistRequestMemory[]): string {
+  return requests
+    .map(request => [
+      request.roomName,
+      Math.max(0, request.guardsNeeded ?? 0),
+      Math.max(0, request.rangersNeeded ?? 0),
+      Math.max(0, request.healersNeeded ?? 0),
+      request.urgency ?? "",
+      request.createdAt ?? ""
+    ].join(":"))
+    .join("|");
+}
+
+function getCachedActiveDefenseAssistRequests(
+  memory: DefenseAssistRequestMemoryOwner,
+  options: { prune?: boolean } = {}
+): DefenseAssistRequestMemory[] {
+  const requests = readDefenseAssistRequests(memory);
+  const signature = getDefenseAssistRequestSignature(requests);
+  const cache = getDefenseAssistPlanningCache();
+  if (cache.activeRequests?.signature === signature) {
+    if (options.prune && Array.isArray(memory.defenseRequests) && cache.activeRequests.requests.length !== requests.length) {
+      memory.defenseRequests = cache.activeRequests.requests;
+    }
+    return cache.activeRequests.requests;
+  }
+
+  const activeRequests = requests.filter(hasCachedCurrentDefenseThreat);
+  cache.activeRequests = { signature, requests: activeRequests };
+  if (options.prune && Array.isArray(memory.defenseRequests) && activeRequests.length !== requests.length) {
+    memory.defenseRequests = activeRequests;
+  }
+  return activeRequests;
 }
 
 function isDefenseAssistRole(role: string): boolean {
@@ -137,70 +240,9 @@ function getAssistTarget(memory: Partial<SwarmCreepMemory>): string | undefined 
   return memory.assistTarget ?? (memory.task === DEFENSE_ASSIST_TASK ? memory.targetRoom : undefined);
 }
 
-function getDefenseAssistSquadSizeForHelper(request: DefenseAssistRequestMemory, helperRoom: Room): number {
-  const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
-  const assignedCounts = countAssignedDefenseAssistByRole(request.roomName);
-  const aggregatePlan = calculateAggregateDefenseResponsePlan(
-    helperRoom.energyCapacityAvailable,
-    threatProfile,
-    {
-      guard: Math.max(0, getDefenseRoleNeed(request, "guard") - assignedCounts.guard),
-      ranger: Math.max(0, getDefenseRoleNeed(request, "ranger") - assignedCounts.ranger),
-      healer: Math.max(0, getDefenseRoleNeed(request, "healer") - assignedCounts.healer)
-    },
-    countAssignedDefenseAssistPower(request.roomName)
-  );
-  const aggregateSize = aggregatePlan.counts.guard + aggregatePlan.counts.ranger + aggregatePlan.counts.healer;
-  if (aggregateSize > 0) return aggregateSize;
-
-  const localWaveRoles = DEFENSE_ASSIST_ROLES.filter(role => {
-    if (getDefenseRoleNeedForHelper(request, role, helperRoom.energyCapacityAvailable, threatProfile) <= 0) return false;
-    return Boolean(buildDefenseAssistBody(role, helperRoom.energyCapacityAvailable, threatProfile));
-  });
-  return Math.max(1, localWaveRoles.length);
-}
-
-function countCapableDefenseAssistHelpers(
-  request: DefenseAssistRequestMemory,
-  role: string,
-  threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName)
-): number {
-  if (!isDefenseAssistMilitaryRole(role)) return 0;
-  let count = 0;
-  for (const room of Object.values(Game.rooms)) {
-    if (room.name === request.roomName) continue;
-    if (!canSpawnDefenseAssistFrom(room)) continue;
-    if (!buildDefenseAssistBody(role, room.energyCapacityAvailable, threatProfile)) continue;
-    count++;
-  }
-  return count;
-}
-
-function countAssignedDefenseAssistByRole(targetRoom: string): Record<DefenseAssistRole, number> {
-  const counts: Record<DefenseAssistRole, number> = { guard: 0, ranger: 0, healer: 0 };
-  for (const creep of Object.values(Game.creeps)) {
-    const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
-    const role = memory.role ?? "";
-    if (isDefenseAssistMilitaryRole(role) && getAssistTarget(memory) === targetRoom) counts[role]++;
-  }
-
-  for (const roomName in Game.rooms) {
-    for (const request of spawnQueue.getPendingRequests(roomName)) {
-      if (!isDefenseAssistMilitaryRole(request.role)) continue;
-      if (
-        request.additionalMemory?.assistTarget !== targetRoom &&
-        !(request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom)
-      ) continue;
-      counts[request.role]++;
-    }
-  }
-
-  return counts;
-}
-
-function countAssignedDefenseAssist(targetRoom: string, role: string): number {
-  if (!isDefenseAssistMilitaryRole(role)) return 0;
-  return countAssignedDefenseAssistByRole(targetRoom)[role];
+function spawnRequestTargetsDefenseAssistRoom(request: SpawnRequest, targetRoom: string): boolean {
+  return request.additionalMemory?.assistTarget === targetRoom ||
+    (request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom);
 }
 
 function addAssignedPower(power: ExistingDefensePower, role: DefenseAssistRole, parts: Array<BodyPartConstant | BodyPartDefinition>): void {
@@ -209,27 +251,167 @@ function addAssignedPower(power: ExistingDefensePower, role: DefenseAssistRole, 
   power[role] = existing ? addCombatPower(existing, bodyPower) : bodyPower;
 }
 
-function countAssignedDefenseAssistPower(targetRoom: string): ExistingDefensePower {
+function buildAssignedDefenseAssistAccounting(targetRoom: string): DefenseAssistAssignmentAccounting {
+  const counts = createRoleCounts();
   const power: ExistingDefensePower = {};
+
   for (const creep of Object.values(Game.creeps)) {
     const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
     const role = memory.role ?? "";
     if (!isDefenseAssistMilitaryRole(role) || getAssistTarget(memory) !== targetRoom) continue;
+
+    counts[role]++;
     const activeBody = (creep.body ?? []).filter(part => part.hits > 0);
     if (activeBody.length > 0) addAssignedPower(power, role, activeBody);
   }
 
   for (const roomName in Game.rooms) {
     for (const request of spawnQueue.getPendingRequests(roomName)) {
-      if (!isDefenseAssistMilitaryRole(request.role)) continue;
-      if (
-        request.additionalMemory?.assistTarget !== targetRoom &&
-        !(request.additionalMemory?.task === DEFENSE_ASSIST_TASK && request.targetRoom === targetRoom)
-      ) continue;
+      if (!isDefenseAssistMilitaryRole(request.role) || !spawnRequestTargetsDefenseAssistRoom(request, targetRoom)) continue;
+      counts[request.role]++;
       addAssignedPower(power, request.role, request.body.parts);
     }
   }
-  return power;
+
+  return { counts, power };
+}
+
+function getAssignedDefenseAssistAccounting(targetRoom: string): DefenseAssistAssignmentAccounting {
+  const cache = getDefenseAssistPlanningCache();
+  const cached = cache.assigned.get(targetRoom);
+  if (cached) return cached;
+
+  const accounting = buildAssignedDefenseAssistAccounting(targetRoom);
+  cache.assigned.set(targetRoom, accounting);
+  return accounting;
+}
+
+function countAssignedDefenseAssist(targetRoom: string, role: string): number {
+  if (!isDefenseAssistMilitaryRole(role)) return 0;
+  return getAssignedDefenseAssistAccounting(targetRoom).counts[role];
+}
+
+function canSpawnDefenseAssistFromCached(room: Room): boolean {
+  const cache = getDefenseAssistPlanningCache();
+  const cached = cache.canSpawn.get(room.name);
+  if (cached && cached.room === room) return cached.value;
+
+  const value = canSpawnDefenseAssistFrom(room);
+  cache.canSpawn.set(room.name, { room, value });
+  return value;
+}
+
+function getCapableDefenseAssistHelpers(
+  targetRoom: string,
+  threatProfile: DefenseAssistThreatProfile | null
+): DefenseAssistRoleCounts {
+  const cache = getDefenseAssistPlanningCache();
+  const cached = cache.capableHelpers.get(targetRoom);
+  if (cached) return cached;
+
+  const counts = createRoleCounts();
+  for (const room of Object.values(Game.rooms)) {
+    if (room.name === targetRoom) continue;
+    if (!canSpawnDefenseAssistFromCached(room)) continue;
+    for (const role of DEFENSE_ASSIST_ROLES) {
+      if (buildDefenseAssistBody(role, room.energyCapacityAvailable, threatProfile)) counts[role]++;
+    }
+  }
+
+  cache.capableHelpers.set(targetRoom, counts);
+  return counts;
+}
+
+function getBaseNeedsAfterAssignments(
+  request: DefenseAssistRequestMemory,
+  assignedCounts: DefenseAssistRoleCounts
+): Partial<Record<DefenseAssistRole, number>> {
+  return {
+    guard: Math.max(0, getDefenseRoleNeed(request, "guard") - assignedCounts.guard),
+    ranger: Math.max(0, getDefenseRoleNeed(request, "ranger") - assignedCounts.ranger),
+    healer: Math.max(0, getDefenseRoleNeed(request, "healer") - assignedCounts.healer)
+  };
+}
+
+function getDefenseAssistHelperPlanKey(request: DefenseAssistRequestMemory, helperRoom: Room): string {
+  return [
+    helperRoom.name,
+    request.roomName,
+    helperRoom.energyCapacityAvailable,
+    Math.max(0, request.guardsNeeded ?? 0),
+    Math.max(0, request.rangersNeeded ?? 0),
+    Math.max(0, request.healersNeeded ?? 0),
+    request.urgency ?? "",
+    request.createdAt ?? ""
+  ].join(":");
+}
+
+function getDefenseAssistHelperTargetPlan(
+  request: DefenseAssistRequestMemory,
+  helperRoom: Room
+): DefenseAssistHelperTargetPlan {
+  const cache = getDefenseAssistPlanningCache();
+  const key = getDefenseAssistHelperPlanKey(request, helperRoom);
+  const cached = cache.helperPlans.get(key);
+  if (cached) return cached;
+
+  const threatProfile = getCachedDefenseAssistThreatProfile(request.roomName);
+  const { counts: assignedCounts, power: assignedPower } = getAssignedDefenseAssistAccounting(request.roomName);
+  const helperEnergyCapacity = helperRoom.energyCapacityAvailable;
+  const aggregatePlan = calculateAggregateDefenseResponsePlan(
+    helperEnergyCapacity,
+    threatProfile,
+    getBaseNeedsAfterAssignments(request, assignedCounts),
+    assignedPower
+  );
+  const capableHelpers = getCapableDefenseAssistHelpers(request.roomName, threatProfile);
+  const helperBodies: Partial<Record<DefenseAssistRole, DefenseAssistBody>> = {};
+  for (const role of DEFENSE_ASSIST_ROLES) {
+    helperBodies[role] = buildDefenseAssistBody(role, helperEnergyCapacity, threatProfile);
+  }
+
+  const plan = {
+    helperEnergyCapacity,
+    threatProfile,
+    assignedCounts,
+    assignedPower,
+    aggregatePlan,
+    capableHelpers,
+    helperBodies
+  };
+  cache.helperPlans.set(key, plan);
+  return plan;
+}
+
+function getDefenseRoleNeedForHelper(
+  request: DefenseAssistRequestMemory,
+  role: string,
+  plan: DefenseAssistHelperTargetPlan
+): number {
+  const requestedNeed = getDefenseRoleNeed(request, role);
+  if (!isDefenseAssistMilitaryRole(role)) return requestedNeed;
+  if (!plan.threatProfile) return requestedNeed;
+
+  const assigned = plan.assignedCounts[role];
+  const aggregateNeed = assigned + plan.aggregatePlan.counts[role];
+  const squadNeed = requestedNeed > 0 ? calculateDefenseAssistSquadSize(role, plan.helperEnergyCapacity, plan.threatProfile) : 0;
+  const helperWaveNeed = requestedNeed > 0 ? plan.capableHelpers[role] : 0;
+  return Math.max(requestedNeed, aggregateNeed, squadNeed, helperWaveNeed);
+}
+
+function getDefenseAssistSquadSizeForHelper(
+  request: DefenseAssistRequestMemory,
+  helperRoom: Room,
+  plan = getDefenseAssistHelperTargetPlan(request, helperRoom)
+): number {
+  const aggregateSize = plan.aggregatePlan.counts.guard + plan.aggregatePlan.counts.ranger + plan.aggregatePlan.counts.healer;
+  if (aggregateSize > 0) return aggregateSize;
+
+  const localWaveRoles = DEFENSE_ASSIST_ROLES.filter(role => {
+    if (getDefenseRoleNeedForHelper(request, role, plan) <= 0) return false;
+    return Boolean(plan.helperBodies[role]);
+  });
+  return Math.max(1, localWaveRoles.length);
 }
 
 function canSpawnDefenseAssistFrom(room: Room): boolean {
@@ -241,7 +423,8 @@ function canSpawnDefenseAssistFrom(room: Room): boolean {
 function createDefenseAssistSpawnAssignment(
   homeRoom: string,
   home: Room,
-  request: DefenseAssistRequestMemory
+  request: DefenseAssistRequestMemory,
+  plan = getDefenseAssistHelperTargetPlan(request, home)
 ): DefenseAssistSpawnAssignment {
   const wave = getDefenseAssistWave(homeRoom, request);
   return {
@@ -249,7 +432,7 @@ function createDefenseAssistSpawnAssignment(
     task: DEFENSE_ASSIST_TASK,
     priority: (request.urgency ?? 1) >= 2 ? SpawnPriority.EMERGENCY : SpawnPriority.HIGH,
     defenseSquadId: createDefenseAssistSquadId(homeRoom, request.roomName, wave.createdAt),
-    defenseSquadSize: getDefenseAssistSquadSizeForHelper(request, home),
+    defenseSquadSize: getDefenseAssistSquadSizeForHelper(request, home, plan),
     defenseSquadCreatedAt: wave.createdAt
   };
 }
@@ -258,7 +441,7 @@ function getAffordableEmergencyAssistFallbackNeed(
   request: DefenseAssistRequestMemory,
   role: string,
   helperRoom: Room,
-  threatProfile: ReturnType<typeof getVisibleDefenseAssistThreatProfile>
+  threatProfile: DefenseAssistThreatProfile | null
 ): number {
   if (role !== "guard") return 0;
   if ((request.urgency ?? 1) < 2) return 0;
@@ -279,25 +462,24 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
   if (!isDefenseAssistRole(role)) return null;
 
   const home = Game.rooms[homeRoom];
-  if (!home || !canSpawnDefenseAssistFrom(home)) return null;
+  if (!home || !canSpawnDefenseAssistFromCached(home)) return null;
 
-  const helperEnergyCapacity = home.energyCapacityAvailable;
-  const memory = Memory as unknown as { defenseRequests?: DefenseAssistRequestMemory[] };
+  const memory = Memory as unknown as DefenseAssistRequestMemoryOwner;
   pruneExpiredDefenseAssistWaves(Game.time);
-  const candidates = getActiveDefenseAssistRequests(memory, { prune: true })
+  const candidates = getCachedActiveDefenseAssistRequests(memory, { prune: true })
     .filter(request => request.roomName !== homeRoom)
     .map(request => {
-      const threatProfile = getVisibleDefenseAssistThreatProfile(request.roomName);
+      const plan = getDefenseAssistHelperTargetPlan(request, home);
       return {
         request,
+        plan,
         helperNeed: Math.max(
-          getDefenseRoleNeedForHelper(request, role, helperEnergyCapacity, threatProfile),
-          getAffordableEmergencyAssistFallbackNeed(request, role, home, threatProfile)
+          getDefenseRoleNeedForHelper(request, role, plan),
+          getAffordableEmergencyAssistFallbackNeed(request, role, home, plan.threatProfile)
         )
       };
     })
     .filter(candidate => candidate.helperNeed > 0)
-    .filter(candidate => hasCurrentDefenseThreat(candidate.request))
     .filter(candidate => countAssignedDefenseAssist(candidate.request.roomName, role) < candidate.helperNeed)
     .sort((a, b) => {
       const urgencyDelta = (b.request.urgency ?? 1) - (a.request.urgency ?? 1);
@@ -308,8 +490,8 @@ export function getDefenseAssistSpawnAssignment(homeRoom: string, role: string):
       return (a.request.createdAt ?? 0) - (b.request.createdAt ?? 0);
     });
 
-  const request = candidates[0]?.request;
-  if (!request) return null;
+  const candidate = candidates[0];
+  if (!candidate) return null;
 
-  return createDefenseAssistSpawnAssignment(homeRoom, home, request);
+  return createDefenseAssistSpawnAssignment(homeRoom, home, candidate.request, candidate.plan);
 }

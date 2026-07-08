@@ -363,6 +363,77 @@ describe("defense spawn throttling", () => {
     assert.equal(guardRequest?.additionalMemory?.defenseSquadCreatedAt, Game.time);
   });
 
+  it("reuses same-tick defense-assist accounting and recomputes on a new tick", () => {
+    const helper = createRoom([], "W17S29", 1800, 1800);
+    const attacked = createRoom([createHostile([ATTACK, RANGED_ATTACK, HEAL, MOVE])], "W19S28", 0, 0, 5, false);
+    let hostileScans = 0;
+    const originalFind = attacked.find.bind(attacked);
+    (attacked as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      if (type === FIND_HOSTILE_CREEPS) hostileScans++;
+      return originalFind(type as never);
+    }) as Room["find"];
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W19S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 1,
+        rangersNeeded: 1,
+        healersNeeded: 1,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "visible mixed assault"
+      }
+    ];
+
+    const originalGetPendingRequests = spawnQueue.getPendingRequests.bind(spawnQueue);
+    const patchedSpawnQueue = spawnQueue as unknown as { getPendingRequests: typeof spawnQueue.getPendingRequests };
+    let pendingRequestScans = 0;
+    patchedSpawnQueue.getPendingRequests = (roomName: string) => {
+      pendingRequestScans++;
+      return originalGetPendingRequests(roomName);
+    };
+
+    try {
+      const { getDefenseAssistSpawnAssignment } = require("../src/spawnNeedsAnalyzer") as typeof import("../src/spawnNeedsAnalyzer");
+      const roomCount = Object.keys(Game.rooms).length;
+
+      const assignments = (["guard", "ranger", "healer"] as const)
+        .map(role => getDefenseAssistSpawnAssignment("W17S29", role));
+
+      assert.isTrue(assignments.some(Boolean), "visible attack should produce at least one helper-room assist");
+      assert.equal(hostileScans, 1, "target threat profile should be scanned once for same-tick role checks");
+      assert.equal(pendingRequestScans, roomCount, "assigned creep/queue accounting should scan each room once per tick");
+
+      spawnQueue.addRequest({
+        id: "queued_assist_guard",
+        roomName: "W17S29",
+        role: "guard",
+        family: "military",
+        body: { parts: [ATTACK, MOVE], cost: 130, minCapacity: 130 },
+        priority: SpawnPriority.EMERGENCY,
+        targetRoom: "W19S28",
+        additionalMemory: { task: "defenseAssist", assistTarget: "W19S28" },
+        createdAt: Game.time
+      });
+      getDefenseAssistSpawnAssignment("W17S29", "guard");
+      assert.equal(pendingRequestScans, roomCount * 2, "same-tick queue mutations should invalidate assigned accounting");
+
+      const hostileScansAfterQueueMutation = hostileScans;
+      Game.time += 1;
+      getDefenseAssistSpawnAssignment("W17S29", "ranger");
+      assert.equal(hostileScans, hostileScansAfterQueueMutation + 1, "target threat profile should recompute on a new tick");
+      assert.equal(pendingRequestScans, roomCount * 3, "assigned creep/queue accounting should recompute on a new tick");
+    } finally {
+      patchedSpawnQueue.getPendingRequests = originalGetPendingRequests;
+    }
+  });
+
   it("turns spawnless hostile-room defense requests into emergency helper assists", () => {
     const helper = createRoom([], "W17S29", 800, 800, 6);
     const attacked = createRoom([createHostile([ATTACK, MOVE])], "W18S28", 800, 800, 5, false);
