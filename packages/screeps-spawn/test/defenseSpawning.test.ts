@@ -969,6 +969,48 @@ describe("defense spawn throttling", () => {
     }
   });
 
+  it("uses an affordable guard fallback instead of tiny emergency ranger assists for unseen urgent requests", () => {
+    const helper = createRoom([], "W17S29", 300, 300);
+    Game.rooms.W17S29 = helper;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W19S28",
+        guardsNeeded: 0,
+        rangersNeeded: 1,
+        healersNeeded: 0,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "hard ranged healer"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const requests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests;
+    const tinyRangerAssist = requests.find(request => request.role === "ranger" &&
+      request.priority >= SpawnPriority.EMERGENCY &&
+      request.additionalMemory?.task === "defenseAssist" &&
+      request.body.parts.length < 6);
+    const rangerAssists = requests.filter(request => request.role === "ranger" &&
+      request.priority >= SpawnPriority.EMERGENCY &&
+      request.additionalMemory?.task === "defenseAssist");
+    const guardFallback = requests.find(request => request.role === "guard" &&
+      request.priority >= SpawnPriority.EMERGENCY &&
+      request.additionalMemory?.task === "defenseAssist");
+
+    assert.isUndefined(tinyRangerAssist);
+    for (const rangerAssist of rangerAssists) {
+      assert.isAtLeast(rangerAssist.body.parts.length, 6);
+      assert.isAtLeast(rangerAssist.body.parts.filter(part => part === RANGED_ATTACK).length, 2);
+    }
+    assert.isOk(guardFallback);
+    assert.isAtMost(guardFallback!.body.cost, helper.energyAvailable);
+  });
+
   it("uses capacity-sized local emergency defenders against visible hard threats", () => {
     const hostile = createHostile(createRepeatedParts([TOUGH, 5], [RANGED_ATTACK, 25], [MOVE, 10], [HEAL, 10]));
     const room = createRoom([hostile], "W1N1", 1800, 300);

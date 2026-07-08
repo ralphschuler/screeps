@@ -445,7 +445,6 @@ function getAffordableEmergencyAssistFallbackNeed(
 ): number {
   if (role !== "guard") return 0;
   if ((request.urgency ?? 1) < 2) return 0;
-  if (!threatProfile) return 0;
 
   const availableEnergy = getEffectiveRoomEnergyAvailable(helperRoom);
   return getAffordableEmergencyDefenseAssistBody("guard", availableEnergy, threatProfile) ? 1 : 0;

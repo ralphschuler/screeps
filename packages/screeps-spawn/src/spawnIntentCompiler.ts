@@ -2,7 +2,10 @@ import { logger } from "@ralphschuler/screeps-core";
 import {
   buildDefenseAssistBody,
   getVisibleDefenseAssistThreatProfile,
-  isDefenseAssistMilitaryRole
+  isDefenseAssistMilitaryRole,
+  isDefenseAssistThreatProfileHard,
+  type DefenseAssistRole,
+  type DefenseAssistThreatProfile
 } from "@ralphschuler/screeps-defense";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { emergencyResponseManager, energyFlowPredictor } from "./botIntegration";
@@ -27,6 +30,8 @@ import { SpawnPriority, type SpawnRequest } from "./spawnQueue";
 
 const TICKS_PER_BODY_PART = 3;
 const CONTROLLER_DOWNGRADE_UPGRADER_PRIORITY_TICKS = 5000;
+const MIN_HARD_DEFENSE_ASSIST_RANGER_PARTS = 6;
+const MIN_HARD_DEFENSE_ASSIST_RANGED_PARTS = 2;
 
 interface SpawnSettingsMemory {
   spawnSettings?: {
@@ -256,6 +261,35 @@ export function createSpawnPlan(room: Room, swarm: SwarmState): SpawnPlan {
   };
 }
 
+function isSafeEmergencyDefenseAssistBody(
+  role: DefenseAssistRole,
+  body: BodyTemplate | null,
+  threatProfile: DefenseAssistThreatProfile | null
+): body is BodyTemplate {
+  if (!body) return false;
+  if (role !== "ranger") return true;
+  if (threatProfile && !isDefenseAssistThreatProfileHard(threatProfile)) return true;
+
+  const rangedParts = body.parts.filter(part => part === RANGED_ATTACK).length;
+  return body.parts.length >= MIN_HARD_DEFENSE_ASSIST_RANGER_PARTS &&
+    rangedParts >= MIN_HARD_DEFENSE_ASSIST_RANGED_PARTS;
+}
+
+function selectAffordableEmergencyDefenseAssistBody(
+  role: DefenseAssistRole,
+  availableEnergy: number,
+  threatProfile: DefenseAssistThreatProfile | null,
+  capacityBody: BodyTemplate | null
+): BodyTemplate | null {
+  const candidates = [
+    buildDefenseAssistBody(role, availableEnergy, threatProfile),
+    getAffordableEmergencyDefenseAssistBody(role, availableEnergy, threatProfile),
+    capacityBody && capacityBody.cost <= availableEnergy ? capacityBody : null
+  ];
+
+  return candidates.find(body => isSafeEmergencyDefenseAssistBody(role, body, threatProfile)) ?? null;
+}
+
 /**
  * Compile one spawn demand into a concrete queue request.
  */
@@ -287,13 +321,17 @@ export function compileSpawnDemandToRequest(room: Room, demand: SpawnDemand): Sp
         )
       : null;
     const affordableDefenseAssistBody = defenseAssistRole && isEmergencyDefenseAssist
-      ? buildDefenseAssistBody(defenseAssistRole, availableEnergy, defenseAssistThreatProfile) ??
-        getAffordableEmergencyDefenseAssistBody(defenseAssistRole, availableEnergy, defenseAssistThreatProfile) ??
-        (defenseAssistCapacityBody && defenseAssistCapacityBody.cost <= availableEnergy ? defenseAssistCapacityBody : null)
+      ? selectAffordableEmergencyDefenseAssistBody(
+          defenseAssistRole,
+          availableEnergy,
+          defenseAssistThreatProfile,
+          defenseAssistCapacityBody
+        )
       : null;
     const defenseAssistBody = defenseAssistRole
       ? affordableDefenseAssistBody ?? (isEmergencyDefenseAssist ? null : defenseAssistCapacityBody)
       : null;
+    if (isEmergencyDefenseAssist && !defenseAssistBody && !demand.bodyOverride) return null;
     if (isDefenseAssistDemand && defenseAssistThreatProfile && !defenseAssistBody && !demand.bodyOverride) return null;
 
     const body =
