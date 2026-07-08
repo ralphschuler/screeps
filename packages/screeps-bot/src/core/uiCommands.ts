@@ -228,18 +228,6 @@ export class UICommands {
     let html = `<div style="background: #2b2b2b; padding: 10px; margin: 5px;">`;
     html += `<h3 style="color: #c5c599; margin: 0 0 10px 0;">Quick Actions</h3>`;
 
-    // Emergency mode button
-    html += createElement.button({
-      content: "🚨 Emergency Mode",
-      command: `() => {
-        const config = global.botConfig.getConfig();
-        global.botConfig.updateConfig({emergencyMode: !config.emergencyMode});
-        return 'Emergency Mode: ' + (!config.emergencyMode ? 'ON' : 'OFF');
-      }`
-    });
-
-    html += " ";
-
     // Toggle debug button
     html += createElement.button({
       content: "🐛 Toggle Debug",

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import type { BotConfig } from "../../src/config";
 import { UICommands } from "../../src/core/uiCommands";
 
 describe("UICommands", () => {
@@ -24,5 +25,31 @@ describe("UICommands", () => {
 
     expect(output).to.include(escapedRoomLiteral);
     expect(output).to.not.include(`Game.rooms['${roomName}']`);
+  });
+
+  it("only writes typed BotConfig keys from quick actions", () => {
+    const output = new UICommands().quickActions();
+    const typedBotConfigKeys = new Set<keyof BotConfig>([
+      "pheromone",
+      "war",
+      "nuke",
+      "expansion",
+      "cpu",
+      "market",
+      "spawn",
+      "boost",
+      "debug",
+      "profiling",
+      "visualizations",
+      "lazyLoadConsoleCommands"
+    ]);
+    const updatedConfigKeys = [...output.matchAll(/updateConfig\(\{([A-Za-z_$][\w$]*)\s*:/g)].map(match => match[1]);
+
+    expect(output).to.include("🐛 Toggle Debug");
+    expect(output).to.include("🗑️ Clear Cache");
+    expect(output).to.not.include("Emergency Mode");
+    expect(output).to.not.include("emergencyMode");
+    expect(updatedConfigKeys).to.deep.equal(["debug"]);
+    expect(updatedConfigKeys.every(key => typedBotConfigKeys.has(key as keyof BotConfig))).to.equal(true);
   });
 });
