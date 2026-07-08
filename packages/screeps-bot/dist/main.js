@@ -38582,7 +38582,7 @@ return Math.max(1, n.length);
 
 function Gg(e, t, r, o) {
 var n;
-return "guard" !== t || (null !== (n = e.urgency) && void 0 !== n ? n : 1) < 2 ? 0 : o && pg("guard", hg(r), o) ? 1 : 0;
+return "guard" !== t || (null !== (n = e.urgency) && void 0 !== n ? n : 1) < 2 ? 0 : pg("guard", hg(r), o) ? 1 : 0;
 }
 
 function Lg(e, t) {
@@ -39270,11 +39270,25 @@ requests: c
 }
 
 function uh(e, t) {
-var r, n, i, s, c, u = e.energyCapacityAvailable;
+var r, n, i, s = e.energyCapacityAvailable;
 try {
-var l = 3 * Math.max(3, Math.min(50, Math.floor(u / 100))), m = Pv.getMaxAffordableInTicks(e, l), d = hg(e), p = t.priority >= gv.EMERGENCY || t.bootstrap ? d : Math.max(u, m), f = t.assistTarget && _o(t.roleName) ? t.roleName : null, y = Boolean(f), v = y && t.priority >= gv.EMERGENCY, g = t.assistTarget ? To(t.assistTarget) : null, h = f ? Oo(f, u, g) : null, R = f && v ? null !== (n = null !== (r = Oo(f, d, g)) && void 0 !== r ? r : pg(f, d, g)) && void 0 !== n ? n : h && h.cost <= d ? h : null : null, E = f ? null != R ? R : v ? null : h : null;
-if (y && g && !E && !t.bodyOverride) return null;
-var T = null !== (c = null !== (s = null !== (i = t.bodyOverride) && void 0 !== i ? i : E) && void 0 !== s ? s : function(e, t) {
+var c = 3 * Math.max(3, Math.min(50, Math.floor(s / 100))), u = Pv.getMaxAffordableInTicks(e, c), l = hg(e), m = t.priority >= gv.EMERGENCY || t.bootstrap ? l : Math.max(s, u), d = t.assistTarget && _o(t.roleName) ? t.roleName : null, p = Boolean(d), f = p && t.priority >= gv.EMERGENCY, y = t.assistTarget ? To(t.assistTarget) : null, v = d ? Oo(d, s, y) : null, g = d && f ? function(e, t, r, o) {
+var n;
+return null !== (n = [ Oo(e, t, r), pg(e, t, r), o && o.cost <= t ? o : null ].find(function(t) {
+return function(e, t, r) {
+if (!t) return !1;
+if ("ranger" !== e) return !0;
+if (r && !bo(r)) return !0;
+var o = t.parts.filter(function(e) {
+return e === RANGED_ATTACK;
+}).length;
+return t.parts.length >= 6 && o >= 2;
+}(e, t, r);
+})) && void 0 !== n ? n : null;
+}(d, l, y, v) : null, h = d ? null != g ? g : f ? null : v : null;
+if (f && !h && !t.bodyOverride) return null;
+if (p && y && !h && !t.bodyOverride) return null;
+var R = null !== (i = null !== (n = null !== (r = t.bodyOverride) && void 0 !== r ? r : h) && void 0 !== n ? n : function(e, t) {
 var r, o, n = null;
 try {
 for (var i = a(e.bodies), s = i.next(); !s.done; s = i.next()) {
@@ -39293,14 +39307,14 @@ if (r) throw r.error;
 }
 }
 return n;
-}(t.def, p)) && void 0 !== c ? c : kv({
-maxEnergy: p,
+}(t.def, m)) && void 0 !== i ? i : kv({
+maxEnergy: m,
 role: t.roleName
-}), C = t.bodyOverride ? u : E ? v ? d : u : p;
-if (!T) return null;
-if ("claimer" === t.roleName && !T.parts.includes(CLAIM)) return null;
-if (T.cost > C) return null;
-var S = o(o(o(o(o({}, t.task ? {
+}), E = t.bodyOverride ? s : h ? f ? l : s : m;
+if (!R) return null;
+if ("claimer" === t.roleName && !R.parts.includes(CLAIM)) return null;
+if (R.cost > E) return null;
+var T = o(o(o(o(o({}, t.task ? {
 task: t.task
 } : {}), t.assistTarget ? {
 assistTarget: t.assistTarget
@@ -39316,10 +39330,10 @@ id: "".concat(t.roleName, "_").concat(Game.time, "_").concat(Math.random().toStr
 roomName: e.name,
 role: t.def.role,
 family: t.def.family,
-body: T,
+body: R,
 priority: t.priority,
 targetRoom: t.targetRoom,
-additionalMemory: Object.keys(S).length > 0 ? S : void 0,
+additionalMemory: Object.keys(T).length > 0 ? T : void 0,
 createdAt: Game.time
 };
 } catch (e) {
