@@ -19,6 +19,7 @@ export interface BackendAssertionInput {
   errorSamples: string[];
   scenarios: string[];
   startedAt: number;
+  scenarioSeedConfirmation?: any;
 }
 
 interface AssertionCounters {
@@ -207,20 +208,31 @@ function runtimeAssertCounterAfter(counters: AssertionCounters, input: BackendAs
   assertCounter(counters, name, tags, predicate, message);
 }
 
-function ensureScenarioMemory(memory: any, scenarios: string[], ownedRoomNames: string[], tick: number): void {
+function ensureScenarioMemory(
+  memory: any,
+  scenarios: string[],
+  ownedRoomNames: string[],
+  tick: number,
+  scenarioSeedConfirmation?: any
+): void {
   if (scenarios.length === 0) return;
   const homeRoom = ownedRoomNames[0];
+  const existingScenarioMemory = memory.screepsmodTestingScenarios ?? {};
+  const hardInvaderSeed = existingScenarioMemory.hardInvader ?? scenarioSeedConfirmation?.hardInvader;
   memory.screepsmodTestingScenarios = {
-    ...(memory.screepsmodTestingScenarios ?? {}),
+    ...existingScenarioMemory,
     names: scenarios,
     checkedAt: tick,
     rooms: {
-      ...(memory.screepsmodTestingScenarios?.rooms ?? {}),
+      ...(existingScenarioMemory.rooms ?? {}),
       home: homeRoom,
       remote: DEFAULT_SCENARIO_REMOTE_ROOM,
-      economy: memory.screepsmodTestingScenarios?.rooms?.economy ?? 'W2N1'
+      economy: existingScenarioMemory.rooms?.economy ?? 'W2N1'
     }
   };
+  if (scenarios.indexOf('defense-hard-invader') >= 0 && hardInvaderSeed) {
+    memory.screepsmodTestingScenarios.hardInvader = hardInvaderSeed;
+  }
 
   if (homeRoom && scenarios.indexOf('remote-mining') >= 0) {
     const roomMemory = memory.rooms?.[homeRoom];
@@ -261,7 +273,7 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   const terminalStructures = objects?.find ? await toArray(await objects.find({ type: 'terminal', ...input.userIdFilter })) : [];
   const labStructures = objects?.find ? await toArray(await objects.find({ type: 'lab', ...input.userIdFilter })) : [];
   const hardInvaders = objects?.find ? await toArray(await objects.find({ type: 'creep', name: 'ScenarioHardInvader' })) : [];
-  const hardInvaderSeed = input.memory.screepsmodTestingScenarios?.hardInvader;
+  const hardInvaderSeed = input.memory.screepsmodTestingScenarios?.hardInvader ?? input.scenarioSeedConfirmation?.hardInvader;
   const linkSites = constructionSites.filter(site => site?.structureType === 'link');
   const siteTypes: Record<string, number> = {};
   for (const site of constructionSites) {
@@ -346,7 +358,7 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
 export async function runBackendRuntimeAssertions(input: BackendAssertionInput): Promise<RuntimeSummary> {
   const counters: AssertionCounters = { passed: 0, skipped: 0, failures: [] };
   const ownedRoomNames = input.ownedControllers.map(controller => String(controller.room)).filter(Boolean);
-  ensureScenarioMemory(input.memory, input.scenarios, ownedRoomNames, input.tick);
+  ensureScenarioMemory(input.memory, input.scenarios, ownedRoomNames, input.tick, input.scenarioSeedConfirmation);
 
   assertCounter(counters, 'server exposes storage and advances ticks', ['smoke','server'], () => input.tick > 0, 'gameTime did not advance');
   assertCounter(counters, 'our bot has at least one owned room controller', ['smoke','bot'], () => input.ownedControllers.length > 0, 'no owned controllers');

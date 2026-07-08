@@ -28,6 +28,7 @@ let testFiles: string[] = [];
 let latestSummary: any = null;
 
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
+const SCENARIO_SEED_EVIDENCE_ENV_PREFIX = 'screepsmodTestingScenarioSeed:';
 
 function getRuntimeWarmupTicks(config: any): number {
   const warmupTicks = Number(config.screepsmod?.testing?.runtimeWarmupTicks ?? DEFAULT_RUNTIME_WARMUP_TICKS);
@@ -126,6 +127,17 @@ function asMemoryUserKey(userId: any): string {
   return String(userId);
 }
 
+async function readScenarioSeedConfirmation(storage: any, userId: any): Promise<any | undefined> {
+  const raw = await storage.env?.get?.(`${SCENARIO_SEED_EVIDENCE_ENV_PREFIX}${asMemoryUserKey(userId)}`);
+  if (!raw) return undefined;
+
+  try {
+    return JSON.parse(raw);
+  } catch (error: any) {
+    return { parseError: error?.message || String(error) };
+  }
+}
+
 async function readErrorNotifications(storage: any, userIdFilter: Record<string, any>): Promise<string[]> {
   const notificationsCollection = storage.db['users.notifications'];
   if (!notificationsCollection?.find) return [];
@@ -171,11 +183,12 @@ async function runBackendBotAssertions(config: any): Promise<void> {
     warmupTicks
   );
 
-  const [ownedControllers, spawns, creeps, errorSamples] = await Promise.all([
+  const [ownedControllers, spawns, creeps, errorSamples, scenarioSeedConfirmation] = await Promise.all([
     storage.db['rooms.objects'].find({ type: 'controller', ...userIdFilter }),
     storage.db['rooms.objects'].find({ type: 'spawn', ...userIdFilter }),
     storage.db['rooms.objects'].find({ type: 'creep', ...userIdFilter }),
-    readErrorNotifications(storage, userIdFilter)
+    readErrorNotifications(storage, userIdFilter),
+    readScenarioSeedConfirmation(storage, userId)
   ]);
 
   const scenarios = getConfiguredScenarios(config);
@@ -194,7 +207,8 @@ async function runBackendBotAssertions(config: any): Promise<void> {
     creeps,
     errorSamples,
     scenarios,
-    startedAt: started
+    startedAt: started,
+    scenarioSeedConfirmation
   });
 
   const mergedSummary = mergeRuntimeSummaries({

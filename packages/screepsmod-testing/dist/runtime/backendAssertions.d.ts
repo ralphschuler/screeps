@@ -15,6 +15,7 @@ export interface BackendAssertionInput {
     errorSamples: string[];
     scenarios: string[];
     startedAt: number;
+    scenarioSeedConfirmation?: any;
 }
 export declare function runBackendRuntimeAssertions(input: BackendAssertionInput): Promise<RuntimeSummary>;
 //# sourceMappingURL=backendAssertions.d.ts.map

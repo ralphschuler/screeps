@@ -100,6 +100,7 @@ var testFilter;
 var testFiles = [];
 var latestSummary = null;
 var DEFAULT_RUNTIME_WARMUP_TICKS = 100;
+var SCENARIO_SEED_EVIDENCE_ENV_PREFIX = 'screepsmodTestingScenarioSeed:';
 function getRuntimeWarmupTicks(config) {
     var _a, _b, _c;
     var warmupTicks = Number((_c = (_b = (_a = config.screepsmod) === null || _a === void 0 ? void 0 : _a.testing) === null || _b === void 0 ? void 0 : _b.runtimeWarmupTicks) !== null && _c !== void 0 ? _c : DEFAULT_RUNTIME_WARMUP_TICKS);
@@ -192,6 +193,28 @@ function makeUserObjectIdFilter(userId) {
 function asMemoryUserKey(userId) {
     return String(userId);
 }
+function readScenarioSeedConfirmation(storage, userId) {
+    return __awaiter(this, void 0, void 0, function () {
+        var raw;
+        var _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0: return [4 /*yield*/, ((_b = (_a = storage.env) === null || _a === void 0 ? void 0 : _a.get) === null || _b === void 0 ? void 0 : _b.call(_a, "".concat(SCENARIO_SEED_EVIDENCE_ENV_PREFIX).concat(asMemoryUserKey(userId))))];
+                case 1:
+                    raw = _c.sent();
+                    if (!raw)
+                        return [2 /*return*/, undefined];
+                    try {
+                        return [2 /*return*/, JSON.parse(raw)];
+                    }
+                    catch (error) {
+                        return [2 /*return*/, { parseError: (error === null || error === void 0 ? void 0 : error.message) || String(error) }];
+                    }
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
 function readErrorNotifications(storage, userIdFilter) {
     return __awaiter(this, void 0, void 0, function () {
         var notificationsCollection, notifications;
@@ -217,7 +240,7 @@ function readErrorNotifications(storage, userIdFilter) {
 }
 function runBackendBotAssertions(config) {
     return __awaiter(this, void 0, void 0, function () {
-        var started, common, storage, username, user, userId, userIdFilter, tick, _a, memoryKey, rawMemory, memory, warmupTicks, botRuntimeWarmed, _b, _c, _d, ownedControllers, spawns, creeps, errorSamples, scenarios, backendSummary, mergedSummary;
+        var started, common, storage, username, user, userId, userIdFilter, tick, _a, memoryKey, rawMemory, memory, warmupTicks, botRuntimeWarmed, _b, _c, _d, ownedControllers, spawns, creeps, errorSamples, scenarioSeedConfirmation, scenarios, backendSummary, mergedSummary;
         var _e, _f, _g, _h, _j;
         return __generator(this, function (_k) {
             switch (_k.label) {
@@ -259,10 +282,11 @@ function runBackendBotAssertions(config) {
                             storage.db['rooms.objects'].find(__assign({ type: 'controller' }, userIdFilter)),
                             storage.db['rooms.objects'].find(__assign({ type: 'spawn' }, userIdFilter)),
                             storage.db['rooms.objects'].find(__assign({ type: 'creep' }, userIdFilter)),
-                            readErrorNotifications(storage, userIdFilter)
+                            readErrorNotifications(storage, userIdFilter),
+                            readScenarioSeedConfirmation(storage, userId)
                         ])];
                 case 5:
-                    _d = __read.apply(void 0, [_k.sent(), 4]), ownedControllers = _d[0], spawns = _d[1], creeps = _d[2], errorSamples = _d[3];
+                    _d = __read.apply(void 0, [_k.sent(), 5]), ownedControllers = _d[0], spawns = _d[1], creeps = _d[2], errorSamples = _d[3], scenarioSeedConfirmation = _d[4];
                     scenarios = (0, config_1.getConfiguredScenarios)(config);
                     return [4 /*yield*/, (0, backendAssertions_1.runBackendRuntimeAssertions)({
                             config: config,
@@ -279,7 +303,8 @@ function runBackendBotAssertions(config) {
                             creeps: creeps,
                             errorSamples: errorSamples,
                             scenarios: scenarios,
-                            startedAt: started
+                            startedAt: started,
+                            scenarioSeedConfirmation: scenarioSeedConfirmation
                         })];
                 case 6:
                     backendSummary = _k.sent();

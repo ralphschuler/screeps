@@ -649,6 +649,7 @@ describe("private-server harness module", () => {
     expect(command).to.include("type:'lab'");
     expect(command).to.include("economy:'W2N1'");
     expect(command).to.include("screepsmodTestingScenarios");
+    expect(command).to.include("screepsmodTestingScenarioSeed:");
     expect(command).to.include("__PI_SCENARIO_SEED__");
   });
 
@@ -728,6 +729,7 @@ describe("private-server harness module", () => {
     expect(command).to.include("level:4");
     expect(command).to.include("safeMode:null");
     expect(command).to.include("hardInvader:hasScenario('defense-hard-invader')?(seedEvidence.hardInvader||{room:homeRoom,bodyParts:50}):undefined");
+    expect(command).to.include("await storage.env.set('screepsmodTestingScenarioSeed:'+userId,JSON.stringify(seedEvidence))");
     expect(command).to.include("objectId:hardInvaderObject&&hardInvaderObject._id");
   });
 
