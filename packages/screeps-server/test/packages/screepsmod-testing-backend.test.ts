@@ -550,6 +550,79 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('accepts active task-board rooms with no open tasks after warmup', async () => {
+    const memory = createWarmRuntimeMemory({
+      creepTaskBoard: {
+        rooms: {
+          W1N1: {
+            tasks: {},
+            lastGeneratedTick: 590,
+            lastCleanedTick: 600,
+            stats: {
+              generated: 3,
+              assigned: 2,
+              completed: 2,
+              invalidated: 1,
+              staleReservations: 0,
+              preemptions: 0,
+            },
+          },
+        },
+      },
+    });
+
+    const summary = await runBackendRuntimeAssertions({
+      config: {},
+      storage: { db: { 'rooms.objects': { find: async () => [] } } },
+      memory,
+      tick: 600,
+      runtimeWarmupTicks: 100,
+      botRuntimeWarmed: true,
+      user: { cpuAvailable: 9000 },
+      userId: 'user1',
+      userIdFilter: { user: 'user1' },
+      ownedControllers: [{ room: 'W1N1', user: 'user1' }],
+      spawns: [{ room: 'W1N1', user: 'user1' }],
+      creeps: [{ room: 'W1N1', user: 'user1', name: 'Worker1', body: [{ type: 'work', hits: 100 }] }],
+      errorSamples: [],
+      scenarios: [],
+      startedAt: Date.now(),
+    });
+
+    expect(summary.failures.map((failure: any) => failure.name)).to.not.include('backend task board records activity');
+    expect(summary.failed).to.equal(0);
+  });
+
+  it('fails active task-board assertion when warm boards have no tasks or activity', async () => {
+    const memory = createWarmRuntimeMemory({
+      creepTaskBoard: {
+        rooms: {
+          W1N1: { tasks: {}, lastGeneratedTick: 0, lastCleanedTick: 0, stats: {} },
+        },
+      },
+    });
+
+    const summary = await runBackendRuntimeAssertions({
+      config: {},
+      storage: { db: { 'rooms.objects': { find: async () => [] } } },
+      memory,
+      tick: 600,
+      runtimeWarmupTicks: 100,
+      botRuntimeWarmed: true,
+      user: { cpuAvailable: 9000 },
+      userId: 'user1',
+      userIdFilter: { user: 'user1' },
+      ownedControllers: [{ room: 'W1N1', user: 'user1' }],
+      spawns: [{ room: 'W1N1', user: 'user1' }],
+      creeps: [{ room: 'W1N1', user: 'user1', name: 'Worker1', body: [{ type: 'work', hits: 100 }] }],
+      errorSamples: [],
+      scenarios: [],
+      startedAt: Date.now(),
+    });
+
+    expect(summary.failures.map((failure: any) => failure.name)).to.include('backend task board records activity');
+  });
+
   it('records failed bot assertions in Memory instead of throwing out of the sandbox hook', () => {
     const engine = new EventEmitter();
     installTestingMod({ engine });

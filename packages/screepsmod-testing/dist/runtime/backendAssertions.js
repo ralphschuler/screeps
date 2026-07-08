@@ -114,25 +114,38 @@ function hasAllyName(value) {
         return Object.keys(value).some(function (key) { return hasAllyName(value[key]); });
     return false;
 }
+function taskBoardRooms(memory) {
+    var _a, _b;
+    return values((_b = (_a = memory.creepTaskBoard) === null || _a === void 0 ? void 0 : _a.rooms) !== null && _b !== void 0 ? _b : {});
+}
 function taskBoardTasks(memory) {
     var e_1, _a;
-    var _b, _c, _d;
-    var boards = values((_c = (_b = memory.creepTaskBoard) === null || _b === void 0 ? void 0 : _b.rooms) !== null && _c !== void 0 ? _c : {});
+    var _b;
     var tasks = [];
     try {
-        for (var boards_1 = __values(boards), boards_1_1 = boards_1.next(); !boards_1_1.done; boards_1_1 = boards_1.next()) {
-            var board = boards_1_1.value;
-            tasks.push.apply(tasks, __spreadArray([], __read(values((_d = board === null || board === void 0 ? void 0 : board.tasks) !== null && _d !== void 0 ? _d : {})), false));
+        for (var _c = __values(taskBoardRooms(memory)), _d = _c.next(); !_d.done; _d = _c.next()) {
+            var board = _d.value;
+            tasks.push.apply(tasks, __spreadArray([], __read(values((_b = board === null || board === void 0 ? void 0 : board.tasks) !== null && _b !== void 0 ? _b : {})), false));
         }
     }
     catch (e_1_1) { e_1 = { error: e_1_1 }; }
     finally {
         try {
-            if (boards_1_1 && !boards_1_1.done && (_a = boards_1.return)) _a.call(boards_1);
+            if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
         }
         finally { if (e_1) throw e_1.error; }
     }
     return tasks;
+}
+function hasTaskBoardActivity(memory) {
+    return taskBoardRooms(memory).some(function (board) {
+        var _a, _b, _c, _d;
+        if (values((_a = board === null || board === void 0 ? void 0 : board.tasks) !== null && _a !== void 0 ? _a : {}).length > 0)
+            return true;
+        if (((_b = board === null || board === void 0 ? void 0 : board.lastGeneratedTick) !== null && _b !== void 0 ? _b : 0) > 0 || ((_c = board === null || board === void 0 ? void 0 : board.lastCleanedTick) !== null && _c !== void 0 ? _c : 0) > 0)
+            return true;
+        return values((_d = board === null || board === void 0 ? void 0 : board.stats) !== null && _d !== void 0 ? _d : {}).some(function (value) { return typeof value === 'number' && value > 0; });
+    });
 }
 function hasTaskType(memory, type) {
     return taskBoardTasks(memory).some(function (task) { return (task === null || task === void 0 ? void 0 : task.type) === type; });
@@ -359,7 +372,7 @@ function assertBaselineRuntime(counters, input, ownedRoomNames) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend creep population exists after warmup', ['runtime', 'population'], function () { return input.creeps.length > 0; }, 'no creeps after warmup');
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend CPU bucket is not chronically empty', ['runtime', 'cpu'], function () { var _a; return ((_a = input.user.cpuAvailable) !== null && _a !== void 0 ? _a : 10000) > 1000; }, 'CPU bucket below 1000');
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend task board memory tracks room tasks', ['runtime', 'task-board'], function () { var _a, _b; return Object.keys((_b = (_a = memory.creepTaskBoard) === null || _a === void 0 ? void 0 : _a.rooms) !== null && _b !== void 0 ? _b : {}).length > 0; }, 'Memory.creepTaskBoard.rooms is empty');
-    runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend task board contains tasks', ['runtime', 'task-board'], function () { return taskBoardTasks(memory).length > 0; }, 'Memory.creepTaskBoard has no tasks');
+    runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend task board records activity', ['runtime', 'task-board'], function () { return hasTaskBoardActivity(memory); }, 'Memory.creepTaskBoard has no task activity');
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'backend empire memory has initialized roadmap shape', ['runtime', 'memory', 'empire'], function () {
         var _a;
         var empire = (_a = memory.empire) !== null && _a !== void 0 ? _a : {};
