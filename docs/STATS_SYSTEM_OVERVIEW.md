@@ -138,6 +138,7 @@ Per-room metrics:
 - Energy harvested
 - Damage received
 - Danger level
+- Task-board backlog counts, reservations, and amount-aware delivery pressure
 
 ### Subsystem Statistics
 CPU tracking for major subsystems:
@@ -237,6 +238,16 @@ Memory.stats = {
       brain: { danger, posture_code, colony_level_code },
       pheromones: { expand, harvest, build, upgrade, defense, war, siege, logistics, nukeTarget },
       metrics: { ... },
+      taskBoard: {
+        tasks, open_tasks, assigned_tasks,
+        reservations, stale_reservations, blocked_reservations,
+        amount, reserved_amount, remaining_amount,
+        delivery_amount, delivery_reserved_amount, delivery_remaining_amount,
+        critical_delivery_remaining_amount,
+        by_type: {
+          [taskType]: { tasks, open_tasks, assigned_tasks, reservations, amount, reserved_amount, remaining_amount }
+        }
+      },
       profiler: { avg_cpu, peak_cpu, samples }
     }
   },
@@ -255,6 +266,21 @@ Memory.stats = {
   }
 }
 ```
+
+### Room Task-Board Amount Telemetry
+
+`Memory.stats.rooms[roomName].taskBoard` summarizes creep task-board pressure without polling raw `Memory.creepTaskBoard`:
+
+- `tasks`, `open_tasks`, `assigned_tasks`: task-count backlog. These are counts, not energy/work amounts.
+- `reservations`, `stale_reservations`, `blocked_reservations`: reservation health by count.
+- `amount`: total requested work/energy amount across all tasks.
+- `reserved_amount`: amount already reserved by creeps.
+- `remaining_amount`: unreserved amount, computed as `max(0, amount - reserved_amount)` per task.
+- `delivery_amount`, `delivery_reserved_amount`, `delivery_remaining_amount`: same totals restricted to delivery tasks (`refillSpawn`, `refillExtension`, `refillTower`, `fillTerminalEnergy`, `storeEnergy`).
+- `critical_delivery_remaining_amount`: unreserved amount for high-priority delivery tasks.
+- `by_type`: per-task-type counts and amount totals for isolating the source of backlog.
+
+Interpretation: a room can have high `remaining_amount` because large `storeEnergy` tasks are waiting, while urgent spawn/extension refills dominate `critical_delivery_remaining_amount`. Compare `remaining_amount`, `delivery_remaining_amount`, `critical_delivery_remaining_amount`, and `by_type` before treating the room as generally starved.
 
 ### Programmatic Access
 ```typescript
@@ -294,6 +320,9 @@ Memory.stats.empire.rooms
 Memory.stats.rooms.W1N1.rcl
 Memory.stats.roles.harvester.count
 Memory.stats.rooms.W1N1.pheromones.harvest
+Memory.stats.rooms.W1N1.taskBoard.remaining_amount
+Memory.stats.rooms.W1N1.taskBoard.critical_delivery_remaining_amount
+Memory.stats.rooms.W1N1.taskBoard.by_type.refillSpawn.remaining_amount
 ```
 
 ## Migration from Legacy Stats
