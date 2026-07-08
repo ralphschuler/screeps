@@ -12,11 +12,13 @@ type CreepCountCacheValue = Map<string, number> | number;
 const creepCountCache = new Map<string, CreepCountCacheValue>();
 let creepCountCacheTick = -1;
 let creepCountCacheRef: Record<string, Creep> | null = null;
+let remoteCreepCountIndex: Map<string, number> | null = null;
 
 function ensureCurrentCreepCountCache(): void {
   if (creepCountCacheTick === Game.time && creepCountCacheRef === Game.creeps) return;
 
   creepCountCache.clear();
+  remoteCreepCountIndex = null;
   creepCountCacheTick = Game.time;
   creepCountCacheRef = Game.creeps;
 }
@@ -72,14 +74,35 @@ export function countCreepsOfRole(roomName: string, role: string): number {
   return count;
 }
 
+const REMOTE_COUNT_KEY_SEPARATOR = "\u001f";
+
+function getRemoteCreepCountKey(homeRoom: string, role: string, targetRoom: string): string {
+  return `${homeRoom}${REMOTE_COUNT_KEY_SEPARATOR}${role}${REMOTE_COUNT_KEY_SEPARATOR}${targetRoom}`;
+}
+
+function getRemoteCreepCountIndex(): Map<string, number> {
+  ensureCurrentCreepCountCache();
+
+  if (remoteCreepCountIndex) return remoteCreepCountIndex;
+
+  const counts = new Map<string, number>();
+  for (const name in Game.creeps) {
+    const creep = Game.creeps[name];
+    const memory = creep.memory as unknown as SwarmCreepMemory;
+    const homeRoom = memory.homeRoom;
+    const role = memory.role;
+    const targetRoom = memory.targetRoom;
+    if (!homeRoom || !role || !targetRoom) continue;
+
+    const cacheKey = getRemoteCreepCountKey(homeRoom, role, targetRoom);
+    counts.set(cacheKey, (counts.get(cacheKey) ?? 0) + 1);
+  }
+
+  remoteCreepCountIndex = counts;
+  return counts;
+}
+
 /** Count remote creeps for one home room, role, and assigned target room. */
 export function countRemoteCreepsByTargetRoom(homeRoom: string, role: string, targetRoom: string): number {
-  let count = 0;
-  for (const creep of Object.values(Game.creeps)) {
-    const memory = creep.memory as unknown as SwarmCreepMemory;
-    if (memory.homeRoom === homeRoom && memory.role === role && memory.targetRoom === targetRoom) {
-      count++;
-    }
-  }
-  return count;
+  return getRemoteCreepCountIndex().get(getRemoteCreepCountKey(homeRoom, role, targetRoom)) ?? 0;
 }
