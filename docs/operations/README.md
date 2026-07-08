@@ -12,6 +12,12 @@ Operate the bot with CPU, bucket, spawn health, room survival, and error rate as
 - GitHub Actions validation artifacts for duplication, complexity, coverage, and smoke tests.
 - [Global runtime diagnostics](global-runtime-diagnostics.md) for global resets and stale heap switches.
 
+## Artifact hygiene
+
+Generated local live/deploy/refinement outputs are ignored by default so routine diagnostics do not dirty `git status`. Prefer `.tmp/artifacts/...` for new local collectors and keep long-lived evidence in docs or an explicitly reviewed path. Historical curated files already tracked under `artifacts/` remain tracked; force-add a generated artifact only when a PR intentionally needs that exact evidence file.
+
+Current ignored generated paths include `.tmp/`, `artifacts/live-500-*`, `artifacts/live-analysis-*`, `artifacts/postdeploy-*`, `artifacts/deploy-*`, `artifacts/issue-*`, `artifacts/cpu-profile*`, `artifacts/code-refinement-*`, `artifacts/agent/`, `artifacts/subagents/`, and `packages/screeps-server/artifacts/`.
+
 ## Key health checks
 
 | Signal | Healthy expectation | Investigate when |

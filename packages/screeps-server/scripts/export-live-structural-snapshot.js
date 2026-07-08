@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 const { ScreepsAPI } = require("screeps-api");
 
 function printHelp() {
-  console.log(`Usage: node packages/screeps-server/scripts/export-live-structural-snapshot.js [options]\n\nOptions:\n  --shard <name>              Screeps shard (default shard1)\n  --rooms <list>              Comma-separated extra/source rooms to include\n  --maxRooms <n>              Maximum derived rooms to export (default 30)\n  --out <path>                Output JSON path (default packages/screeps-server/artifacts/cpu-benchmark/live-snapshot.json)\n  --hostname <host>           Screeps hostname (default screeps.com)\n  --protocol <proto>          Protocol (default https)\n  --port <n>                  Port (default 443)\n  --fail-on-memory-errors     Exit nonzero when read-only Memory paths fail\n\nRequires SCREEPS_TOKEN. Read-only endpoints only.`);
+  console.log(`Usage: node packages/screeps-server/scripts/export-live-structural-snapshot.js [options]\n\nOptions:\n  --shard <name>              Screeps shard (default shard1)\n  --rooms <list>              Comma-separated extra/source rooms to include\n  --maxRooms <n>              Maximum derived rooms to export (default 30)\n  --out <path>                Output JSON path (default .tmp/artifacts/live-structural-snapshot.json)\n  --hostname <host>           Screeps hostname (default screeps.com)\n  --protocol <proto>          Protocol (default https)\n  --port <n>                  Port (default 443)\n  --fail-on-memory-errors     Exit nonzero when read-only Memory paths fail\n\nRequires SCREEPS_TOKEN. Read-only endpoints only.`);
 }
 
 function parseOptions(argv = process.argv.slice(2), env = process.env) {
@@ -30,7 +30,7 @@ function parseOptions(argv = process.argv.slice(2), env = process.env) {
     shard: args.get("shard") ?? env.SHARD ?? "shard1",
     rooms,
     maxRooms,
-    out: args.get("out") ?? "packages/screeps-server/artifacts/cpu-benchmark/live-snapshot.json",
+    out: args.get("out") ?? ".tmp/artifacts/live-structural-snapshot.json",
     hostname: args.get("hostname") ?? env.SCREEPS_HOSTNAME ?? "screeps.com",
     protocol: args.get("protocol") ?? env.SCREEPS_PROTOCOL ?? "https",
     port: Number(args.get("port") ?? env.SCREEPS_PORT ?? 443),

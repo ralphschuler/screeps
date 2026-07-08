@@ -20,7 +20,7 @@ Options:
   --samples <n>              Number of samples (default 20)
   --interval <ms>            Delay between samples (default 3000)
   --shards <list>            Comma-separated shards (default shard0,shard1,shard2,shard3)
-  --out-dir <path>           Output directory (default artifacts/cpu-profile)
+  --out-dir <path>           Output directory (default .tmp/artifacts/cpu-profile)
   --hostname <host>          Screeps hostname (default SCREEPS_HOSTNAME or screeps.com)
   --protocol <http|https>    Screeps API protocol (default SCREEPS_PROTOCOL or https)
   --port <n>                 Screeps API port (default SCREEPS_PORT or 443)
@@ -46,7 +46,7 @@ export function parseArgs(argv) {
     samples: 20,
     interval: 3000,
     shards: DEFAULT_SHARDS,
-    outDir: "artifacts/cpu-profile",
+    outDir: ".tmp/artifacts/cpu-profile",
     hostname: process.env.SCREEPS_HOSTNAME || "screeps.com",
     protocol: process.env.SCREEPS_PROTOCOL || "https",
     port: Number(process.env.SCREEPS_PORT || 443),
