@@ -61,4 +61,45 @@ describe("spawn creep count helpers", () => {
 
     expect(countRemoteCreepsByTargetRoom("E1N1", "remoteHarvester", "E2N1")).to.equal(2);
   });
+
+  it("reuses one same-tick remote count index across target queries", () => {
+    let memoryReads = 0;
+    const createTrackedCreep = (memory: Partial<CreepMemory>): Creep =>
+      Object.defineProperty({ spawning: false }, "memory", {
+        get: () => {
+          memoryReads += 1;
+          return memory;
+        }
+      }) as Creep;
+
+    Game.creeps = {
+      remoteA: createTrackedCreep({ role: "remoteHarvester", homeRoom: "E1N1", targetRoom: "E2N1" }),
+      remoteB: createTrackedCreep({ role: "remoteHarvester", homeRoom: "E1N1", targetRoom: "E2N1" }),
+      remoteC: createTrackedCreep({ role: "remoteHarvester", homeRoom: "E1N1", targetRoom: "E3N1" }),
+      remoteD: createTrackedCreep({ role: "remoteHarvester", homeRoom: "E4N1", targetRoom: "E2N1" }),
+      guard: createTrackedCreep({ role: "remoteGuard", homeRoom: "E1N1", targetRoom: "E2N1" })
+    };
+
+    expect(countRemoteCreepsByTargetRoom("E1N1", "remoteHarvester", "E2N1")).to.equal(2);
+    expect(countRemoteCreepsByTargetRoom("E1N1", "remoteHarvester", "E3N1")).to.equal(1);
+    expect(countRemoteCreepsByTargetRoom("E1N1", "remoteGuard", "E2N1")).to.equal(1);
+    expect(memoryReads).to.equal(Object.keys(Game.creeps).length);
+  });
+
+  it("invalidates the remote count index when Game.creeps changes or the tick advances", () => {
+    Game.creeps = {
+      remoteA: createCreep({ role: "remoteHarvester", homeRoom: "E1N1", targetRoom: "E2N1" })
+    };
+    expect(countRemoteCreepsByTargetRoom("E1N1", "remoteHarvester", "E2N1")).to.equal(1);
+
+    Game.creeps = {
+      ...Game.creeps,
+      remoteB: createCreep({ role: "remoteHarvester", homeRoom: "E1N1", targetRoom: "E2N1" })
+    };
+    expect(countRemoteCreepsByTargetRoom("E1N1", "remoteHarvester", "E2N1")).to.equal(2);
+
+    Game.creeps.remoteC = createCreep({ role: "remoteHarvester", homeRoom: "E1N1", targetRoom: "E2N1" });
+    Game.time += 1;
+    expect(countRemoteCreepsByTargetRoom("E1N1", "remoteHarvester", "E2N1")).to.equal(3);
+  });
 });
