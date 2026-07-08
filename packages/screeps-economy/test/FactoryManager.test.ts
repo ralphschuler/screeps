@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { clearGameObjectCache } from "@ralphschuler/screeps-cache";
 import { FactoryManager } from "../src/factories/factoryManager";
 
 type StoreContents = Partial<Record<ResourceConstant, number>>;
@@ -50,6 +51,7 @@ function createRoomWithFactory(
 }
 
 function runFactory(factoryContents: StoreContents, storageContents: StoreContents): CommodityConstant[] {
+  clearGameObjectCache();
   const produced: CommodityConstant[] = [];
   const room = createRoomWithFactory(
     createStore(factoryContents),
@@ -68,6 +70,7 @@ function runFactory(factoryContents: StoreContents, storageContents: StoreConten
 
 describe("FactoryManager", () => {
   beforeEach(() => {
+    clearGameObjectCache();
     (global as any).Game = {
       ...Game,
       cpu: { ...Game.cpu, bucket: 10000 },

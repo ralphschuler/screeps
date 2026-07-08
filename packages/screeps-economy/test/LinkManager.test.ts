@@ -4,6 +4,7 @@
  */
 
 import { expect } from 'chai';
+import { clearGameObjectCache } from '@ralphschuler/screeps-cache';
 import { LinkManager } from '../src/links/linkManager';
 
 function store(used: number, capacity = 800) {
@@ -60,8 +61,10 @@ describe('LinkManager', () => {
   let linkManager: LinkManager;
 
   beforeEach(() => {
+    clearGameObjectCache();
     linkManager = new LinkManager();
     (global as any).Game.cpu.bucket = 10000;
+    (global as any).Game.rooms = {};
   });
 
   describe('construction', () => {
@@ -118,6 +121,18 @@ describe('LinkManager', () => {
   });
 
   describe('energy transfer logic', () => {
+    it('should process owned RCL5 rooms from the framework room cache', () => {
+      const sourceLink = link('sourceLink', 500, { source: 1 });
+      const controllerLink = link('controllerLink', 0, { controller: 1 });
+      const storageLink = link('storageLink', 500, { storage: 1 });
+      const room = roomWithLinks({ energyAvailable: 800, links: [sourceLink, controllerLink, storageLink] });
+      (Game.rooms as Record<string, Room>).W1N1 = room;
+
+      linkManager.run();
+
+      expect(sourceLink.calls).to.deep.equal([{ target: 'controllerLink', amount: 500 }]);
+    });
+
     it('should transfer from source link to controller link by default', () => {
       const sourceLink = link('sourceLink', 500, { source: 1 });
       const controllerLink = link('controllerLink', 0, { controller: 1 });

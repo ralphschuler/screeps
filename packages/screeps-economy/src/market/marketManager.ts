@@ -27,6 +27,7 @@
  * Verify trading decisions are made correctly based on price data
  */
 
+import { getOwnedRooms as getCachedOwnedRooms } from "@ralphschuler/screeps-cache";
 import { createDefaultMarketMemory, memoryManager } from "@ralphschuler/screeps-memory";
 import type { EmpireMemory, PendingArbitrageTrade, PriceDataPoint, ResourceMarketData } from "@ralphschuler/screeps-memory";
 import { logger } from "@ralphschuler/screeps-core";
@@ -337,7 +338,7 @@ export class MarketManager {
   private getOwnedRooms(): Room[] {
     this.ensureTickCaches();
     if (!this.cachedOwnedRooms) {
-      this.cachedOwnedRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
+      this.cachedOwnedRooms = getCachedOwnedRooms();
     }
     return this.cachedOwnedRooms;
   }
