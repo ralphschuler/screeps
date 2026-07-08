@@ -14,7 +14,7 @@ import { findCachedClosest } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "@ralphschuler/screeps-core";
 import { taskBoard, type TaskType } from "../../tasks";
-import { hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
+import { findCriticalEnergyDelivery, hasTaskBoardCriticalEnergyDelivery } from "./common/energyManagement";
 import { getTerminalEnergyExportRequest } from "../../tasks/energyExport";
 import {
   MATURE_ROOM_STORAGE_RESERVE_ENERGY,
@@ -67,45 +67,10 @@ export function hauler(ctx: CreepContext): CreepAction {
     const assignedDelivery = taskBoard.getAssignedDeliveryAction(ctx);
     if (assignedDelivery) return assignedDelivery;
 
-    // Deliver energy with priority: spawn > extensions > towers > storage > containers
-    // OPTIMIZATION: Increased cache times to reduce pathfinding overhead
-    // BUGFIX: Filter by capacity HERE for fresh state, not in room cache
+    // Deliver critical energy through the shared spawn/extension/tower policy.
     if (!hasTaskBoardCriticalEnergyDelivery(ctx)) {
-      // 1. Spawns first (highest priority, cache 10 ticks - increased from 5)
-      const spawns = ctx.spawnStructures.filter(
-        (s): s is StructureSpawn =>
-          s.structureType === STRUCTURE_SPAWN &&
-          s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-      );
-      if (spawns.length > 0) {
-        const closest = findCachedClosest(ctx.creep, spawns, "hauler_spawn", 10);
-        if (closest) {
-          logger.debug(`${ctx.creep.name} hauler delivering to spawn ${closest.id}`);
-          return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-        }
-      }
-
-      // 2. Extensions second (cache 10 ticks - increased from 5)
-      const extensions = ctx.spawnStructures.filter(
-        (s): s is StructureExtension =>
-          s.structureType === STRUCTURE_EXTENSION &&
-          s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-      );
-      if (extensions.length > 0) {
-        const closest = findCachedClosest(ctx.creep, extensions, "hauler_ext", 10);
-        if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-      }
-
-      // 3. Towers third (cache 15 ticks - increased from 10)
-      // FIX: Lower threshold from 200 to 100 to keep towers better stocked for defense
-      // Towers need to be kept full for rapid response to threats (ROADMAP.md Section 12)
-      const towersWithCapacity = ctx.towers.filter(
-        t => t.store.getFreeCapacity(RESOURCE_ENERGY) >= 100
-      );
-      if (towersWithCapacity.length > 0) {
-        const closest = findCachedClosest(ctx.creep, towersWithCapacity, "hauler_tower", 15);
-        if (closest) return { type: "transfer", target: closest, resourceType: RESOURCE_ENERGY };
-      }
+      const criticalDelivery = findCriticalEnergyDelivery(ctx, "hauler");
+      if (criticalDelivery) return criticalDelivery;
     }
 
     const terminalBufferAction = deliverTerminalBuffer(ctx, resourceType);
