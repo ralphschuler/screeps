@@ -74,11 +74,12 @@ describe("RoomConstructionManager", () => {
     function createRoomWithExistingSites(
       record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] },
       existingStructures: Structure[],
-      existingSites: ConstructionSite[]
+      existingSites: ConstructionSite[],
+      level = 2
     ): Room {
       const controller = {
         my: true,
-        level: 2,
+        level,
         pos: new RoomPosition(40, 38, "W2N1")
       } as unknown as StructureController;
       const spawn = existingStructures.find(
@@ -97,6 +98,9 @@ describe("RoomConstructionManager", () => {
       return {
         name: "W2N1",
         controller,
+        storage: existingStructures.find(
+          (structure): structure is StructureStorage => structure.structureType === STRUCTURE_STORAGE
+        ),
         getTerrain: () => ({ get: () => 0 }),
         find: (type: FindConstant, options?: { filter?: (obj: Structure | ConstructionSite) => boolean }) => {
           if (type === FIND_MY_CONSTRUCTION_SITES) return options?.filter ? existingSites.filter(options.filter) : existingSites;
@@ -260,6 +264,11 @@ describe("RoomConstructionManager", () => {
         1,
         "one missing tower site should be enough for the final global construction slot"
       );
+      assert.equal(
+        record.calls.length,
+        1,
+        "the shared global construction budget should prevent lower-priority dynamic sites after the final global slot is used"
+      );
       assert.isTrue(
         structures.every(structure => structure.structureType !== STRUCTURE_TOWER),
         "fixture should reproduce a room with no completed towers"
@@ -345,6 +354,59 @@ describe("RoomConstructionManager", () => {
         0,
         "No additional extension sites should be created when RCL2 mandatory demand is already met"
       );
+    });
+
+    it("should share the final normal room site across blueprint and road planners", () => {
+      const record: { calls: { x: number; y: number; structureType: BuildableStructureConstant }[] } = { calls: [] };
+      const existingStructures: Structure[] = [
+        {
+          id: "spawn1" as Id<StructureSpawn>,
+          structureType: STRUCTURE_SPAWN,
+          pos: new RoomPosition(31, 25, "W2N1")
+        } as StructureSpawn,
+        ...Array.from({ length: 20 }, (_, index) => ({
+          id: `ext${index}` as Id<StructureExtension>,
+          structureType: STRUCTURE_EXTENSION,
+          pos: new RoomPosition(5 + (index % 10), 15 + Math.floor(index / 10), "W2N1")
+        } as StructureExtension)),
+        {
+          id: "tower1" as Id<StructureTower>,
+          structureType: STRUCTURE_TOWER,
+          pos: new RoomPosition(30, 25, "W2N1")
+        } as StructureTower,
+        {
+          id: "storage1" as Id<StructureStorage>,
+          structureType: STRUCTURE_STORAGE,
+          pos: new RoomPosition(30, 26, "W2N1")
+        } as StructureStorage
+      ];
+      const existingSites: ConstructionSite[] = [
+        ...Array.from({ length: 8 }, (_, index) => ({
+          structureType: STRUCTURE_ROAD,
+          pos: new RoomPosition(10 + index, 10, "W2N1")
+        } as ConstructionSite)),
+        {
+          structureType: STRUCTURE_RAMPART,
+          pos: new RoomPosition(20, 20, "W2N1")
+        } as ConstructionSite
+      ];
+      const room = createRoomWithExistingSites(record, existingStructures, existingSites, 4);
+      const swarm = { danger: 0, remoteAssignments: [], metrics: {}, posture: "eco" } as any;
+      const oldGame = (globalThis as { Game?: unknown }).Game;
+      (globalThis as { Game?: unknown }).Game = { time: 100, constructionSites: {} };
+
+      try {
+        manager.runConstruction(room, swarm, existingSites, existingStructures as StructureSpawn[]);
+      } finally {
+        (globalThis as { Game?: unknown }).Game = oldGame;
+      }
+
+      assert.equal(
+        record.calls.length,
+        1,
+        "exactly one normal-priority construction site should use the final per-room budget slot"
+      );
+      assert.equal(swarm.metrics.constructionSites, 10, "metrics should report the shared intended room-site count");
     });
 
     it("should destroy misplaced structures in non-combat postures", () => {

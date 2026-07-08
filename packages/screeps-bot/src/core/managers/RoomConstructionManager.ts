@@ -13,6 +13,7 @@ import { placeRampartsOnCriticalStructures, placeRoadAwarePerimeterDefense } fro
 import {
   blueprintFromPlan,
   buildConstructionQueue,
+  createConstructionSiteBudget,
   destroyMisplacedStructures,
   getMandatoryStructureTargets,
   issueConstructionSites,
@@ -20,7 +21,9 @@ import {
   placeLinkConstructionSites,
   placeRoadConstructionSites,
   planRoomBlueprintFromRoom,
-  selectBestBlueprint
+  selectBestBlueprint,
+  withConstructionSiteBudget,
+  type ConstructionSiteBudget
 } from "@ralphschuler/screeps-layouts";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
@@ -137,7 +140,11 @@ function isEarlyGameDefense(rcl: number): boolean {
   return rcl >= EARLY_GAME_RCL_MIN && rcl <= EARLY_GAME_RCL_MAX;
 }
 
-function countBuildsForType(room: Room, structureType: BuildableStructureConstant): number {
+function countBuildsForType(
+  room: Room,
+  structureType: BuildableStructureConstant,
+  budget?: ConstructionSiteBudget
+): number {
   const ownedStructures = room.find(FIND_MY_STRUCTURES, {
     filter: structure => structure.structureType === structureType
   });
@@ -145,7 +152,7 @@ function countBuildsForType(room: Room, structureType: BuildableStructureConstan
     filter: site => site.structureType === structureType
   });
 
-  return ownedStructures.length + ownedSites.length;
+  return ownedStructures.length + ownedSites.length + (budget?.getPlacedCount(structureType) ?? 0);
 }
 
 function getControllerStructureLimit(structureType: StructureConstant, rcl: number): number {
@@ -156,18 +163,18 @@ function getControllerStructureLimit(structureType: StructureConstant, rcl: numb
   return controllerStructures[structureType]?.[rcl] ?? 0;
 }
 
-function hasOutstandingTowerDemand(room: Room, rcl: number): boolean {
+function hasOutstandingTowerDemand(room: Room, rcl: number, budget?: ConstructionSiteBudget): boolean {
   const towerLimit = getControllerStructureLimit(STRUCTURE_TOWER, rcl);
-  return towerLimit > 0 && countBuildsForType(room, STRUCTURE_TOWER) < towerLimit;
+  return towerLimit > 0 && countBuildsForType(room, STRUCTURE_TOWER, budget) < towerLimit;
 }
 
-function hasOutstandingMandatoryBlueprintDemand(room: Room, rcl: number): boolean {
+function hasOutstandingMandatoryBlueprintDemand(room: Room, rcl: number, budget?: ConstructionSiteBudget): boolean {
   const targets = getMandatoryStructureTargets(rcl);
 
   for (const structureType of Object.keys(targets) as BuildableStructureConstant[]) {
     const target = targets[structureType] ?? 0;
     if (target <= 0) continue;
-    if (countBuildsForType(room, structureType) < target) {
+    if (countBuildsForType(room, structureType, budget) < target) {
       return true;
     }
   }
@@ -256,6 +263,9 @@ export class RoomConstructionManager {
   ): void {
     const existingSites = constructionSites;
     const rcl = room.controller?.level ?? 1;
+    const constructionBudget = createConstructionSiteBudget(room, { roomSiteCount: existingSites.length });
+    const normalBudgetedRoom = withConstructionSiteBudget(room, constructionBudget);
+    const bypassRoomBudgetedRoom = withConstructionSiteBudget(room, constructionBudget, { bypassRoomLimit: true });
 
     // Find spawn to use as anchor
     const spawn = spawns[0];
@@ -271,9 +281,10 @@ export class RoomConstructionManager {
         // This must run before the normal per-room construction cap and for any RCL;
         // rooms can lose every spawn after progressing beyond RCL1.
         const blueprintSelection = selectBestBlueprint(room, rcl);
-        if (blueprintSelection) {
+        if (blueprintSelection && constructionBudget.canPlace({ bypassRoomLimit: true })) {
           rememberLayoutAnchor(swarm, blueprintSelection.anchor, blueprintSelection.blueprint.name, rcl);
-          room.createConstructionSite(blueprintSelection.anchor.x, blueprintSelection.anchor.y, STRUCTURE_SPAWN);
+          const result = room.createConstructionSite(blueprintSelection.anchor.x, blueprintSelection.anchor.y, STRUCTURE_SPAWN);
+          constructionBudget.recordResult(result, STRUCTURE_SPAWN);
         }
       }
       return;
@@ -294,38 +305,43 @@ export class RoomConstructionManager {
 
     // Priority 0: missing towers are survival-critical even in peaceful recovery.
     // Place them before dynamic links/labs can consume the final global site slot.
-    const shouldPlaceCriticalDefenseSites = rcl >= 3 && (swarm.danger >= 1 || hasOutstandingTowerDemand(room, rcl));
-    const criticalDefenseSitesPlaced = shouldPlaceCriticalDefenseSites
-      ? placeCriticalDefenseConstructionSites(room, stampPlan, swarm.danger >= 2 ? 3 : 1)
-      : 0;
+    const shouldPlaceCriticalDefenseSites = rcl >= 3 && (swarm.danger >= 1 || hasOutstandingTowerDemand(room, rcl, constructionBudget));
+    if (shouldPlaceCriticalDefenseSites) {
+      const criticalDefenseBudget = constructionBudget.capRequested(swarm.danger >= 2 ? 3 : 1, {
+        bypassRoomLimit: true
+      });
+      if (criticalDefenseBudget > 0) {
+        placeCriticalDefenseConstructionSites(bypassRoomBudgetedRoom, stampPlan, criticalDefenseBudget);
+      }
+    }
 
     if (options.criticalOnly) {
-      swarm.metrics.constructionSites = existingSites.length + criticalDefenseSitesPlaced;
+      swarm.metrics.constructionSites = constructionBudget.roomSiteCount;
       return;
     }
 
     // Priority 1: place dynamic link/lab sites before lower-priority blueprint
     // and road work, but after missing tower recovery preserves room safety.
-    let linkSitesPlaced = 0;
     if (rcl >= 5) {
-      linkSitesPlaced = placeLinkConstructionSites(room, 2);
+      const linkBudget = constructionBudget.capRequested(2);
+      if (linkBudget > 0) {
+        placeLinkConstructionSites(normalBudgetedRoom, linkBudget);
+      }
     }
 
-    let labSitesPlaced = 0;
     if (rcl >= 6) {
-      labSitesPlaced = placeLabClusterConstructionSites(room, 3);
+      const labBudget = constructionBudget.capRequested(3);
+      if (labBudget > 0) {
+        placeLabClusterConstructionSites(normalBudgetedRoom, labBudget);
+      }
     }
 
     // Check per-room construction site throttle after first-spawn/bootstrap, priority economy sites,
     // and survival-critical defense sites. Keep bypass open for rooms still lacking mandatory
     // blueprint structures (e.g., RCL2 rooms still missing extensions).
-    const hasMandatoryDemand = hasOutstandingMandatoryBlueprintDemand(room, rcl);
-    if (
-      existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced >= 10 &&
-      !hasMandatoryDemand
-    ) {
-      swarm.metrics.constructionSites =
-        existingSites.length + linkSitesPlaced + labSitesPlaced + criticalDefenseSitesPlaced;
+    const hasMandatoryDemand = hasOutstandingMandatoryBlueprintDemand(room, rcl, constructionBudget);
+    if (!constructionBudget.canPlace() && !hasMandatoryDemand) {
+      swarm.metrics.constructionSites = constructionBudget.roomSiteCount;
       return;
     }
 
@@ -362,14 +378,17 @@ export class RoomConstructionManager {
     })) {
       const maxPerimeterSites = isEarlyGameDefense(rcl) ? MAX_EARLY_PERIMETER_SITES : MAX_REGULAR_PERIMETER_SITES;
 
-      perimeterResult = placeRoadAwarePerimeterDefense(
-        room,
-        anchor,
-        finalBlueprint.roads,
-        rcl,
-        maxPerimeterSites,
-        swarm.remoteAssignments
-      );
+      const perimeterBudget = constructionBudget.capRequested(maxPerimeterSites);
+      if (perimeterBudget > 0) {
+        perimeterResult = placeRoadAwarePerimeterDefense(
+          normalBudgetedRoom,
+          anchor,
+          finalBlueprint.roads,
+          rcl,
+          perimeterBudget,
+          swarm.remoteAssignments
+        );
+      }
 
       // Log wall removals for road access
       if (perimeterResult.wallsRemoved > 0) {
@@ -384,18 +403,32 @@ export class RoomConstructionManager {
     // Priority 2: Place construction sites from the canonical framework stamp planner.
     // Preferred stamps can partially place; any missing required structures flow through
     // fallback placement before this queue emits sites.
-    const placed = issueConstructionSites(room, stampPlan, 3);
+    const blueprintBudgetedRoom = hasMandatoryDemand
+      ? withConstructionSiteBudget(room, constructionBudget, { bypassRoomLimit: true })
+      : normalBudgetedRoom;
+    const blueprintBudget = constructionBudget.capRequested(3, { bypassRoomLimit: hasMandatoryDemand });
+    if (blueprintBudget > 0) {
+      issueConstructionSites(blueprintBudgetedRoom, stampPlan, blueprintBudget);
+    }
 
     // Priority 4: Place road construction sites for infrastructure routes (sources, controller, mineral)
     // Only place 1-2 road sites per tick to avoid overwhelming builders
-    const roadSitesPlaced = placeRoadConstructionSites(room, anchor, 2);
+    const roadBudget = constructionBudget.capRequested(2);
+    if (roadBudget > 0) {
+      placeRoadConstructionSites(normalBudgetedRoom, anchor, roadBudget);
+    }
 
     // Priority 5: Place ramparts on critical structures (RCL 2+)
     // Automated rampart placement for spawn, storage, towers, labs, etc.
     let rampartResult = { placed: 0, needsRepair: 0, totalCritical: 0, protected: 0 };
-    if (constructionPolicy.allowRamparts && rcl >= 2 && existingSites.length < 9) {
+    if (constructionPolicy.allowRamparts && rcl >= 2 && constructionBudget.canPlace()) {
       const maxRampartSites = swarm.danger >= 2 ? 3 : 2; // More aggressive during attacks
-      rampartResult = placeRampartsOnCriticalStructures(room, rcl, swarm.danger, maxRampartSites);
+      rampartResult = placeRampartsOnCriticalStructures(
+        normalBudgetedRoom,
+        rcl,
+        swarm.danger,
+        constructionBudget.capRequested(maxRampartSites)
+      );
 
       if (rampartResult.placed > 0) {
         memoryManager.addRoomEvent(
@@ -407,15 +440,7 @@ export class RoomConstructionManager {
     }
 
     // Update metrics
-    swarm.metrics.constructionSites =
-      existingSites.length +
-      criticalDefenseSitesPlaced +
-      placed +
-      linkSitesPlaced +
-      labSitesPlaced +
-      roadSitesPlaced +
-      perimeterResult.sitesPlaced +
-      rampartResult.placed;
+    swarm.metrics.constructionSites = constructionBudget.roomSiteCount;
   }
 }
 
