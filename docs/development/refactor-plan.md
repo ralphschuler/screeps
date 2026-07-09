@@ -22,6 +22,7 @@ This plan turns code-refinement findings into staged, framework-first cleanup wo
 
 - Remove remaining bot-local duplicates for layouts after package tests import framework packages directly.
 - Continue consolidating defense-assist assigned-power helpers so spawn and cluster coordination share the same accounting contract.
+- Continue staged room-scan cache adoption from the [room scan cache inventory](room-scan-cache-inventory.md) so runtime owned/visible-room enumeration uses the framework `GameObjectCache` source of truth.
 - Consolidate duplicate Screeps test setup globals into shared fixtures.
 - Add package-level behavior tests before moving any public logic.
 - Keep docs aligned with Node.js 24 and current package names.

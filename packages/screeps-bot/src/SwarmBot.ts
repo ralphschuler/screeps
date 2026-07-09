@@ -3,7 +3,7 @@
  */
 
 
-import { initializeCacheEvents, registerAllCaches } from "@ralphschuler/screeps-cache";
+import { getOwnedRooms, initializeCacheEvents, registerAllCaches } from "@ralphschuler/screeps-cache";
 import { emergencyResponseManager } from "@ralphschuler/screeps-defense";
 import { heapCache, memoryManager } from "@ralphschuler/screeps-memory";
 import { initializePheromoneEventHandlers, pheromoneManager } from "@ralphschuler/screeps-pheromones";
@@ -16,7 +16,7 @@ import { MapVisualizer, RoomVisualizer } from "@ralphschuler/screeps-visuals";
 import { reconcileTraffic as finalizeMovement, preTick as initMovement } from "screeps-cartographer";
 import { getConfig } from "./config";
 import { botKernelRuntime } from "./core/botKernelRuntime";
-import { getOwnedRoomsForTick, selectRoomsForPeriodicWork, shouldRunOptionalTickWork } from "./core/botTickLifecycle";
+import { selectRoomsForPeriodicWork, shouldRunOptionalTickWork } from "./core/botTickLifecycle";
 import { creepProcessManager } from "./core/creepProcessManager";
 import { eventBus } from "./core/events";
 import { kernel } from "./core/kernel";
@@ -75,11 +75,10 @@ function hasIdleSpawn(room: Room): boolean {
   return false;
 }
 
-function runSpawns(): void {
+function runSpawns(ownedRooms: Room[]): void {
   const lowBucket = Game.cpu.bucket < getConfig().cpu.bucketThresholds.lowMode;
 
-  for (const room of Object.values(Game.rooms)) {
-    if (!room.controller?.my) continue;
+  for (const room of ownedRooms) {
 
     // Under bucket pressure, rooms with all spawns busy cannot start a new creep this tick.
     // Skip expensive spawn-need analysis there; re-evaluate as soon as any spawn is idle.
@@ -268,7 +267,8 @@ export function loop(): void {
 
   // Shard abandonment guard: if no owned rooms, skip colony processing but retain the
   // lightweight global maintenance above.
-  const ownedRoomCount = Object.values(Game.rooms).filter(r => r.controller?.my).length;
+  const ownedRooms = getOwnedRooms();
+  const ownedRoomCount = ownedRooms.length;
   if (ownedRoomCount === 0) {
     // No rooms owned — either respawning, first tick, or abandoned shard.
     if (Game.time % 100 === 0) {
@@ -303,12 +303,6 @@ export function loop(): void {
   // Clear event bus tick-specific caches for coalescing
   botKernelRuntime.startEventTick();
 
-  const ownedRooms = getOwnedRoomsForTick({
-    tick: Game.time,
-    rooms: () => Object.values(Game.rooms),
-    cache: global as unknown as Record<string, unknown>
-  });
-
   // Refresh persistent room task boards in a staggered cadence before creep processes request work.
   // Tasks have TTLs/reservations, so rebuilding every owned board every tick wastes CPU under load.
   unifiedStats.measureSubsystem("taskBoard", () => {
@@ -326,7 +320,7 @@ export function loop(): void {
   // Run spawns before movement/kernel work so workforce recovery survives optional subsystem failures.
   unifiedStats.measureSubsystem("spawns", () => {
     runInterShardFootprintSpawner();
-    runSpawns();
+    runSpawns(ownedRooms);
   });
 
   // Initialize movement system (traffic management preTick)

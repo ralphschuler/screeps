@@ -6,7 +6,9 @@
   "types": "dist/index.d.ts",
   "private": false,
   "scripts": {
+    "prebuild": "npm run build -w @ralphschuler/screeps-core --if-present && npm run build -w @ralphschuler/screeps-cache --if-present",
     "build": "tsc",
+    "pretest": "npm run build -w @ralphschuler/screeps-core --if-present && npm run build -w @ralphschuler/screeps-cache --if-present",
     "test": "mocha test/**/*.test.ts",
     "prepublishOnly": "npm run build",
     "lint": "eslint \"src/**/*.ts\"",
@@ -29,6 +31,7 @@
   },
   "homepage": "https://github.com/ralphschuler/screeps/tree/main/packages/@ralphschuler/screeps-stats#readme",
   "dependencies": {
+    "@ralphschuler/screeps-cache": "*",
     "@ralphschuler/screeps-core": "*"
   },
   "devDependencies": {

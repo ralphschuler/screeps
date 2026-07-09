@@ -1,8 +1,5 @@
 import type { BucketMode } from "./kernel";
 
-const OWNED_ROOMS_CACHE_KEY = "_ownedRooms";
-const OWNED_ROOMS_TICK_KEY = "_ownedRoomsTick";
-
 /**
  * Bucket mode thresholds for competitive tick scheduling.
  *
@@ -23,12 +20,6 @@ export interface BucketWorkModeInput {
   bucket: number;
 }
 
-export interface OwnedRoomsForTickInput {
-  tick: number;
-  rooms: () => Room[];
-  cache: Record<string, unknown>;
-}
-
 export interface OptionalTickWorkInput {
   /** Whether kernel has remaining CPU budget this tick. */
   hasCpuBudget: boolean;
@@ -42,20 +33,6 @@ export interface PeriodicRoomWorkInput {
   tick: number;
   rooms: Room[];
   interval: number;
-}
-
-export function getOwnedRoomsForTick(input: OwnedRoomsForTickInput): Room[] {
-  const cachedRooms = input.cache[OWNED_ROOMS_CACHE_KEY] as Room[] | undefined;
-  const cachedTick = input.cache[OWNED_ROOMS_TICK_KEY] as number | undefined;
-
-  if (cachedRooms && cachedTick === input.tick) {
-    return cachedRooms;
-  }
-
-  const ownedRooms = input.rooms().filter(room => room.controller?.my);
-  input.cache[OWNED_ROOMS_CACHE_KEY] = ownedRooms;
-  input.cache[OWNED_ROOMS_TICK_KEY] = input.tick;
-  return ownedRooms;
 }
 
 export function getBucketWorkMode(input: BucketWorkModeInput): BucketWorkMode {

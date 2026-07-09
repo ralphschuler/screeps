@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import { clearGameObjectCache } from "@ralphschuler/screeps-cache";
 import { MapVisualizer } from "../../src/visuals/mapVisualizer";
 import { Game as MockGame, Memory as MockMemory } from "./mock";
 
@@ -9,6 +10,7 @@ describe("MapVisualizer", () => {
   let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
+    clearGameObjectCache();
     sandbox = sinon.createSandbox();
 
     // Reset global fixtures so tests are deterministic.
@@ -24,6 +26,7 @@ describe("MapVisualizer", () => {
 
   afterEach(() => {
     sandbox.restore();
+    clearGameObjectCache();
   });
 
   it("no-op draws when Game.map is missing", () => {
