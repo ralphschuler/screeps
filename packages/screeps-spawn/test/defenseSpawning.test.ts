@@ -1102,6 +1102,95 @@ describe("defense spawn throttling", () => {
     if (firstAssistIndex >= 0) assert.isBelow(refuelIndex, firstAssistIndex);
   });
 
+  it("scales dedicated defense refuelers when ranged/healer assists are still energy-blocked", () => {
+    const helper = createRoom([], "W18S29", 2300, 177, 6);
+    const attacked = createRoom([
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL, MOVE]),
+      createHostile([ATTACK, ATTACK, MOVE, MOVE, MOVE, ATTACK, ATTACK, MOVE]),
+      createHostile([RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE]),
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL, MOVE])
+    ], "W18S28", 0, 0, 5, false);
+    const source = createSource();
+    const sourceContainer = createSourceContainer(2000);
+    const originalFind = helper.find.bind(helper);
+    (helper as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      if (type === FIND_SOURCES) return [source];
+      if (type === FIND_STRUCTURES) return [sourceContainer];
+      return originalFind(type as never);
+    }) as Room["find"];
+    Game.rooms.W18S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    Game.creeps = {
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29", task: "defenseRefuel" } },
+      hauler2: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29", task: "defenseRefuel" } },
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W18S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W18S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W18S28",
+        guardsNeeded: 2,
+        rangersNeeded: 2,
+        healersNeeded: 1,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "spawnless mixed ranged-heal attack"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const requests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests;
+
+    const refuel = requests.find(request => request.role === "hauler" && request.additionalMemory?.task === "defenseRefuel");
+    assert.isOk(refuel, "helper should scale refuel throughput before waiting on unaffordable ranger/healer assists");
+    assert.equal(refuel!.priority, SpawnPriority.EMERGENCY);
+    assert.deepEqual(refuel!.body.parts, [CARRY, MOVE]);
+  });
+
+  it("caps scaled defense refuelers after four dedicated emergency haulers", () => {
+    const helper = createRoom([], "W18S29", 2300, 177, 6);
+    const attacked = createRoom([
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL, MOVE]),
+      createHostile([ATTACK, ATTACK, MOVE, MOVE, MOVE, ATTACK, ATTACK, MOVE]),
+      createHostile([RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE]),
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL, MOVE])
+    ], "W18S28", 0, 0, 5, false);
+    const source = createSource();
+    const sourceContainer = createSourceContainer(2000);
+    const originalFind = helper.find.bind(helper);
+    (helper as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      if (type === FIND_SOURCES) return [source];
+      if (type === FIND_STRUCTURES) return [sourceContainer];
+      return originalFind(type as never);
+    }) as Room["find"];
+    Game.rooms.W18S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    Game.creeps = {
+      refuel1: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29", task: "defenseRefuel" } },
+      refuel2: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29", task: "defenseRefuel" } },
+      refuel3: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29", task: "defenseRefuel" } },
+      refuel4: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29", task: "defenseRefuel" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29" } },
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W18S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W18S28",
+        guardsNeeded: 2,
+        rangersNeeded: 2,
+        healersNeeded: 1,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "spawnless mixed ranged-heal attack"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const requests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests;
+
+    assert.isUndefined(requests.find(request => request.role === "hauler" && request.additionalMemory?.task === "defenseRefuel"));
+  });
+
   it("does not add a defense refuel hauler when two local haulers are already available", () => {
     const helper = createRoom([], "W17S29", 2300, 21, 6);
     const attacked = createRoom([createHostile([ATTACK, MOVE])], "W18S28", 0, 0, 5, false);
@@ -1259,6 +1348,41 @@ describe("defense spawn throttling", () => {
     );
     assert.isOk(refuel);
     assert.equal(refuel?.priority, SpawnPriority.EMERGENCY);
+  });
+
+  it("adds an emergency helper-room assist for a spawnless RCL5 room with current mixed hostiles", () => {
+    const liveHostiles = [
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL, MOVE]),
+      createHostile([ATTACK, ATTACK, MOVE, MOVE, MOVE, ATTACK, ATTACK, MOVE]),
+      createHostile([RANGED_ATTACK, MOVE, MOVE, HEAL, HEAL, MOVE]),
+      createHostile([RANGED_ATTACK, RANGED_ATTACK, MOVE, MOVE, HEAL, MOVE])
+    ];
+    const helper = createRoom([], "W18S29", 800, 800, 6);
+    const attacked = createRoom(liveHostiles, "W18S28", 0, 0, 5, false);
+    Game.rooms.W18S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    Game.creeps = {
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W18S29" } },
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W18S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W18S29" } }
+    } as unknown as typeof Game.creeps;
+
+    const request = createDefenseRequest(attacked, { danger: 0, posture: "eco" } as any);
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = request ? [request] : [];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const plan = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any);
+    const assistRequests = plan.requests
+      .filter(spawnRequest => spawnRequest.additionalMemory?.task === "defenseAssist");
+    const emergencyAssist = assistRequests.find(spawnRequest =>
+      spawnRequest.targetRoom === "W18S28" && spawnRequest.priority === SpawnPriority.EMERGENCY
+    );
+
+    assert.isOk(request, "spawnless hostile room should create a defense-assist request");
+    assert.isOk(emergencyAssist, "helper room should answer the live spawnless-hostile pattern");
+    assert.equal(emergencyAssist!.role, "guard");
+    assert.isAtMost(emergencyAssist!.body.cost, helper.energyAvailable);
+    assert.include(emergencyAssist!.additionalMemory, { task: "defenseAssist", assistTarget: "W18S28" });
   });
 
   it("adds an affordable emergency helper-room assist when hard-threat bodies exceed current helper energy", () => {

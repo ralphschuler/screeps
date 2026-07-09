@@ -38752,12 +38752,14 @@ minCapacity: 100
 
 function eh(e, t) {
 if ("hauler" !== t) return null;
-var r, o, n = Game.rooms[e];
-return n && function(e) {
+var r = Game.rooms[e];
+if (!r || !function(e) {
 var t;
 return !(!(null === (t = e.controller) || void 0 === t ? void 0 : t.my) || 0 === e.find(FIND_MY_SPAWNS).length || X(e).length > 0 || e.energyCapacityAvailable < $g.cost);
-}(n) ? gg(n) >= 200 ? null : function(e) {
-return (t = Memory.defenseRequests, Array.isArray(t) ? t : Object.values(null != t ? t : {})).some(function(t) {
+}(r)) return null;
+if (gg(r) >= 200) return null;
+var o, n, i = function(e) {
+return (t = Memory.defenseRequests, Array.isArray(t) ? t : Object.values(null != t ? t : {})).filter(function(t) {
 var r, o;
 if (!t || t.roomName === e) return !1;
 if ((null !== (r = t.urgency) && void 0 !== r ? r : 1) < 2) return !1;
@@ -38766,15 +38768,56 @@ var n = Game.rooms[t.roomName];
 return Boolean(n && X(n).length > 0);
 });
 var t;
-}(e) && (0 === (o = (r = n).find(FIND_SOURCES)).length ? 0 : r.find(FIND_STRUCTURES, {
+}(e);
+if (0 === i.length) return null;
+if (!((0 === (n = (o = r).find(FIND_SOURCES)).length ? 0 : o.find(FIND_STRUCTURES, {
 filter: function(e) {
-return e.structureType === STRUCTURE_CONTAINER && o.some(function(t) {
+return e.structureType === STRUCTURE_CONTAINER && n.some(function(t) {
 return t.pos.getRangeTo(e.pos) <= 2;
 });
 }
 }).reduce(function(e, t) {
 return e + t.store.getUsedCapacity(RESOURCE_ENERGY);
-}, 0)) >= 100 ? function(e) {
+}, 0)) >= 100)) return null;
+var s = i.some(function(e) {
+var t, r, o;
+return (null !== (t = e.urgency) && void 0 !== t ? t : 1) >= 3 && ((null !== (r = e.rangersNeeded) && void 0 !== r ? r : 0) > 0 || (null !== (o = e.healersNeeded) && void 0 !== o ? o : 0) > 0);
+}), c = s ? function(e) {
+var t, r, o, n, i, s = 0;
+try {
+for (var c = a(Object.values(Game.creeps)), u = c.next(); !u.done; u = c.next()) {
+var l = u.value.memory;
+"hauler" === l.role && l.homeRoom === e && l.task === Jg && s++;
+}
+} catch (e) {
+t = {
+error: e
+};
+} finally {
+try {
+u && !u.done && (r = c.return) && r.call(c);
+} finally {
+if (t) throw t.error;
+}
+}
+try {
+for (var m = a(Gv.getPendingRequests(e)), d = m.next(); !d.done; d = m.next()) {
+var p = d.value, f = null === (i = p.additionalMemory) || void 0 === i ? void 0 : i.task;
+"hauler" === p.role && f === Jg && s++;
+}
+} catch (e) {
+o = {
+error: e
+};
+} finally {
+try {
+d && !d.done && (n = m.return) && n.call(m);
+} finally {
+if (o) throw o.error;
+}
+}
+return s;
+}(e) : function(e) {
 var t, r, o, n, i, s = 0;
 try {
 for (var c = a(Object.values(Game.creeps)), u = c.next(); !u.done; u = c.next()) {
@@ -38809,11 +38852,12 @@ if (o) throw o.error;
 }
 }
 return s;
-}(e) >= 2 ? null : {
+}(e);
+return c >= (s ? 4 : 2) ? null : {
 task: Jg,
 priority: Tv.EMERGENCY,
 body: $g
-} : null : null;
+};
 }
 
 function th(e) {

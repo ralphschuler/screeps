@@ -9,6 +9,7 @@ const DEFENSE_REFUEL_REQUEST_TTL = 500;
 const DEFENSE_REFUEL_ENERGY_THRESHOLD = 200;
 const DEFENSE_REFUEL_SOURCE_CONTAINER_MIN = 100;
 const DEFENSE_REFUEL_MAX_LOCAL_HAULERS = 2;
+const DEFENSE_REFUEL_MAX_HARD_ASSIST_HAULERS = 4;
 
 const MIN_DEFENSE_REFUEL_BODY: BodyTemplate = {
   parts: [CARRY, MOVE],
@@ -18,6 +19,9 @@ const MIN_DEFENSE_REFUEL_BODY: BodyTemplate = {
 
 interface DefenseAssistRequestMemory {
   roomName: string;
+  guardsNeeded?: number;
+  rangersNeeded?: number;
+  healersNeeded?: number;
   urgency?: number;
   createdAt?: number;
 }
@@ -37,8 +41,8 @@ function getDefenseRequests(): DefenseAssistRequestMemory[] {
   return Array.isArray(requests) ? requests : Object.values(requests ?? {});
 }
 
-function hasVisibleEmergencyDefenseRequest(homeRoom: string): boolean {
-  return getDefenseRequests().some(request => {
+function getVisibleEmergencyDefenseRequests(homeRoom: string): DefenseAssistRequestMemory[] {
+  return getDefenseRequests().filter(request => {
     if (!request || request.roomName === homeRoom) return false;
     if ((request.urgency ?? 1) < 2) return false;
     if (Game.time - (request.createdAt ?? Game.time) > DEFENSE_REFUEL_REQUEST_TTL) return false;
@@ -46,6 +50,12 @@ function hasVisibleEmergencyDefenseRequest(homeRoom: string): boolean {
     const targetRoom = Game.rooms[request.roomName];
     return Boolean(targetRoom && getActualHostileCreeps(targetRoom).length > 0);
   });
+}
+
+function needsScaledDefenseRefuel(requests: DefenseAssistRequestMemory[]): boolean {
+  return requests.some(request =>
+    (request.urgency ?? 1) >= 3 && ((request.rangersNeeded ?? 0) > 0 || (request.healersNeeded ?? 0) > 0)
+  );
 }
 
 function findSourceContainerEnergy(room: Room): number {
@@ -65,6 +75,22 @@ function countLocalHaulersAndQueuedRefuelers(homeRoom: string): number {
   for (const creep of Object.values(Game.creeps)) {
     const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
     if (memory.role === "hauler" && memory.homeRoom === homeRoom) count++;
+  }
+
+  for (const request of spawnQueue.getPendingRequests(homeRoom)) {
+    const task = (request.additionalMemory as { task?: string } | undefined)?.task;
+    if (request.role === "hauler" && task === DEFENSE_REFUEL_TASK) count++;
+  }
+
+  return count;
+}
+
+function countDedicatedDefenseRefuelers(homeRoom: string): number {
+  let count = 0;
+
+  for (const creep of Object.values(Game.creeps)) {
+    const memory = creep.memory as unknown as Partial<SwarmCreepMemory>;
+    if (memory.role === "hauler" && memory.homeRoom === homeRoom && memory.task === DEFENSE_REFUEL_TASK) count++;
   }
 
   for (const request of spawnQueue.getPendingRequests(homeRoom)) {
@@ -100,9 +126,16 @@ export function getDefenseRefuelSpawnAssignment(homeRoom: string, role: string):
   const home = Game.rooms[homeRoom];
   if (!home || !canSpawnLocalRefueler(home)) return null;
   if (getEffectiveRoomEnergyAvailable(home) >= DEFENSE_REFUEL_ENERGY_THRESHOLD) return null;
-  if (!hasVisibleEmergencyDefenseRequest(homeRoom)) return null;
+  const emergencyRequests = getVisibleEmergencyDefenseRequests(homeRoom);
+  if (emergencyRequests.length === 0) return null;
   if (!canRefuelFromLocalSourceContainers(home)) return null;
-  if (countLocalHaulersAndQueuedRefuelers(homeRoom) >= DEFENSE_REFUEL_MAX_LOCAL_HAULERS) return null;
+
+  const scaleDedicatedRefuel = needsScaledDefenseRefuel(emergencyRequests);
+  const refuelerCount = scaleDedicatedRefuel
+    ? countDedicatedDefenseRefuelers(homeRoom)
+    : countLocalHaulersAndQueuedRefuelers(homeRoom);
+  const maxRefuelers = scaleDedicatedRefuel ? DEFENSE_REFUEL_MAX_HARD_ASSIST_HAULERS : DEFENSE_REFUEL_MAX_LOCAL_HAULERS;
+  if (refuelerCount >= maxRefuelers) return null;
 
   return {
     task: DEFENSE_REFUEL_TASK,
