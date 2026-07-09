@@ -15,6 +15,8 @@ type RoomOptions = {
   owner?: string;
   reserver?: string;
   hostileCreeps?: Creep[];
+  energyAvailable?: number;
+  energyCapacityAvailable?: number;
 };
 
 function createRoom(name: string, opts: RoomOptions = {}): Room {
@@ -31,8 +33,8 @@ function createRoom(name: string, opts: RoomOptions = {}): Room {
 
   return {
     name,
-    energyAvailable: 800,
-    energyCapacityAvailable: 800,
+    energyAvailable: opts.energyAvailable ?? 800,
+    energyCapacityAvailable: opts.energyCapacityAvailable ?? 800,
     controller,
     find: (type: FindConstant) => {
       if (type === FIND_MY_SPAWNS) {
@@ -80,6 +82,36 @@ function seedStableHomeEconomy(homeRoom = "E1N1"): void {
   addStableHomeCreep(`${homeRoom}-harvester`, "harvester", homeRoom);
   addStableHomeCreep(`${homeRoom}-hauler`, "hauler", homeRoom);
   addStableHomeCreep(`${homeRoom}-upgrader`, "upgrader", homeRoom);
+}
+
+function createRoute(length: number): { exit: ExitConstant; room: string }[] {
+  return Array.from({ length }, (_, index) => ({ exit: FIND_EXIT_TOP, room: `route${index}` }));
+}
+
+function createQueuedWork(roomName: string, id: string): void {
+  spawnQueue.addRequest({
+    id,
+    roomName,
+    role: "harvester",
+    family: "economy",
+    body: { parts: [WORK, CARRY, MOVE], cost: 200, minCapacity: 200 },
+    priority: SpawnPriority.NORMAL,
+    createdAt: Game.time
+  });
+}
+
+function createQueuedPioneer(roomName: string, targetRoom: string, id: string): void {
+  spawnQueue.addRequest({
+    id,
+    roomName,
+    role: "pioneer",
+    family: "economy",
+    body: { parts: [WORK, CARRY, MOVE], cost: 200, minCapacity: 200 },
+    priority: SpawnPriority.EMERGENCY,
+    targetRoom,
+    additionalMemory: { task: "bootstrapSpawn" },
+    createdAt: Game.time
+  });
 }
 
 function createClaimerCreep(targetRoom: string, parts: BodyPartConstant[]): Creep {
@@ -348,6 +380,114 @@ describe("claimer and pioneer demand", () => {
       task: "bootstrapSpawn",
       priority: SpawnPriority.EMERGENCY
     });
+  });
+
+  it("uses a farther pioneer parent when the closest parent has no safe route", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hasSpawn: true });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    Game.spawns.Spawn2 = {
+      id: "spawn2" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E2N1" }
+    } as StructureSpawn;
+    Game.map.findRoute = ((from: string | Room, to: string | Room) => {
+      const fromName = typeof from === "string" ? from : from.name;
+      const toName = typeof to === "string" ? to : to.name;
+      if (fromName === "E2N1" && toName === "E3N1") return ERR_NO_PATH;
+      return createRoute(fromName === "E1N1" && toName === "E3N1" ? 3 : 1);
+    }) as GameMap["findRoute"];
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+    expect(getPioneerSpawnAssignment("E2N1", createSwarm())).to.equal(null);
+  });
+
+  it("blocks pioneer routes through visible enemy-controlled rooms", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hasSpawn: true });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    Game.rooms.E4N1 = createRoom("E4N1", { owner: "enemy" });
+    Game.spawns.Spawn2 = {
+      id: "spawn2" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E2N1" }
+    } as StructureSpawn;
+    Game.map.findRoute = ((from: string | Room, to: string | Room, options?: RouteOptions) => {
+      const fromName = typeof from === "string" ? from : from.name;
+      const toName = typeof to === "string" ? to : to.name;
+      if (fromName === "E2N1" && toName === "E3N1" && options?.routeCallback("E4N1", "E2N1") === Infinity) {
+        return ERR_NO_PATH;
+      }
+      return createRoute(fromName === "E1N1" && toName === "E3N1" ? 3 : 1);
+    }) as GameMap["findRoute"];
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+    expect(getPioneerSpawnAssignment("E2N1", createSwarm())).to.equal(null);
+  });
+
+  it("keeps the same pioneer parent while that parent has same-target bootstrap work queued", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hasSpawn: true });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    Game.spawns.Spawn2 = {
+      id: "spawn2" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E2N1" }
+    } as StructureSpawn;
+    createQueuedPioneer("E2N1", "E3N1", "queued-e2-pioneer");
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
+    expect(getPioneerSpawnAssignment("E2N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+  });
+
+  it("prefers a farther viable pioneer parent over a closer overloaded parent", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hasSpawn: true });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    Game.spawns.Spawn2 = {
+      id: "spawn2" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E2N1" }
+    } as StructureSpawn;
+    createQueuedWork("E2N1", "queued-e2-1");
+    createQueuedWork("E2N1", "queued-e2-2");
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+    expect(getPioneerSpawnAssignment("E2N1", createSwarm())).to.equal(null);
+  });
+
+  it("skips pioneer parents without enough spawn capacity for a minimum pioneer", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", {
+      my: true,
+      hasSpawn: true,
+      energyAvailable: 150,
+      energyCapacityAvailable: 150
+    });
+    Game.rooms.E3N1 = createRoom("E3N1", { my: true, spawnSite: true });
+    Game.spawns.Spawn2 = {
+      id: "spawn2" as Id<StructureSpawn>,
+      owner: { username: "me" },
+      room: { name: "E2N1" }
+    } as StructureSpawn;
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({
+      targetRoom: "E3N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+    expect(getPioneerSpawnAssignment("E2N1", createSwarm())).to.equal(null);
   });
 
   it("promotes spawnless-room pioneer recovery with a spawn site to emergency priority", () => {
