@@ -46,7 +46,7 @@
     "@types/screeps": "^3.4.0",
     "@types/sinon": "^22.0.0",
     "@types/sinon-chai": "^4.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.62.1",
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
     "@typescript-eslint/parser": "^8.51.0",
     "c8": "^11.0.0",
     "chai": "^6.2.2",
@@ -61,12 +61,12 @@
     "rollup-plugin-clear": "^2.0.7",
     "rollup-plugin-screeps": "^1.0.1",
     "rollup-plugin-typescript2": "^0.37.0",
-    "screeps-api": "^2.0.1",
+    "screeps-api": "^2.1.0",
     "sinon": "^22.0.0",
     "sinon-chai": "^4.0.1",
     "ts-node": "^10.2.0",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.22.4",
+    "tsx": "^4.23.0",
     "typescript": "^5.4.3"
   },
   "dependencies": {
