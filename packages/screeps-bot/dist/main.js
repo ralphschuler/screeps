@@ -29056,8 +29056,8 @@ return hp(r, e, t);
 });
 }
 
-function Ep(e, t) {
-return "defenseAssist:".concat(e, ":").concat(t, ":active");
+function Ep(e) {
+return "number" == typeof e.createdAt && Number.isFinite(e.createdAt) ? e.createdAt : Game.time;
 }
 
 function Tp(e, t, r) {
@@ -29084,13 +29084,17 @@ var r, o, n, a, i = (null !== (r = t.urgency) && void 0 !== r ? r : 0) - (null !
 return 0 !== i ? i : (null !== (n = e.createdAt) && void 0 !== n ? n : 0) - (null !== (a = t.createdAt) && void 0 !== a ? a : 0);
 }))), c = s.next(); !c.done; c = s.next()) {
 var u = c.value, l = Game.rooms[u.roomName];
-if (l && 0 !== X(l).length && Tp(u, t.role, e.homeRoom)) return pi(e.creep, {
+if (l && 0 !== X(l).length && Tp(u, t.role, e.homeRoom)) {
+var m = Ep(u);
+return pi(e.creep, {
 homeRoom: e.homeRoom,
 targetRoom: u.roomName,
 now: Game.time,
-squadId: Ep(e.homeRoom, u.roomName),
+createdAt: m,
+squadId: di(e.homeRoom, u.roomName, m),
 squadSize: pp(u.roomName) ? Math.max(5, gp(u)) : Math.max(1, gp(u))
 }), u.roomName;
+}
 }
 } catch (e) {
 r = {

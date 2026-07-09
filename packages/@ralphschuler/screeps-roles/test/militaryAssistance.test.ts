@@ -158,7 +158,29 @@ describe("military assistance behavior", () => {
 
     expect(action.type).to.equal("wait");
     expect(ctx.creep.memory).to.include({ task: "defenseAssist", targetRoom: "W2N1", assistTarget: "W2N1" });
-    expect((ctx.creep.memory as { defenseSquadId?: string }).defenseSquadId).to.equal("defenseAssist:W1N1:W2N1:active");
+    expect((ctx.creep.memory as { defenseSquadId?: string }).defenseSquadId).to.equal(`defenseAssist:W1N1:W2N1:${Game.time}`);
+  });
+
+  it("preserves the request age when idle defenders join an old hard-threat wave", () => {
+    createHardThreatRoom("W2N1");
+    const requestCreatedAt = Game.time - 760;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      { roomName: "W2N1", guardsNeeded: 1, rangersNeeded: 0, healersNeeded: 0, urgency: 3, createdAt: requestCreatedAt }
+    ];
+    const ctx = createAssistContext("guard", [], { roomName: "W1N1" });
+    delete (ctx.creep.memory as { assistTarget?: string }).assistTarget;
+    Game.creeps[ctx.creep.name] = ctx.creep;
+
+    const action = guard(ctx);
+
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect(ctx.creep.memory).to.include({ task: "defenseAssist", targetRoom: "W2N1", assistTarget: "W2N1" });
+    expect((ctx.creep.memory as { defenseSquadId?: string }).defenseSquadId)
+      .to.equal(`defenseAssist:W1N1:W2N1:${requestCreatedAt}`);
+    expect((ctx.creep.memory as { defenseSquadCreatedAt?: number }).defenseSquadCreatedAt)
+      .to.equal(requestCreatedAt);
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("hard-threat-trickle");
   });
 
   it("does not send idle defenders away from a threatened home room", () => {
