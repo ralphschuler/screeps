@@ -10,7 +10,7 @@
  * to dedicated manager modules for better separation of concerns.
  */
 
-import { prefetchRoomObjects } from "@ralphschuler/screeps-cache";
+import { getOwnedRooms, prefetchRoomObjects } from "@ralphschuler/screeps-cache";
 import { emergencyResponseManager, safeModeManager } from "@ralphschuler/screeps-defense";
 import { memoryManager, type ConstructionScheduleMemory } from "@ralphschuler/screeps-memory";
 import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
@@ -244,24 +244,10 @@ export class RoomManager {
   private nodes: Map<string, RoomNode> = new Map();
 
   /**
-   * Run all owned rooms
-   * OPTIMIZATION: Use cached owned rooms list from global to avoid repeated filter
+   * Run all owned rooms.
    */
   public run(): void {
-    // Use cached owned rooms from global (set in main loop)
-    const cacheKey = "_ownedRooms";
-    const cacheTickKey = "_ownedRoomsTick";
-    const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
-    const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
-    const cachedTick = globalCache[cacheTickKey] as number | undefined;
-
-    let ownedRooms: Room[];
-    if (cachedRooms && cachedTick === Game.time) {
-      ownedRooms = cachedRooms;
-    } else {
-      // Fallback if cache not set (shouldn't happen, but safe)
-      ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
-    }
+    const ownedRooms = getOwnedRooms();
     const totalOwned = ownedRooms.length;
 
     // Ensure nodes exist for all owned rooms
@@ -324,20 +310,7 @@ export class RoomManager {
       this.nodes.set(room.name, new RoomNode(room.name));
     }
 
-    // Get total owned rooms count (cached in global)
-    const cacheKey = "_ownedRooms";
-    const cacheTickKey = "_ownedRoomsTick";
-    const globalCache = global as unknown as Record<string, Room[] | number | undefined>;
-    const cachedRooms = globalCache[cacheKey] as Room[] | undefined;
-    const cachedTick = globalCache[cacheTickKey] as number | undefined;
-
-    let totalOwned: number;
-    if (cachedRooms && cachedTick === Game.time) {
-      totalOwned = cachedRooms.length;
-    } else {
-      // Fallback: count owned rooms
-      totalOwned = Object.values(Game.rooms).filter(r => r.controller?.my).length;
-    }
+    const totalOwned = getOwnedRooms().length;
 
     // Run the node
     const node = this.nodes.get(room.name)!;

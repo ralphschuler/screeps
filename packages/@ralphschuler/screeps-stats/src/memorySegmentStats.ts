@@ -10,6 +10,7 @@
  * Addresses Issue: #35
  */
 
+import { getOwnedRooms } from "@ralphschuler/screeps-cache";
 import { logger, memoryManager, EvolutionStage, RoomPosture } from "./interfaces";
 
 /**
@@ -351,7 +352,7 @@ export class MemorySegmentStats {
    * OPTIMIZATION: Use Object.keys() instead of room.find() for creep count
    */
   private collectGlobalStats(): GlobalStats {
-    const ownedRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
+    const ownedRooms = getOwnedRooms();
 
     // Count creeps per room more efficiently
     const creepCounts = new Map<string, number>();

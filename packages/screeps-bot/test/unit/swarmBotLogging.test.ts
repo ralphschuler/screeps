@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import { clearGameObjectCache } from "@ralphschuler/screeps-cache";
 import { Game as MockGame, Memory as MockMemory } from "./mock";
 import * as loggerModule from "../../src/core/logger";
 import { Kernel } from "../../src/core/kernel";
@@ -15,6 +16,7 @@ describe("SwarmBot logging", () => {
   let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
+    clearGameObjectCache();
     sandbox = sinon.createSandbox();
 
     // Reset globals to a clean baseline
@@ -26,6 +28,7 @@ describe("SwarmBot logging", () => {
 
   afterEach(() => {
     sandbox.restore();
+    clearGameObjectCache();
   });
 
   it("logs critical bucket mode through the logger while core processing continues", async () => {
