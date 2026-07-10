@@ -28063,7 +28063,13 @@ resourceType: RESOURCE_ENERGY
 });
 },
 hauler: function(e) {
-var t, r = Nd(e), o = "defenseRefuel" === e.memory.task;
+var t;
+if (!e.isInHomeRoom) return {
+type: "remoteMoveToRoom",
+roomName: e.homeRoom,
+routeType: "hauler"
+};
+var r = Nd(e), o = "defenseRefuel" === e.memory.task;
 if (Yd.debug("".concat(e.creep.name, " hauler state: working=").concat(r, ", energy=").concat(e.creep.store.getUsedCapacity(RESOURCE_ENERGY), "/").concat(e.creep.store.getCapacity())),
 r) {
 var n = Object.keys(e.creep.store)[0];

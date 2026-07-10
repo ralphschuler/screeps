@@ -389,6 +389,32 @@ describe("Behavior Contracts", () => {
     }
   });
 
+  it("returns a displaced local hauler to its home room before foreign-room logistics", () => {
+    const ctx = createContext("hauler");
+    const foreignRoom = createMockRoom("W1N2");
+    const foreignContainer = {
+      id: "foreign-container" as Id<StructureContainer>,
+      structureType: STRUCTURE_CONTAINER,
+      store: makeEnergyStore(1000, 2000)
+    } as StructureContainer;
+    ctx.room = foreignRoom;
+    ctx.creep.room = foreignRoom;
+    ctx.isInHomeRoom = false;
+    ctx.containers = [foreignContainer];
+
+    const action = evaluateWithStateMachine(ctx, evaluateEconomyBehavior);
+
+    expect(action).to.deep.equal({
+      type: "remoteMoveToRoom",
+      roomName: ctx.homeRoom,
+      routeType: "hauler"
+    });
+    expect(ctx.memory.state).to.include({
+      action: "remoteMoveToRoom",
+      targetRoom: ctx.homeRoom
+    });
+  });
+
   it("keeps hauler critical delivery ordering at spawn, extension, then tower before storage", () => {
     const ctx = createContext("hauler");
     ctx.memory.working = true;
