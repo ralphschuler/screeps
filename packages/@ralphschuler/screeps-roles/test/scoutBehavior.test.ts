@@ -172,6 +172,16 @@ describe("scout behavior", () => {
     assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
   });
 
+  it("drops stale non-adjacent target rooms before pathing", () => {
+    const room = createVisibleRoom("W1N1");
+    const ctx = createScoutContext(room, { targetRoom: "W5S15" });
+
+    const action = scout(ctx);
+
+    assert.deepInclude(action, { type: "moveToRoom", roomName: "W1N2" });
+    assert.equal(ctx.memory.targetRoom, "W1N2");
+  });
+
   it("records full intel when the scout reaches an unscouted room with fresh stub intel", () => {
     const room = createVisibleRoom("W1N2", 2);
 

@@ -103,8 +103,6 @@ export interface SwarmCreepMemory {
   portalRoom?: string;
   /** Last explored room (for scouts to avoid cycling) */
   lastExploredRoom?: string;
-  /** Last tick an idle scout attempted collection-point movement. */
-  lastIdleCollectionMoveTick?: number;
   /** Current task */
   task?: string;
   /** Persistent task-board assignment ID */
