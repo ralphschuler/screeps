@@ -28,6 +28,8 @@ let testFiles: string[] = [];
 let latestSummary: any = null;
 
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
+const BOT_CODE_SEEN_AT_ENV_PREFIX = 'screepsmodTestingBotCodeSeenAt:';
+const PLAYER_SUMMARY_ENV_PREFIX = 'screepsmodTestingPlayerSummary:';
 const SCENARIO_SEED_EVIDENCE_ENV_PREFIX = 'screepsmodTestingScenarioSeed:';
 
 function getRuntimeWarmupTicks(config: any): number {
@@ -41,9 +43,21 @@ function installPlayerSandboxRunner(config: any): void {
 
   const playerSandboxTestSource = buildPlayerSandboxTestSource(getRuntimeWarmupTicks(config), getConfiguredScenarios(config));
 
-  config.engine.on('playerSandbox', (sandbox: any) => {
+  config.engine.on('playerSandbox', (sandbox: any, userId: any) => {
     try {
       sandbox.run(playerSandboxTestSource);
+      if (typeof sandbox.get !== 'function' || userId === undefined || userId === null) return;
+
+      const playerSummary = sandbox.get('__screepsmodTestingPlayerSummary');
+      if (!playerSummary || typeof playerSummary !== 'object') return;
+
+      const storage = config.common?.storage ?? require('@screeps/common').storage;
+      Promise.resolve(storage.env.set(
+        `${PLAYER_SUMMARY_ENV_PREFIX}${asMemoryUserKey(userId)}`,
+        JSON.stringify(playerSummary),
+      )).catch((error: any) => {
+        console.log(`[screepsmod-testing] durable player summary write failed: ${error?.stack || error?.message || String(error)}`);
+      });
     } catch (error: any) {
       console.log(`[screepsmod-testing] playerSandbox test runner failed: ${error?.stack || error?.message || String(error)}`);
     }
@@ -74,9 +88,29 @@ function disableUnstableNpcCronjobs(config: any): void {
   }
 }
 
-async function readBotCodeState(storage: any, userId: any): Promise<{ hasBotCode: boolean; bypassWarmup: boolean }> {
+interface BotCodeState {
+  hasBotCode: boolean;
+  bypassWarmup: boolean;
+  codeIdentity: string;
+}
+
+function getBotCodeIdentity(activeCode: any, modules: Record<string, unknown>): string {
+  if (activeCode?.timestamp !== undefined && activeCode?.timestamp !== null) {
+    return `timestamp:${String(activeCode.timestamp)}`;
+  }
+
+  const moduleSignature = Object.keys(modules)
+    .sort()
+    .map((name) => `${name}:${typeof modules[name] === 'string' ? modules[name].length : 0}`)
+    .join('|');
+  return `modules:${moduleSignature}`;
+}
+
+async function readBotCodeState(storage: any, userId: any): Promise<BotCodeState> {
   const codeCollection = storage.db['users.code'];
-  if (!codeCollection?.findOne) return { hasBotCode: true, bypassWarmup: true };
+  if (!codeCollection?.findOne) {
+    return { hasBotCode: true, bypassWarmup: true, codeIdentity: 'unverified' };
+  }
 
   const activeCode = await codeCollection.findOne({
     ...makeUserObjectIdFilter(userId),
@@ -88,27 +122,60 @@ async function readBotCodeState(storage: any, userId: any): Promise<{ hasBotCode
       (module) => typeof module === 'string' && module.trim().length > 0,
     ),
     bypassWarmup: false,
+    codeIdentity: getBotCodeIdentity(activeCode, modules),
   };
 }
 
-function isBotRuntimeWarmed(
+async function isBotRuntimeWarmed(
+  storage: any,
   memory: any,
+  userId: any,
   tick: number,
-  botCodeState: { hasBotCode: boolean; bypassWarmup: boolean },
+  botCodeState: BotCodeState,
   warmupTicks: number
-): boolean {
+): Promise<boolean> {
+  const evidenceKey = `${BOT_CODE_SEEN_AT_ENV_PREFIX}${asMemoryUserKey(userId)}`;
   if (!botCodeState.hasBotCode) {
     delete memory.__screepsmodTestingBotCodeSeenAt;
+    delete memory.__screepsmodTestingBotCodeIdentity;
+    await storage.env.del?.(evidenceKey);
     return false;
   }
 
   if (botCodeState.bypassWarmup) return true;
 
-  if (typeof memory.__screepsmodTestingBotCodeSeenAt !== 'number') {
-    memory.__screepsmodTestingBotCodeSeenAt = tick;
+  const rawDurableEvidence = await storage.env.get(evidenceKey);
+  let durableEvidence: { codeIdentity?: string; seenAt?: number } | undefined;
+  try {
+    durableEvidence = rawDurableEvidence ? JSON.parse(rawDurableEvidence) : undefined;
+  } catch {
+    durableEvidence = undefined;
   }
 
-  return tick - memory.__screepsmodTestingBotCodeSeenAt >= warmupTicks;
+  const durableSeenAt = durableEvidence?.codeIdentity === botCodeState.codeIdentity
+    ? Number(durableEvidence.seenAt)
+    : Number.NaN;
+  const memoryIdentity = memory.__screepsmodTestingBotCodeIdentity;
+  const memoryIdentityMatches = memoryIdentity === botCodeState.codeIdentity;
+  const memorySeenAt = memoryIdentityMatches
+    ? Number(memory.__screepsmodTestingBotCodeSeenAt)
+    : Number.NaN;
+  const seenAt = Number.isFinite(durableSeenAt)
+    ? durableSeenAt
+    : Number.isFinite(memorySeenAt)
+      ? memorySeenAt
+      : tick;
+
+  memory.__screepsmodTestingBotCodeSeenAt = seenAt;
+  memory.__screepsmodTestingBotCodeIdentity = botCodeState.codeIdentity;
+  if (!Number.isFinite(durableSeenAt)) {
+    await storage.env.set(evidenceKey, JSON.stringify({
+      codeIdentity: botCodeState.codeIdentity,
+      seenAt,
+    }));
+  }
+
+  return tick - seenAt >= warmupTicks;
 }
 
 function makeUserObjectIdFilter(userId: any): Record<string, any> {
@@ -136,6 +203,38 @@ async function readScenarioSeedConfirmation(storage: any, userId: any): Promise<
   } catch (error: any) {
     return { parseError: error?.message || String(error) };
   }
+}
+
+async function readDurablePlayerSummary(storage: any, userId: any): Promise<any | undefined> {
+  const raw = await storage.env?.get?.(`${PLAYER_SUMMARY_ENV_PREFIX}${asMemoryUserKey(userId)}`);
+  if (!raw) return undefined;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+function selectLatestPlayerSummary(memorySummary: any, durableSummary: any): any {
+  if (!durableSummary) return memorySummary;
+  if (!memorySummary) return durableSummary;
+  if ((memorySummary.failed ?? 0) > 0) return memorySummary;
+  if ((durableSummary.failed ?? 0) > 0) return durableSummary;
+
+  const memoryTick = Number(memorySummary.tick);
+  const durableTick = Number(durableSummary.tick);
+  if (!Number.isFinite(memoryTick)) return durableSummary;
+  if (!Number.isFinite(durableTick)) return memorySummary;
+  return durableTick >= memoryTick ? durableSummary : memorySummary;
+}
+
+function selectPlayerSummaryForMerge(playerSummary: any, tick: number, warmupTicks: number, botRuntimeWarmed: boolean): any {
+  if (!playerSummary || !botRuntimeWarmed || (playerSummary.failed ?? 0) > 0) return playerSummary;
+
+  const playerTick = Number(playerSummary.tick);
+  const summaryIsStale = Number.isFinite(playerTick) && tick - playerTick >= warmupTicks;
+  return summaryIsStale ? undefined : playerSummary;
 }
 
 async function readErrorNotifications(storage: any, userIdFilter: Record<string, any>): Promise<string[]> {
@@ -176,12 +275,25 @@ async function runBackendBotAssertions(config: any): Promise<void> {
   }
 
   const warmupTicks = getRuntimeWarmupTicks(config);
-  const botRuntimeWarmed = isBotRuntimeWarmed(
+  const botRuntimeWarmed = await isBotRuntimeWarmed(
+    storage,
     memory,
+    userId,
     tick,
     await readBotCodeState(storage, userId),
     warmupTicks
   );
+  const durablePlayerSummary = await readDurablePlayerSummary(storage, userId);
+  const playerSummary = selectLatestPlayerSummary(
+    memory.screepsmodTestingPlayer,
+    durablePlayerSummary,
+  );
+  const playerSandboxSummarySource = playerSummary && playerSummary === durablePlayerSummary
+    ? 'durable-env'
+    : playerSummary
+      ? 'memory'
+      : 'missing';
+  if (playerSummary) memory.screepsmodTestingPlayer = playerSummary;
 
   const [ownedControllers, spawns, creeps, errorSamples, scenarioSeedConfirmation] = await Promise.all([
     storage.db['rooms.objects'].find({ type: 'controller', ...userIdFilter }),
@@ -211,8 +323,20 @@ async function runBackendBotAssertions(config: any): Promise<void> {
     scenarioSeedConfirmation
   });
 
+  const playerSummaryForMerge = selectPlayerSummaryForMerge(
+    playerSummary,
+    tick,
+    warmupTicks,
+    botRuntimeWarmed,
+  );
+  backendSummary.diagnostics = {
+    ...backendSummary.diagnostics,
+    playerSandboxSummarySource,
+    playerSandboxSummaryTick: playerSummary?.tick ?? null,
+    playerSandboxSummaryMerged: Boolean(playerSummaryForMerge),
+  };
   const mergedSummary = mergeRuntimeSummaries({
-    player: memory.screepsmodTestingPlayer,
+    player: playerSummaryForMerge,
     backend: backendSummary,
     legacy: memory.screepsmodTestingLegacy
   }, tick, started, warmupTicks, scenarios);

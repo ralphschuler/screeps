@@ -72,13 +72,13 @@ npm run server:ci:down
 
 - Pull requests run strict real-server smoke tests with seeded runtime scenarios (default 15 minutes / 3000 ticks).
 - Manual and nightly workflow runs execute a 2-hour accelerated simulation.
-- The CI mod list intentionally omits `screepsmod-bots`; the empty bot config plus default-bot cleanup caused orphan-controller room processing failures on Screeps 4.3.0. The harness still uses the bundled `simplebot` path for the temporary `swarm-bot` account before uploading our bundle.
+- The CI mod list intentionally omits `screepsmod-bots`. The harness creates `swarm-bot` as a regular player, keeps its user identifier consistent across user/code/room records, and uploads then reads back the repository bundle; it never seeds an NPC bot AI.
 - Raw Docker logs are retained briefly.
 - Sanitized summaries and mod results are retained longer.
 
 ## Required In-Game Checks
 
-`screepsmod-testing` must assert server and bot state from inside the game runtime. CI uses a 100-tick runtime warmup so smoke runs exercise post-warmup assertions instead of reporting them as skipped.
+`screepsmod-testing` must assert server and bot state from inside the game runtime. CI uses a 100-tick runtime warmup and requires zero skipped assertions afterward. Player-sandbox summaries and bot-code warmup timestamps are also persisted outside user `Memory`, preventing backend/player write races from producing stale false-green results.
 
 - ticks advancing
 - our bot user/room/spawn exists

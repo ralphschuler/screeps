@@ -311,7 +311,12 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   var rooms = values(game.rooms || {});
   var ownedRooms = rooms.filter(function(room) { return room && room.controller && room.controller.my; });
   var tick = Number(game.time || 0);
-  var runtimeWarmed = tick >= ${JSON.stringify(runtimeWarmupTicks)};
+  var playerRuntimeStartedAt = global.__screepsmodTestingPlayerStartedAt;
+  if (typeof playerRuntimeStartedAt !== 'number') {
+    playerRuntimeStartedAt = tick;
+    global.__screepsmodTestingPlayerStartedAt = tick;
+  }
+  var runtimeWarmed = tick - playerRuntimeStartedAt >= ${JSON.stringify(runtimeWarmupTicks)};
 
   assert('server exposes Game and advances ticks', ['smoke','server'], function() { return tick > 0; }, 'Game.time did not advance');
   assert('our bot has at least one owned visible room', ['smoke','bot'], function() { return ownedRooms.length > 0; }, 'no owned visible rooms');
@@ -395,6 +400,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     duration: Date.now() - started
   };
 
+  global.__screepsmodTestingPlayerSummary = playerSummary;
   memory.screepsmodTestingPlayer = playerSummary;
   memory.screepsmodTesting = mergeRuntimeSummaries({
     player: playerSummary,

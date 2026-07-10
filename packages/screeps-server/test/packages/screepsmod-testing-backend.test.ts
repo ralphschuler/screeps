@@ -11,6 +11,7 @@ function createWarmRuntimeMemory(overrides: Record<string, any> = {}): any {
   const base = {
     __globalResetCount: 1,
     __screepsmodTestingBotCodeSeenAt: 0,
+    __screepsmodTestingBotCodeIdentity: 'modules:main:36',
     creepTaskBoard: { rooms: { W1N1: { tasks: { harvest1: { type: 'harvest' } } } } },
     empire: { knownRooms: {}, clusters: [], ownedRooms: {}, claimQueue: [], objectives: {}, warTargets: [] },
     clusters: {},
@@ -59,9 +60,20 @@ function createWarmGame(time = 600): any {
 
 
 describe('screepsmod-testing backend mod', () => {
-  it('registers a playerSandbox runner that writes bot-visible Memory results', () => {
+  it('registers a playerSandbox runner that writes bot-visible and durable results', () => {
     const engine = new EventEmitter();
-    const config = { engine, cronjobs: { genStrongholds: [], expandStrongholds: [] } };
+    const durableResults = new Map<string, string>();
+    const config = {
+      engine,
+      cronjobs: { genStrongholds: [], expandStrongholds: [] },
+      common: {
+        storage: {
+          env: {
+            set: async (key: string, value: string) => { durableResults.set(key, value); },
+          },
+        },
+      },
+    };
 
     installTestingMod(config);
 
@@ -76,11 +88,15 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     const sandbox = {
       run(code: string) {
         return vm.runInContext(code, context);
-      }
+      },
+      get(name: string) {
+        return context[name];
+      },
     };
 
     engine.emit('playerSandbox', sandbox, 'bot-user-id');
@@ -98,6 +114,18 @@ describe('screepsmod-testing backend mod', () => {
       tick: 600
     });
     expect(memory.screepsmodTesting.total).to.be.greaterThan(8);
+    expect(context.__screepsmodTestingPlayerSummary).to.deep.include({
+      source: 'screepsmod-testing-player-sandbox',
+      failed: 0,
+      skipped: 0,
+      tick: 600,
+    });
+    expect(JSON.parse(durableResults.get('screepsmodTestingPlayerSummary:bot-user-id') ?? '{}')).to.deep.include({
+      source: 'screepsmod-testing-player-sandbox',
+      failed: 0,
+      skipped: 0,
+      tick: 600,
+    });
   });
 
   it('uses configured player-sandbox warmup ticks for smoke runtime assertions', () => {
@@ -114,6 +142,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -126,6 +155,44 @@ describe('screepsmod-testing backend mod', () => {
       failed: 0,
       skipped: 0,
       tick: 150
+    });
+  });
+
+  it('starts player-sandbox warmup from the first execution instead of absolute game time', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100 } },
+    });
+
+    const memory: any = createWarmRuntimeMemory();
+    const context = vm.createContext({
+      Game: createWarmGame(150),
+      Memory: memory,
+      global: {},
+    });
+    context.global = context;
+    const sandbox = {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      },
+    };
+
+    engine.emit('playerSandbox', sandbox, 'bot-user-id');
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      failed: 0,
+      skipped: 13,
+      runtimeWarmed: false,
+      tick: 150,
+    });
+
+    context.Game.time = 251;
+    engine.emit('playerSandbox', sandbox, 'bot-user-id');
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      failed: 0,
+      skipped: 0,
+      runtimeWarmed: true,
+      tick: 251,
     });
   });
 
@@ -145,6 +212,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -215,6 +283,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -251,6 +320,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -286,6 +356,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -324,6 +395,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -396,6 +468,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -634,6 +707,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
+    context.__screepsmodTestingPlayerStartedAt = 0;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -930,18 +1004,41 @@ describe('screepsmod-testing backend mod', () => {
     expect(memory.screepsmodTesting.total).to.be.greaterThan(8);
   });
 
-  it('supports ObjectId-like user IDs for users.code runtime warmup filtering', async () => {
+  it('supports ObjectId-like user IDs and durable runtime warmup evidence when player Memory is stale', async () => {
+    const stalePlayerSummary = {
+      source: 'screepsmod-testing-player-sandbox',
+      total: 25,
+      passed: 25,
+      failed: 0,
+      skipped: 0,
+      failures: [],
+      runtimeWarmed: true,
+      runtimeWarmupTicks: 100,
+      tick: 1,
+      duration: 1,
+    };
     const envStore = new Map<string, string>([
       ['gameTime', '600'],
       [
         'memory:user1',
-        JSON.stringify(createWarmRuntimeMemory({ __screepsmodTestingBotCodeSeenAt: undefined })),
+        JSON.stringify({
+          ...createWarmRuntimeMemory({ __screepsmodTestingBotCodeSeenAt: undefined }),
+          screepsmodTesting: stalePlayerSummary,
+          screepsmodTestingPlayer: stalePlayerSummary,
+        }),
       ],
     ]);
 
     const objectId = {
       toString: () => 'user1',
       toHexString: () => 'user1',
+    };
+
+    let activeCode = {
+      user: objectId,
+      activeWorld: true,
+      timestamp: 1,
+      modules: { main: 'module.exports.loop = function() {};' },
     };
 
     const queryUserMatch = (query: any) => {
@@ -962,7 +1059,7 @@ describe('screepsmod-testing backend mod', () => {
         storage: {
           env: {
             keys: { GAMETIME: 'gameTime', MEMORY: 'memory:' },
-            get: async (key: string) => envStore.get(key),
+            get: async (key: string) => envStore.has(key) ? envStore.get(key) : null,
             set: async (key: string, value: string) => {
               envStore.set(key, value);
             },
@@ -973,16 +1070,7 @@ describe('screepsmod-testing backend mod', () => {
                 username === 'swarm-bot' ? { _id: objectId, username, cpuAvailable: 9000 } : null,
             },
             'users.code': {
-              findOne: async (query: any) =>
-                queryUserMatch(query)
-                  ? {
-                      user: objectId,
-                      activeWorld: true,
-                      modules: {
-                        main: 'module.exports.loop = function() {};',
-                      },
-                    }
-                  : null,
+              findOne: async (query: any) => queryUserMatch(query) ? activeCode : null,
             },
             'rooms.objects': {
               find: async (query: any) => {
@@ -1016,6 +1104,8 @@ describe('screepsmod-testing backend mod', () => {
     });
     expect(memory.screepsmodTestingBackend.diagnostics.botRuntimeWarmed).to.equal(false);
 
+    delete memory.__screepsmodTestingBotCodeSeenAt;
+    envStore.set('memory:user1', JSON.stringify(memory));
     envStore.set('gameTime', '710');
     (config.cronjobs as any).screepsmodTesting[1]();
     await new Promise((resolve) => setImmediate(resolve));
@@ -1027,6 +1117,37 @@ describe('screepsmod-testing backend mod', () => {
       skipped: 0,
       tick: 710,
     });
-    expect(memory.screepsmodTestingBackend.diagnostics.botRuntimeWarmed).to.equal(true);
+    expect(memory.screepsmodTesting.sources.player).to.equal(undefined);
+    expect(memory.screepsmodTestingPlayer).to.deep.equal(stalePlayerSummary);
+    expect(memory.screepsmodTestingBackend.diagnostics).to.deep.include({
+      botRuntimeWarmed: true,
+      playerSandboxSummarySource: 'memory',
+      playerSandboxSummaryMerged: false,
+    });
+
+    activeCode = { ...activeCode, timestamp: 2 };
+    envStore.set('gameTime', '720');
+    (config.cronjobs as any).screepsmodTesting[1]();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    memory = JSON.parse(envStore.get('memory:user1') ?? '{}');
+    expect(memory.screepsmodTestingBackend).to.deep.include({
+      failed: 0,
+      skipped: 11,
+      runtimeWarmed: false,
+      tick: 720,
+    });
+
+    envStore.set('gameTime', '821');
+    (config.cronjobs as any).screepsmodTesting[1]();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    memory = JSON.parse(envStore.get('memory:user1') ?? '{}');
+    expect(memory.screepsmodTestingBackend).to.deep.include({
+      failed: 0,
+      skipped: 0,
+      runtimeWarmed: true,
+      tick: 821,
+    });
   });
 });

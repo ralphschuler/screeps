@@ -100,6 +100,8 @@ var testFilter;
 var testFiles = [];
 var latestSummary = null;
 var DEFAULT_RUNTIME_WARMUP_TICKS = 100;
+var BOT_CODE_SEEN_AT_ENV_PREFIX = 'screepsmodTestingBotCodeSeenAt:';
+var PLAYER_SUMMARY_ENV_PREFIX = 'screepsmodTestingPlayerSummary:';
 var SCENARIO_SEED_EVIDENCE_ENV_PREFIX = 'screepsmodTestingScenarioSeed:';
 function getRuntimeWarmupTicks(config) {
     var _a, _b, _c;
@@ -113,9 +115,19 @@ function installPlayerSandboxRunner(config) {
     if (!((_a = config.engine) === null || _a === void 0 ? void 0 : _a.on))
         return;
     var playerSandboxTestSource = (0, playerAssertions_1.buildPlayerSandboxTestSource)(getRuntimeWarmupTicks(config), (0, config_1.getConfiguredScenarios)(config));
-    config.engine.on('playerSandbox', function (sandbox) {
+    config.engine.on('playerSandbox', function (sandbox, userId) {
+        var _a, _b;
         try {
             sandbox.run(playerSandboxTestSource);
+            if (typeof sandbox.get !== 'function' || userId === undefined || userId === null)
+                return;
+            var playerSummary = sandbox.get('__screepsmodTestingPlayerSummary');
+            if (!playerSummary || typeof playerSummary !== 'object')
+                return;
+            var storage = (_b = (_a = config.common) === null || _a === void 0 ? void 0 : _a.storage) !== null && _b !== void 0 ? _b : require('@screeps/common').storage;
+            Promise.resolve(storage.env.set("".concat(PLAYER_SUMMARY_ENV_PREFIX).concat(asMemoryUserKey(userId)), JSON.stringify(playerSummary))).catch(function (error) {
+                console.log("[screepsmod-testing] durable player summary write failed: ".concat((error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message) || String(error)));
+            });
         }
         catch (error) {
             console.log("[screepsmod-testing] playerSandbox test runner failed: ".concat((error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message) || String(error)));
@@ -145,6 +157,16 @@ function disableUnstableNpcCronjobs(config) {
         console.log('[screepsmod-testing] Disabled NPC stronghold cronjobs for test server stability');
     }
 }
+function getBotCodeIdentity(activeCode, modules) {
+    if ((activeCode === null || activeCode === void 0 ? void 0 : activeCode.timestamp) !== undefined && (activeCode === null || activeCode === void 0 ? void 0 : activeCode.timestamp) !== null) {
+        return "timestamp:".concat(String(activeCode.timestamp));
+    }
+    var moduleSignature = Object.keys(modules)
+        .sort()
+        .map(function (name) { return "".concat(name, ":").concat(typeof modules[name] === 'string' ? modules[name].length : 0); })
+        .join('|');
+    return "modules:".concat(moduleSignature);
+}
 function readBotCodeState(storage, userId) {
     return __awaiter(this, void 0, void 0, function () {
         var codeCollection, activeCode, modules;
@@ -153,8 +175,9 @@ function readBotCodeState(storage, userId) {
             switch (_b.label) {
                 case 0:
                     codeCollection = storage.db['users.code'];
-                    if (!(codeCollection === null || codeCollection === void 0 ? void 0 : codeCollection.findOne))
-                        return [2 /*return*/, { hasBotCode: true, bypassWarmup: true }];
+                    if (!(codeCollection === null || codeCollection === void 0 ? void 0 : codeCollection.findOne)) {
+                        return [2 /*return*/, { hasBotCode: true, bypassWarmup: true, codeIdentity: 'unverified' }];
+                    }
                     return [4 /*yield*/, codeCollection.findOne(__assign(__assign({}, makeUserObjectIdFilter(userId)), { activeWorld: true }))];
                 case 1:
                     activeCode = _b.sent();
@@ -162,22 +185,66 @@ function readBotCodeState(storage, userId) {
                     return [2 /*return*/, {
                             hasBotCode: Object.values(modules).some(function (module) { return typeof module === 'string' && module.trim().length > 0; }),
                             bypassWarmup: false,
+                            codeIdentity: getBotCodeIdentity(activeCode, modules),
                         }];
             }
         });
     });
 }
-function isBotRuntimeWarmed(memory, tick, botCodeState, warmupTicks) {
-    if (!botCodeState.hasBotCode) {
-        delete memory.__screepsmodTestingBotCodeSeenAt;
-        return false;
-    }
-    if (botCodeState.bypassWarmup)
-        return true;
-    if (typeof memory.__screepsmodTestingBotCodeSeenAt !== 'number') {
-        memory.__screepsmodTestingBotCodeSeenAt = tick;
-    }
-    return tick - memory.__screepsmodTestingBotCodeSeenAt >= warmupTicks;
+function isBotRuntimeWarmed(storage, memory, userId, tick, botCodeState, warmupTicks) {
+    return __awaiter(this, void 0, void 0, function () {
+        var evidenceKey, rawDurableEvidence, durableEvidence, durableSeenAt, memoryIdentity, memoryIdentityMatches, memorySeenAt, seenAt;
+        var _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0:
+                    evidenceKey = "".concat(BOT_CODE_SEEN_AT_ENV_PREFIX).concat(asMemoryUserKey(userId));
+                    if (!!botCodeState.hasBotCode) return [3 /*break*/, 2];
+                    delete memory.__screepsmodTestingBotCodeSeenAt;
+                    delete memory.__screepsmodTestingBotCodeIdentity;
+                    return [4 /*yield*/, ((_b = (_a = storage.env).del) === null || _b === void 0 ? void 0 : _b.call(_a, evidenceKey))];
+                case 1:
+                    _c.sent();
+                    return [2 /*return*/, false];
+                case 2:
+                    if (botCodeState.bypassWarmup)
+                        return [2 /*return*/, true];
+                    return [4 /*yield*/, storage.env.get(evidenceKey)];
+                case 3:
+                    rawDurableEvidence = _c.sent();
+                    try {
+                        durableEvidence = rawDurableEvidence ? JSON.parse(rawDurableEvidence) : undefined;
+                    }
+                    catch (_d) {
+                        durableEvidence = undefined;
+                    }
+                    durableSeenAt = (durableEvidence === null || durableEvidence === void 0 ? void 0 : durableEvidence.codeIdentity) === botCodeState.codeIdentity
+                        ? Number(durableEvidence.seenAt)
+                        : Number.NaN;
+                    memoryIdentity = memory.__screepsmodTestingBotCodeIdentity;
+                    memoryIdentityMatches = memoryIdentity === botCodeState.codeIdentity;
+                    memorySeenAt = memoryIdentityMatches
+                        ? Number(memory.__screepsmodTestingBotCodeSeenAt)
+                        : Number.NaN;
+                    seenAt = Number.isFinite(durableSeenAt)
+                        ? durableSeenAt
+                        : Number.isFinite(memorySeenAt)
+                            ? memorySeenAt
+                            : tick;
+                    memory.__screepsmodTestingBotCodeSeenAt = seenAt;
+                    memory.__screepsmodTestingBotCodeIdentity = botCodeState.codeIdentity;
+                    if (!!Number.isFinite(durableSeenAt)) return [3 /*break*/, 5];
+                    return [4 /*yield*/, storage.env.set(evidenceKey, JSON.stringify({
+                            codeIdentity: botCodeState.codeIdentity,
+                            seenAt: seenAt,
+                        }))];
+                case 4:
+                    _c.sent();
+                    _c.label = 5;
+                case 5: return [2 /*return*/, tick - seenAt >= warmupTicks];
+            }
+        });
+    });
 }
 function makeUserObjectIdFilter(userId) {
     var userIdString = String(userId);
@@ -215,6 +282,54 @@ function readScenarioSeedConfirmation(storage, userId) {
         });
     });
 }
+function readDurablePlayerSummary(storage, userId) {
+    return __awaiter(this, void 0, void 0, function () {
+        var raw;
+        var _a, _b;
+        return __generator(this, function (_c) {
+            switch (_c.label) {
+                case 0: return [4 /*yield*/, ((_b = (_a = storage.env) === null || _a === void 0 ? void 0 : _a.get) === null || _b === void 0 ? void 0 : _b.call(_a, "".concat(PLAYER_SUMMARY_ENV_PREFIX).concat(asMemoryUserKey(userId))))];
+                case 1:
+                    raw = _c.sent();
+                    if (!raw)
+                        return [2 /*return*/, undefined];
+                    try {
+                        return [2 /*return*/, JSON.parse(raw)];
+                    }
+                    catch (_d) {
+                        return [2 /*return*/, undefined];
+                    }
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function selectLatestPlayerSummary(memorySummary, durableSummary) {
+    var _a, _b;
+    if (!durableSummary)
+        return memorySummary;
+    if (!memorySummary)
+        return durableSummary;
+    if (((_a = memorySummary.failed) !== null && _a !== void 0 ? _a : 0) > 0)
+        return memorySummary;
+    if (((_b = durableSummary.failed) !== null && _b !== void 0 ? _b : 0) > 0)
+        return durableSummary;
+    var memoryTick = Number(memorySummary.tick);
+    var durableTick = Number(durableSummary.tick);
+    if (!Number.isFinite(memoryTick))
+        return durableSummary;
+    if (!Number.isFinite(durableTick))
+        return memorySummary;
+    return durableTick >= memoryTick ? durableSummary : memorySummary;
+}
+function selectPlayerSummaryForMerge(playerSummary, tick, warmupTicks, botRuntimeWarmed) {
+    var _a;
+    if (!playerSummary || !botRuntimeWarmed || ((_a = playerSummary.failed) !== null && _a !== void 0 ? _a : 0) > 0)
+        return playerSummary;
+    var playerTick = Number(playerSummary.tick);
+    var summaryIsStale = Number.isFinite(playerTick) && tick - playerTick >= warmupTicks;
+    return summaryIsStale ? undefined : playerSummary;
+}
 function readErrorNotifications(storage, userIdFilter) {
     return __awaiter(this, void 0, void 0, function () {
         var notificationsCollection, notifications;
@@ -240,10 +355,10 @@ function readErrorNotifications(storage, userIdFilter) {
 }
 function runBackendBotAssertions(config) {
     return __awaiter(this, void 0, void 0, function () {
-        var started, common, storage, username, user, userId, userIdFilter, tick, _a, memoryKey, rawMemory, memory, warmupTicks, botRuntimeWarmed, _b, _c, _d, ownedControllers, spawns, creeps, errorSamples, scenarioSeedConfirmation, scenarios, backendSummary, mergedSummary;
-        var _e, _f, _g, _h, _j;
-        return __generator(this, function (_k) {
-            switch (_k.label) {
+        var started, common, storage, username, user, userId, userIdFilter, tick, _a, memoryKey, rawMemory, memory, warmupTicks, botRuntimeWarmed, _b, _c, durablePlayerSummary, playerSummary, playerSandboxSummarySource, _d, ownedControllers, spawns, creeps, errorSamples, scenarioSeedConfirmation, scenarios, backendSummary, playerSummaryForMerge, mergedSummary;
+        var _e, _f, _g, _h, _j, _k;
+        return __generator(this, function (_l) {
+            switch (_l.label) {
                 case 0:
                     started = Date.now();
                     common = (_e = config.common) !== null && _e !== void 0 ? _e : require('@screeps/common');
@@ -251,7 +366,7 @@ function runBackendBotAssertions(config) {
                     username = (_h = (_g = (_f = config.screepsmod) === null || _f === void 0 ? void 0 : _f.testing) === null || _g === void 0 ? void 0 : _g.username) !== null && _h !== void 0 ? _h : 'swarm-bot';
                     return [4 /*yield*/, storage.db.users.findOne({ username: username })];
                 case 1:
-                    user = _k.sent();
+                    user = _l.sent();
                     if (!(user === null || user === void 0 ? void 0 : user._id))
                         return [2 /*return*/];
                     userId = user._id;
@@ -259,11 +374,11 @@ function runBackendBotAssertions(config) {
                     _a = Number;
                     return [4 /*yield*/, storage.env.get(storage.env.keys.GAMETIME)];
                 case 2:
-                    tick = _a.apply(void 0, [(_j = _k.sent()) !== null && _j !== void 0 ? _j : 0]);
+                    tick = _a.apply(void 0, [(_j = _l.sent()) !== null && _j !== void 0 ? _j : 0]);
                     memoryKey = storage.env.keys.MEMORY + asMemoryUserKey(userId);
                     return [4 /*yield*/, storage.env.get(memoryKey)];
                 case 3:
-                    rawMemory = _k.sent();
+                    rawMemory = _l.sent();
                     memory = {};
                     try {
                         memory = rawMemory ? JSON.parse(rawMemory) : {};
@@ -273,11 +388,25 @@ function runBackendBotAssertions(config) {
                     }
                     warmupTicks = getRuntimeWarmupTicks(config);
                     _b = isBotRuntimeWarmed;
-                    _c = [memory,
+                    _c = [storage,
+                        memory,
+                        userId,
                         tick];
                     return [4 /*yield*/, readBotCodeState(storage, userId)];
-                case 4:
-                    botRuntimeWarmed = _b.apply(void 0, _c.concat([_k.sent(), warmupTicks]));
+                case 4: return [4 /*yield*/, _b.apply(void 0, _c.concat([_l.sent(), warmupTicks]))];
+                case 5:
+                    botRuntimeWarmed = _l.sent();
+                    return [4 /*yield*/, readDurablePlayerSummary(storage, userId)];
+                case 6:
+                    durablePlayerSummary = _l.sent();
+                    playerSummary = selectLatestPlayerSummary(memory.screepsmodTestingPlayer, durablePlayerSummary);
+                    playerSandboxSummarySource = playerSummary && playerSummary === durablePlayerSummary
+                        ? 'durable-env'
+                        : playerSummary
+                            ? 'memory'
+                            : 'missing';
+                    if (playerSummary)
+                        memory.screepsmodTestingPlayer = playerSummary;
                     return [4 /*yield*/, Promise.all([
                             storage.db['rooms.objects'].find(__assign({ type: 'controller' }, userIdFilter)),
                             storage.db['rooms.objects'].find(__assign({ type: 'spawn' }, userIdFilter)),
@@ -285,8 +414,8 @@ function runBackendBotAssertions(config) {
                             readErrorNotifications(storage, userIdFilter),
                             readScenarioSeedConfirmation(storage, userId)
                         ])];
-                case 5:
-                    _d = __read.apply(void 0, [_k.sent(), 5]), ownedControllers = _d[0], spawns = _d[1], creeps = _d[2], errorSamples = _d[3], scenarioSeedConfirmation = _d[4];
+                case 7:
+                    _d = __read.apply(void 0, [_l.sent(), 5]), ownedControllers = _d[0], spawns = _d[1], creeps = _d[2], errorSamples = _d[3], scenarioSeedConfirmation = _d[4];
                     scenarios = (0, config_1.getConfiguredScenarios)(config);
                     return [4 /*yield*/, (0, backendAssertions_1.runBackendRuntimeAssertions)({
                             config: config,
@@ -306,10 +435,12 @@ function runBackendBotAssertions(config) {
                             startedAt: started,
                             scenarioSeedConfirmation: scenarioSeedConfirmation
                         })];
-                case 6:
-                    backendSummary = _k.sent();
+                case 8:
+                    backendSummary = _l.sent();
+                    playerSummaryForMerge = selectPlayerSummaryForMerge(playerSummary, tick, warmupTicks, botRuntimeWarmed);
+                    backendSummary.diagnostics = __assign(__assign({}, backendSummary.diagnostics), { playerSandboxSummarySource: playerSandboxSummarySource, playerSandboxSummaryTick: (_k = playerSummary === null || playerSummary === void 0 ? void 0 : playerSummary.tick) !== null && _k !== void 0 ? _k : null, playerSandboxSummaryMerged: Boolean(playerSummaryForMerge) });
                     mergedSummary = (0, summary_1.mergeRuntimeSummaries)({
-                        player: memory.screepsmodTestingPlayer,
+                        player: playerSummaryForMerge,
                         backend: backendSummary,
                         legacy: memory.screepsmodTestingLegacy
                     }, tick, started, warmupTicks, scenarios);
@@ -317,8 +448,8 @@ function runBackendBotAssertions(config) {
                     memory.screepsmodTesting = mergedSummary;
                     latestSummary = mergedSummary;
                     return [4 /*yield*/, storage.env.set(memoryKey, JSON.stringify(memory))];
-                case 7:
-                    _k.sent();
+                case 9:
+                    _l.sent();
                     return [2 /*return*/];
             }
         });

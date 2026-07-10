@@ -2,6 +2,7 @@ import { expect } from "chai";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import vm from "node:vm";
 import zlib from "node:zlib";
 import {
   buildEnsureBotUserCommand,
@@ -57,6 +58,10 @@ describe("private-server harness module", () => {
         return Promise.resolve({ time: 123, shard });
       }
 
+      userCodeGet(branch: string) {
+        return Promise.resolve({ branch, modules: { main: "code" } });
+      }
+
       userCodeSet(params: unknown) {
         return Promise.resolve({ ok: 1, params });
       }
@@ -89,6 +94,10 @@ describe("private-server harness module", () => {
     expect(api.http.defaults.headers.common["X-Server-Password"]).to.equal("server-password");
     expect(await api.auth()).to.deep.equal({ ok: 1, token: "token" });
     expect(await api.raw.game.time("shard0")).to.deep.equal({ time: 123, shard: "shard0" });
+    expect(await api.raw.user.code.get("$activeWorld")).to.deep.equal({
+      branch: "$activeWorld",
+      modules: { main: "code" },
+    });
     expect(await api.raw.user.code.set("$activeWorld", { main: "code" })).to.deep.equal({
       ok: 1,
       params: { branch: "$activeWorld", modules: { main: "code" } },
@@ -463,7 +472,7 @@ describe("private-server harness module", () => {
     expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.throw(/skipped 3 runtime checks/);
   });
 
-  it("does not fail on skipped runtime assertions before bot runtime warmup is observed", () => {
+  it("rejects skipped runtime assertions when the bot is still not warmed after the smoke warmup threshold", () => {
     const summary = createInitialSummary(parseHarnessArgs([], {}));
     summary.checks.modResultsPresent = true;
     summary.metrics.criticalConsoleErrors = 0;
@@ -478,7 +487,111 @@ describe("private-server harness module", () => {
     summary.metrics.ticksAdvanced = 150;
     summary.metrics.taskBoardRooms = 1;
 
-    expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.not.throw();
+    expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.throw(/skipped 3 runtime checks/);
+  });
+
+  it("rejects explicit not-warmed runtime evidence after the smoke warmup threshold", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.checks.modResultsPresent = true;
+    summary.metrics.criticalConsoleErrors = 0;
+    summary.metrics.screepsmodTesting = {
+      source: "screepsmod-testing-merged",
+      total: 49,
+      passed: 49,
+      failed: 0,
+      skipped: 0,
+      runtimeWarmed: false,
+    };
+
+    summary.metrics.ticksAdvanced = 3099;
+    summary.metrics.taskBoardRooms = 2;
+
+    expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.throw(/runtime was not warmed after 100 ticks/);
+  });
+
+  it("preserves stronger warmed runtime evidence across stale post-reset Memory snapshots", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    const warmed = {
+      merged: {
+        source: "screepsmod-testing-merged",
+        total: 49,
+        passed: 49,
+        failed: 0,
+        skipped: 0,
+        runtimeWarmed: true,
+        tick: 200,
+      },
+      player: {
+        source: "screepsmod-testing-player-sandbox",
+        total: 25,
+        passed: 25,
+        failed: 0,
+        skipped: 0,
+        runtimeWarmed: true,
+        tick: 200,
+      },
+      backend: {
+        source: "screepsmod-testing-backend-cronjob",
+        total: 24,
+        passed: 24,
+        failed: 0,
+        skipped: 0,
+        runtimeWarmed: true,
+        tick: 200,
+      },
+    };
+
+    inspectMemorySnapshot({
+      screepsmodTesting: warmed.merged,
+      screepsmodTestingPlayer: warmed.player,
+      screepsmodTestingBackend: warmed.backend,
+      creepTaskBoard: { rooms: { W1N1: {} } },
+    }, summary);
+
+    inspectMemorySnapshot({
+      screepsmodTesting: { ...warmed.merged, passed: 16, skipped: 33, runtimeWarmed: false, tick: 7 },
+      screepsmodTestingPlayer: { ...warmed.player, passed: 11, skipped: 14, runtimeWarmed: false, tick: 7 },
+      screepsmodTestingBackend: { ...warmed.backend, passed: 5, skipped: 19, runtimeWarmed: false, tick: 6 },
+      creepTaskBoard: { rooms: { W1N1: {} } },
+    }, summary);
+
+    expect(summary.metrics.screepsmodTesting).to.equal(warmed.merged);
+    expect(summary.metrics.screepsmodTestingPlayer).to.equal(warmed.player);
+    expect(summary.metrics.screepsmodTestingBackend).to.equal(warmed.backend);
+  });
+
+  it("does not hide degraded runtime evidence from a later tick", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    inspectMemorySnapshot({
+      screepsmodTesting: {
+        source: "screepsmod-testing-merged",
+        total: 49,
+        passed: 49,
+        failed: 0,
+        skipped: 0,
+        runtimeWarmed: true,
+        tick: 200,
+      },
+      creepTaskBoard: { rooms: { W1N1: {} } },
+    }, summary);
+
+    const degraded = {
+      source: "screepsmod-testing-merged",
+      total: 49,
+      passed: 16,
+      failed: 0,
+      skipped: 33,
+      runtimeWarmed: false,
+      tick: 300,
+    };
+    inspectMemorySnapshot({
+      screepsmodTesting: degraded,
+      creepTaskBoard: { rooms: { W1N1: {} } },
+    }, summary);
+    summary.metrics.ticksAdvanced = 300;
+
+    expect(summary.metrics.screepsmodTesting).to.equal(degraded);
+    expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.throw(/skipped 33 runtime checks/);
   });
 
   it("rejects long-run summaries where bot runtime never warmed", () => {
@@ -528,6 +641,28 @@ describe("private-server harness module", () => {
       failed: 0,
       skipped: 0,
       runtimeWarmed: true,
+      tick: 892,
+      sources: {
+        player: {
+          source: "screepsmod-testing-player-sandbox",
+          total: 25,
+          passed: 25,
+          failed: 0,
+          skipped: 0,
+          runtimeWarmed: true,
+          tick: 892,
+        },
+        backend: {
+          source: "screepsmod-testing-backend-cronjob",
+          total: 24,
+          passed: 24,
+          failed: 0,
+          skipped: 0,
+          runtimeWarmed: true,
+          tick: 892,
+          diagnostics: { playerSandboxSummarySource: "durable-env" },
+        },
+      },
     };
     summary.metrics.criticalConsoleErrors = 0;
     summary.metrics.taskBoardRooms = 2;
@@ -538,6 +673,50 @@ describe("private-server harness module", () => {
 
     summary.metrics.screepsmodTesting.skipped = 1;
     expect(hasSmokeValidationEvidence(summary, { mode: "smoke", runtimeWarmupTicks: 100 })).to.equal(false);
+  });
+
+  it("rejects merged smoke evidence without fresh durable player and backend sources", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.checks.modResultsPresent = true;
+    summary.metrics.screepsmodTesting = {
+      source: "screepsmod-testing-merged",
+      total: 24,
+      passed: 24,
+      failed: 0,
+      skipped: 0,
+      runtimeWarmed: true,
+      tick: 300,
+      sources: {
+        backend: {
+          source: "screepsmod-testing-backend-cronjob",
+          total: 24,
+          passed: 24,
+          failed: 0,
+          skipped: 0,
+          runtimeWarmed: true,
+          tick: 300,
+          diagnostics: { playerSandboxSummarySource: "memory" },
+        },
+      },
+    };
+    summary.metrics.criticalConsoleErrors = 0;
+    summary.metrics.taskBoardRooms = 1;
+    summary.metrics.ticksAdvanced = 300;
+
+    expect(hasSmokeValidationEvidence(summary, { runtimeWarmupTicks: 100 })).to.equal(false);
+    expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.throw(/fresh durable player\/backend evidence/);
+
+    summary.metrics.screepsmodTesting = {
+      source: "bot-authored",
+      total: 49,
+      passed: 49,
+      failed: 0,
+      skipped: 0,
+      runtimeWarmed: true,
+      tick: 300,
+    };
+    expect(hasSmokeValidationEvidence(summary, { runtimeWarmupTicks: 100 })).to.equal(false);
+    expect(() => validateSmokeSummary(summary, { runtimeWarmupTicks: 100 })).to.throw(/fresh durable player\/backend evidence/);
   });
 
   it("records the latest observed game time when polling exits", () => {
@@ -597,7 +776,7 @@ describe("private-server harness module", () => {
     ]);
   });
 
-  it("builds a bot-user bootstrap command that creates or falls back to an available controller room", () => {
+  it("builds an idempotent regular-player bootstrap command", async () => {
     const options = parseHarnessArgs(
       ["--room=E1N1", "--username=test-bot"],
       {},
@@ -605,30 +784,130 @@ describe("private-server harness module", () => {
     const command = buildEnsureBotUserCommand(options);
 
     expect(command).to.include('const requestedRoom=\"E1N1\"');
-    expect(command).to.include("let spawnRoom=requestedRoom");
+    expect(command).to.include("const ownedController=user&&await storage.db['rooms.objects'].findOne");
+    expect(command).to.include("let spawnRoom=ownedController?.room||requestedRoom");
     expect(command).to.include("const ensureBootstrapRoom=async(roomName)");
+    expect(command).to.include("await storage.db['rooms.objects'].removeWhere({_id:duplicateController._id})");
+    expect(command).to.include("await storage.db['rooms.objects'].removeWhere({_id:duplicateSpawn._id})");
     expect(command).to.include("const plainTerrain='0'.repeat(2500)");
     expect(command).to.not.include("map.generateRoom(requestedRoom)");
     expect(command).to.include("map.openRoom(roomName)");
-    expect(command).to.include("if(!controller||controller.user)");
+    expect(command).to.include("const controllerOwnedByOther=controller?.user&&(!user||String(controller.user)!==String(user._id))");
+    expect(command).to.include("if(!controller||controllerOwnedByOther)");
     expect(command).to.include("const toArray=async(result)=>Array.isArray(result)");
     expect(command).to.include(
       "controllers.find(item=>item&&item.room&&!item.user)",
     );
     expect(command).to.include("if(!fallback){ await storage.db['rooms.objects'].update({_id:controller._id},{$set:{user:null}})");
     expect(command).to.include("spawnRoom=requestedRoom");
-    expect(command).to.include("bots.spawn('swarm-bot',spawnRoom");
+    expect(command).to.not.include("bots.spawn(");
+    expect(command).to.include("const userIdForName=name=>String(name).replace");
     expect(command).to.include("const ensureUserRecord=async()=>");
-    expect(command).to.include("message.indexOf('already owned')<0");
+    expect(command).to.include("if(!user){ user=await ensureUserRecord(); }");
+    expect(command).to.include("await storage.env.sadd(storage.env.keys.ACTIVE_ROOMS,roomName)");
+    expect(command).to.include("const userId=targetUser._id");
+    expect(command).to.not.include("const userId=''+targetUser._id");
+    expect(command).to.include("$or:[{user:targetUser._id},{user:String(targetUser._id)}]");
+    expect(command).to.include("user:targetUser._id");
+    expect(command).to.not.include("user:''+targetUser._id");
+    expect(command).to.include("usernameLower:String(username).toLowerCase()");
+    expect(command).to.include("rooms:[spawnRoom]");
+    expect(command).to.include("const userRooms=Array.from(new Set");
+    expect(command).to.include("rooms:userRooms");
+    expect(command).to.include("$set:{active:0,cpu:100,cpuAvailable:10000,rooms:userRooms}");
+    expect(command).to.include("const memoryKey=storage.env.keys.MEMORY+user._id");
+    expect(command).to.include("await storage.env.set(memoryKey,'{}')");
+    expect(command).to.include("$unset:{bot:1}");
+    expect(command).to.not.include("$set:{active:10000,cpu:100,cpuAvailable:10000,bot:username}");
+    expect(command).to.include("findOne({user:user._id,activeWorld:true})");
+    expect(command).to.include("insert({user:user._id,modules:{main:''}");
     expect(command).to.include("cpuAvailable:10000");
     expect(command).to.include(
       "const spawnEnergyFields={energy:SPAWN_ENERGY_START,energyCapacity:SPAWN_ENERGY_CAPACITY,store:{energy:SPAWN_ENERGY_START},storeCapacityResource:{energy:SPAWN_ENERGY_CAPACITY}"
     );
     expect(command).to.include(
-      "else { await storage.db['rooms.objects'].update({_id:existingSpawn._id},{$set:spawnEnergyFields}); }"
+      "else { await storage.db['rooms.objects'].update({_id:existingSpawn._id},{$set:{...spawnEnergyFields,user:userId}}); }"
     );
     expect(command).to.include("await ensureRoomSpawnForUser(user,spawnRoom); if(!(await userHasOwnedRoom(user)))");
     expect(command).to.not.include("find({ type: 'controller', user: null })");
+
+    let nextId = 1;
+    const data: Record<string, any[]> = {
+      rooms: [{ _id: "E1N1", status: "normal", sourceKeepers: false }],
+      "rooms.terrain": [{ room: "E1N1", terrain: "0".repeat(2500) }],
+      "rooms.objects": [
+        { _id: "controller-1", type: "controller", room: "E1N1", level: 1 },
+        { _id: "controller-duplicate", type: "controller", room: "E1N1", level: 0 },
+        { _id: "spawn-foreign", type: "spawn", room: "E1N1", name: "ForeignSpawn", user: "other-user" },
+      ],
+      users: [],
+      "users.code": [],
+    };
+    const matches = (record: any, query: any): boolean => {
+      if (Array.isArray(query?.$and) && !query.$and.every((part: any) => matches(record, part))) return false;
+      if (Array.isArray(query?.$or) && !query.$or.some((part: any) => matches(record, part))) return false;
+      return Object.entries(query ?? {}).every(([key, expected]) => {
+        if (key === "$and" || key === "$or") return true;
+        return record[key] === expected || String(record[key]) === String(expected);
+      });
+    };
+    const collection = (name: string) => ({
+      findOne: async (query: any) => data[name].find((record) => matches(record, query)) ?? null,
+      find: async (query: any) => data[name].filter((record) => matches(record, query)),
+      insert: async (records: any) => {
+        for (const record of Array.isArray(records) ? records : [records]) {
+          data[name].push({ _id: record._id ?? `${name}-${nextId++}`, ...record });
+        }
+      },
+      update: async (query: any, update: any) => {
+        const record = data[name].find((candidate) => matches(candidate, query));
+        if (!record) return { modified: 0 };
+        Object.assign(record, update.$set ?? {});
+        for (const key of Object.keys(update.$unset ?? {})) delete record[key];
+        return { modified: 1 };
+      },
+      removeWhere: async (query: any) => {
+        data[name] = data[name].filter((record) => !matches(record, query));
+      },
+    });
+    const envData = new Map<string, string>();
+    const activeRooms = new Set<string>();
+    const context = vm.createContext({
+      Promise,
+      String,
+      Array,
+      Set,
+      storage: {
+        db: Object.fromEntries(Object.keys(data).map((name) => [name, collection(name)])),
+        env: {
+          keys: { MEMORY: "memory:", ACTIVE_ROOMS: "activeRooms" },
+          get: async (key: string) => envData.get(key),
+          set: async (key: string, value: string) => { envData.set(key, value); },
+          sadd: async (_key: string, value: string) => { activeRooms.add(value); },
+        },
+      },
+      map: { openRoom: async () => undefined, updateTerrainData: async () => undefined },
+      common: { getGametime: async () => 0 },
+      setPassword: async () => undefined,
+      print: () => undefined,
+    });
+
+    await vm.runInContext(command, context);
+    await vm.runInContext(command, context);
+
+    const user = data.users[0];
+    expect(data.users).to.have.length(1);
+    expect(user._id).to.equal("test-bot");
+    expect(data["rooms.objects"].filter((record) => record.type === "controller")).to.have.length(1);
+    expect(data["rooms.objects"].filter((record) => record.type === "controller" && matches(record, { user: user._id }))).to.have.length(1);
+    expect(data["rooms.objects"].filter((record) => record.type === "spawn")).to.have.length(1);
+    expect(data["rooms.objects"].filter((record) => record.type === "spawn" && matches(record, { user: user._id }))).to.have.length(1);
+    expect(data["users.code"].filter((record) => matches(record, { user: user._id, activeWorld: true }))).to.have.length(1);
+    expect(user.rooms).to.deep.equal(["E1N1"]);
+    expect(user.active).to.equal(0);
+    expect(user).to.not.have.property("bot");
+    expect(envData.get(`memory:${user._id}`)).to.equal("{}");
+    expect([...activeRooms]).to.deep.equal(["E1N1"]);
   });
 
   it("builds a runtime scenario seed command for private-server smoke coverage", () => {
@@ -637,6 +916,8 @@ describe("private-server harness module", () => {
 
     expect(command).to.include('const requestedRoom="E1N1"');
     expect(command).to.include('const scenarios=["construction-economy","defense-hostile","defense-hard-invader","alliance-safety","link-network","terminal-market-lab-economy"]');
+    expect(command).to.include("const userId=botUser._id");
+    expect(command).to.not.include("const userId=''+botUser._id");
     expect(command).to.include("type:'constructionSite'");
     expect(command).to.include("ScenarioEnemyAttacker");
     expect(command).to.include("ScenarioHardInvader");
@@ -725,6 +1006,7 @@ describe("private-server harness module", () => {
     const command = buildSeedRuntimeScenariosCommand(options);
 
     expect(command).to.include("ScenarioHardInvader");
+    expect(command).to.include("x:5,y:5,name:'ScenarioHardInvader'");
     expect(command).to.include("type:'extension'");
     expect(command).to.include("level:4");
     expect(command).to.include("safeMode:null");
