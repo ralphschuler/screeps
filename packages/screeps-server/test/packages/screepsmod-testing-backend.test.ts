@@ -233,7 +233,7 @@ describe('screepsmod-testing backend mod', () => {
     }, 'bot-user-id');
 
     expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.not.include(
-      'remote-mining scenario exposes remote assignment telemetry'
+      'remote-mining scenario exposes remote assignment or scouting telemetry'
     );
     expect(memory.screepsmodTestingPlayer).to.deep.include({ failed: 0, skipped: 3, tick: 135 });
   });
@@ -276,7 +276,7 @@ describe('screepsmod-testing backend mod', () => {
       runtimeAge: 600,
     });
     expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.include(
-      'remote-mining scenario exposes remote assignment telemetry'
+      'remote-mining scenario exposes remote assignment or scouting telemetry'
     );
   });
 
@@ -383,7 +383,7 @@ describe('screepsmod-testing backend mod', () => {
     }, 'bot-user-id');
 
     expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.not.include(
-      'remote-mining scenario exposes remote assignment telemetry'
+      'remote-mining scenario exposes remote assignment or scouting telemetry'
     );
   });
 

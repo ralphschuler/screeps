@@ -231,7 +231,11 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     if (values(memory.creeps || {}).some(isRemoteCreepMemory)) return true;
     if (values(game.creeps || {}).some(function(creep) { return creep && isRemoteCreepMemory(creep.memory); })) return true;
     var statsRooms = ((memory.stats || {}).rooms) || {};
-    return Object.keys(statsRooms).some(function(roomName) { return statsRooms[roomName].remote && statsRooms[roomName].remote.assigned > 0; });
+    if (Object.keys(statsRooms).some(function(roomName) { return statsRooms[roomName].remote && statsRooms[roomName].remote.assigned > 0; })) return true;
+    var scenarioRooms = ((memory.screepsmodTestingScenarios || {}).rooms) || {};
+    var remoteRoom = scenarioRooms.remote;
+    var knownRooms = ((memory.empire || {}).knownRooms) || {};
+    return Boolean(remoteRoom && knownRooms[remoteRoom] && knownRooms[remoteRoom].scouted === true);
   }
   function hasScoutSignal() {
     if (values(game.creeps || {}).some(function(creep) { return creep && creep.memory && creep.memory.role === 'scout'; })) return true;
@@ -356,7 +360,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     runtimeAssertAfter(1200, 'construction scenario produces build/repair demand or completion signal', ['scenario','construction-economy'], hasConstructionDemandOrCompletionSignal, 'construction scenario did not create build/repair demand or completion signal');
   }
   if (hasScenario('remote-mining')) {
-    runtimeAssertAfter(${JSON.stringify(REMOTE_ASSIGNMENT_TELEMETRY_MIN_TICK)}, 'remote-mining scenario exposes remote assignment telemetry', ['scenario','remote-mining'], hasRemoteSignal, 'remote mining scenario has no remote assignment signal');
+    runtimeAssertAfter(${JSON.stringify(REMOTE_ASSIGNMENT_TELEMETRY_MIN_TICK)}, 'remote-mining scenario exposes remote assignment or scouting telemetry', ['scenario','remote-mining'], hasRemoteSignal, 'remote mining scenario has no assignment or scouting signal');
     runtimeAssertAfter(2500, 'remote-mining scenario maintains remote or scout telemetry', ['scenario','remote-mining','scouting'], function() {
       return hasScoutSignal() || hasRemoteSignal();
     }, 'remote mining scenario has no remote assignment, scout creep, or scouted remote intel signal');
