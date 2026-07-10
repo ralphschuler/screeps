@@ -43,6 +43,10 @@ interface HaulerTargetCacheMemory {
  * Uses cached target finding to reduce CPU usage.
  */
 export function hauler(ctx: CreepContext): CreepAction {
+  if (!ctx.isInHomeRoom) {
+    return { type: "remoteMoveToRoom", roomName: ctx.homeRoom, routeType: "hauler" };
+  }
+
   const isWorking = updateWorkingState(ctx);
   const isDefenseRefuel = ctx.memory.task === DEFENSE_REFUEL_TASK;
   logger.debug(`${ctx.creep.name} hauler state: working=${isWorking}, energy=${ctx.creep.store.getUsedCapacity(RESOURCE_ENERGY)}/${ctx.creep.store.getCapacity()}`);
