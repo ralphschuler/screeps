@@ -131,6 +131,10 @@ function getAdjacentRooms(roomName: string): string[] {
   return Array.from(new Set([...describedRooms, ...fallbackRooms]));
 }
 
+function isValidScoutTravelTarget(currentRoom: string, targetRoom: string): boolean {
+  return targetRoom === currentRoom || getAdjacentRooms(currentRoom).includes(targetRoom);
+}
+
 /**
  * Find the next unexplored adjacent room.
  * Avoids the previous room to prevent cycling between two rooms.
@@ -205,8 +209,14 @@ export function scout(ctx: CreepContext): CreepAction {
   // Track the last room we fully explored (not just passed through)
   const lastExploredRoom = ctx.memory.lastExploredRoom;
 
-  // Find or assign target room
+  // Find or assign target room. Legacy/stale memory can contain distant
+  // targetRoom values from older spawn logic; scouts explore adjacent rooms, so
+  // never path directly to non-adjacent targets.
   let targetRoom = ctx.memory.targetRoom;
+  if (targetRoom && !isValidScoutTravelTarget(ctx.room.name, targetRoom)) {
+    delete ctx.memory.targetRoom;
+    targetRoom = undefined;
+  }
 
   // If no target, find next room to explore
   if (!targetRoom) {

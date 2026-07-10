@@ -165,14 +165,11 @@ export function executeAction(
     );
   }
 
-  // Log the action being executed for debugging
-  if (optimizedAction.type === "idle") {
-    logger.warn(`${creep.name} (${ctx.memory.role}) executing IDLE action`);
-  } else {
-    logger.debug(
-      `${creep.name} (${ctx.memory.role}) executing ${optimizedAction.type}`,
-    );
-  }
+  // Log the action being executed for debugging. Idle is normal for many roles,
+  // so keep it below warning level to avoid console noise and log CPU churn.
+  logger.debug(
+    `${creep.name} (${ctx.memory.role}) executing ${optimizedAction.type}`,
+  );
 
   let shouldClearState = false;
 
@@ -502,24 +499,17 @@ export function executeAction(
         moveTo(creep, roomCenter, { priority: 2 });
         break;
       }
-      // Try to move to collection point if available. Idle scouts are throttled
-      // because repeated collection-point pathing was a live #3104 CPU hotspot;
-      // non-scout idle movement keeps the previous every-tick behavior.
+      // Try to move to collection point if available. Idle scouts skip this:
+      // they provide no local logistics value, and repeated idle pathing was a
+      // live CPU hotspot. Non-scout idle movement keeps prior behavior.
       const room = Game.rooms[creep.pos.roomName];
       if (room && room.controller?.my) {
         const collectionPoint = getCollectionPoint(room.name);
         if (
           collectionPoint &&
           !creep.pos.isEqualTo(collectionPoint) &&
-          shouldAttemptIdleCollectionMove({
-            role: ctx.memory.role,
-            currentTick: Game.time,
-            lastIdleCollectionMoveTick: ctx.memory.lastIdleCollectionMoveTick,
-          })
+          shouldAttemptIdleCollectionMove({ role: ctx.memory.role })
         ) {
-          if (ctx.memory.role === "scout") {
-            ctx.memory.lastIdleCollectionMoveTick = Game.time;
-          }
           const idleMoveResult = moveTo(creep, collectionPoint, {
             priority: 2,
           });

@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import "./setup.ts";
 import {
-  SCOUT_IDLE_COLLECTION_MOVE_INTERVAL,
   decideRangeActionExecution,
   shouldAttemptIdleCollectionMove,
   shouldClearStateForActionResult,
@@ -70,46 +69,15 @@ describe("Action Execution Policy", () => {
     expect(
       shouldAttemptIdleCollectionMove({
         role: "builder",
-        currentTick: 100,
-        lastIdleCollectionMoveTick: 100,
       }),
     ).to.equal(true);
   });
 
-  it("allows scout idle collection movement when no recent attempt exists", () => {
+  it("never sends idle scouts to collection points", () => {
     expect(
       shouldAttemptIdleCollectionMove({
         role: "scout",
-        currentTick: 100,
-      }),
-    ).to.equal(true);
-  });
-
-  it("throttles repeated idle scout collection movement", () => {
-    expect(
-      shouldAttemptIdleCollectionMove({
-        role: "scout",
-        currentTick: 100,
-        lastIdleCollectionMoveTick: 100 - SCOUT_IDLE_COLLECTION_MOVE_INTERVAL + 1,
       }),
     ).to.equal(false);
-
-    expect(
-      shouldAttemptIdleCollectionMove({
-        role: "scout",
-        currentTick: 100,
-        lastIdleCollectionMoveTick: 100 - SCOUT_IDLE_COLLECTION_MOVE_INTERVAL,
-      }),
-    ).to.equal(true);
-  });
-
-  it("does not permanently suppress scout movement after corrupt future timestamps", () => {
-    expect(
-      shouldAttemptIdleCollectionMove({
-        role: "scout",
-        currentTick: 100,
-        lastIdleCollectionMoveTick: 200,
-      }),
-    ).to.equal(true);
   });
 });
