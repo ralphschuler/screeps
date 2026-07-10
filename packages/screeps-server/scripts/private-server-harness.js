@@ -60,7 +60,7 @@ export function createLegacyScreepsApiAdapter(ScreepsHttpClient) {
 
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
 const DEFAULT_SMOKE_DURATION_MINUTES = 15;
-const DEFAULT_SMOKE_MAX_TICKS = 3000;
+const DEFAULT_SMOKE_MAX_TICKS = 10000;
 const DEFAULT_RUNTIME_SCENARIOS = [
   "default-bootstrap",
   "construction-economy",
@@ -124,8 +124,8 @@ export function parseRuntimeWarmupTicks(
   const runtimeWarmupOverride = rawValue ?? env.SCREEPS_RUNTIME_WARMUP_TICKS;
   if (runtimeWarmupOverride !== undefined) {
     const parsed = Number(runtimeWarmupOverride);
-    if (!Number.isInteger(parsed) || parsed < 0) {
-      throw new Error("runtimeWarmupTicks must be a non-negative integer");
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new Error("runtimeWarmupTicks must be a positive integer");
     }
     return parsed;
   }
@@ -135,7 +135,8 @@ export function parseRuntimeWarmupTicks(
     const match = /runtimeWarmupTicks:\s*(\d+)/.exec(configText);
     if (match?.[1]) {
       const parsed = Number(match[1]);
-      if (Number.isInteger(parsed) && parsed >= 0) return parsed;
+      if (Number.isInteger(parsed) && parsed > 0) return parsed;
+      throw new Error("runtimeWarmupTicks in config must be a positive integer");
     }
   } catch {
     // Keep default if config is unavailable/unreadable.

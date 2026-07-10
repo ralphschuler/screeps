@@ -16,7 +16,7 @@
     "server:local:down": "docker compose -f docker-compose.ci.yml -p screeps-local down --remove-orphans",
     "server:local:reset": "docker compose -f docker-compose.ci.yml -p screeps-local down -v --remove-orphans",
     "server:local:logs": "docker compose -f docker-compose.ci.yml -p screeps-local logs -f --tail=200",
-    "test:smoke": "node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=3000",
+    "test:smoke": "node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=10000",
     "test:long": "node scripts/run-private-server-test.js --mode=long --durationMinutes=120 --maxTicks=72000",
     "test:integration": "npm run test:smoke",
     "test:integration:legacy": "mocha --no-config --require tsx \"test/integration/**/*.test.ts\"",

@@ -37,7 +37,7 @@ npm run server:local:reset
 
 ## CI
 
-Pull requests run a strict 15-minute / 3000-tick private-server smoke workflow with seeded runtime scenarios. Long simulations run from the dedicated manual/nightly workflow.
+Pull requests run a strict 15-minute / 10,000-tick private-server smoke workflow with seeded runtime scenarios. Long simulations run from the dedicated manual/nightly workflow.
 
 ## In-Game Assertions
 

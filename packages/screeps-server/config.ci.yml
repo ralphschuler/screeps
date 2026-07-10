@@ -10,11 +10,6 @@ mods:
   - screepsmod-mongo
   - ../screepsmod-testing
 
-bots:
-  # `bots.spawn()` still uses the bundled simplebot path from mods.ci.json to
-  # create the swarm-bot account before the harness uploads our bundle.
-  swarm-bot: simplebot
-
 serverConfig:
   tickRate: 20
   socketUpdateRate: 20
