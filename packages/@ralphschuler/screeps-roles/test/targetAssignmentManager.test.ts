@@ -119,11 +119,38 @@ describe("targetAssignmentManager memory initialization", () => {
     expect(creep.memory.targetId).to.equal("TOWER_SITE");
   });
 
+  it("prioritizes bootstrap extensions before storage while recovery spawn capacity is still minimal", () => {
+    const extension = site("EXT_SITE", STRUCTURE_EXTENSION, 10, 10);
+    const storage = site("STORAGE_SITE", STRUCTURE_STORAGE, 11, 11);
+    const secondTower = site("SECOND_TOWER_SITE", STRUCTURE_TOWER, 12, 12);
+    const homeRoom = createMockRoom("W1N1", { controller: { my: true, level: 5 } });
+    const builtTower = { id: "BUILT_TOWER", structureType: STRUCTURE_TOWER } as StructureTower;
+    (homeRoom as unknown as { find: Room["find"] }).find = (type: FindConstant) => {
+      if (type === FIND_MY_CONSTRUCTION_SITES) return [storage, secondTower, extension];
+      if (type === FIND_MY_STRUCTURES) return [builtTower];
+      return [];
+    };
+
+    const creep = createMockCreep("builder-extension-bootstrap", {
+      room: homeRoom,
+      memory: { role: "builder", homeRoom: "W1N1" },
+      pos: {
+        findClosestByRange: (sites: ConstructionSite[]) => sites[0] ?? null
+      }
+    });
+
+    const result = getAssignedBuildTarget(creep);
+
+    expect(result).to.equal(extension);
+    expect(creep.memory.targetId).to.equal("EXT_SITE");
+  });
+
   it("prioritizes missing RCL4 storage before an extra tower once tower coverage exists", () => {
     const extension = site("EXT_SITE", STRUCTURE_EXTENSION, 10, 10);
     const storage = site("STORAGE_SITE", STRUCTURE_STORAGE, 11, 11);
     const secondTower = site("SECOND_TOWER_SITE", STRUCTURE_TOWER, 12, 12);
     const homeRoom = createMockRoom("W1N1", { controller: { my: true, level: 5 } });
+    (homeRoom as unknown as { energyCapacityAvailable: number }).energyCapacityAvailable = 650;
     const builtTower = { id: "BUILT_TOWER", structureType: STRUCTURE_TOWER } as StructureTower;
     (homeRoom as unknown as { find: Room["find"] }).find = (type: FindConstant) => {
       if (type === FIND_MY_CONSTRUCTION_SITES) return [extension, secondTower, storage];
