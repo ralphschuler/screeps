@@ -296,6 +296,8 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   diagnostics.linkNetwork = {
     links: linkStructures.length,
     linkSites: linkSites.length,
+    extensions: extensionStructures.length,
+    extensionEnergy: extensionStructures.reduce((total, extension) => total + Number(extension?.energy ?? extension?.store?.energy ?? 0), 0),
     storages: storageStructures.length,
     ownedControllers: input.ownedControllers.map(controller => ({ room: controller.room, level: controller.level })),
     siteTypes
@@ -395,9 +397,28 @@ export async function runBackendRuntimeAssertions(input: BackendAssertionInput):
     diagnostics: {
       botRuntimeWarmed: input.botRuntimeWarmed,
       ownedControllers: input.ownedControllers.length,
+      ownedControllerDetails: input.ownedControllers.map(controller => ({
+        room: controller.room,
+        user: controller.user,
+        level: controller.level ?? null,
+      })),
       spawns: input.spawns.length,
+      spawnDetails: input.spawns.map(spawn => ({
+        room: spawn.room,
+        user: spawn.user,
+        off: spawn.off ?? null,
+        energy: spawn.energy ?? spawn.store?.energy ?? null,
+        energyCapacity: spawn.energyCapacity ?? spawn.storeCapacityResource?.energy ?? null,
+        store: spawn.store ?? null,
+        storeCapacityResource: spawn.storeCapacityResource ?? null,
+        spawning: spawn.spawning ?? null,
+      })),
       creeps: input.creeps.length,
       taskBoardRooms: Object.keys(input.memory.creepTaskBoard?.rooms ?? {}).length,
+      roomEnergy: Object.fromEntries(Object.entries(input.memory.stats?.rooms ?? {}).map(([roomName, stats]: [string, any]) => [
+        roomName,
+        stats?.energy ?? null,
+      ])),
       hasPlayerSandboxSummary: input.memory.screepsmodTestingPlayer?.source === 'screepsmod-testing-player-sandbox',
       errorNotifications: input.errorSamples.length,
       errorSamples: input.errorSamples,

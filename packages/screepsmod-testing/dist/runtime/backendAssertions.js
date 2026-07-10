@@ -503,6 +503,8 @@ function assertScenarios(counters, input) {
                     diagnostics.linkNetwork = {
                         links: linkStructures.length,
                         linkSites: linkSites.length,
+                        extensions: extensionStructures.length,
+                        extensionEnergy: extensionStructures.reduce(function (total, extension) { var _a, _b, _c; return total + Number((_c = (_a = extension === null || extension === void 0 ? void 0 : extension.energy) !== null && _a !== void 0 ? _a : (_b = extension === null || extension === void 0 ? void 0 : extension.store) === null || _b === void 0 ? void 0 : _b.energy) !== null && _c !== void 0 ? _c : 0); }, 0),
                         storages: storageStructures.length,
                         ownedControllers: input.ownedControllers.map(function (controller) { return ({ room: controller.room, level: controller.level }); }),
                         siteTypes: siteTypes
@@ -575,9 +577,9 @@ function assertScenarios(counters, input) {
 function runBackendRuntimeAssertions(input) {
     return __awaiter(this, void 0, void 0, function () {
         var counters, ownedRoomNames, scenarioDiagnostics;
-        var _a, _b, _c;
-        return __generator(this, function (_d) {
-            switch (_d.label) {
+        var _a, _b, _c, _d, _e;
+        return __generator(this, function (_f) {
+            switch (_f.label) {
                 case 0:
                     counters = { passed: 0, skipped: 0, failures: [] };
                     ownedRoomNames = input.ownedControllers.map(function (controller) { return String(controller.room); }).filter(Boolean);
@@ -590,7 +592,7 @@ function runBackendRuntimeAssertions(input) {
                     assertBaselineRuntime(counters, input, ownedRoomNames);
                     return [4 /*yield*/, assertScenarios(counters, input)];
                 case 1:
-                    scenarioDiagnostics = _d.sent();
+                    scenarioDiagnostics = _f.sent();
                     return [2 /*return*/, {
                             source: 'screepsmod-testing-backend-cronjob',
                             total: counters.passed + counters.failures.length + counters.skipped,
@@ -606,10 +608,39 @@ function runBackendRuntimeAssertions(input) {
                             diagnostics: {
                                 botRuntimeWarmed: input.botRuntimeWarmed,
                                 ownedControllers: input.ownedControllers.length,
+                                ownedControllerDetails: input.ownedControllers.map(function (controller) {
+                                    var _a;
+                                    return ({
+                                        room: controller.room,
+                                        user: controller.user,
+                                        level: (_a = controller.level) !== null && _a !== void 0 ? _a : null,
+                                    });
+                                }),
                                 spawns: input.spawns.length,
+                                spawnDetails: input.spawns.map(function (spawn) {
+                                    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+                                    return ({
+                                        room: spawn.room,
+                                        user: spawn.user,
+                                        off: (_a = spawn.off) !== null && _a !== void 0 ? _a : null,
+                                        energy: (_d = (_b = spawn.energy) !== null && _b !== void 0 ? _b : (_c = spawn.store) === null || _c === void 0 ? void 0 : _c.energy) !== null && _d !== void 0 ? _d : null,
+                                        energyCapacity: (_g = (_e = spawn.energyCapacity) !== null && _e !== void 0 ? _e : (_f = spawn.storeCapacityResource) === null || _f === void 0 ? void 0 : _f.energy) !== null && _g !== void 0 ? _g : null,
+                                        store: (_h = spawn.store) !== null && _h !== void 0 ? _h : null,
+                                        storeCapacityResource: (_j = spawn.storeCapacityResource) !== null && _j !== void 0 ? _j : null,
+                                        spawning: (_k = spawn.spawning) !== null && _k !== void 0 ? _k : null,
+                                    });
+                                }),
                                 creeps: input.creeps.length,
                                 taskBoardRooms: Object.keys((_b = (_a = input.memory.creepTaskBoard) === null || _a === void 0 ? void 0 : _a.rooms) !== null && _b !== void 0 ? _b : {}).length,
-                                hasPlayerSandboxSummary: ((_c = input.memory.screepsmodTestingPlayer) === null || _c === void 0 ? void 0 : _c.source) === 'screepsmod-testing-player-sandbox',
+                                roomEnergy: Object.fromEntries(Object.entries((_d = (_c = input.memory.stats) === null || _c === void 0 ? void 0 : _c.rooms) !== null && _d !== void 0 ? _d : {}).map(function (_a) {
+                                    var _b;
+                                    var _c = __read(_a, 2), roomName = _c[0], stats = _c[1];
+                                    return [
+                                        roomName,
+                                        (_b = stats === null || stats === void 0 ? void 0 : stats.energy) !== null && _b !== void 0 ? _b : null,
+                                    ];
+                                })),
+                                hasPlayerSandboxSummary: ((_e = input.memory.screepsmodTestingPlayer) === null || _e === void 0 ? void 0 : _e.source) === 'screepsmod-testing-player-sandbox',
                                 errorNotifications: input.errorSamples.length,
                                 errorSamples: input.errorSamples,
                                 scenarios: scenarioDiagnostics,
