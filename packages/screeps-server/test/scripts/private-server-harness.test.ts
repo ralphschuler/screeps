@@ -815,10 +815,10 @@ describe("private-server harness module", () => {
     expect(command).to.include("rooms:[spawnRoom]");
     expect(command).to.include("const userRooms=Array.from(new Set");
     expect(command).to.include("rooms:userRooms");
-    expect(command).to.include("$set:{active:0,cpu:100,cpuAvailable:10000,rooms:userRooms}");
+    expect(command).to.include("$set:{active:0,cpu:100,cpuAvailable:10000,rooms:userRooms,bot:username}");
     expect(command).to.include("const memoryKey=storage.env.keys.MEMORY+user._id");
     expect(command).to.include("await storage.env.set(memoryKey,'{}')");
-    expect(command).to.include("$unset:{bot:1}");
+    expect(command).to.not.include("$unset:{bot:1}");
     expect(command).to.not.include("$set:{active:10000,cpu:100,cpuAvailable:10000,bot:username}");
     expect(command).to.include("findOne({user:user._id,activeWorld:true})");
     expect(command).to.include("insert({user:user._id,modules:{main:''}");
@@ -906,7 +906,7 @@ describe("private-server harness module", () => {
     expect(data["users.code"].filter((record) => matches(record, { user: user._id, activeWorld: true }))).to.have.length(1);
     expect(user.rooms).to.deep.equal(["E1N1"]);
     expect(user.active).to.equal(0);
-    expect(user).to.not.have.property("bot");
+    expect(user.bot).to.equal("test-bot");
     expect(envData.get(`memory:${user._id}`)).to.equal("{}");
     expect([...activeRooms]).to.deep.equal(["E1N1"]);
   });
