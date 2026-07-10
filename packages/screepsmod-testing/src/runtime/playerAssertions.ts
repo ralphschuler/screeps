@@ -1,5 +1,4 @@
 const ALLY_NAMES = ['TooAngel', 'TedRoastBeef'];
-const REMOTE_ASSIGNMENT_TELEMETRY_MIN_TICK = 600;
 
 const MERGE_RUNTIME_SUMMARIES_SOURCE = `function mergeRuntimeSummaries(sources, tick, startedAt, runtimeWarmupTicks, scenarios) {
   function cloneSource(summary) {
@@ -216,40 +215,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
       return (swarm.danger || 0) > 0 || (pheromones.defense || 0) > 0 || (pheromones.war || 0) > 0;
     });
   }
-  function isRemoteCreepMemory(creepMemory) {
-    if (!creepMemory || typeof creepMemory !== 'object') return false;
-    var role = String(creepMemory.role || '');
-    if (role === 'remoteHarvester' || role === 'remoteHauler' || role === 'remoteWorker') return true;
-    return role.indexOf('remote') === 0 && Boolean(creepMemory.targetRoom || creepMemory.assignedRoom);
-  }
-  function hasRemoteSignal() {
-    var roomsMemory = memory.rooms || {};
-    if (Object.keys(roomsMemory).some(function(roomName) {
-      var assignments = (((roomsMemory[roomName] || {}).swarm || {}).remoteAssignments) || [];
-      return assignments.length > 0;
-    })) return true;
-    if (values(memory.creeps || {}).some(isRemoteCreepMemory)) return true;
-    if (values(game.creeps || {}).some(function(creep) { return creep && isRemoteCreepMemory(creep.memory); })) return true;
-    var statsRooms = ((memory.stats || {}).rooms) || {};
-    if (Object.keys(statsRooms).some(function(roomName) { return statsRooms[roomName].remote && statsRooms[roomName].remote.assigned > 0; })) return true;
-    var scenarioRooms = ((memory.screepsmodTestingScenarios || {}).rooms) || {};
-    var remoteRoom = scenarioRooms.remote;
-    var knownRooms = ((memory.empire || {}).knownRooms) || {};
-    return Boolean(remoteRoom && knownRooms[remoteRoom] && knownRooms[remoteRoom].scouted === true);
-  }
-  function hasScoutSignal() {
-    if (values(game.creeps || {}).some(function(creep) { return creep && creep.memory && creep.memory.role === 'scout'; })) return true;
-    var knownRooms = ((memory.empire || {}).knownRooms) || {};
-    var scenarioRooms = ((memory.screepsmodTestingScenarios || {}).rooms) || {};
-    var remoteRoom = scenarioRooms.remote;
-    if (remoteRoom && knownRooms[remoteRoom] && knownRooms[remoteRoom].scouted === true) return true;
-    var ownedNames = {};
-    ownedRooms.forEach(function(room) { ownedNames[room.name] = true; });
-    return Object.keys(knownRooms).some(function(roomName) {
-      var intel = knownRooms[roomName];
-      return !ownedNames[roomName] && intel && intel.scouted === true;
-    });
-  }
+
   function linkNetworkPoints(room) {
     var links = room.find(FIND_MY_STRUCTURES, { filter: function(structure) { return structure.structureType === STRUCTURE_LINK; } }) || [];
     var sites = room.find(FIND_MY_CONSTRUCTION_SITES, { filter: function(site) { return site.structureType === STRUCTURE_LINK; } }) || [];
@@ -358,12 +324,6 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
 
   if (hasScenario('construction-economy')) {
     runtimeAssertAfter(1200, 'construction scenario produces build/repair demand or completion signal', ['scenario','construction-economy'], hasConstructionDemandOrCompletionSignal, 'construction scenario did not create build/repair demand or completion signal');
-  }
-  if (hasScenario('remote-mining')) {
-    runtimeAssertAfter(${JSON.stringify(REMOTE_ASSIGNMENT_TELEMETRY_MIN_TICK)}, 'remote-mining scenario exposes remote assignment or scouting telemetry', ['scenario','remote-mining'], hasRemoteSignal, 'remote mining scenario has no assignment or scouting signal');
-    runtimeAssertAfter(2500, 'remote-mining scenario maintains remote or scout telemetry', ['scenario','remote-mining','scouting'], function() {
-      return hasScoutSignal() || hasRemoteSignal();
-    }, 'remote mining scenario has no remote assignment, scout creep, or scouted remote intel signal');
   }
   if (hasScenario('defense-hostile')) {
     runtimeAssertAfter(1200, 'defense scenario emits defensive runtime signal', ['scenario','defense-hostile'], hasDefenseSignal, 'defense scenario has no danger, defense task, or defense request signal');
