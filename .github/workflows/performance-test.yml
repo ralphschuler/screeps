@@ -59,7 +59,7 @@ jobs:
 
       - name: Run performance smoke
         working-directory: packages/screeps-server
-        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=3000 --project=screeps-perf-smoke-${{ github.run_id }}
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=10000 --project=screeps-perf-smoke-${{ github.run_id }}
         timeout-minutes: 45
 
       - name: Upload performance smoke summary
