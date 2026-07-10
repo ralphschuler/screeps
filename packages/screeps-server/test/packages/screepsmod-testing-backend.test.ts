@@ -88,7 +88,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = 1200;
 
     const sandbox = {
       run(code: string) {
@@ -142,7 +142,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = 1200;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -158,7 +158,7 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
-  it('starts player-sandbox warmup from the first execution instead of absolute game time', () => {
+  it('warms from completed player-sandbox executions instead of skipped game ticks', () => {
     const engine = new EventEmitter();
     installTestingMod({
       engine,
@@ -181,19 +181,31 @@ describe('screepsmod-testing backend mod', () => {
     engine.emit('playerSandbox', sandbox, 'bot-user-id');
     expect(memory.screepsmodTestingPlayer).to.deep.include({
       failed: 0,
-      skipped: 13,
+      skipped: 14,
       runtimeWarmed: false,
       tick: 150,
     });
 
-    context.Game.time = 251;
+    context.Game.time = 10_000;
     engine.emit('playerSandbox', sandbox, 'bot-user-id');
     expect(memory.screepsmodTestingPlayer).to.deep.include({
       failed: 0,
-      skipped: 0,
-      runtimeWarmed: true,
-      tick: 251,
+      skipped: 14,
+      runtimeWarmed: false,
+      tick: 10_000,
     });
+
+    for (let execution = 0; execution < 99; execution += 1) {
+      context.Game.time += 1;
+      engine.emit('playerSandbox', sandbox, 'bot-user-id');
+    }
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      failed: 0,
+      skipped: 1,
+      runtimeWarmed: true,
+      tick: 10_099,
+    });
+    expect(context.__screepsmodTestingPlayerExecutionCount).to.equal(101);
   });
 
   it('defers remote-mining assignment telemetry until expansion work can run', () => {
@@ -212,7 +224,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -223,7 +235,49 @@ describe('screepsmod-testing backend mod', () => {
     expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.not.include(
       'remote-mining scenario exposes remote assignment telemetry'
     );
-    expect(memory.screepsmodTestingPlayer).to.deep.include({ failed: 0, skipped: 0, tick: 135 });
+    expect(memory.screepsmodTestingPlayer).to.deep.include({ failed: 0, skipped: 3, tick: 135 });
+  });
+
+  it('keeps remote-mining evidence pending until the configured runtime age boundary', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100, scenarios: ['remote-mining'] } }
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: { names: ['remote-mining'], rooms: { home: 'W1N1', remote: 'W1N2' } }
+    });
+    const context = vm.createContext({
+      Game: createWarmGame(10_000),
+      Memory: memory,
+      global: {},
+    });
+    context.global = context;
+    context.__screepsmodTestingPlayerExecutionCount = 599;
+    const sandbox = {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      }
+    };
+
+    engine.emit('playerSandbox', sandbox, 'bot-user-id');
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      failed: 0,
+      skipped: 3,
+      runtimeAge: 599,
+    });
+
+    context.Game.time += 1;
+    engine.emit('playerSandbox', sandbox, 'bot-user-id');
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      failed: 1,
+      skipped: 2,
+      runtimeAge: 600,
+    });
+    expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.include(
+      'remote-mining scenario exposes remote assignment telemetry'
+    );
   });
 
   it('passes remote-mining scouting assertion when remote assignment telemetry exists', () => {
@@ -283,7 +337,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -320,7 +374,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -356,7 +410,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -395,7 +449,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -468,7 +522,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -707,7 +761,7 @@ describe('screepsmod-testing backend mod', () => {
       global: {}
     });
     context.global = context;
-    context.__screepsmodTestingPlayerStartedAt = 0;
+    context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
 
     engine.emit('playerSandbox', {
       run(code: string) {

@@ -10,7 +10,7 @@ Server tests use a real Dockerized Screeps private server. Mock server runners a
 npm run test:server:smoke
 ```
 
-The smoke test builds the bot and `screepsmod-testing`, starts the Docker server, seeds runtime scenarios, uploads the bot, waits for strict in-game assertions, emits artifacts, and tears down volumes. Default smoke runtime is 15 minutes or 3000 ticks.
+The smoke test builds the bot and `screepsmod-testing`, starts the Docker server, seeds runtime scenarios, uploads the bot, waits for strict in-game assertions, emits artifacts, and tears down volumes. Default smoke runtime is 15 minutes or 10,000 ticks.
 
 Default scenarios:
 

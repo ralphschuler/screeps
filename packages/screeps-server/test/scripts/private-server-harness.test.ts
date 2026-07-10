@@ -112,7 +112,7 @@ describe("private-server harness module", () => {
 
     expect(options.mode).to.equal("smoke");
     expect(options.durationMinutes).to.equal(15);
-    expect(options.maxTicks).to.equal(3000);
+    expect(options.maxTicks).to.equal(10000);
     expect(options.tickPollMs).to.equal(10000);
     expect(options.tickRate).to.equal(20);
     expect(options.serverPort).to.equal(21025);
@@ -223,7 +223,8 @@ describe("private-server harness module", () => {
         {},
       ),
     ).to.equal(100);
-    expect(() => parseRuntimeWarmupTicks("-1")).to.throw(/non-negative integer/);
+    expect(() => parseRuntimeWarmupTicks("-1")).to.throw(/positive integer/);
+    expect(() => parseRuntimeWarmupTicks("0")).to.throw(/positive integer/);
   });
 
   it("resets the harness log before each artifact run", () => {
@@ -248,7 +249,7 @@ describe("private-server harness module", () => {
       mode: "smoke",
       startedAt: "2026-05-09T00:00:00.000Z",
       durationMinutes: 15,
-      maxTicks: 3000,
+      maxTicks: 10000,
       serverPort: 21025,
       tickRate: 20,
       roomName: "E1N1",

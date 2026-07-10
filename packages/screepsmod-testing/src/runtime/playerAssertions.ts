@@ -104,8 +104,8 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     assert(name, tags, predicate, details);
   }
   function runtimeAssertAfter(minTick, name, tags, predicate, details) {
-    if (tick < minTick) {
-      pass();
+    if (runtimeAge < minTick) {
+      skip(name, tags, 'runtime maturity pending');
       return;
     }
     runtimeAssert(name, tags, predicate, details);
@@ -311,12 +311,10 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   var rooms = values(game.rooms || {});
   var ownedRooms = rooms.filter(function(room) { return room && room.controller && room.controller.my; });
   var tick = Number(game.time || 0);
-  var playerRuntimeStartedAt = global.__screepsmodTestingPlayerStartedAt;
-  if (typeof playerRuntimeStartedAt !== 'number') {
-    playerRuntimeStartedAt = tick;
-    global.__screepsmodTestingPlayerStartedAt = tick;
-  }
-  var runtimeWarmed = tick - playerRuntimeStartedAt >= ${JSON.stringify(runtimeWarmupTicks)};
+  var playerRuntimeExecutionCount = Number(global.__screepsmodTestingPlayerExecutionCount || 0) + 1;
+  global.__screepsmodTestingPlayerExecutionCount = playerRuntimeExecutionCount;
+  var runtimeAge = Math.max(0, playerRuntimeExecutionCount - 1);
+  var runtimeWarmed = runtimeAge >= ${JSON.stringify(runtimeWarmupTicks)};
 
   assert('server exposes Game and advances ticks', ['smoke','server'], function() { return tick > 0; }, 'Game.time did not advance');
   assert('our bot has at least one owned visible room', ['smoke','bot'], function() { return ownedRooms.length > 0; }, 'no owned visible rooms');
@@ -395,6 +393,8 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     failures: failures,
     runtimeWarmed: runtimeWarmed,
     runtimeWarmupTicks: ${JSON.stringify(runtimeWarmupTicks)},
+    runtimeExecutions: playerRuntimeExecutionCount,
+    runtimeAge: runtimeAge,
     scenarios: configuredScenarios,
     tick: tick,
     duration: Date.now() - started
