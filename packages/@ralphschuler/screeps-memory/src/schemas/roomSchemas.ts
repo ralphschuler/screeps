@@ -73,6 +73,17 @@ export interface ConstructionScheduleMemory {
  */
 export type RoomRole = "capital" | "secondaryCore" | "remoteMining" | "forwardBase" | "skOutpost";
 
+/** Compact, reset-surviving evacuation intent stored with room state. */
+export interface EvacuationIntentMemory {
+  reason: "nuke" | "siege" | "hostile_takeover" | "manual";
+  startedAt: number;
+  targetRoom: string;
+  progress: number;
+  complete: boolean;
+  deadline?: number;
+  updatedAt: number;
+}
+
 /**
  * Swarm state stored in RoomMemory
  */
@@ -85,6 +96,8 @@ export interface SwarmState {
   danger: 0 | 1 | 2 | 3;
   /** Whether nukes have been detected (to prevent spam) */
   nukeDetected?: boolean;
+  /** Reset-surviving evacuation intent; bounded and expiry-managed. */
+  evacuationIntent?: EvacuationIntentMemory;
   /** Pheromone values */
   pheromones: PheromoneState;
   /** Next update tick (to avoid per-tick recompute) */
