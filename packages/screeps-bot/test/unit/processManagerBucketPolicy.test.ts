@@ -27,8 +27,17 @@ describe("Process manager bucket policy", () => {
       }
     };
 
+    global.Memory = {
+      creeps: {},
+      rooms: {},
+      spawns: {},
+      flags: {},
+      powerCreeps: {},
+      empire: { incomingNukes: [] }
+    } as typeof Memory;
+
     // Remove existing manager processes to keep test isolation
-    const existing = kernel.getProcesses().filter((p) => p.id.startsWith("creep:") || p.id.startsWith("room:"));
+    const existing = kernel.getProcesses().filter(p => p.id.startsWith("creep:") || p.id.startsWith("room:"));
     for (const process of existing) {
       kernel.unregisterProcess(process.id);
     }
@@ -87,6 +96,92 @@ describe("Process manager bucket policy", () => {
     expect(kernel.getProcess("creep:creep-remote-hauler")?.minBucket).to.equal(lowMode);
     expect(kernel.getProcess("creep:creep-lab-tech")?.minBucket).to.equal(highMode);
     expect(kernel.getProcess("creep:creep-lab-tech")?.priority).to.equal(ProcessPriority.IDLE);
+  });
+
+  it("promotes an owned room with a visible nuke and exposes the response reason", () => {
+    const room = {
+      name: "W1N1",
+      controller: { my: true, level: 8 },
+      find: (type: FindConstant) =>
+        type === FIND_NUKES ? [{ id: "nuke-1", timeToLand: 50000, launchRoomName: "E1N1" }] : []
+    } as unknown as Room;
+
+    global.Game.rooms = { W1N1: room };
+    global.Game.spawns = {};
+
+    roomProcessManager.syncRoomProcesses();
+
+    const process = kernel.getProcess("room:W1N1");
+    expect(process?.priority).to.equal(ProcessPriority.CRITICAL);
+    expect(process?.tickModulo).to.equal(undefined);
+    expect(process?.minBucket).to.equal(0);
+    expect(process?.name).to.include("nuke response");
+  });
+
+  it("promotes persisted nuke intent after a global reset without rescanning a nuke", () => {
+    const room = {
+      name: "W1N1",
+      controller: { my: true, level: 8 },
+      find: (type: FindConstant) => {
+        if (type === FIND_NUKES) {
+          throw new Error("persisted nuke intent should avoid a live scan");
+        }
+        return [];
+      }
+    } as unknown as Room;
+
+    global.Memory.rooms = {} as typeof Memory.rooms;
+    global.Memory.empire = {
+      incomingNukes: [{ roomName: "W1N1", impactTick: global.Game.time + 50000 }]
+    } as unknown as typeof Memory.empire;
+    global.Game.rooms = { W1N1: room };
+    global.Game.spawns = {};
+
+    roomProcessManager.syncRoomProcesses();
+
+    expect(kernel.getProcess("room:W1N1")?.priority).to.equal(ProcessPriority.CRITICAL);
+    expect(kernel.getProcess("room:W1N1")?.tickModulo).to.equal(undefined);
+  });
+
+  it("keeps an owned room without nuke intent on distributed high priority", () => {
+    const room = {
+      name: "W1N1",
+      controller: { my: true, level: 8 },
+      find: () => []
+    } as unknown as Room;
+
+    global.Game.rooms = { W1N1: room };
+    global.Game.spawns = {};
+
+    roomProcessManager.syncRoomProcesses();
+
+    const process = kernel.getProcess("room:W1N1");
+    expect(process?.priority).to.equal(ProcessPriority.HIGH);
+    expect(process?.tickModulo).to.equal(5);
+    expect(process?.name).to.not.include("nuke response");
+  });
+
+  it("bounds nuke priority scans while the bucket is low", () => {
+    const { lowMode } = getConfig().cpu.bucketThresholds;
+    let nukeScans = 0;
+    const room = {
+      name: "W1N1",
+      controller: { my: true, level: 8 },
+      find: (type: FindConstant) => {
+        if (type === FIND_NUKES) nukeScans++;
+        return [];
+      }
+    } as unknown as Room;
+
+    global.Game.cpu.bucket = lowMode - 1;
+    global.Game.rooms = { W1N1: room };
+    global.Game.spawns = {};
+
+    roomProcessManager.syncRoomProcesses();
+    global.Game.time += 1;
+    roomProcessManager.forceResync();
+
+    expect(nukeScans).to.equal(1);
   });
 
   it("maps room priorities to bucket-aware minBucket values", () => {
