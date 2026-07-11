@@ -1102,6 +1102,48 @@ describe("defense spawn throttling", () => {
     if (firstAssistIndex >= 0) assert.isBelow(refuelIndex, firstAssistIndex);
   });
 
+  it("keeps emergency refuel visible when source containers are empty but terminal reserve can be tapped", () => {
+    const helper = createRoom([], "W17S29", 2300, 21, 6);
+    const attacked = createRoom([createHostile([RANGED_ATTACK, MOVE, HEAL, MOVE])], "W18S28", 0, 0, 5, false);
+    const terminal = {
+      store: createStore(13_000),
+      cooldown: 0
+    } as unknown as StructureTerminal;
+    (helper as unknown as { terminal: StructureTerminal }).terminal = terminal;
+    const originalFind = helper.find.bind(helper);
+    (helper as unknown as { find: Room["find"] }).find = ((type: FindConstant) => {
+      if (type === FIND_SOURCES) return [createSource()];
+      if (type === FIND_STRUCTURES) return [];
+      return originalFind(type as never);
+    }) as Room["find"];
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    Game.creeps = {
+      hauler1: { spawning: false, memory: { role: "hauler", homeRoom: "W17S29" } },
+      harvester1: { spawning: false, memory: { role: "harvester", homeRoom: "W17S29" } },
+      upgrader1: { spawning: false, memory: { role: "upgrader", homeRoom: "W17S29" } }
+    } as unknown as typeof Game.creeps;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W18S28",
+        guardsNeeded: 1,
+        rangersNeeded: 1,
+        healersNeeded: 1,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "spawnless ranged-heal attack"
+      }
+    ];
+
+    const { createSpawnPlan } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const requests = createSpawnPlan(helper, { danger: 0, posture: "eco" } as any).requests;
+    const refuel = requests.find(request => request.role === "hauler" && request.additionalMemory?.task === "defenseRefuel");
+
+    assert.isOk(refuel, "terminal energy should create a visible emergency refuel request");
+    assert.equal(refuel!.priority, SpawnPriority.EMERGENCY);
+    assert.deepEqual(refuel!.body.parts, [CARRY, MOVE]);
+  });
+
   it("scales dedicated defense refuelers when ranged/healer assists are still energy-blocked", () => {
     const helper = createRoom([], "W18S29", 2300, 177, 6);
     const attacked = createRoom([

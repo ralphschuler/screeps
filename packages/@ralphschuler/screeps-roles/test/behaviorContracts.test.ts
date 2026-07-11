@@ -740,6 +740,27 @@ describe("Behavior Contracts", () => {
     expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
   });
 
+  it("withdraws bounded terminal energy for an emergency defenseRefuel hauler when source containers are empty", () => {
+    const terminal = {
+      id: "terminal1",
+      cooldown: 0,
+      store: makeEnergyStore(10_000, 0)
+    } as unknown as StructureTerminal;
+    const ctx = createContext("hauler");
+    ctx.memory.task = "defenseRefuel";
+
+    const action = evaluateEconomyBehavior({
+      ...ctx,
+      sourceContainers: [],
+      containers: [],
+      terminal
+    });
+
+    expect(action.type).to.equal("withdraw");
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).target).to.equal(terminal);
+    expect((action as Extract<CreepAction, { type: "withdraw" }>).resourceType).to.equal(RESOURCE_ENERGY);
+  });
+
   it("keeps spawn delivery ahead of terminal energy buffering", () => {
     const room = createMockRoom("W1N1");
     const spawn = {

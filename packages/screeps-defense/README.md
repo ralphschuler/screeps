@@ -252,6 +252,15 @@ Emergency manager:
 - Activates safe mode for critical threats
 - Coordinates evacuation if needed
 
+### Emergency helper-room refuel
+
+When a visible urgent defense request cannot afford a defender body, the spawn and
+roles packages may create a `defenseRefuel` hauler demand. Source-adjacent
+containers remain the first source. If those are empty, the hauler may withdraw
+from its own terminal only while at least 5,000 energy remains after the bounded
+100-energy refill action. This keeps the response useful during spawnless-room
+recovery without turning normal terminal reserves into general spawn fuel.
+
 ## Dependencies
 
 This package is a framework package in the screeps monorepo. It should not depend on `packages/screeps-bot` implementation details.
