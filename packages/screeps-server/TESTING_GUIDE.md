@@ -12,13 +12,14 @@ npm run test:server:smoke
 
 The smoke test builds the bot and `screepsmod-testing`, starts the Docker server, seeds runtime scenarios, uploads the bot, waits for strict in-game assertions, emits artifacts, and tears down volumes. Default smoke runtime is 15 minutes or 10,000 ticks.
 
-Default scenarios:
+Available scenarios:
 
 - `default-bootstrap`
 - `construction-economy`
 - `remote-mining` (accepts room remote assignments, remote stats, or active remote-role creeps as runtime telemetry)
 - `defense-hostile`
 - `defense-hard-invader` (clears bootstrap safe-mode while seeding and records 50-part hostile seed metadata for runtime assertions)
+- `nukerless-nuke` (seeds an incoming nuke without an owned nuker and verifies defensive alert memory)
 - `alliance-safety`
 
 Override with `SCREEPS_TEST_SCENARIOS=none` or a comma list.

@@ -129,6 +129,35 @@ describe("Nuke Manager", () => {
 
       expect(swarm.nukeDetected).to.be.false;
     });
+
+    it("should detect incoming nukes when no owned nuker is available", () => {
+      const swarm = createDefaultSwarmState();
+      const mockNuke = {
+        timeToLand: 1000,
+        launchRoomName: "W2N2",
+        pos: { x: 25, y: 25, roomName: "W1N1" }
+      };
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: (type: FindConstant) => {
+          if (type === FIND_NUKES) return [mockNuke];
+          if (type === FIND_MY_STRUCTURES) return [];
+          return [];
+        },
+        lookForAtArea: () => []
+      } as unknown as Room;
+
+      // @ts-ignore
+      global.Game.rooms["W1N1"] = mockRoom;
+      getSwarmStateStub.withArgs("W1N1").returns(swarm);
+
+      nukeManager.run();
+
+      expect(swarm.nukeDetected).to.be.true;
+      expect(memoryManager.getEmpire().incomingNukes).to.have.length(1);
+      expect(memoryManager.getEmpire().nukeCandidates).to.deep.equal([]);
+    });
   });
 
   describe("Nuke Candidate Scoring", () => {

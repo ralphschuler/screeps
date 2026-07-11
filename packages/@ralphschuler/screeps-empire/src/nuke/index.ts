@@ -25,6 +25,11 @@ type EmpireMemory = any;
 type SwarmState = any;
 type ClusterMemory = any;
 
+export interface NukeRunOptions {
+  /** Run offensive targeting, logistics, and launch operations. */
+  offensive?: boolean;
+}
+
 /**
  * Nuke Coordinator Class
  */
@@ -55,17 +60,25 @@ export class NukeCoordinator {
    * Main nuke coordination tick
    * Called by kernel process
    */
-  public run(): void {
+  public run(options: NukeRunOptions = {}): void {
     const empire = this.getEmpire();
+    const offensive = options.offensive ?? true;
 
     // Initialize nuke tracking if needed
     initializeNukeTracking(empire);
 
-    // Detect incoming nukes and update alerts
+    // Defensive observation is independent of offensive nuker availability.
     detectIncomingNukes(empire, this.getSwarmState);
-    
+
     // Handle evacuation for threatened rooms
     this.handleEvacuations(empire);
+
+    if (!offensive) {
+      // Keep landed-alert cleanup active without evaluating targets, moving
+      // resources, or launching counter-nukes from a nukerless empire.
+      cleanupNukeTracking(empire);
+      return;
+    }
 
     // Process counter-nuke strategies
     processCounterNukeStrategies(
