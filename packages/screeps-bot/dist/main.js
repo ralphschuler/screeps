@@ -33680,17 +33680,20 @@ if (r) throw r.error;
 }
 }
 }
-} else e.currentDanger > 0 && (t.nextDanger = 0, t.kernelEvents.push({
+} else {
+var m = e.nukeScanPerformed ? e.nukes.length > 0 : e.nukeDetected;
+e.currentDanger > 0 && !m && (t.nextDanger = 0, e.nukeDetected || t.kernelEvents.push({
 type: "hostile.cleared",
 payload: {
 roomName: e.roomName,
 source: e.roomName
 }
 }));
+}
 }(n, c), function(e, t) {
 var r, o, n, i, s;
-if (e.nukes.length > 0) {
-if (t.nextDanger = 3, e.time % 10 != 0 || e.nukeDetected) return;
+if (e.nukeScanPerformed) if (e.nukes.length > 0) {
+if (t.nextDanger = 3, e.nukeDetected) return;
 t.nextNukeDetected = !0, t.pheromoneEffects.push({
 type: "nukeDetected"
 });
@@ -33725,16 +33728,17 @@ l && !l.done && (o = u.return) && o.call(u);
 if (r) throw r.error;
 }
 }
-} else t.nextNukeDetected = !1;
+} else t.nextNukeDetected = !1; else e.nukeDetected && (t.nextDanger = 3);
 }(n, c), c;
 var n, c;
 }, e.prototype.getDefensePostureSnapshot = function(e, t, r, o) {
-var n, a = t.clusterId ? Sr.getCluster(t.clusterId) : null, i = o.length > 0 ? Go(e) : void 0, s = Game.time % 10 == 0 ? e.find(FIND_NUKES) : [];
+var n, a = t.clusterId ? Sr.getCluster(t.clusterId) : null, i = o.length > 0 ? Go(e) : void 0, s = e.find(FIND_NUKES);
 return {
 roomName: e.name,
 time: Game.time,
 currentDanger: t.danger,
 nukeDetected: null !== (n = t.nukeDetected) && void 0 !== n && n,
+nukeScanPerformed: !0,
 clusterId: t.clusterId,
 clusterMemberRooms: null == a ? void 0 : a.memberRooms,
 previousStructures: Iy.get(e.name),

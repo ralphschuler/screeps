@@ -34,6 +34,8 @@ export interface DefensePostureSnapshot {
   time: number;
   currentDanger: DefenseDangerLevel;
   nukeDetected: boolean;
+  /** True only when the current room tick performed an explicit nuke scan. */
+  nukeScanPerformed: boolean;
   clusterId?: string;
   clusterMemberRooms?: string[];
   previousStructures?: DefenseStructureTrackingSnapshot;
@@ -240,18 +242,28 @@ function planHostileEvents(snapshot: DefensePostureSnapshot, intent: DefensePost
     return;
   }
 
-  if (snapshot.currentDanger > 0) {
+  const activeNukeEvidence = snapshot.nukeScanPerformed ? snapshot.nukes.length > 0 : snapshot.nukeDetected;
+  if (snapshot.currentDanger > 0 && !activeNukeEvidence) {
     intent.nextDanger = 0;
-    intent.kernelEvents.push({ type: "hostile.cleared", payload: { roomName: snapshot.roomName, source: snapshot.roomName } });
+    if (!snapshot.nukeDetected) {
+      intent.kernelEvents.push({ type: "hostile.cleared", payload: { roomName: snapshot.roomName, source: snapshot.roomName } });
+    }
   }
 }
 
 function planNukeEvents(snapshot: DefensePostureSnapshot, intent: DefensePostureIntent): void {
+  if (!snapshot.nukeScanPerformed) {
+    // A skipped scan is not evidence that incoming nukes are gone. Preserve the
+    // persisted critical posture until an explicit empty scan is completed.
+    if (snapshot.nukeDetected) intent.nextDanger = 3;
+    return;
+  }
+
   if (snapshot.nukes.length > 0) {
-    // Incoming nukes remain a critical threat between the periodic event scans.
-    // Preserve danger=3 even when no hostile creeps are visible.
+    // Incoming nukes remain a critical threat between room-process executions.
+    // Every explicit room scan may discover the first nuke for this posture.
     intent.nextDanger = 3;
-    if (snapshot.time % 10 !== 0 || snapshot.nukeDetected) return;
+    if (snapshot.nukeDetected) return;
 
     intent.nextNukeDetected = true;
     intent.pheromoneEffects.push({ type: "nukeDetected" });
