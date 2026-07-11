@@ -69,18 +69,22 @@ describe("RoomNode construction scheduling", () => {
     (globalThis as { Game: typeof Game }).Game = originalGame;
   });
 
-  function createRoom(): Room {
+  function createRoom(hasSpawn = false): Room {
     const controller = {
       id: "controller1" as Id<StructureController>,
       my: true,
       level: 5
     } as StructureController;
+    const spawn = {
+      id: "spawn1" as Id<StructureSpawn>,
+      structureType: STRUCTURE_SPAWN
+    } as StructureSpawn;
 
     return {
       name: "W1N1",
       controller,
       find: (type: FindConstant) => {
-        if (type === FIND_MY_STRUCTURES) return [];
+        if (type === FIND_MY_STRUCTURES) return hasSpawn ? [spawn] : [];
         if (type === FIND_SOURCES) return [];
         if (type === FIND_MY_CONSTRUCTION_SITES) return [];
         return [];
@@ -109,7 +113,7 @@ describe("RoomNode construction scheduling", () => {
   }
 
   it("runs construction when the room process resumes after the remembered due tick", () => {
-    const room = createRoom();
+    const room = createRoom(true);
     const swarm = {
       posture: "eco",
       danger: 0,
@@ -135,5 +139,78 @@ describe("RoomNode construction scheduling", () => {
       nextRunTick: 1013,
       interval: 10
     });
+  });
+
+  it("runs only critical construction for a spawnless recovery room in low bucket", () => {
+    const room = createRoom();
+    const swarm = {
+      posture: "eco",
+      danger: 0
+    };
+    const runConstruction = stubRoomNodeCollaborators(swarm);
+    (globalThis as { Game: typeof Game }).Game = {
+      ...originalGame,
+      time: 2000,
+      rooms: { W1N1: room },
+      cpu: { ...originalGame.cpu, bucket: 5000, getUsed: () => 0 }
+    };
+
+    new RoomNode("W1N1", { enableProcessing: false, enablePheromones: false }).run(1);
+
+    assert.isTrue(
+      runConstruction.calledOnce,
+      "spawnless recovery construction must not be deferred with optional work"
+    );
+    assert.isTrue(
+      runConstruction.calledWithMatch(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any, {
+        criticalOnly: true
+      })
+    );
+  });
+
+  it("does not run low-bucket construction for a stable room with spawn capacity", () => {
+    const room = createRoom(true);
+    const swarm = {
+      posture: "eco",
+      danger: 0
+    };
+    const runConstruction = stubRoomNodeCollaborators(swarm);
+    (globalThis as { Game: typeof Game }).Game = {
+      ...originalGame,
+      time: 3000,
+      rooms: { W1N1: room },
+      cpu: { ...originalGame.cpu, bucket: 5000, getUsed: () => 0 }
+    };
+
+    new RoomNode("W1N1", { enableProcessing: false, enablePheromones: false }).run(1);
+
+    assert.isFalse(runConstruction.called, "stable room construction remains optional while the bucket recovers");
+  });
+
+  it("runs capped critical defense construction in low bucket during danger", () => {
+    const room = createRoom(true);
+    const swarm = {
+      posture: "eco",
+      danger: 2
+    };
+    const runConstruction = stubRoomNodeCollaborators(swarm);
+    (globalThis as { Game: typeof Game }).Game = {
+      ...originalGame,
+      time: 4000,
+      rooms: { W1N1: room },
+      cpu: { ...originalGame.cpu, bucket: 5000, getUsed: () => 0 }
+    };
+
+    new RoomNode("W1N1", { enableProcessing: false, enablePheromones: false }).run(1);
+
+    assert.isTrue(
+      runConstruction.calledOnce,
+      "critical defense construction must continue during low-bucket recovery"
+    );
+    assert.isTrue(
+      runConstruction.calledWithMatch(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any, {
+        criticalOnly: true
+      })
+    );
   });
 });
