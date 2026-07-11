@@ -98,6 +98,9 @@ Improved nuke detection and awareness.
 - Uses `nukeDetected` flag from SwarmState
 - Logs detailed nuke count and impact timing
 - Triggers evacuation 5,000 ticks before impact (configurable)
+- Persists a compact room-scoped evacuation intent so a global reset resumes the same target and deadline
+- Rehydrates recalled creep state from current creep memory without persisting creep-name or resource histories
+- Retains completed intents for bounded duplicate suppression, then expires them
 - Prioritizes resources for evacuation:
   1. Energy, Power, Ghodium
   2. T3 Boosts (catalyzed compounds)
@@ -129,8 +132,11 @@ Coordinates with siege squads:
 Uses SwarmState fields:
 - `nukeDetected`: Boolean flag for incoming nukes
 - `danger`: Set to 3 on nuke detection
+- `evacuationIntent`: Bounded reset-surviving target, reason, progress, deadline, and expiry state
 - `pheromones`: Multiple pheromone updates
 - `eventLog`: Records nuke events
+
+`evacuationIntent` is room-scoped and intentionally excludes raw resource totals, creep-name histories, Game objects, and coordinates. The evacuation manager restores it before checking new triggers, preserving idempotency across a global reset.
 
 ## Usage Example
 

@@ -14,6 +14,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
+import type { EvacuationIntentMemory } from "@ralphschuler/screeps-memory";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 
@@ -32,6 +33,9 @@ export interface EvacuationConfig {
   /** Maximum terminal transfers per tick */
   maxTransfersPerTick: number;
 }
+
+const COMPLETED_INTENT_RETENTION_TICKS = 1000;
+const EVACUATION_REASONS = new Set(["nuke", "siege", "hostile_takeover", "manual"]);
 
 const DEFAULT_CONFIG: EvacuationConfig = {
   triggerDangerLevel: 3,
@@ -58,7 +62,7 @@ export interface EvacuationState {
   /** Room being evacuated */
   roomName: string;
   /** Evacuation reason */
-  reason: "nuke" | "siege" | "hostile_takeover" | "manual";
+  reason: EvacuationIntentMemory["reason"];
   /** Evacuation started tick */
   startedAt: number;
   /** Target room for resources */
@@ -100,6 +104,8 @@ export class EvacuationManager {
     cpuBudget: 0.02
   })
   public run(): void {
+    this.restorePersistedEvacuations();
+
     // Reset transfer counter
     if (Game.time !== this.lastTransferTick) {
       this.transfersThisTick = 0;
@@ -116,12 +122,103 @@ export class EvacuationManager {
       }
     }
 
-    // Clean up completed evacuations after 1000 ticks
+    // Clean up completed evacuations after a bounded retention window.
     for (const [roomName, state] of this.evacuations.entries()) {
-      if (state.complete && Game.time - state.startedAt > 1000) {
+      if (state.complete && Game.time - state.startedAt > COMPLETED_INTENT_RETENTION_TICKS) {
+        this.clearPersistedEvacuationIntent(roomName);
         this.evacuations.delete(roomName);
       }
     }
+  }
+
+  /**
+   * Restore reset-surviving evacuation intents before evaluating new triggers.
+   */
+  private restorePersistedEvacuations(): void {
+    for (const roomName of Object.keys(Memory.rooms ?? {})) {
+      this.restorePersistedEvacuation(roomName);
+    }
+  }
+
+  private restorePersistedEvacuation(roomName: string): EvacuationState | undefined {
+    const existing = this.evacuations.get(roomName);
+    if (existing) return existing;
+
+    const swarm = memoryManager.getSwarmState(roomName);
+    const intent = swarm?.evacuationIntent;
+    if (!intent) return undefined;
+
+    if (!this.isValidEvacuationIntent(intent)) {
+      delete swarm.evacuationIntent;
+      return undefined;
+    }
+
+    if (intent.complete && Game.time - intent.startedAt > COMPLETED_INTENT_RETENTION_TICKS) {
+      delete swarm.evacuationIntent;
+      return undefined;
+    }
+
+    const room = Game.rooms[roomName];
+    const creepsRecalled = room
+      ? room.find(FIND_MY_CREEPS)
+          .filter(creep => {
+            const memory = creep.memory as unknown as { evacuating?: boolean; evacuationTarget?: string };
+            return memory.evacuating === true && memory.evacuationTarget === intent.targetRoom;
+          })
+          .map(creep => creep.name)
+      : [];
+
+    const state: EvacuationState = {
+      roomName,
+      reason: intent.reason,
+      startedAt: intent.startedAt,
+      targetRoom: intent.targetRoom,
+      resourcesEvacuated: [],
+      creepsRecalled,
+      progress: Math.max(0, Math.min(100, intent.progress)),
+      complete: intent.complete,
+      deadline: intent.deadline,
+    };
+    if (swarm.posture !== "evacuate") swarm.posture = "evacuate";
+    this.evacuations.set(roomName, state);
+    return state;
+  }
+
+  private isValidEvacuationIntent(value: unknown): value is EvacuationIntentMemory {
+    if (!value || typeof value !== "object") return false;
+    const intent = value as Record<string, unknown>;
+    return EVACUATION_REASONS.has(String(intent.reason))
+      && typeof intent.startedAt === "number"
+      && Number.isFinite(intent.startedAt)
+      && typeof intent.targetRoom === "string"
+      && intent.targetRoom.length > 0
+      && typeof intent.progress === "number"
+      && Number.isFinite(intent.progress)
+      && typeof intent.complete === "boolean"
+      && typeof intent.updatedAt === "number"
+      && Number.isFinite(intent.updatedAt)
+      && (intent.deadline === undefined || (typeof intent.deadline === "number" && Number.isFinite(intent.deadline)));
+  }
+
+  private persistEvacuation(state: EvacuationState): void {
+    const swarm = memoryManager.getSwarmState(state.roomName);
+    if (!swarm) return;
+
+    const intent: EvacuationIntentMemory = {
+      reason: state.reason,
+      startedAt: state.startedAt,
+      targetRoom: state.targetRoom,
+      progress: Math.max(0, Math.min(100, state.progress)),
+      complete: state.complete,
+      updatedAt: Game.time,
+    };
+    if (state.deadline !== undefined) intent.deadline = state.deadline;
+    swarm.evacuationIntent = intent;
+  }
+
+  private clearPersistedEvacuationIntent(roomName: string): void {
+    const swarm = memoryManager.getSwarmState(roomName);
+    if (swarm) delete swarm.evacuationIntent;
   }
 
   /**
@@ -193,6 +290,9 @@ export class EvacuationManager {
     if (this.evacuations.has(roomName)) {
       return false; // Already evacuating
     }
+    if (this.restorePersistedEvacuation(roomName)) {
+      return false; // A reset-surviving evacuation is already active
+    }
 
     const room = Game.rooms[roomName];
     if (!room || !room.controller?.my) return false;
@@ -219,6 +319,7 @@ export class EvacuationManager {
     };
 
     this.evacuations.set(roomName, state);
+    this.persistEvacuation(state);
 
     // Update room posture
     const swarm = memoryManager.getSwarmState(roomName);
@@ -296,6 +397,7 @@ export class EvacuationManager {
     if (!room) {
       // Lost room - evacuation failed
       state.complete = true;
+      this.persistEvacuation(state);
       logger.error(`Lost room ${state.roomName} during evacuation`, {
         subsystem: "Evacuation"
       });
@@ -331,6 +433,8 @@ export class EvacuationManager {
         subsystem: "Evacuation"
       });
     }
+
+    this.persistEvacuation(state);
   }
 
   /**
@@ -468,10 +572,11 @@ export class EvacuationManager {
    * Cancel an evacuation
    */
   public cancelEvacuation(roomName: string): void {
-    const state = this.evacuations.get(roomName);
+    const state = this.evacuations.get(roomName) ?? this.restorePersistedEvacuation(roomName);
     if (!state) return;
 
     this.evacuations.delete(roomName);
+    this.clearPersistedEvacuationIntent(roomName);
 
     // Reset creep memory
     for (const creepName of state.creepsRecalled) {
@@ -496,14 +601,14 @@ export class EvacuationManager {
    * Get evacuation state for a room
    */
   public getEvacuationState(roomName: string): EvacuationState | undefined {
-    return this.evacuations.get(roomName);
+    return this.evacuations.get(roomName) ?? this.restorePersistedEvacuation(roomName);
   }
 
   /**
    * Check if a room is being evacuated
    */
   public isEvacuating(roomName: string): boolean {
-    const state = this.evacuations.get(roomName);
+    const state = this.getEvacuationState(roomName);
     return state !== undefined && !state.complete;
   }
 
@@ -511,6 +616,7 @@ export class EvacuationManager {
    * Get all active evacuations
    */
   public getActiveEvacuations(): EvacuationState[] {
+    this.restorePersistedEvacuations();
     return Array.from(this.evacuations.values()).filter(s => !s.complete);
   }
 }
