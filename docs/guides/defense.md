@@ -68,7 +68,7 @@ The Defense Coordination System provides comprehensive multi-room defense coordi
 
 ## Threat Assessment
 
-File: `packages/screeps-defense/src/threatAssessment.ts`
+File: `packages/screeps-defense/src/threat/threatAssessment.ts`
 
 ### ThreatAnalysis Interface
 
@@ -91,6 +91,8 @@ interface ThreatAnalysis {
   recommendedResponse: "monitor" | "defend" | "assist" | "retreat" | "safemode";
 }
 ```
+
+An incoming nuke is always a critical threat (`dangerLevel = 3`, `recommendedResponse = "safemode"`), even when the room has no visible hostile creeps. The nuke check must therefore run before the empty-room fast path; ally filtering still applies to creep-based threat scoring.
 
 ### DPS Calculation
 
@@ -146,9 +148,10 @@ function detectBoostLevel(creep: Creep): number {
 
 ```typescript
 export function assessThreat(room: Room): ThreatAnalysis {
-  const hostiles = room.find(FIND_HOSTILE_CREEPS);
+  const hostiles = getActualHostileCreeps(room); // excludes permanent allies
+  const nukes = room.find(FIND_NUKES);
   
-  if (hostiles.length === 0) {
+  if (hostiles.length === 0 && nukes.length === 0) {
     return {
       roomName: room.name,
       dangerLevel: 0,
@@ -193,11 +196,10 @@ export function assessThreat(room: Room): ThreatAnalysis {
   if (threatScore > 100 || totalDPS > 150) dangerLevel = 2;
   if (threatScore > 300 || boostedCount > 2) dangerLevel = 3;
   
-  // Check for nukes
-  const nukes = room.find(FIND_NUKES);
+  // Check for nukes; this also handles rooms with no visible hostile creeps.
   if (nukes.length > 0) {
     dangerLevel = 3;
-    threatScore += 1000;
+    threatScore += 500;
   }
   
   // Determine recommended response
@@ -219,8 +221,8 @@ export function assessThreat(room: Room): ThreatAnalysis {
     boostedCount,
     dismantlerCount,
     estimatedDefenderCost: calculateDefenderCost(threatScore),
-    assistanceRequired: dangerLevel >= 2,
-    assistancePriority: Math.min(100, threatScore / 10),
+    assistanceRequired: dangerLevel >= 2 && hostiles.length > 0,
+    assistancePriority: hostiles.length === 0 ? 0 : Math.min(100, threatScore / 10),
     recommendedResponse
   };
 }

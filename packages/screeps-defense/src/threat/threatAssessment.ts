@@ -75,9 +75,11 @@ export interface ThreatAnalysis {
  */
 export function assessThreat(room: Room): ThreatAnalysis {
   const hostiles = getActualHostileCreeps(room);
+  const nukes = room.find(FIND_NUKES);
   
-  // Early exit for no threats
-  if (hostiles.length === 0) {
+  // Incoming nukes are critical even when no hostile creep is visible.
+  // Keep the empty-room fast path only for rooms with no nuke threat.
+  if (hostiles.length === 0 && nukes.length === 0) {
     return {
       roomName: room.name,
       dangerLevel: 0,
@@ -130,7 +132,8 @@ export function assessThreat(room: Room): ThreatAnalysis {
   
   // Calculate actual tower DPS based on distance to hostile creeps
   // See ROADMAP.md Section 12 - Threat-Level & Posture: "Range-Falloff beachten"
-  const towerDPS = towers.reduce((sum, tower) => {
+  // A nuke-only room has no hostile target distance to average.
+  const towerDPS = hostiles.length === 0 ? 0 : towers.reduce((sum, tower) => {
     const structureTower = tower as StructureTower;
 
     if (structureTower.structureType !== STRUCTURE_TOWER) {
@@ -179,7 +182,6 @@ export function assessThreat(room: Room): ThreatAnalysis {
   }
 
   // Check for nuke (overrides everything)
-  const nukes = room.find(FIND_NUKES);
   if (nukes.length > 0) {
     threatScore += 500;
     recommendedResponse = "safemode";
