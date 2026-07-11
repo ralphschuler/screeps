@@ -38,11 +38,18 @@ const ROOM_DISTRIBUTION_CONFIG = {
  * still performs its authoritative scan when the room process runs; this cache
  * only prevents the scheduler from repeating the same FIND_NUKES query every tick.
  */
+// Normal-bucket scans are bounded independently from room execution. Repeated
+// checks in the same tick still use the cache.
 const NUKE_PRIORITY_SCAN_INTERVAL = 5;
 const NUKE_PRIORITY_SCAN_INTERVAL_LOW_BUCKET = 50;
 const nukePriorityScanCache = new Map<string, { checkedAt: number; active: boolean }>();
 
 function hasPersistedNukeThreat(roomName: string): boolean {
+  // Read the current Memory reference first. This survives a global reset even
+  // when a heap-backed manager cache has not observed the replacement yet.
+  const currentSwarm = (Memory.rooms?.[roomName] as unknown as { swarm?: { nukeDetected?: boolean } } | undefined)?.swarm;
+  if (currentSwarm?.nukeDetected) return true;
+
   const swarm = memoryManager.getSwarmState(roomName);
   if (swarm?.nukeDetected) return true;
 
@@ -355,6 +362,7 @@ export class RoomProcessManager {
     kernel.unregisterProcess(processId);
     this.registeredRooms.delete(roomName);
     this.roomIndices.delete(roomName);
+    nukePriorityScanCache.delete(roomName);
 
     logger.debug(`Unregistered room process: ${roomName}`, {
       subsystem: "RoomProcessManager"

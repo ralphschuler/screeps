@@ -1970,7 +1970,9 @@ export class UnifiedStatsManager {
         skipped_count: process.skippedCount,
         error_count: process.errorCount,
         cpu_budget: process.cpuBudget,
-        min_bucket: process.minBucket
+        min_bucket: process.minBucket,
+        tick_modulo: process.tickModulo,
+        tick_offset: process.tickOffset
       };
     }
 

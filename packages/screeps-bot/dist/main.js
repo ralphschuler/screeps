@@ -14709,7 +14709,9 @@ last_run_tick: P.lastRunTick,
 skipped_count: P.skippedCount,
 error_count: P.errorCount,
 cpu_budget: P.cpuBudget,
-min_bucket: P.minBucket
+min_bucket: P.minBucket,
+tick_modulo: P.tickModulo,
+tick_offset: P.tickOffset
 };
 }
 } catch (e) {
@@ -36093,10 +36095,12 @@ function lv(e) {
 var t;
 if (!(null === (t = e.controller) || void 0 === t ? void 0 : t.my)) return !1;
 if (function(e) {
-var t = Sr.getSwarmState(e);
-if (null == t ? void 0 : t.nukeDetected) return !0;
-var r = Sr.getEmpire().incomingNukes;
-return Array.isArray(r) && r.some(function(t) {
+var t, r, o = null === (r = null === (t = Memory.rooms) || void 0 === t ? void 0 : t[e]) || void 0 === r ? void 0 : r.swarm;
+if (null == o ? void 0 : o.nukeDetected) return !0;
+var n = Sr.getSwarmState(e);
+if (null == n ? void 0 : n.nukeDetected) return !0;
+var a = Sr.getEmpire().incomingNukes;
+return Array.isArray(a) && a.some(function(t) {
 return t.roomName === e && Number.isFinite(t.impactTick) && t.impactTick > Game.time;
 });
 }(e.name)) return !0;
@@ -36240,7 +36244,7 @@ subsystem: "RoomProcessManager"
 }, e.prototype.unregisterRoomProcess = function(e) {
 var t = "room:".concat(e);
 Mi.unregisterProcess(t), this.registeredRooms.delete(e), this.roomIndices.delete(e),
-el.debug("Unregistered room process: ".concat(e), {
+uv.delete(e), el.debug("Unregistered room process: ".concat(e), {
 subsystem: "RoomProcessManager"
 });
 }, e.prototype.getMinBucketForPriority = function(e) {
