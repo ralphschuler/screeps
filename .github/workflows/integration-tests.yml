@@ -65,7 +65,8 @@ jobs:
 
       - name: Run private-server smoke test
         working-directory: packages/screeps-server
-        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=15 --maxTicks=10000 --project=screeps-smoke-${{ github.run_id }}
+        # Cold GitHub runners can spend several minutes generating terrain before the post-restart runtime warms.
+        run: node scripts/run-private-server-test.js --mode=smoke --durationMinutes=20 --maxTicks=10000 --project=screeps-smoke-${{ github.run_id }}
         timeout-minutes: 45
 
       - name: Upload smoke summary
