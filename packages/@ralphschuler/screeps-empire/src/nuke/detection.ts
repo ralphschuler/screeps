@@ -15,9 +15,7 @@ export function detectIncomingNukes(
   empire: EmpireMemory,
   getSwarmState: (roomName: string) => SwarmState | undefined
 ): void {
-  if (!empire.incomingNukes) {
-    empire.incomingNukes = [];
-  }
+  const incomingNukes = empire.incomingNukes ?? (empire.incomingNukes = []);
 
   for (const roomName in Game.rooms) {
     const room = Game.rooms[roomName];
@@ -29,22 +27,29 @@ export function detectIncomingNukes(
     const nukes = room.find(FIND_NUKES);
 
     if (nukes.length > 0) {
-      // Process each nuke
-      for (const nuke of nukes) {
-        // Check if already tracked
-        const existingAlert = empire.incomingNukes.find(
-          a => a.roomName === roomName && 
-               a.landingPos.x === nuke.pos.x && 
-               a.landingPos.y === nuke.pos.y
-        );
+      // Process each nuke. IDs are stable across ticks and keep same-tile salvos separate.
+      nukes.forEach((nuke, index) => {
+        const timeToLand = nuke.timeToLand || 0;
+        const impactTick = Game.time + timeToLand;
+        const nukeId = getNukeTrackingId(nuke, roomName, index, impactTick);
+        const existingAlert = incomingNukes.find(alert => alert.nukeId === nukeId)
+          // Migrate one legacy coordinate-keyed alert when an ID becomes available.
+          ?? incomingNukes.find(alert =>
+            !alert.nukeId &&
+            alert.roomName === roomName &&
+            alert.landingPos.x === nuke.pos.x &&
+            alert.landingPos.y === nuke.pos.y &&
+            alert.impactTick === impactTick
+          );
 
         if (!existingAlert) {
           // New nuke detected - create alert
           const alert: IncomingNukeAlert = {
+            nukeId,
             roomName,
             landingPos: { x: nuke.pos.x, y: nuke.pos.y },
-            impactTick: Game.time + (nuke.timeToLand || 0),
-            timeToLand: nuke.timeToLand || 0,
+            impactTick,
+            timeToLand,
             detectedAt: Game.time,
             evacuationTriggered: false,
             sourceRoom: nuke.launchRoomName
@@ -54,7 +59,7 @@ export function detectIncomingNukes(
           const threatenedStructures = identifyThreatenedStructures(room, nuke.pos);
           alert.threatenedStructures = threatenedStructures;
 
-          empire.incomingNukes.push(alert);
+          incomingNukes.push(alert);
 
           // Update swarm state
           if (!swarm.nukeDetected) {
@@ -84,16 +89,44 @@ export function detectIncomingNukes(
             }
           }
         } else {
-          // Update existing alert
-          existingAlert.timeToLand = nuke.timeToLand || 0;
+          // Update existing alert and attach an ID to legacy memory on first observation.
+          existingAlert.nukeId = nukeId;
+          existingAlert.impactTick = impactTick;
+          existingAlert.timeToLand = timeToLand;
+          existingAlert.sourceRoom = nuke.launchRoomName;
         }
-      }
+      });
     } else if (swarm.nukeDetected) {
       // Nukes cleared (either impacted or something else)
       swarm.nukeDetected = false;
       logger.info(`Nuke threat cleared in ${roomName}`, { subsystem: "Nuke" });
     }
   }
+}
+
+/**
+ * Return a stable per-object key for nuke alerts.
+ *
+ * Live Screeps nukes always expose `id`. The deterministic fallback keeps unit
+ * and private-server doubles without an ID distinct within one room scan.
+ */
+function getNukeTrackingId(
+  nuke: Pick<Nuke, "id" | "pos" | "timeToLand" | "launchRoomName">,
+  roomName: string,
+  index: number,
+  impactTick: number
+): string {
+  if (nuke.id) return String(nuke.id);
+
+  return [
+    "fallback",
+    roomName,
+    nuke.pos.x,
+    nuke.pos.y,
+    impactTick,
+    nuke.launchRoomName || "unknown",
+    index
+  ].join(":");
 }
 
 /**

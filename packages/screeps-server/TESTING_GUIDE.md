@@ -20,6 +20,7 @@ Available scenarios:
 - `defense-hostile`
 - `defense-hard-invader` (clears bootstrap safe-mode while seeding and records 50-part hostile seed metadata for runtime assertions)
 - `nukerless-nuke` (seeds an incoming nuke without an owned nuker and verifies defensive alert memory)
+- `stacked-nukes` (seeds two same-tile incoming nukes and verifies distinct object-ID alerts)
 - `alliance-safety`
 
 Override with `SCREEPS_TEST_SCENARIOS=none` or a comma list.

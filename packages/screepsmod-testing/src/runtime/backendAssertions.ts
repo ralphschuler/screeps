@@ -324,6 +324,11 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     launchRooms: incomingNukes.map(nuke => nuke?.launchRoomName),
     landTimes: incomingNukes.map(nuke => nuke?.landTime)
   };
+  diagnostics.stackedNukes = {
+    count: incomingNukes.filter(nuke => String(nuke?.launchRoomName ?? '').startsWith('ScenarioNukeSource')).length,
+    objectIds: incomingNukes.map(nuke => nuke?._id).filter(Boolean),
+    landingTiles: incomingNukes.map(nuke => ({ room: nuke?.room, x: nuke?.x, y: nuke?.y }))
+  };
 
   if (input.scenarios.indexOf('default-bootstrap') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario','default-bootstrap'], () => input.ownedControllers.length > 0 && input.spawns.length > 0, 'default bootstrap scenario lacks owned controller or spawn');
@@ -344,6 +349,16 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
       const rooms = Object.values(input.memory.rooms ?? {}) as Array<{ swarm?: { danger?: number; nukeDetected?: boolean } }>;
       return ownedNukers.length === 0 && incomingNukes.length > 0 && alerts.some(alert => (!homeRoom || alert.roomName === homeRoom) && (alert.timeToLand ?? 0) > 0 && alert.sourceRoom === 'ScenarioNukeSource') && rooms.some(room => room.swarm?.danger === 3 || room.swarm?.nukeDetected === true);
     }, `nukerless-nuke scenario did not record defensive alert; diagnostics=${JSON.stringify(diagnostics.nukerlessNuke)}`);
+  }
+  if (input.scenarios.indexOf('stacked-nukes') >= 0) {
+    const homeRoom = input.memory.screepsmodTestingScenarios?.rooms?.home;
+    runtimeAssertCounterAfter(counters, input, 1600, 'scenario stacked-nukes preserves same-tile alerts by object ID', ['scenario','stacked-nukes'], () => {
+      const alerts = (input.memory.empire?.incomingNukes ?? []) as Array<{ roomName?: string; landingPos?: { x?: number; y?: number }; nukeId?: string }>;
+      const stackedObjects = incomingNukes.filter(nuke => String(nuke?.launchRoomName ?? '').startsWith('ScenarioNukeSource'));
+      const stackedAlerts = alerts.filter(alert => (!homeRoom || alert.roomName === homeRoom) && alert.landingPos?.x === 25 && alert.landingPos?.y === 25);
+      const distinctAlertIds = new Set(stackedAlerts.map(alert => alert.nukeId).filter(Boolean));
+      return stackedObjects.length >= 2 && stackedAlerts.length >= 2 && distinctAlertIds.size >= 2;
+    }, `stacked-nukes scenario collapsed same-tile alerts; diagnostics=${JSON.stringify(diagnostics.stackedNukes)}`);
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
     runtimeAssertCounter(

@@ -33,6 +33,8 @@ export interface NukeInFlight {
  * Incoming nuke alert for defense
  */
 export interface IncomingNukeAlert {
+  /** Unique observed Nuke object ID; fallback keys are used only for incomplete test doubles. */
+  nukeId?: string;
   /** Room under threat */
   roomName: string;
   /** Nuke landing position */

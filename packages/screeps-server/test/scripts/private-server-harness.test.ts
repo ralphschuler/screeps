@@ -1026,6 +1026,17 @@ describe("private-server harness module", () => {
     expect(command).to.include("launchRoomName:'ScenarioNukeSource'");
   });
 
+  it("seeds two same-tile nukes for stacked-salvo runtime coverage", () => {
+    const options = parseHarnessArgs(["--room=E1N1", "--scenarios=stacked-nukes"], {});
+    const command = buildSeedRuntimeScenariosCommand(options);
+
+    expect(command).to.include("hasScenario('stacked-nukes')");
+    expect(command).to.include("launchRoomName:'ScenarioNukeSourceA'");
+    expect(command).to.include("launchRoomName:'ScenarioNukeSourceB'");
+    expect(command).to.include("await upsertObject({type:'nuke',room:homeRoom,x:25,y:25,launchRoomName:'ScenarioNukeSourceA'}");
+    expect(command).to.include("await upsertObject({type:'nuke',room:homeRoom,x:25,y:25,launchRoomName:'ScenarioNukeSourceB'}");
+  });
+
   it("fails the run when screepsmod-testing reports failed tests", () => {
     const summary = createInitialSummary(
       parseHarnessArgs([], {}),
