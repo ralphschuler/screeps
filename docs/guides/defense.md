@@ -146,6 +146,8 @@ function detectBoostLevel(creep: Creep): number {
 
 ### Threat Score Calculation
 
+The following is simplified pseudocode. The production implementation additionally accounts for tower support, active body parts, and defender templates; keep its nuke-only contract (`assistanceRequired = false`, `assistancePriority = 0`, and zero defender cost) intact.
+
 ```typescript
 export function assessThreat(room: Room): ThreatAnalysis {
   const hostiles = getActualHostileCreeps(room); // excludes permanent allies
@@ -220,7 +222,7 @@ export function assessThreat(room: Room): ThreatAnalysis {
     meleeCount,
     boostedCount,
     dismantlerCount,
-    estimatedDefenderCost: calculateDefenderCost(threatScore),
+    estimatedDefenderCost: hostiles.length === 0 ? 0 : calculateDefenderCost(totalDPS),
     assistanceRequired: dangerLevel >= 2 && hostiles.length > 0,
     assistancePriority: hostiles.length === 0 ? 0 : Math.min(100, threatScore / 10),
     recommendedResponse
@@ -267,7 +269,7 @@ export class TowerManager {
   }
   
   private findBestHostileTarget(tower: StructureTower): Creep | null {
-    const hostiles = tower.room.find(FIND_HOSTILE_CREEPS);
+    const hostiles = getActualHostileCreeps(tower.room);
     if (hostiles.length === 0) return null;
     
     // Sort by priority:
@@ -722,7 +724,7 @@ if (threat.dangerLevel === 1 && threat.threatScore < 50) {
 **Solution**: Check tower energy and targeting
 ```typescript
 console.log(`Tower energy: ${tower.store.energy}`);
-console.log(`Hostiles: ${room.find(FIND_HOSTILE_CREEPS).length}`);
+console.log(`Hostiles: ${getActualHostileCreeps(room).length}`);
 ```
 
 ### Issue: Defenders Not Responding
