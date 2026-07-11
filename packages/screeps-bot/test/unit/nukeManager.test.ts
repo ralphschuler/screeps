@@ -851,6 +851,131 @@ describe("Nuke Manager", () => {
     });
   });
 
+  describe("Siege Coordination Safety", () => {
+    it("does not create siege intent for a permanent ally after nuke tracking becomes stale", () => {
+      const empire = createDefaultEmpireMemory();
+      empire.objectives.warMode = true;
+      empire.nukesInFlight = [{
+        id: "stale-ally-nuke",
+        sourceRoom: "W1N1",
+        targetRoom: "W2N2",
+        targetPos: { x: 25, y: 25 },
+        launchTick: 9500,
+        impactTick: 10500,
+        siegeSquadId: "stale-squad"
+      }];
+      empire.knownRooms.W2N2 = {
+        roomName: "W2N2",
+        lastSeen: Game.time,
+        controllerLevel: 8,
+        owner: "TooAngel",
+        threatLevel: 3
+      };
+      const swarm = createDefaultSwarmState();
+      const initialSiege = swarm.pheromones.siege;
+      const initialWar = swarm.pheromones.war;
+      getSwarmStateStub.withArgs("W2N2").returns(swarm);
+      const staleSquad = {
+        id: "stale-squad",
+        type: "siege",
+        members: [],
+        rallyRoom: "W1N1",
+        targetRooms: ["W2N2"],
+        state: "moving",
+        createdAt: Game.time - 100
+      };
+      const clusters = { cluster: { id: "cluster", coreRoom: "W1N1", squads: [staleSquad] } };
+
+      coordinateWithSieges(
+        empire as any,
+        nukeManager.getConfig(),
+        () => clusters as any,
+        getSwarmStateStub as any
+      );
+
+      expect(clusters.cluster.squads).to.have.lengthOf(1);
+      expect(staleSquad.state).to.equal("dissolving");
+      expect(swarm.pheromones.siege).to.equal(initialSiege);
+      expect(swarm.pheromones.war).to.equal(initialWar);
+      expect(empire.nukesInFlight[0].siegeSquadId).to.equal(undefined);
+    });
+
+    it("does not link an existing siege squad to a configured ally", () => {
+      const empire = createDefaultEmpireMemory();
+      empire.objectives.warMode = true;
+      (empire as any).diplomacy = { allies: ["FriendlyNeighbor"] };
+      empire.nukesInFlight = [{
+        id: "stale-configured-ally-nuke",
+        sourceRoom: "W1N1",
+        targetRoom: "W2N2",
+        targetPos: { x: 25, y: 25 },
+        launchTick: 9500,
+        impactTick: 10500
+      }];
+      empire.knownRooms.W2N2 = {
+        roomName: "W2N2",
+        lastSeen: Game.time,
+        controllerLevel: 8,
+        owner: "FriendlyNeighbor",
+        threatLevel: 3
+      };
+      const squad = {
+        id: "existing-siege",
+        type: "siege",
+        members: [],
+        rallyRoom: "W1N1",
+        targetRooms: ["W2N2"],
+        state: "moving",
+        createdAt: Game.time - 100
+      };
+      const clusters = {
+        cluster: { id: "cluster", coreRoom: "W1N1", squads: [squad] }
+      };
+
+      coordinateWithSieges(
+        empire as any,
+        nukeManager.getConfig(),
+        () => clusters as any,
+        getSwarmStateStub as any
+      );
+
+      expect(empire.nukesInFlight[0].siegeSquadId).to.equal(undefined);
+    });
+
+    it("retains siege coordination for a non-allied target", () => {
+      const empire = createDefaultEmpireMemory();
+      empire.objectives.warMode = true;
+      empire.nukesInFlight = [{
+        id: "enemy-nuke",
+        sourceRoom: "W1N1",
+        targetRoom: "W2N2",
+        targetPos: { x: 25, y: 25 },
+        launchTick: 9500,
+        impactTick: 10500
+      }];
+      empire.knownRooms.W2N2 = {
+        roomName: "W2N2",
+        lastSeen: Game.time,
+        controllerLevel: 8,
+        owner: "Enemy",
+        threatLevel: 3
+      };
+      const swarm = createDefaultSwarmState();
+      getSwarmStateStub.withArgs("W2N2").returns(swarm);
+      const clusters = { cluster: { id: "cluster", coreRoom: "W1N1" } };
+
+      coordinateWithSieges(
+        empire as any,
+        nukeManager.getConfig(),
+        () => clusters as any,
+        getSwarmStateStub as any
+      );
+
+      expect(clusters.cluster.squads).to.have.lengthOf(1);
+      expect(empire.nukesInFlight[0].siegeSquadId).to.equal("siege-nuke-W2N2-10000");
+    });
+  });
+
   describe("Salvo Coordination", () => {
     it("should coordinate multiple nukes on same target", () => {
       const empire = createDefaultEmpireMemory();

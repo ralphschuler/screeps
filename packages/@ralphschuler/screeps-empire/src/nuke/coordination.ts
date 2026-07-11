@@ -6,6 +6,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import type { EmpireMemory, NukeInFlight, SquadDefinition, ClusterMemory, SwarmState } from "../types";
+import { isKnownAllyNukeTarget } from "./allySafety";
 import type { NukeConfig } from "./types";
 
 /**
@@ -25,6 +26,15 @@ export function coordinateWithSieges(
 
   // Check each nuke in flight for siege coordination opportunity
   for (const nuke of empire.nukesInFlight) {
+    if (isKnownAllyNukeTarget(nuke.targetRoom, empire)) {
+      quarantineAlliedNukeCoordination(nuke, clusters);
+      logger.warn(
+        `Skipping siege coordination for allied nuke target ${nuke.targetRoom}`,
+        { subsystem: "Nuke" }
+      );
+      continue;
+    }
+
     const ticksUntilImpact = nuke.impactTick - Game.time;
 
     // Skip if nuke already has a siege squad assigned
@@ -59,6 +69,13 @@ export function coordinateWithSieges(
       if (!targetRoom) continue;
 
       const targetedNuke = empire.nukesInFlight?.find(n => n.targetRoom === targetRoom);
+      if (isKnownAllyNukeTarget(targetRoom, empire)) {
+        if (targetedNuke?.siegeSquadId === squad.id) {
+          delete targetedNuke.siegeSquadId;
+          squad.state = "dissolving";
+        }
+        continue;
+      }
       if (targetedNuke && !targetedNuke.siegeSquadId) {
         targetedNuke.siegeSquadId = squad.id;
         logger.info(
@@ -68,6 +85,27 @@ export function coordinateWithSieges(
       }
     }
   }
+}
+
+/**
+ * Remove stale offensive linkage when diplomacy changes after a nuke was tracked.
+ * The linked squad is dissolved rather than retargeted or left moving toward an ally.
+ */
+function quarantineAlliedNukeCoordination(
+  nuke: NukeInFlight,
+  clusters: Record<string, ClusterMemory>
+): void {
+  if (!nuke.siegeSquadId) return;
+
+  for (const cluster of Object.values(clusters)) {
+    const squad = cluster.squads?.find(candidate => candidate.id === nuke.siegeSquadId);
+    if (squad) {
+      squad.state = "dissolving";
+      break;
+    }
+  }
+
+  delete nuke.siegeSquadId;
 }
 
 /**
