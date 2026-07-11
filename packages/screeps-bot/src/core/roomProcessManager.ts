@@ -15,6 +15,7 @@
  */
 
 import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+import { memoryManager } from "@ralphschuler/screeps-memory";
 import { getConfig } from "../config";
 import { ProcessPriority, kernel } from "./kernel";
 import { logger } from "./logger";
@@ -33,6 +34,48 @@ const ROOM_DISTRIBUTION_CONFIG = {
 };
 
 /**
+ * Nuke priority scans are bounded independently from room execution. Room defense
+ * still performs its authoritative scan when the room process runs; this cache
+ * only prevents the scheduler from repeating the same FIND_NUKES query every tick.
+ */
+const NUKE_PRIORITY_SCAN_INTERVAL = 5;
+const NUKE_PRIORITY_SCAN_INTERVAL_LOW_BUCKET = 50;
+const nukePriorityScanCache = new Map<string, { checkedAt: number; active: boolean }>();
+
+function hasPersistedNukeThreat(roomName: string): boolean {
+  const swarm = memoryManager.getSwarmState(roomName);
+  if (swarm?.nukeDetected) return true;
+
+  const alerts = memoryManager.getEmpire().incomingNukes;
+  return (
+    Array.isArray(alerts) &&
+    alerts.some(
+      alert => alert.roomName === roomName && Number.isFinite(alert.impactTick) && alert.impactTick > Game.time
+    )
+  );
+}
+
+function hasNukeThreat(room: Room): boolean {
+  if (!room.controller?.my) return false;
+  if (hasPersistedNukeThreat(room.name)) return true;
+
+  const cached = nukePriorityScanCache.get(room.name);
+  const lowBucket = Game.cpu.bucket < getConfig().cpu.bucketThresholds.lowMode;
+  const scanInterval = lowBucket ? NUKE_PRIORITY_SCAN_INTERVAL_LOW_BUCKET : NUKE_PRIORITY_SCAN_INTERVAL;
+  if (cached && Game.time - cached.checkedAt < scanInterval) return cached.active;
+
+  const active = room.find(FIND_NUKES).length > 0;
+  nukePriorityScanCache.set(room.name, { checkedAt: Game.time, active });
+  return active;
+}
+
+function getRoomProcessName(room: Room): string {
+  const suffix = room.controller?.my ? " (owned)" : "";
+  const nukeSuffix = hasNukeThreat(room) ? " [nuke response]" : "";
+  return `Room ${room.name}${suffix}${nukeSuffix}`;
+}
+
+/**
  * Get process priority for a room based on its state
  */
 function getMyUsername(): string {
@@ -45,6 +88,11 @@ function getMyUsername(): string {
  * Get room process priority based on threat and strategic value.
  */
 function getRoomProcessPriority(room: Room): ProcessPriority {
+  // Incoming nukes remain critical even when no hostile creep is visible.
+  if (hasNukeThreat(room)) {
+    return ProcessPriority.CRITICAL;
+  }
+
   // Rooms under attack get critical priority
   const hostiles = getActualHostileCreeps(room);
   if (hostiles.length > 0) {
@@ -75,11 +123,14 @@ function getRoomCpuBudget(room: Room): number {
   }
 
   const rcl = room.controller.level;
+  const nukeThreat = hasNukeThreat(room);
   const hostiles = getActualHostileCreeps(room);
 
+  // Nuke response requires the same room budget as active combat, even without
+  // visible hostiles. The scheduler still bounds scans using the TTL above.
   // War mode: higher budget
   // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
-  if (hostiles.length > 0) {
+  if (nukeThreat || hostiles.length > 0) {
     return 0.12; // 12% per room (6 CPU for 50 CPU limit)
   }
 
@@ -229,7 +280,7 @@ export class RoomProcessManager {
 
     kernel.registerProcess({
       id: processId,
-      name: `Room ${room.name}${room.controller?.my ? " (owned)" : ""}`,
+      name: getRoomProcessName(room),
       priority,
       frequency: "high",
       interval: 1,
@@ -271,7 +322,7 @@ export class RoomProcessManager {
 
     kernel.registerProcess({
       id: processId,
-      name: `Room ${room.name}${room.controller?.my ? " (owned)" : ""}`,
+      name: getRoomProcessName(room),
       priority,
       frequency: "high",
       interval: 1,
@@ -377,6 +428,7 @@ export class RoomProcessManager {
     this.roomIndices.clear();
     this.nextRoomIndex = 0;
     this.lastSyncTick = -1;
+    nukePriorityScanCache.clear();
   }
 }
 
