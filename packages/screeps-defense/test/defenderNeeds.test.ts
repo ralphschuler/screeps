@@ -25,7 +25,9 @@ function createRoom(
   controllerLevel = 4,
   spawnCount = 1,
   friendlyRoles: string[] = [],
-  controllerOwned = true
+  controllerOwned = true,
+  criticalStructure = false,
+  incomingNukeCount = 0
 ): Room {
   const spawns = Array.from({ length: spawnCount }, () => ({ spawning: false }));
   const friendlyCreeps = friendlyRoles.map(role => ({ memory: { role } }));
@@ -38,7 +40,12 @@ function createRoom(
       if (type === FIND_HOSTILE_CREEPS) return hostiles;
       if (type === FIND_MY_CREEPS) return friendlyCreeps;
       if (type === FIND_MY_SPAWNS) return spawns;
-      if (type === FIND_MY_STRUCTURES) return [];
+      if (type === FIND_MY_STRUCTURES) {
+        return criticalStructure
+          ? [{ structureType: STRUCTURE_SPAWN, hits: 10, hitsMax: 100 }]
+          : [];
+      }
+      if (type === FIND_NUKES) return Array.from({ length: incomingNukeCount }, () => ({}));
       return [];
     }
   } as unknown as Room;
@@ -203,6 +210,66 @@ describe("defense assistance needs", () => {
     expect(needs.urgency).to.equal(1.0);
     expect(needs.guards).to.equal(1);
     expect(needs.reasons.join("; ")).to.not.include("no local spawn capacity");
+  });
+
+  it("clears boost priority when an active emergency resolves", () => {
+    const manager = new EmergencyResponseManager();
+    const swarm = {
+      danger: 0,
+      posture: "eco",
+      pheromones: { defense: 0, war: 0, siege: 0 }
+    } as any;
+    const room = createRoom([createHostile([ATTACK, MOVE], "XUH2O")], 6, 1);
+
+    manager.assess(room, swarm);
+    expect((Memory as any).boostDefensePriority?.W1N1).to.equal(true);
+
+    (Game as any).time = 1010;
+    manager.assess(createRoom([], 6, 1), { ...swarm, danger: 0 });
+
+    expect((Memory as any).boostDefensePriority?.W1N1).to.equal(undefined);
+  });
+
+  it("clears stale boost priority after a global reset with no active emergency", () => {
+    (Memory as any).boostDefensePriority = { W1N1: true, W2N2: true };
+    const manager = new EmergencyResponseManager();
+    const room = createRoom([], 6, 1);
+
+    manager.assess(room, {
+      danger: 0,
+      posture: "eco",
+      pheromones: { defense: 0, war: 0, siege: 0 }
+    } as any);
+
+    expect((Memory as any).boostDefensePriority).to.deep.equal({ W2N2: true });
+  });
+
+  it("preserves boost priority while critical structures remain damaged", () => {
+    (Memory as any).boostDefensePriority = { W1N1: true };
+    const manager = new EmergencyResponseManager();
+
+    const state = manager.assess(createRoom([], 6, 1, [], true, true), {
+      danger: 0,
+      posture: "eco",
+      pheromones: { defense: 0, war: 0, siege: 0 }
+    } as any);
+
+    expect(state.level).to.equal(EmergencyLevel.CRITICAL);
+    expect((Memory as any).boostDefensePriority?.W1N1).to.equal(true);
+  });
+
+  it("preserves boost priority for an incoming nuke before hostile detection catches up", () => {
+    (Memory as any).boostDefensePriority = { W1N1: true };
+    const manager = new EmergencyResponseManager();
+
+    const state = manager.assess(createRoom([], 6, 1, [], true, false, 1), {
+      danger: 0,
+      posture: "eco",
+      pheromones: { defense: 0, war: 0, siege: 0 }
+    } as any);
+
+    expect(state.level).to.equal(EmergencyLevel.CRITICAL);
+    expect((Memory as any).boostDefensePriority?.W1N1).to.equal(true);
   });
 
   it("records the tick when an existing emergency escalates", () => {

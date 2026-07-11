@@ -173,6 +173,26 @@ describe("Lab System", () => {
       expect(shouldBoost).to.be.true;
     });
 
+    it("should honor active room boost priority at lower danger", () => {
+      const swarm = createDefaultSwarmState();
+      swarm.danger = 2;
+      swarm.missingStructures.labs = false;
+      (global.Memory as Record<string, unknown>).boostDefensePriority = { W1N1: true };
+
+      const mockCreep = {
+        memory: {
+          role: "soldier",
+          boosted: false
+        },
+        room: {
+          name: "W1N1"
+        },
+        body: [{ type: ATTACK, hits: 100 }]
+      } as unknown as Creep;
+
+      expect(boostManager.shouldBoost(mockCreep, swarm)).to.be.true;
+    });
+
     it("should not boost if danger level is too low", () => {
       const swarm = createDefaultSwarmState();
       swarm.danger = 0; // No danger

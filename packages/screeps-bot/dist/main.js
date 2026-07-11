@@ -12338,7 +12338,7 @@ this.emergencyStates = new Map;
 }
 return e.prototype.assess = function(e, t) {
 var r, o, n = this.emergencyStates.get(e.name), a = this.calculateEmergencyLevel(e, t);
-if (a === li.NONE && !n) return {
+if (a === li.NONE && this.clearBoostPriority(e.name), a === li.NONE && !n) return {
 level: li.NONE,
 startedAt: Game.time,
 assistanceRequested: !1,
@@ -12358,20 +12358,20 @@ subsystem: "Defense"
 subsystem: "Defense"
 }), o.lastEscalation = Game.time), this.executeEmergencyResponse(e, t, o), o);
 }, e.prototype.calculateEmergencyLevel = function(e, t) {
-var r = X(e);
-if (0 === t.danger && 0 === r.length) return li.NONE;
-var o = co(e), n = lo(e), a = Go(e);
-if (e.find(FIND_MY_STRUCTURES, {
+var r = X(e), o = e.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return (e.structureType === STRUCTURE_SPAWN || e.structureType === STRUCTURE_STORAGE || e.structureType === STRUCTURE_TERMINAL) && e.hits < .3 * e.hitsMax;
 }
-}).length > 0) return li.CRITICAL;
-var i = r.filter(function(e) {
+}), n = e.find(FIND_NUKES);
+if (0 === t.danger && 0 === r.length && 0 === o.length && 0 === n.length) return li.NONE;
+var a = co(e), i = lo(e), s = Go(e);
+if (o.length > 0 || n.length > 0) return li.CRITICAL;
+var c = r.filter(function(e) {
 return e.body.some(function(e) {
 return e.hits > 0 && e.boost;
 });
-}), s = Math.max(0, o.guards - n.guards) + Math.max(0, o.rangers - n.rangers) + Math.max(0, o.healers - n.healers);
-return i.length > 0 && s >= 2 || r.length >= 5 && 0 === n.guards && 0 === n.rangers || a.dangerLevel >= 2 && s >= 2 ? li.HIGH : (t.danger >= 2 || a.dangerLevel >= 2) && s >= 1 ? li.MEDIUM : t.danger >= 1 || r.length > 0 ? li.LOW : li.NONE;
+}), u = Math.max(0, a.guards - i.guards) + Math.max(0, a.rangers - i.rangers) + Math.max(0, a.healers - i.healers);
+return c.length > 0 && u >= 2 || r.length >= 5 && 0 === i.guards && 0 === i.rangers || s.dangerLevel >= 2 && u >= 2 ? li.HIGH : (t.danger >= 2 || s.dangerLevel >= 2) && u >= 1 ? li.MEDIUM : t.danger >= 1 || r.length > 0 ? li.LOW : li.NONE;
 }, e.prototype.executeEmergencyResponse = function(e, t, r) {
 r.level >= li.LOW && this.requestDefenseAssistance(e, t) && (r.assistanceRequested = !0),
 r.level >= li.MEDIUM && !r.boostsAllocated && e.controller && e.controller.level >= 6 && (this.allocateBoostsForDefense(e, t),
@@ -12392,6 +12392,12 @@ subsystem: "Defense"
 }), !0);
 }, e.prototype.shouldRefreshDefenseRequest = function(e, t) {
 return t.urgency !== e.urgency || t.guardsNeeded !== e.guardsNeeded || t.rangersNeeded !== e.rangersNeeded || t.healersNeeded !== e.healersNeeded || t.threat !== e.threat;
+}, e.prototype.clearBoostPriority = function(e) {
+var t = Memory, r = t.boostDefensePriority;
+if (r && "object" == typeof r) {
+var o = r;
+delete o[e], 0 === Object.keys(o).length && delete t.boostDefensePriority;
+}
 }, e.prototype.allocateBoostsForDefense = function(e, t) {
 var r, o = Memory, n = null !== (r = o.boostDefensePriority) && void 0 !== r ? r : {};
 n[e.name] = !0, o.boostDefensePriority = n, _.info("Allocated boost priority for defenders in ".concat(e.name), {

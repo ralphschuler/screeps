@@ -71,6 +71,10 @@ export class EmergencyResponseManager {
     const existingState = this.emergencyStates.get(room.name);
     const emergencyLevel = this.calculateEmergencyLevel(room, swarm);
 
+    if (emergencyLevel === EmergencyLevel.NONE) {
+      this.clearBoostPriority(room.name);
+    }
+
     // If no threat and no existing emergency, return default state without creating entry
     // BUGFIX: Don't create emergency state entries for rooms with no threats
     // This prevents spam from repeatedly creating and deleting NONE-level states
@@ -131,16 +135,8 @@ export class EmergencyResponseManager {
   private calculateEmergencyLevel(room: Room, swarm: SwarmState): EmergencyLevel {
     const hostiles = getActualHostileCreeps(room);
 
-    // No emergency if no danger signal and no currently visible hostile.
-    if (swarm.danger === 0 && hostiles.length === 0) {
-      return EmergencyLevel.NONE;
-    }
-
-    const needs = analyzeDefenderNeeds(room);
-    const current = getCurrentDefenders(room);
-    const threat = assessThreat(room);
-
-    // Critical: Critical structures heavily damaged or about to be destroyed
+    // Critical structures and incoming nukes remain emergencies even when the
+    // caller's persisted danger signal has not caught up with the visible room.
     const criticalStructures = room.find(FIND_MY_STRUCTURES, {
       filter: s =>
         (s.structureType === STRUCTURE_SPAWN ||
@@ -148,8 +144,18 @@ export class EmergencyResponseManager {
           s.structureType === STRUCTURE_TERMINAL) &&
         s.hits < s.hitsMax * 0.3
     });
+    const incomingNukes = room.find(FIND_NUKES);
 
-    if (criticalStructures.length > 0) {
+    // No emergency if no danger signal, hostile, critical structure, or nuke.
+    if (swarm.danger === 0 && hostiles.length === 0 && criticalStructures.length === 0 && incomingNukes.length === 0) {
+      return EmergencyLevel.NONE;
+    }
+
+    const needs = analyzeDefenderNeeds(room);
+    const current = getCurrentDefenders(room);
+    const threat = assessThreat(room);
+
+    if (criticalStructures.length > 0 || incomingNukes.length > 0) {
       return EmergencyLevel.CRITICAL;
     }
 
@@ -268,7 +274,22 @@ export class EmergencyResponseManager {
   }
 
   /**
-   * Allocate boosts for defensive creeps
+   * Remove the room's defensive boost override after the threat resolves.
+   */
+  private clearBoostPriority(roomName: string): void {
+    const mem = Memory as unknown as Record<string, unknown>;
+    const boostPriority = mem.boostDefensePriority;
+    if (!boostPriority || typeof boostPriority !== "object") return;
+
+    const priorities = boostPriority as Record<string, boolean>;
+    delete priorities[roomName];
+    if (Object.keys(priorities).length === 0) {
+      delete mem.boostDefensePriority;
+    }
+  }
+
+  /**
+   * Allocate boosts for defensive creeps.
    */
   private allocateBoostsForDefense(room: Room, _swarm: SwarmState): void {
     // Mark swarm state to prioritize boosting defenders
