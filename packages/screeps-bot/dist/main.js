@@ -33689,8 +33689,8 @@ source: e.roomName
 }));
 }(n, c), function(e, t) {
 var r, o, n, i, s;
-if (e.time % 10 == 0) if (e.nukes.length > 0) {
-if (e.nukeDetected) return;
+if (e.nukes.length > 0) {
+if (t.nextDanger = 3, e.time % 10 != 0 || e.nukeDetected) return;
 t.nextNukeDetected = !0, t.pheromoneEffects.push({
 type: "nukeDetected"
 });

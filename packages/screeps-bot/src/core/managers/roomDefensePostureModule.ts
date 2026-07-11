@@ -247,10 +247,11 @@ function planHostileEvents(snapshot: DefensePostureSnapshot, intent: DefensePost
 }
 
 function planNukeEvents(snapshot: DefensePostureSnapshot, intent: DefensePostureIntent): void {
-  if (snapshot.time % 10 !== 0) return;
-
   if (snapshot.nukes.length > 0) {
-    if (snapshot.nukeDetected) return;
+    // Incoming nukes remain a critical threat between the periodic event scans.
+    // Preserve danger=3 even when no hostile creeps are visible.
+    intent.nextDanger = 3;
+    if (snapshot.time % 10 !== 0 || snapshot.nukeDetected) return;
 
     intent.nextNukeDetected = true;
     intent.pheromoneEffects.push({ type: "nukeDetected" });

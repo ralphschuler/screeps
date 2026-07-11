@@ -124,6 +124,7 @@ describe("Room defense posture Module", () => {
     );
 
     assert.equal(detected.nextNukeDetected, true);
+    assert.equal(detected.nextDanger, 3);
     assert.deepEqual(detected.pheromoneEffects, [{ type: "nukeDetected" }]);
     assert.deepEqual(detected.kernelEvents, [
       {
@@ -138,8 +139,25 @@ describe("Room defense posture Module", () => {
       }
     ]);
 
+    const retained = planDefensePostureIntent(
+      snapshot({
+        nukeDetected: true,
+        nukes: [
+          {
+            id: "nuke1" as Id<Nuke>,
+            timeToLand: 450,
+            launchRoomName: "W9N9"
+          }
+        ]
+      })
+    );
+    assert.equal(retained.nextDanger, 3);
+    assert.equal(retained.nextNukeDetected, true);
+    assert.deepEqual(retained.kernelEvents, []);
+
     const cleared = planDefensePostureIntent(snapshot({ nukeDetected: true, nukes: [] }));
     assert.equal(cleared.nextNukeDetected, false);
+    assert.equal(cleared.nextDanger, 0);
   });
 
   it("exposes tower action planning as an intent surface", () => {
