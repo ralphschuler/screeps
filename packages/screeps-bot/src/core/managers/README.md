@@ -110,14 +110,14 @@ roomDefenseManager.updateThreatAssessment(room, swarm, {
 });
 roomDefenseManager.runTowerControl(room, swarm, cache.towers);
 
-// Construction management (every N ticks)
-if (Game.time % roomConstructionManager.getConstructionInterval(rcl) === 0) {
-  roomConstructionManager.runConstruction(
-    room,
-    swarm,
-    cache.constructionSites,
-    cache.spawns
-  );
+// Construction management uses a remembered due tick rather than exact modulo.
+// Under bucket pressure, RoomNode still permits only capped critical-only work
+// for spawnless bootstrap or active danger.
+if (isRoomConstructionDue(swarm, Game.time, roomConstructionManager.getConstructionInterval(rcl))) {
+  roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns, {
+    criticalOnly: lowBucket && (cache.spawns.length === 0 || swarm.danger >= 2)
+  });
+  recordRoomConstructionRun(swarm, Game.time, roomConstructionManager.getConstructionInterval(rcl));
 }
 
 // Economy management (every 5 ticks)

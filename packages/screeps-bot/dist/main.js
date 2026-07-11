@@ -35972,24 +35972,26 @@ constructionSites: e.find(FIND_MY_CONSTRUCTION_SITES)
 };
 return ov.set(e.name, o), o;
 }(i);
-if (this.config.enablePheromones && !s && Game.time % 5 == 0 && by.updateMetrics(i, c),
+this.config.enablePheromones && !s && Game.time % 5 == 0 && by.updateMetrics(i, c),
 Fy.updateThreatAssessment(i, c, {
 spawns: u.spawns,
 towers: u.towers
 }), gi.assess(i, c), Ci.checkSafeMode(i, c), this.config.enableEvolution && (Uy.updateEvolutionStage(c, i, e),
 s || Uy.updateMissingStructures(c, i)), Ny.updatePosture(c), this.config.enablePheromones && !s && by.updatePheromones(c, i),
-this.config.enableTowers && Fy.runTowerControl(i, c, u.towers), this.config.enableConstruction && !s) {
-var l = null !== (o = null === (r = i.controller) || void 0 === r ? void 0 : r.level) && void 0 !== o ? o : 1, m = jy.getConstructionInterval(l), d = Ny.allowsBuilding(c.posture), p = !d && c.danger >= 2;
-(d || p) && function(e, t, r) {
+this.config.enableTowers && Fy.runTowerControl(i, c, u.towers);
+var l = 0 === u.spawns.length || c.danger >= 2;
+if (this.config.enableConstruction && (!s || l)) {
+var m = null !== (o = null === (r = i.controller) || void 0 === r ? void 0 : r.level) && void 0 !== o ? o : 1, d = jy.getConstructionInterval(m), p = Ny.allowsBuilding(c.posture), f = !p && c.danger >= 2 || s && l;
+(p || f) && function(e, t, r) {
 var o = nv(r), n = av(e);
 return "number" == typeof n.nextRunTick && Number.isFinite(n.nextRunTick) || (n.nextRunTick = t,
 n.interval = o), t >= n.nextRunTick;
-}(c, Game.time, m) && (jy.runConstruction(i, c, u.constructionSites, u.spawns, {
-criticalOnly: p
+}(c, Game.time, d) && (jy.runConstruction(i, c, u.constructionSites, u.spawns, {
+criticalOnly: f
 }), function(e, t, r) {
 var o = nv(r), n = av(e);
 n.lastRunTick = t, n.nextRunTick = t + o, n.interval = o;
-}(c, Game.time, m));
+}(c, Game.time, d));
 }
 this.config.enableProcessing && !s && Game.time % 5 == 0 && tv.runResourceProcessing(i, c, {
 factory: u.factory,
@@ -35997,8 +35999,8 @@ powerSpawn: u.powerSpawn,
 links: u.links,
 sources: u.sources
 });
-var f = Game.cpu.getUsed() - n;
-Xi.recordRoom(i, f), Xi.endRoom(this.roomName, n);
+var y = Game.cpu.getUsed() - n;
+Xi.recordRoom(i, y), Xi.endRoom(this.roomName, n);
 } else Xi.endRoom(this.roomName, n);
 }, e;
 }(), sv = function() {

@@ -202,19 +202,20 @@ export class RoomNode {
 
     // Run construction
     // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
-    // Regular construction runs at standard interval to balance CPU usage
-    if (this.config.enableConstruction && !lowBucket) {
+    // Regular construction runs at standard interval to balance CPU usage. During bucket
+    // recovery, only spawnless bootstrap or active-danger construction may run, and both
+    // paths are forced through the manager's capped critical-only branch.
+    const allowLowBucketCriticalRecovery = cache.spawns.length === 0 || swarm.danger >= 2;
+    if (this.config.enableConstruction && (!lowBucket || allowLowBucketCriticalRecovery)) {
       const rcl = room.controller?.level ?? 1;
       const constructionInterval = roomConstructionManager.getConstructionInterval(rcl);
       const allowFullConstruction = postureManager.allowsBuilding(swarm.posture);
       const allowCriticalDefenseConstruction = !allowFullConstruction && swarm.danger >= 2;
+      const criticalOnly = allowCriticalDefenseConstruction || (lowBucket && allowLowBucketCriticalRecovery);
 
-      if (
-        (allowFullConstruction || allowCriticalDefenseConstruction) &&
-        isRoomConstructionDue(swarm, Game.time, constructionInterval)
-      ) {
+      if ((allowFullConstruction || criticalOnly) && isRoomConstructionDue(swarm, Game.time, constructionInterval)) {
         roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns, {
-          criticalOnly: allowCriticalDefenseConstruction
+          criticalOnly
         });
         recordRoomConstructionRun(swarm, Game.time, constructionInterval);
       }
