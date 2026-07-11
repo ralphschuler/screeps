@@ -19,8 +19,8 @@ Available scenarios:
 - `remote-mining` (accepts room remote assignments, remote stats, or active remote-role creeps as runtime telemetry)
 - `defense-hostile`
 - `defense-hard-invader` (clears bootstrap safe-mode while seeding and records 50-part hostile seed metadata for runtime assertions)
-- `nukerless-nuke` (seeds an incoming nuke without an owned nuker and verifies defensive alert memory)
-- `stacked-nukes` (seeds two same-tile incoming nukes and verifies distinct object-ID alerts)
+- `nukerless-nuke` (seeds an incoming nuke without an owned nuker and verifies defensive alert memory plus critical room-process telemetry)
+- `stacked-nukes` (seeds two same-tile incoming nukes and verifies distinct object-ID alerts plus critical room-process telemetry)
 - `alliance-safety`
 
 Override with `SCREEPS_TEST_SCENARIOS=none` or a comma list.

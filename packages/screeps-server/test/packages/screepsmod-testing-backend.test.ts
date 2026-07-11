@@ -498,6 +498,77 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('requires critical room-process telemetry for a nukerless nuke scenario', async () => {
+    const base = createWarmRuntimeMemory();
+    const memory = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: { names: ['nukerless-nuke'], rooms: { home: 'W1N1' } },
+      empire: {
+        ...base.empire,
+        incomingNukes: [{
+          roomName: 'W1N1',
+          impactTick: 5000,
+          timeToLand: 3000,
+          sourceRoom: 'ScenarioNukeSource'
+        }]
+      },
+      rooms: {
+        W1N1: {
+          ...base.rooms.W1N1,
+          swarm: {
+            ...base.rooms.W1N1.swarm,
+            danger: 3,
+            nukeDetected: true
+          }
+        }
+      },
+      stats: {
+        ...base.stats,
+        processes: {
+          'room:W1N1': {
+            name: 'Room W1N1 (owned) [nuke response]',
+            priority: 100,
+            cpu_budget: 0.12,
+            min_bucket: 0
+          }
+        }
+      }
+    });
+
+    const summary = await runBackendRuntimeAssertions({
+      config: {},
+      storage: {
+        db: {
+          'rooms.objects': {
+            find: async (query: any) => query.type === 'nuke'
+              ? [{ room: 'W1N1', launchRoomName: 'ScenarioNukeSource', landTime: 5000 }]
+              : []
+          }
+        }
+      },
+      memory,
+      tick: 2000,
+      runtimeWarmupTicks: 100,
+      botRuntimeWarmed: true,
+      user: { cpuAvailable: 9000 },
+      userId: 'user1',
+      userIdFilter: { user: 'user1' },
+      ownedControllers: [{ room: 'W1N1', user: 'user1' }],
+      spawns: [{ room: 'W1N1', user: 'user1' }],
+      creeps: [{ room: 'W1N1', user: 'user1', name: 'Worker1', body: [{ type: 'work', hits: 100 }] }],
+      errorSamples: [],
+      scenarios: ['nukerless-nuke'],
+      startedAt: Date.now()
+    });
+
+    expect(summary.failed).to.equal(0);
+    expect(summary.diagnostics.scenarios.nukeScheduling).to.deep.include({
+      priority: 100,
+      minBucket: 0,
+      cpuBudget: 0.12,
+      tickModulo: undefined
+    });
+  });
+
   it('accepts active task-board rooms with no open tasks after warmup', async () => {
     const memory = createWarmRuntimeMemory({
       creepTaskBoard: {

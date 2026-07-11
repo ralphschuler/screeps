@@ -79,6 +79,31 @@ function hasStatsRoomField(memory: any, fieldName: string): boolean {
   return Object.keys(rooms).some(roomName => Boolean(rooms[roomName]?.[fieldName]));
 }
 
+function getNukeProcessTelemetry(memory: any, roomName?: string): Record<string, unknown> | undefined {
+  if (!roomName) return undefined;
+  const process = memory.stats?.processes?.[`room:${roomName}`];
+  if (!isObject(process)) return undefined;
+  return {
+    name: process.name,
+    priority: process.priority,
+    cpuBudget: process.cpu_budget,
+    minBucket: process.min_bucket,
+    tickModulo: process.tick_modulo,
+    tickOffset: process.tick_offset
+  };
+}
+
+function hasCriticalNukeProcessTelemetry(memory: any, roomName?: string): boolean {
+  const process = memory.stats?.processes?.[`room:${roomName ?? ''}`];
+  return isObject(process)
+    && process.priority === 100
+    && process.min_bucket === 0
+    && Number(process.cpu_budget) >= 0.12
+    && typeof process.name === 'string'
+    && process.name.includes('[nuke response]')
+    && process.tick_modulo == null;
+}
+
 function hasDefenseSignal(memory: any): boolean {
   if (values(memory.defenseRequests ?? {}).length > 0) return true;
   if (hasTaskType(memory, 'defend')) return true;
@@ -329,6 +354,8 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     objectIds: incomingNukes.map(nuke => nuke?._id).filter(Boolean),
     landingTiles: incomingNukes.map(nuke => ({ room: nuke?.room, x: nuke?.x, y: nuke?.y }))
   };
+  const homeRoom = input.memory.screepsmodTestingScenarios?.rooms?.home ?? input.ownedControllers[0]?.room;
+  diagnostics.nukeScheduling = getNukeProcessTelemetry(input.memory, homeRoom) ?? null;
 
   if (input.scenarios.indexOf('default-bootstrap') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario','default-bootstrap'], () => input.ownedControllers.length > 0 && input.spawns.length > 0, 'default bootstrap scenario lacks owned controller or spawn');
@@ -343,22 +370,27 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hostile emits defensive runtime signal', ['scenario','defense-hostile'], () => hasDefenseSignal(input.memory), 'defense scenario has no danger, defense task, or defense request signal');
   }
   if (input.scenarios.indexOf('nukerless-nuke') >= 0) {
-    const homeRoom = input.memory.screepsmodTestingScenarios?.rooms?.home;
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario nukerless-nuke records an inbound alert without an owned nuker', ['scenario','nukerless-nuke'], () => {
       const alerts = (input.memory.empire?.incomingNukes ?? []) as Array<{ roomName?: string; timeToLand?: number; sourceRoom?: string }>;
       const rooms = Object.values(input.memory.rooms ?? {}) as Array<{ swarm?: { danger?: number; nukeDetected?: boolean } }>;
-      return ownedNukers.length === 0 && incomingNukes.length > 0 && alerts.some(alert => (!homeRoom || alert.roomName === homeRoom) && (alert.timeToLand ?? 0) > 0 && alert.sourceRoom === 'ScenarioNukeSource') && rooms.some(room => room.swarm?.danger === 3 || room.swarm?.nukeDetected === true);
-    }, `nukerless-nuke scenario did not record defensive alert; diagnostics=${JSON.stringify(diagnostics.nukerlessNuke)}`);
+      return ownedNukers.length === 0
+        && incomingNukes.length > 0
+        && alerts.some(alert => (!homeRoom || alert.roomName === homeRoom) && (alert.timeToLand ?? 0) > 0 && alert.sourceRoom === 'ScenarioNukeSource')
+        && rooms.some(room => room.swarm?.danger === 3 || room.swarm?.nukeDetected === true)
+        && hasCriticalNukeProcessTelemetry(input.memory, homeRoom);
+    }, `nukerless-nuke scenario did not record defensive alert or critical scheduling telemetry; diagnostics=${JSON.stringify({ alert: diagnostics.nukerlessNuke, scheduling: diagnostics.nukeScheduling })}`);
   }
   if (input.scenarios.indexOf('stacked-nukes') >= 0) {
-    const homeRoom = input.memory.screepsmodTestingScenarios?.rooms?.home;
     runtimeAssertCounterAfter(counters, input, 1600, 'scenario stacked-nukes preserves same-tile alerts by object ID', ['scenario','stacked-nukes'], () => {
       const alerts = (input.memory.empire?.incomingNukes ?? []) as Array<{ roomName?: string; landingPos?: { x?: number; y?: number }; nukeId?: string }>;
       const stackedObjects = incomingNukes.filter(nuke => String(nuke?.launchRoomName ?? '').startsWith('ScenarioNukeSource'));
       const stackedAlerts = alerts.filter(alert => (!homeRoom || alert.roomName === homeRoom) && alert.landingPos?.x === 25 && alert.landingPos?.y === 25);
       const distinctAlertIds = new Set(stackedAlerts.map(alert => alert.nukeId).filter(Boolean));
-      return stackedObjects.length >= 2 && stackedAlerts.length >= 2 && distinctAlertIds.size >= 2;
-    }, `stacked-nukes scenario collapsed same-tile alerts; diagnostics=${JSON.stringify(diagnostics.stackedNukes)}`);
+      return stackedObjects.length >= 2
+        && stackedAlerts.length >= 2
+        && distinctAlertIds.size >= 2
+        && hasCriticalNukeProcessTelemetry(input.memory, homeRoom);
+    }, `stacked-nukes scenario collapsed same-tile alerts or missed critical scheduling telemetry; diagnostics=${JSON.stringify({ alerts: diagnostics.stackedNukes, scheduling: diagnostics.nukeScheduling })}`);
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
     runtimeAssertCounter(

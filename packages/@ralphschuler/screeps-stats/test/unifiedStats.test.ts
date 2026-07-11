@@ -299,6 +299,74 @@ describe("UnifiedStatsManager", () => {
     });
   });
 
+  it("publishes process scheduling fields to Memory.stats", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+
+    manager.recordProcess({
+      id: "room:W1N1",
+      name: "Room W1N1 (owned) [nuke response]",
+      priority: 100,
+      frequency: "high",
+      state: "running",
+      cpuBudget: 0.12,
+      minBucket: 0,
+      stats: {
+        totalCpu: 1,
+        runCount: 1,
+        avgCpu: 1,
+        maxCpu: 1,
+        lastRunTick: 600,
+        skippedCount: 0,
+        errorCount: 0
+      }
+    });
+
+    (manager as unknown as { publishToMemory(): void }).publishToMemory();
+
+    const published = (Memory as unknown as {
+      stats: { processes: Record<string, Record<string, unknown>> };
+    }).stats.processes["room:W1N1"];
+    expect(published).to.include({
+      name: "Room W1N1 (owned) [nuke response]",
+      priority: 100,
+      cpu_budget: 0.12,
+      min_bucket: 0
+    });
+    expect(published.tick_modulo).to.equal(undefined);
+  });
+
+  it("publishes distributed process cadence to Memory.stats", () => {
+    const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
+
+    manager.recordProcess({
+      id: "room:W1N1",
+      name: "Room W1N1 (owned)",
+      priority: 75,
+      frequency: "high",
+      state: "running",
+      cpuBudget: 0.04,
+      minBucket: 0,
+      tickModulo: 5,
+      tickOffset: 2,
+      stats: {
+        totalCpu: 1,
+        runCount: 1,
+        avgCpu: 1,
+        maxCpu: 1,
+        lastRunTick: 600,
+        skippedCount: 0,
+        errorCount: 0
+      }
+    });
+
+    (manager as unknown as { publishToMemory(): void }).publishToMemory();
+
+    const published = (Memory as unknown as {
+      stats: { processes: Record<string, Record<string, unknown>> };
+    }).stats.processes["room:W1N1"];
+    expect(published).to.include({ tick_modulo: 5, tick_offset: 2 });
+  });
+
   it("publishes compact task-board amount stats to Memory.stats", () => {
     const manager = new UnifiedStatsManager({ logInterval: 0, segmentUpdateInterval: Number.MAX_SAFE_INTEGER });
     const taskBoard = {

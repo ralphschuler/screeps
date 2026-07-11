@@ -96,7 +96,7 @@ An incoming nuke is always a critical threat (`dangerLevel = 3`, `recommendedRes
 
 ### Nuke-aware room scheduling
 
-Owned rooms with a visible nuke or persisted nuke intent are promoted to the kernel's critical process tier, including after a global reset. Their process runs every tick, keeps the emergency bucket allowance, and is surfaced with a `[nuke response]` process name for sanitized runtime telemetry. Scheduler-side `FIND_NUKES` checks are bounded (normal and low-bucket intervals); the room defense process remains the authoritative scan and persists the threat state.
+Owned rooms with a visible nuke or persisted nuke intent are promoted to the kernel's critical process tier, including after a global reset. Their process runs every tick, keeps the emergency bucket allowance, and is surfaced with a `[nuke response]` process name for sanitized runtime telemetry. Scheduler-side `FIND_NUKES` checks are bounded: repeated checks in the same tick are cached, normal-bucket rooms rescan at a 5-tick interval, and low-bucket rooms rescan at a 50-tick interval. The room defense process remains the authoritative scan and persists the threat state.
 
 ### DPS Calculation
 
