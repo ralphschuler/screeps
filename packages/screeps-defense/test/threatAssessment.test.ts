@@ -145,6 +145,35 @@ describe('Threat Assessment', () => {
       expect(analysis.recommendedResponse).to.equal('monitor');
     });
 
+    it('should treat an incoming nuke as critical without visible hostiles', () => {
+      const incomingNuke = {
+        id: 'nuke-only',
+        launchRoomName: 'W2N2',
+        timeToLand: 5000
+      };
+      const tower = {
+        structureType: STRUCTURE_TOWER,
+        store: { getUsedCapacity: () => 100 },
+        pos: { getRangeTo: () => 5 }
+      };
+      mockRoom.find = (type: number) => {
+        if (type === FIND_NUKES) return [incomingNuke];
+        if (type === FIND_MY_STRUCTURES) return [tower];
+        return [];
+      };
+
+      const analysis = assessThreat(mockRoom);
+
+      expect(analysis.dangerLevel).to.equal(3);
+      expect(analysis.threatScore).to.equal(500);
+      expect(analysis.hostileCount).to.equal(0);
+      expect(analysis.totalHostileDPS).to.equal(0);
+      expect(analysis.assistanceRequired).to.equal(false);
+      expect(analysis.assistancePriority).to.equal(0);
+      expect(Number.isFinite(analysis.assistancePriority)).to.equal(true);
+      expect(analysis.recommendedResponse).to.equal('safemode');
+    });
+
     it('should detect hostile creeps', () => {
       const mockHostile = {
         id: 'hostile1',
@@ -157,7 +186,7 @@ describe('Threat Assessment', () => {
         owner: { username: 'Enemy' }
       };
 
-      mockRoom.find = (type: number) => [mockHostile];
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockHostile] : [];
 
       const analysis = assessThreat(mockRoom);
       
@@ -224,7 +253,7 @@ describe('Threat Assessment', () => {
         owner: { username: 'Enemy' }
       };
 
-      mockRoom.find = (type: number) => [mockHostile];
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockHostile] : [];
 
       const analysis = assessThreat(mockRoom);
       
@@ -244,7 +273,7 @@ describe('Threat Assessment', () => {
         owner: { username: 'Enemy' }
       };
 
-      mockRoom.find = (type: number) => [mockHealer];
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockHealer] : [];
 
       const analysis = assessThreat(mockRoom);
       
@@ -263,7 +292,7 @@ describe('Threat Assessment', () => {
         owner: { username: 'Enemy' }
       };
 
-      mockRoom.find = (type: number) => [mockRanged];
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockRanged] : [];
 
       const analysis = assessThreat(mockRoom);
       
@@ -286,7 +315,7 @@ describe('Threat Assessment', () => {
         owner: { username: 'Enemy' }
       };
 
-      mockRoom.find = (type: number) => [mockDismantler];
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockDismantler] : [];
 
       const analysis = assessThreat(mockRoom);
       
@@ -356,7 +385,7 @@ describe('Threat Assessment', () => {
         owner: { username: 'Enemy' }
       };
 
-      mockRoom.find = (type: number) => [mockWeakHostile];
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? [mockWeakHostile] : [];
 
       const analysis = assessThreat(mockRoom);
       
@@ -383,7 +412,7 @@ describe('Threat Assessment', () => {
         }
       ];
 
-      mockRoom.find = (type: number) => mockHostiles;
+      mockRoom.find = (type: number) => type === FIND_HOSTILE_CREEPS ? mockHostiles : [];
 
       const analysis = assessThreat(mockRoom);
       

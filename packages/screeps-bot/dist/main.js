@@ -8034,8 +8034,8 @@ isDismantler: R
 }
 
 function Go(e) {
-var t, r, o = X(e);
-if (0 === o.length) return {
+var t, r, o = X(e), n = e.find(FIND_NUKES);
+if (0 === o.length && 0 === n.length) return {
 roomName: e.name,
 dangerLevel: 0,
 threatScore: 0,
@@ -8052,17 +8052,17 @@ assistanceRequired: !1,
 assistancePriority: 0,
 recommendedResponse: "monitor"
 };
-var n = 0, i = 0, s = 0, c = 0, u = 0, l = 0, m = 0, d = 0, p = function() {
+var i = 0, s = 0, c = 0, u = 0, l = 0, m = 0, d = 0, p = 0, f = function() {
 var e;
 return "undefined" == typeof Memory || !1 !== (null === (e = Memory.defenseSettings) || void 0 === e ? void 0 : e.workPartThreatScoring);
 }();
 try {
-for (var f = a(o), y = f.next(); !y.done; y = f.next()) {
-var v = y.value, g = Io(v, {
-scoreWorkPartThreats: p
+for (var y = a(o), v = y.next(); !v.done; v = y.next()) {
+var g = v.value, h = Io(g, {
+scoreWorkPartThreats: f
 });
-i += g.dps, s += v.hits, n += g.scoreContribution, g.isBoosted && c++, g.isHealer && u++,
-g.isRanged && l++, g.isMelee && m++, g.isDismantler && d++;
+s += h.dps, c += g.hits, i += h.scoreContribution, h.isBoosted && u++, h.isHealer && l++,
+h.isRanged && m++, h.isMelee && d++, h.isDismantler && p++;
 }
 } catch (e) {
 t = {
@@ -8070,16 +8070,16 @@ error: e
 };
 } finally {
 try {
-y && !y.done && (r = f.return) && r.call(f);
+v && !v.done && (r = y.return) && r.call(y);
 } finally {
 if (t) throw t.error;
 }
 }
-var h, R = e.find(FIND_MY_STRUCTURES, {
+var R, E = e.find(FIND_MY_STRUCTURES, {
 filter: function(e) {
 return e.structureType === STRUCTURE_TOWER;
 }
-}).reduce(function(e, t) {
+}), T = 0 === o.length ? 0 : E.reduce(function(e, t) {
 var r, n, a = t;
 if (a.structureType !== STRUCTURE_TOWER) return e;
 if ((null !== (n = null === (r = a.store) || void 0 === r ? void 0 : r.getUsedCapacity(RESOURCE_ENERGY)) && void 0 !== n ? n : 0) < 10) return e;
@@ -8087,7 +8087,7 @@ var i, s = o.reduce(function(e, r) {
 return e + t.pos.getRangeTo(r.pos);
 }, 0);
 return e + ((i = s / o.length) <= 5 ? 600 : i >= 20 ? 150 : 600 - 30 * (i - 5));
-}, 0), E = i > 1.5 * R, T = Math.min(100, Math.max(0, (i - R) / 10)), C = function(e, t, r) {
+}, 0), C = s > 1.5 * T, S = Math.min(100, Math.max(0, (s - T) / 10)), w = function(e, t, r) {
 if (Array.isArray(e)) {
 var o = e.reduce(function(e, t) {
 return e + Bo(t.body.filter(function(e) {
@@ -8103,26 +8103,26 @@ var n = Yo("guard"), a = Yo("ranger"), i = Vo(n), s = Vo(a), c = (i.avgDps + s.a
 t = null != t ? t : c, r = null != r ? r : u;
 }
 return t <= 0 && (t = 300, r = 1300), Math.ceil(e / t) * r;
-}(i), S = Math.max(1, function(e) {
+}(s), x = Math.max(1, function(e) {
 return 0 === e || e < Lo ? 0 : e < Do ? 1 : e < Fo ? 2 : 3;
-}(n));
-return h = n < 100 ? "monitor" : n < 500 && !E ? "defend" : E && n < 1e3 ? "assist" : n > 1e3 || c > 3 ? "safemode" : "defend",
-e.find(FIND_NUKES).length > 0 && (n += 500, h = "safemode", S = 3), {
+}(i));
+return R = i < 100 ? "monitor" : i < 500 && !C ? "defend" : C && i < 1e3 ? "assist" : i > 1e3 || u > 3 ? "safemode" : "defend",
+n.length > 0 && (i += 500, R = "safemode", x = 3), {
 roomName: e.name,
-dangerLevel: S,
-threatScore: n,
+dangerLevel: x,
+threatScore: i,
 hostileCount: o.length,
-totalHostileHitPoints: s,
-totalHostileDPS: i,
-healerCount: u,
-rangedCount: l,
-meleeCount: m,
-boostedCount: c,
-dismantlerCount: d,
-estimatedDefenderCost: C,
-assistanceRequired: E,
-assistancePriority: T,
-recommendedResponse: h
+totalHostileHitPoints: c,
+totalHostileDPS: s,
+healerCount: l,
+rangedCount: m,
+meleeCount: d,
+boostedCount: u,
+dismantlerCount: p,
+estimatedDefenderCost: w,
+assistanceRequired: C,
+assistancePriority: S,
+recommendedResponse: R
 };
 }
 
