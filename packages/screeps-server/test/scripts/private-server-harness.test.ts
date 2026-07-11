@@ -1016,6 +1016,16 @@ describe("private-server harness module", () => {
     expect(command).to.include("objectId:hardInvaderObject&&hardInvaderObject._id");
   });
 
+  it("seeds an incoming nuke for nukerless defensive runtime coverage", () => {
+    const options = parseHarnessArgs(["--room=E1N1", "--scenarios=nukerless-nuke"], {});
+    const command = buildSeedRuntimeScenariosCommand(options);
+
+    expect(command).to.include("hasScenario('nukerless-nuke')");
+    expect(command).to.include("type:'nuke'");
+    expect(command).to.include("landTime:nukeGameTime+5000");
+    expect(command).to.include("launchRoomName:'ScenarioNukeSource'");
+  });
+
   it("fails the run when screepsmod-testing reports failed tests", () => {
     const summary = createInitialSummary(
       parseHarnessArgs([], {}),

@@ -58,8 +58,9 @@ export class NukeManager {
     cpuBudget: 0.01
   })
   public run(): void {
-    if (!this.hasOwnedNuker()) return;
-    this.coordinator.run();
+    // Defensive observation must continue in early-room and damaged-room states,
+    // even when the empire has no usable nuker for offensive operations.
+    this.coordinator.run({ offensive: this.hasOwnedNuker() });
   }
 
   private hasOwnedNuker(): boolean {

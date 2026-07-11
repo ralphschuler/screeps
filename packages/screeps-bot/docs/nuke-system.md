@@ -14,6 +14,8 @@ The central component that coordinates all nuke operations.
 
 **Incoming Nuke Detection**
 - Monitors all owned rooms for incoming nukes via `FIND_NUKES`
+- Runs even when no owned nuker exists, so early-room and damaged-room alerts are not skipped
+- Gates only offensive targeting, resource loading, and launch work on nuker availability
 - Updates room danger level to maximum (3) on detection
 - Sets `nukeDetected` flag in SwarmState to prevent spam
 - Increases defense pheromones by 50 points

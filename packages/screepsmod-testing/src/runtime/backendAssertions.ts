@@ -284,6 +284,8 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   const terminalStructures = objects?.find ? await toArray(await objects.find({ type: 'terminal', ...input.userIdFilter })) : [];
   const labStructures = objects?.find ? await toArray(await objects.find({ type: 'lab', ...input.userIdFilter })) : [];
   const hardInvaders = objects?.find ? await toArray(await objects.find({ type: 'creep', name: 'ScenarioHardInvader' })) : [];
+  const incomingNukes = objects?.find ? await toArray(await objects.find({ type: 'nuke' })) : [];
+  const ownedNukers = objects?.find ? await toArray(await objects.find({ type: 'nuker', ...input.userIdFilter })) : [];
   const hardInvaderSeed = input.memory.screepsmodTestingScenarios?.hardInvader ?? input.scenarioSeedConfirmation?.hardInvader;
   const linkSites = constructionSites.filter(site => site?.structureType === 'link');
   const siteTypes: Record<string, number> = {};
@@ -316,6 +318,12 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     seed: hardInvaderSeed ?? null
   };
   diagnostics.defenseHardInvader = hardInvaderDiagnostics;
+  diagnostics.nukerlessNuke = {
+    count: incomingNukes.length,
+    rooms: incomingNukes.map(nuke => nuke?.room),
+    launchRooms: incomingNukes.map(nuke => nuke?.launchRoomName),
+    landTimes: incomingNukes.map(nuke => nuke?.landTime)
+  };
 
   if (input.scenarios.indexOf('default-bootstrap') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario','default-bootstrap'], () => input.ownedControllers.length > 0 && input.spawns.length > 0, 'default bootstrap scenario lacks owned controller or spawn');
@@ -328,6 +336,14 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   }
   if (input.scenarios.indexOf('defense-hostile') >= 0) {
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hostile emits defensive runtime signal', ['scenario','defense-hostile'], () => hasDefenseSignal(input.memory), 'defense scenario has no danger, defense task, or defense request signal');
+  }
+  if (input.scenarios.indexOf('nukerless-nuke') >= 0) {
+    const homeRoom = input.memory.screepsmodTestingScenarios?.rooms?.home;
+    runtimeAssertCounterAfter(counters, input, 1200, 'scenario nukerless-nuke records an inbound alert without an owned nuker', ['scenario','nukerless-nuke'], () => {
+      const alerts = (input.memory.empire?.incomingNukes ?? []) as Array<{ roomName?: string; timeToLand?: number; sourceRoom?: string }>;
+      const rooms = Object.values(input.memory.rooms ?? {}) as Array<{ swarm?: { danger?: number; nukeDetected?: boolean } }>;
+      return ownedNukers.length === 0 && incomingNukes.length > 0 && alerts.some(alert => (!homeRoom || alert.roomName === homeRoom) && (alert.timeToLand ?? 0) > 0 && alert.sourceRoom === 'ScenarioNukeSource') && rooms.some(room => room.swarm?.danger === 3 || room.swarm?.nukeDetected === true);
+    }, `nukerless-nuke scenario did not record defensive alert; diagnostics=${JSON.stringify(diagnostics.nukerlessNuke)}`);
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
     runtimeAssertCounter(
