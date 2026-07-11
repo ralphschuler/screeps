@@ -10,6 +10,7 @@
 
 import type { CreepAction, CreepContext } from "../types";
 import { findDistributedTarget, registerAssignment } from "@ralphschuler/screeps-utils";
+import { hasEmergencyDefenseRefuelEnergy } from "@ralphschuler/screeps-defense";
 import { findCachedClosest } from "../../cache";
 import { updateWorkingState, switchToCollectionMode } from "./common/stateManagement";
 import { createLogger } from "@ralphschuler/screeps-core";
@@ -251,18 +252,25 @@ function findDefenseRefuelDelivery(ctx: CreepContext): CreepAction | null {
 }
 
 function findDefenseRefuelCollection(ctx: CreepContext): CreepAction | null {
-  // Spawn demand only creates defenseRefuel haulers when source-adjacent containers
-  // hold useful energy; prefer that same cached source-container set here.
+  // Spawn demand prefers source containers, but emergency helpers may have no
+  // harvestable container energy while a mature terminal still has bounded reserve.
   const sourceContainersWithEnergy = ctx.sourceContainers.filter(
     c => c.store.getUsedCapacity(RESOURCE_ENERGY) > 100
   );
-  if (sourceContainersWithEnergy.length === 0) return null;
 
-  const target = getCachedDistributedTarget(ctx.creep, sourceContainersWithEnergy, "energy_container");
-  if (target) return { type: "withdraw", target, resourceType: RESOURCE_ENERGY };
+  if (sourceContainersWithEnergy.length > 0) {
+    const target = getCachedDistributedTarget(ctx.creep, sourceContainersWithEnergy, "energy_container");
+    if (target) return { type: "withdraw", target, resourceType: RESOURCE_ENERGY };
 
-  const fallback = ctx.creep.pos.findClosestByRange(sourceContainersWithEnergy);
-  if (fallback) return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
+    const fallback = ctx.creep.pos.findClosestByRange(sourceContainersWithEnergy);
+    if (fallback) return { type: "withdraw", target: fallback, resourceType: RESOURCE_ENERGY };
+  }
+
+  // The fixed CARRY/MOVE defense-refuel body withdraws at most 100 energy,
+  // while the shared policy keeps the terminal above its emergency floor.
+  if (hasEmergencyDefenseRefuelEnergy(ctx.terminal)) {
+    return { type: "withdraw", target: ctx.terminal!, resourceType: RESOURCE_ENERGY };
+  }
 
   return null;
 }

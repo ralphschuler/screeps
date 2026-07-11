@@ -1,4 +1,7 @@
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import {
+  getActualHostileCreeps,
+  hasEmergencyDefenseRefuelEnergy
+} from "@ralphschuler/screeps-defense";
 import type { SwarmCreepMemory } from "@ralphschuler/screeps-memory";
 import type { BodyTemplate } from "../roleDefinitions";
 import { getEffectiveRoomEnergyAvailable } from "../roomEnergy";
@@ -128,7 +131,7 @@ export function getDefenseRefuelSpawnAssignment(homeRoom: string, role: string):
   if (getEffectiveRoomEnergyAvailable(home) >= DEFENSE_REFUEL_ENERGY_THRESHOLD) return null;
   const emergencyRequests = getVisibleEmergencyDefenseRequests(homeRoom);
   if (emergencyRequests.length === 0) return null;
-  if (!canRefuelFromLocalSourceContainers(home)) return null;
+  if (!canRefuelFromLocalSourceContainers(home) && !hasEmergencyDefenseRefuelEnergy(home.terminal)) return null;
 
   const scaleDedicatedRefuel = needsScaledDefenseRefuel(emergencyRequests);
   const refuelerCount = scaleDedicatedRefuel

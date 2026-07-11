@@ -143,6 +143,11 @@ export {
   type DefenseAssistStagingOptions,
 } from "./coordination/defenseAssistStaging";
 
+export {
+  DEFENSE_REFUEL_TERMINAL_FLOOR_ENERGY,
+  hasEmergencyDefenseRefuelEnergy,
+} from "./coordination/defenseRefuelPolicy";
+
 // Emergency Response
 export {
   emergencyResponseManager,
