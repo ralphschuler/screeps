@@ -69,13 +69,16 @@ export class RoomDefenseManager {
   ): DefensePostureSnapshot {
     const cluster = swarm.clusterId ? memoryManager.getCluster(swarm.clusterId) : null;
     const threat = hostiles.length > 0 ? assessThreat(room) : undefined;
-    const nukes = Game.time % 10 === 0 ? room.find(FIND_NUKES) : [];
+    // Room processes are distributed across offsets; nuke detection must run
+    // whenever this room executes rather than on a global modulo tick.
+    const nukes = room.find(FIND_NUKES);
 
     return {
       roomName: room.name,
       time: Game.time,
       currentDanger: swarm.danger,
       nukeDetected: swarm.nukeDetected ?? false,
+      nukeScanPerformed: true,
       clusterId: swarm.clusterId,
       clusterMemberRooms: cluster?.memberRooms,
       previousStructures: structureCountTracker.get(room.name),

@@ -11,6 +11,7 @@ function snapshot(overrides: Partial<DefensePostureSnapshot> = {}): DefensePostu
     time: 100,
     currentDanger: 0,
     nukeDetected: false,
+    nukeScanPerformed: true,
     currentStructures: {
       spawns: ["spawn1"],
       towers: ["tower1"]
@@ -109,36 +110,57 @@ describe("Room defense posture Module", () => {
     });
   });
 
-  it("plans first nuke detection once and clears nuke state when gone", () => {
-    const detected = planDefensePostureIntent(
-      snapshot({
-        nukeDetected: false,
-        nukes: [
-          {
-            id: "nuke1" as Id<Nuke>,
-            timeToLand: 500,
-            launchRoomName: "W9N9"
+  it("plans first nuke detection on every room-process offset", () => {
+    for (const time of [100, 101, 102, 103, 104]) {
+      const detected = planDefensePostureIntent(
+        snapshot({
+          time,
+          nukeDetected: false,
+          nukes: [
+            {
+              id: "nuke1" as Id<Nuke>,
+              timeToLand: 500,
+              launchRoomName: "W9N9"
+            }
+          ]
+        })
+      );
+
+      assert.equal(detected.nextNukeDetected, true);
+      assert.equal(detected.nextDanger, 3);
+      assert.deepEqual(detected.pheromoneEffects, [{ type: "nukeDetected" }]);
+      assert.deepEqual(detected.kernelEvents, [
+        {
+          type: "nuke.detected",
+          payload: {
+            roomName: "W1N1",
+            nukeId: "nuke1" as Id<Nuke>,
+            landingTick: time + 500,
+            launchRoomName: "W9N9",
+            source: "W1N1"
           }
-        ]
+        }
+      ]);
+    }
+  });
+
+  it("preserves nuke danger when the scan is skipped", () => {
+    const skipped = planDefensePostureIntent(
+      snapshot({
+        currentDanger: 3,
+        nukeDetected: true,
+        nukeScanPerformed: false,
+        nukes: []
       })
     );
 
-    assert.equal(detected.nextNukeDetected, true);
-    assert.equal(detected.nextDanger, 3);
-    assert.deepEqual(detected.pheromoneEffects, [{ type: "nukeDetected" }]);
-    assert.deepEqual(detected.kernelEvents, [
-      {
-        type: "nuke.detected",
-        payload: {
-          roomName: "W1N1",
-          nukeId: "nuke1" as Id<Nuke>,
-          landingTick: 600,
-          launchRoomName: "W9N9",
-          source: "W1N1"
-        }
-      }
-    ]);
+    assert.equal(skipped.nextNukeDetected, true);
+    assert.equal(skipped.nextDanger, 3);
+    assert.deepEqual(skipped.pheromoneEffects, []);
+    assert.deepEqual(skipped.kernelEvents, []);
+  });
 
+  it("clears nuke state only after an explicit empty scan", () => {
     const retained = planDefensePostureIntent(
       snapshot({
         nukeDetected: true,
@@ -155,9 +177,41 @@ describe("Room defense posture Module", () => {
     assert.equal(retained.nextNukeDetected, true);
     assert.deepEqual(retained.kernelEvents, []);
 
-    const cleared = planDefensePostureIntent(snapshot({ nukeDetected: true, nukes: [] }));
+    const cleared = planDefensePostureIntent(
+      snapshot({ currentDanger: 3, nukeDetected: true, nukes: [] })
+    );
     assert.equal(cleared.nextNukeDetected, false);
     assert.equal(cleared.nextDanger, 0);
+    assert.deepEqual(cleared.kernelEvents, []);
+  });
+
+  it("does not emit hostile-clear when a first nuke supersedes existing danger", () => {
+    const intent = planDefensePostureIntent(
+      snapshot({
+        currentDanger: 2,
+        nukes: [
+          {
+            id: "nuke1" as Id<Nuke>,
+            timeToLand: 500,
+            launchRoomName: "W9N9"
+          }
+        ]
+      })
+    );
+
+    assert.equal(intent.nextDanger, 3);
+    assert.deepEqual(intent.kernelEvents, [
+      {
+        type: "nuke.detected",
+        payload: {
+          roomName: "W1N1",
+          nukeId: "nuke1" as Id<Nuke>,
+          landingTick: 600,
+          launchRoomName: "W9N9",
+          source: "W1N1"
+        }
+      }
+    ]);
   });
 
   it("exposes tower action planning as an intent surface", () => {

@@ -50,8 +50,38 @@ describe("RoomDefenseManager", () => {
       assert.exists(manager);
     });
 
-    it("should detect nukes and update swarm state", () => {
-      assert.exists(manager);
+    it("should detect nukes on a non-modulo room-process tick", () => {
+      const nuke = {
+        id: "nuke1" as Id<Nuke>,
+        timeToLand: 500,
+        launchRoomName: "W9N9"
+      } as Nuke;
+      const room = {
+        name: "W1N1",
+        find: (type: FindConstant) => (type === FIND_NUKES ? [nuke] : [])
+      } as unknown as Room;
+      const swarm = {
+        danger: 0,
+        nukeDetected: false
+      } as SwarmState;
+
+      Game.time = 101;
+      const intent = manager.getDefensePostureIntent(room, swarm, { spawns: [], towers: [] }, []);
+
+      assert.equal(intent.nextDanger, 3);
+      assert.equal(intent.nextNukeDetected, true);
+      assert.deepEqual(intent.kernelEvents, [
+        {
+          type: "nuke.detected",
+          payload: {
+            roomName: "W1N1",
+            nukeId: "nuke1" as Id<Nuke>,
+            landingTick: 601,
+            launchRoomName: "W9N9",
+            source: "W1N1"
+          }
+        }
+      ]);
     });
 
     it("should emit events when hostiles are detected", () => {
