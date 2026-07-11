@@ -17,7 +17,7 @@
 import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { getConfig } from "../config";
-import { ProcessPriority, kernel } from "./kernel";
+import { ProcessPriority, kernel, type Process as RoomProcess } from "./kernel";
 import { logger } from "./logger";
 import { roomManager } from "./roomNode";
 
@@ -47,7 +47,8 @@ const nukePriorityScanCache = new Map<string, { checkedAt: number; active: boole
 function hasPersistedNukeThreat(roomName: string): boolean {
   // Read the current Memory reference first. This survives a global reset even
   // when a heap-backed manager cache has not observed the replacement yet.
-  const currentSwarm = (Memory.rooms?.[roomName] as unknown as { swarm?: { nukeDetected?: boolean } } | undefined)?.swarm;
+  const currentSwarm = (Memory.rooms?.[roomName] as unknown as { swarm?: { nukeDetected?: boolean } } | undefined)
+    ?.swarm;
   if (currentSwarm?.nukeDetected) return true;
 
   const swarm = memoryManager.getSwarmState(roomName);
@@ -76,9 +77,23 @@ function hasNukeThreat(room: Room): boolean {
   return active;
 }
 
-function getRoomProcessName(room: Room): string {
+interface RoomThreatSnapshot {
+  nukeThreat: boolean;
+  hostiles: Creep[];
+}
+
+interface RoomProcessDescriptor {
+  name: string;
+  priority: ProcessPriority;
+  cpuBudget: number;
+  tickModulo?: number;
+  tickOffset?: number;
+  minBucket: number;
+}
+
+function getRoomProcessName(room: Room, nukeThreat: boolean): string {
   const suffix = room.controller?.my ? " (owned)" : "";
-  const nukeSuffix = hasNukeThreat(room) ? " [nuke response]" : "";
+  const nukeSuffix = nukeThreat ? " [nuke response]" : "";
   return `Room ${room.name}${suffix}${nukeSuffix}`;
 }
 
@@ -94,15 +109,9 @@ function getMyUsername(): string {
 /**
  * Get room process priority based on threat and strategic value.
  */
-function getRoomProcessPriority(room: Room): ProcessPriority {
+function getRoomProcessPriority(room: Room, threat: RoomThreatSnapshot): ProcessPriority {
   // Incoming nukes remain critical even when no hostile creep is visible.
-  if (hasNukeThreat(room)) {
-    return ProcessPriority.CRITICAL;
-  }
-
-  // Rooms under attack get critical priority
-  const hostiles = getActualHostileCreeps(room);
-  if (hostiles.length > 0) {
+  if (threat.nukeThreat || threat.hostiles.length > 0) {
     return ProcessPriority.CRITICAL;
   }
 
@@ -124,20 +133,18 @@ function getRoomProcessPriority(room: Room): ProcessPriority {
 /**
  * Get CPU budget for a room based on its state and RCL
  */
-function getRoomCpuBudget(room: Room): number {
+function getRoomCpuBudget(room: Room, threat: RoomThreatSnapshot): number {
   if (!room.controller?.my) {
     return 0.02; // 2% for non-owned rooms (1 CPU for 50 CPU limit)
   }
 
   const rcl = room.controller.level;
-  const nukeThreat = hasNukeThreat(room);
-  const hostiles = getActualHostileCreeps(room);
 
   // Nuke response requires the same room budget as active combat, even without
   // visible hostiles. The scheduler still bounds scans using the TTL above.
   // War mode: higher budget
   // Typical war room usage: 2-6 CPU (budget set at upper end for safety)
-  if (nukeThreat || hostiles.length > 0) {
+  if (threat.nukeThreat || threat.hostiles.length > 0) {
     return 0.12; // 12% per room (6 CPU for 50 CPU limit)
   }
 
@@ -230,6 +237,35 @@ export class RoomProcessManager {
     return index;
   }
 
+  private getRoomProcessDescriptor(room: Room): RoomProcessDescriptor {
+    const threat: RoomThreatSnapshot = {
+      nukeThreat: hasNukeThreat(room),
+      hostiles: getActualHostileCreeps(room)
+    };
+    const priority = getRoomProcessPriority(room, threat);
+    const distribution = getRoomDistribution(room, priority, this.getRoomIndex(room.name));
+
+    return {
+      name: getRoomProcessName(room, threat.nukeThreat),
+      priority,
+      cpuBudget: getRoomCpuBudget(room, threat),
+      tickModulo: distribution.tickModulo,
+      tickOffset: distribution.tickOffset,
+      minBucket: this.getMinBucketForPriority(priority)
+    };
+  }
+
+  private hasDescriptorChanged(existingProcess: RoomProcess, descriptor: RoomProcessDescriptor): boolean {
+    return (
+      existingProcess.name !== descriptor.name ||
+      existingProcess.priority !== descriptor.priority ||
+      Math.abs(existingProcess.cpuBudget - descriptor.cpuBudget) > 0.0001 ||
+      existingProcess.tickModulo !== descriptor.tickModulo ||
+      existingProcess.tickOffset !== descriptor.tickOffset ||
+      existingProcess.minBucket !== descriptor.minBucket
+    );
+  }
+
   /**
    * Synchronize room processes with kernel.
    * Registers new rooms and unregisters rooms that are no longer visible.
@@ -249,21 +285,18 @@ export class RoomProcessManager {
       const room = Game.rooms[roomName];
       currentRooms.add(roomName);
 
-      // Update priority if room state changed
+      // Update the complete descriptor if room state changed. Name and cadence
+      // are part of the contract because a nuke can appear while priority stays
+      // critical due to another hostile threat.
       const processId = `room:${roomName}`;
       const existingProcess = kernel.getProcess(processId);
-      const newPriority = getRoomProcessPriority(room);
-      const newCpuBudget = getRoomCpuBudget(room);
+      const descriptor = this.getRoomProcessDescriptor(room);
 
       if (!this.registeredRooms.has(roomName)) {
         // Register new room
-        this.registerRoomProcess(room);
-      } else if (
-        existingProcess &&
-        (existingProcess.priority !== newPriority || Math.abs(existingProcess.cpuBudget - newCpuBudget) > 0.0001)
-      ) {
-        // Update priority/budget if changed significantly
-        this.updateRoomProcess(room, newPriority, newCpuBudget);
+        this.registerRoomProcess(room, descriptor);
+      } else if (existingProcess && this.hasDescriptorChanged(existingProcess, descriptor)) {
+        this.updateRoomProcess(room, descriptor);
       }
     }
 
@@ -278,23 +311,19 @@ export class RoomProcessManager {
   /**
    * Register a room as a kernel process with tick distribution
    */
-  private registerRoomProcess(room: Room): void {
-    const priority = getRoomProcessPriority(room);
-    const cpuBudget = getRoomCpuBudget(room);
+  private registerRoomProcess(room: Room, descriptor = this.getRoomProcessDescriptor(room)): void {
     const processId = `room:${room.name}`;
-    const roomIndex = this.getRoomIndex(room.name);
-    const distribution = getRoomDistribution(room, priority, roomIndex);
 
     kernel.registerProcess({
       id: processId,
-      name: getRoomProcessName(room),
-      priority,
+      name: descriptor.name,
+      priority: descriptor.priority,
       frequency: "high",
       interval: 1,
-      tickModulo: distribution.tickModulo,
-      tickOffset: distribution.tickOffset,
-      minBucket: this.getMinBucketForPriority(priority),
-      cpuBudget,
+      tickModulo: descriptor.tickModulo,
+      tickOffset: descriptor.tickOffset,
+      minBucket: descriptor.minBucket,
+      cpuBudget: descriptor.cpuBudget,
       topology: { group: "room", layer: "room" },
       execute: () => {
         // Check if room is still visible
@@ -308,10 +337,10 @@ export class RoomProcessManager {
 
     this.registeredRooms.add(room.name);
 
-    const distributionInfo = distribution.tickModulo
-      ? `(mod=${distribution.tickModulo}, offset=${distribution.tickOffset})`
+    const distributionInfo = descriptor.tickModulo
+      ? `(mod=${descriptor.tickModulo}, offset=${descriptor.tickOffset})`
       : "(every tick)";
-    logger.debug(`Registered room process: ${room.name} with priority ${priority} ${distributionInfo}`, {
+    logger.debug(`Registered room process: ${room.name} with priority ${descriptor.priority} ${distributionInfo}`, {
       subsystem: "RoomProcessManager"
     });
   }
@@ -319,24 +348,22 @@ export class RoomProcessManager {
   /**
    * Update a room process with new priority, budget, and distribution
    */
-  private updateRoomProcess(room: Room, priority: ProcessPriority, cpuBudget: number): void {
+  private updateRoomProcess(room: Room, descriptor: RoomProcessDescriptor): void {
     const processId = `room:${room.name}`;
-    const roomIndex = this.getRoomIndex(room.name);
-    const distribution = getRoomDistribution(room, priority, roomIndex);
 
     // Unregister and re-register with new parameters
     kernel.unregisterProcess(processId);
 
     kernel.registerProcess({
       id: processId,
-      name: getRoomProcessName(room),
-      priority,
+      name: descriptor.name,
+      priority: descriptor.priority,
       frequency: "high",
       interval: 1,
-      tickModulo: distribution.tickModulo,
-      tickOffset: distribution.tickOffset,
-      minBucket: this.getMinBucketForPriority(priority),
-      cpuBudget,
+      tickModulo: descriptor.tickModulo,
+      tickOffset: descriptor.tickOffset,
+      minBucket: descriptor.minBucket,
+      cpuBudget: descriptor.cpuBudget,
       topology: { group: "room", layer: "room" },
       execute: () => {
         const currentRoom = Game.rooms[room.name];
@@ -346,12 +373,13 @@ export class RoomProcessManager {
       }
     });
 
-    const distributionInfo = distribution.tickModulo
-      ? `mod=${distribution.tickModulo}, offset=${distribution.tickOffset}`
+    const distributionInfo = descriptor.tickModulo
+      ? `mod=${descriptor.tickModulo}, offset=${descriptor.tickOffset}`
       : "every tick";
-    logger.debug(`Updated room process: ${room.name} priority=${priority} budget=${cpuBudget} (${distributionInfo})`, {
-      subsystem: "RoomProcessManager"
-    });
+    logger.debug(
+      `Updated room process: ${room.name} priority=${descriptor.priority} budget=${descriptor.cpuBudget} (${distributionInfo})`,
+      { subsystem: "RoomProcessManager" }
+    );
   }
 
   /**
@@ -402,7 +430,10 @@ export class RoomProcessManager {
     for (const roomName of this.registeredRooms) {
       const room = Game.rooms[roomName];
       if (room) {
-        const priority = getRoomProcessPriority(room);
+        const priority = getRoomProcessPriority(room, {
+          nukeThreat: hasNukeThreat(room),
+          hostiles: getActualHostileCreeps(room)
+        });
         const priorityName = ProcessPriority[priority] ?? "UNKNOWN";
         roomsByPriority[priorityName] = (roomsByPriority[priorityName] ?? 0) + 1;
 
