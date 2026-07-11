@@ -17810,32 +17810,34 @@ totalDamageDealt: 0,
 totalValueDestroyed: 0
 });
 }(o), function(e, t) {
-var r;
-e.incomingNukes || (e.incomingNukes = []);
-var o = function(o) {
-var n, i, s = Game.rooms[o];
-if (!(null === (r = s.controller) || void 0 === r ? void 0 : r.my)) return "continue";
-var c = t(o);
-if (!c) return "continue";
-var u = s.find(FIND_NUKES);
-if (u.length > 0) {
-var l = function(t) {
-var r = e.incomingNukes.find(function(e) {
-return e.roomName === o && e.landingPos.x === t.pos.x && e.landingPos.y === t.pos.y;
+var r, o, n = null !== (r = e.incomingNukes) && void 0 !== r ? r : e.incomingNukes = [], i = function(e) {
+var r = Game.rooms[e];
+if (!(null === (o = r.controller) || void 0 === o ? void 0 : o.my)) return "continue";
+var i = t(e);
+if (!i) return "continue";
+var s = r.find(FIND_NUKES);
+s.length > 0 ? s.forEach(function(t, o) {
+var s, c = t.timeToLand || 0, u = Game.time + c, l = function(e, t, r, o) {
+return e.id ? String(e.id) : [ "fallback", t, e.pos.x, e.pos.y, o, e.launchRoomName || "unknown", r ].join(":");
+}(t, e, o, u), m = null !== (s = n.find(function(e) {
+return e.nukeId === l;
+})) && void 0 !== s ? s : n.find(function(r) {
+return !r.nukeId && r.roomName === e && r.landingPos.x === t.pos.x && r.landingPos.y === t.pos.y && r.impactTick === u;
 });
-if (r) r.timeToLand = t.timeToLand || 0; else {
-var n = {
-roomName: o,
+if (m) m.nukeId = l, m.impactTick = u, m.timeToLand = c, m.sourceRoom = t.launchRoomName; else {
+var d = {
+nukeId: l,
+roomName: e,
 landingPos: {
 x: t.pos.x,
 y: t.pos.y
 },
-impactTick: Game.time + (t.timeToLand || 0),
-timeToLand: t.timeToLand || 0,
+impactTick: u,
+timeToLand: c,
 detectedAt: Game.time,
 evacuationTriggered: !1,
 sourceRoom: t.launchRoomName
-}, i = function(e, t) {
+}, p = function(e, t) {
 var r, o, n = [], i = e.lookForAtArea(LOOK_STRUCTURES, Math.max(0, t.y - 2), Math.max(0, t.x - 2), Math.min(49, t.y + 2), Math.min(49, t.x + 2), !0);
 try {
 for (var s = a(i), c = s.next(); !c.done; c = s.next()) {
@@ -17857,36 +17859,21 @@ if (r) throw r.error;
 }
 }
 return n;
-}(s, t.pos);
-n.threatenedStructures = i, e.incomingNukes.push(n), c.nukeDetected || (c.nukeDetected = !0,
-c.pheromones.defense = Math.min(100, c.pheromones.defense + 50), c.pheromones.siege = Math.min(100, c.pheromones.siege + 30),
-c.danger = 3, _.warn("INCOMING NUKE DETECTED in ".concat(o, "! ") + "Landing at (".concat(t.pos.x, ", ").concat(t.pos.y, "), impact in ").concat(t.timeToLand, " ticks. ") + "Source: ".concat(t.launchRoomName || "unknown", ". ") + "Threatened structures: ".concat(i.length), {
+}(r, t.pos);
+d.threatenedStructures = p, n.push(d), i.nukeDetected || (i.nukeDetected = !0, i.pheromones.defense = Math.min(100, i.pheromones.defense + 50),
+i.pheromones.siege = Math.min(100, i.pheromones.siege + 30), i.danger = 3, _.warn("INCOMING NUKE DETECTED in ".concat(e, "! ") + "Landing at (".concat(t.pos.x, ", ").concat(t.pos.y, "), impact in ").concat(t.timeToLand, " ticks. ") + "Source: ".concat(t.launchRoomName || "unknown", ". ") + "Threatened structures: ".concat(p.length), {
 subsystem: "Nuke"
-}), c.eventLog.push({
+}), i.eventLog.push({
 type: "nuke_incoming",
 time: Game.time,
 details: "Impact in ".concat(t.timeToLand, " ticks at (").concat(t.pos.x, ",").concat(t.pos.y, ")")
-}), c.eventLog.length > 20 && c.eventLog.shift());
+}), i.eventLog.length > 20 && i.eventLog.shift());
 }
-};
-try {
-for (var m = (n = void 0, a(u)), d = m.next(); !d.done; d = m.next()) l(d.value);
-} catch (e) {
-n = {
-error: e
-};
-} finally {
-try {
-d && !d.done && (i = m.return) && i.call(m);
-} finally {
-if (n) throw n.error;
-}
-}
-} else c.nukeDetected && (c.nukeDetected = !1, _.info("Nuke threat cleared in ".concat(o), {
+}) : i.nukeDetected && (i.nukeDetected = !1, _.info("Nuke threat cleared in ".concat(e), {
 subsystem: "Nuke"
 }));
 };
-for (var n in Game.rooms) o(n);
+for (var s in Game.rooms) i(s);
 }(o, this.getSwarmState), this.handleEvacuations(o), n ? (function(e, t, r, o) {
 var n, i, s;
 if (e.incomingNukes && 0 !== e.incomingNukes.length) try {

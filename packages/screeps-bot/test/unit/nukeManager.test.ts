@@ -158,6 +158,36 @@ describe("Nuke Manager", () => {
       expect(memoryManager.getEmpire().incomingNukes).to.have.length(1);
       expect(memoryManager.getEmpire().nukeCandidates).to.deep.equal([]);
     });
+
+    it("should preserve separate alerts for same-tile stacked nukes", () => {
+      const swarm = createDefaultSwarmState();
+      const landingPos = { x: 25, y: 25, roomName: "W1N1" };
+      const nukes = [
+        { id: "nuke-a", timeToLand: 1000, launchRoomName: "W2N2", pos: landingPos },
+        { id: "nuke-b", timeToLand: 1000, launchRoomName: "W3N3", pos: landingPos }
+      ];
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: (type: FindConstant) => type === FIND_NUKES ? nukes : [],
+        lookForAtArea: () => []
+      } as unknown as Room;
+
+      // @ts-ignore
+      global.Game.rooms["W1N1"] = mockRoom;
+      getSwarmStateStub.withArgs("W1N1").returns(swarm);
+
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
+
+      const alerts = memoryManager.getEmpire().incomingNukes ?? [];
+      expect(alerts).to.have.length(2);
+      expect(alerts.map(alert => alert.nukeId).sort()).to.deep.equal(["nuke-a", "nuke-b"]);
+      expect(alerts.map(alert => alert.landingPos)).to.deep.equal([
+        { x: landingPos.x, y: landingPos.y },
+        { x: landingPos.x, y: landingPos.y }
+      ]);
+    });
   });
 
   describe("Nuke Candidate Scoring", () => {
