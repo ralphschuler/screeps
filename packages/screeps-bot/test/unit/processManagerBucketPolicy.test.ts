@@ -118,6 +118,38 @@ describe("Process manager bucket policy", () => {
     expect(process?.name).to.include("nuke response");
   });
 
+  it("refreshes nuke response telemetry when another hostile keeps priority critical", () => {
+    let nukes: Nuke[] = [{ id: "nuke-1", timeToLand: 50000, launchRoomName: "E1N1" }] as unknown as Nuke[];
+    const hostile = { owner: { username: "Enemy" } } as unknown as Creep;
+    const room = {
+      name: "W1N1",
+      controller: { my: true, level: 8 },
+      find: (type: FindConstant) => {
+        if (type === FIND_NUKES) return nukes;
+        if (type === FIND_HOSTILE_CREEPS) return [hostile];
+        return [];
+      }
+    } as unknown as Room;
+
+    global.Game.rooms = { W1N1: room };
+    global.Game.spawns = {};
+    roomProcessManager.syncRoomProcesses();
+    expect(kernel.getProcess("room:W1N1")?.priority).to.equal(ProcessPriority.CRITICAL);
+    expect(kernel.getProcess("room:W1N1")?.name).to.include("nuke response");
+
+    nukes = [];
+    global.Game.time += 5;
+    roomProcessManager.forceResync();
+    expect(kernel.getProcess("room:W1N1")?.priority).to.equal(ProcessPriority.CRITICAL);
+    expect(kernel.getProcess("room:W1N1")?.name).to.not.include("nuke response");
+
+    nukes = [{ id: "nuke-2", timeToLand: 49990, launchRoomName: "E1N1" }] as unknown as Nuke[];
+    global.Game.time += 5;
+    roomProcessManager.forceResync();
+    expect(kernel.getProcess("room:W1N1")?.priority).to.equal(ProcessPriority.CRITICAL);
+    expect(kernel.getProcess("room:W1N1")?.name).to.include("nuke response");
+  });
+
   it("promotes persisted nuke intent after a global reset without rescanning a nuke", () => {
     const room = {
       name: "W1N1",
