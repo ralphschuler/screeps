@@ -493,11 +493,8 @@ export class EventBus {
       this.queueBudgetRemaining = this.getQueueAllowanceForBucket(bucket);
     }
 
-    if (this.queueBudgetRemaining <= 0) {
-      return;
-    }
-
-    // Clean up old events
+    // Clean up old events even when the current bucket leaves no processing
+    // allowance. Otherwise a low-bucket queue can retain expired payloads.
     const now = Game.time;
     const retainedEvents: QueuedEvent[] = [];
     for (const event of this.eventQueue) {
@@ -509,16 +506,23 @@ export class EventBus {
     }
     this.eventQueue = retainedEvents;
 
-    // A later call in the same tick may observe a different bucket in tests
-    // or a host runtime; never let that call exceed the shared allowance.
+    if (this.queueBudgetRemaining <= 0) {
+      return;
+    }
+
+    // Bound this call by the current bucket while checking the shared
+    // remaining budget on every iteration. A handler may re-enter
+    // processQueue(), so a snapshotted allowance alone could overspend.
     const allowance = Math.min(
       this.queueBudgetRemaining,
       this.getQueueAllowanceForBucket(bucket)
     );
-
-    // Process events
     let processed = 0;
-    while (this.eventQueue.length > 0 && processed < allowance) {
+    while (
+      this.eventQueue.length > 0
+      && this.queueBudgetRemaining > 0
+      && processed < allowance
+    ) {
       const event = this.eventQueue.shift();
       if (event) {
         this.removeQueuedEventFromMap(event);
