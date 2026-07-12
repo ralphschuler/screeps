@@ -13,6 +13,7 @@ import {
   createDefenseAssistSquadId,
   getActualHostileCreeps,
   getActualHostileStructures,
+  hasActiveDefenseThreat,
   getDefenseAssistTargetRoom,
   getVisibleDefenseAssistThreatProfile,
   isKnownAllyPlayer,
@@ -688,10 +689,8 @@ export function remoteGuard(ctx: CreepContext): CreepAction {
   // In target room - check for hostiles
   const hostiles = getActualHostileCreeps(ctx.room);
   
-  // Filter to dangerous hostiles (with combat parts)
-  const dangerousHostiles = hostiles.filter(h =>
-    h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
-  );
+  // Keep claim, healer, and dismantler threats engaged until they leave.
+  const dangerousHostiles = hostiles.filter(hasActiveDefenseThreat);
 
   if (dangerousHostiles.length === 0) {
     // Remote is secure - return to home room

@@ -1,14 +1,7 @@
+import { hasActiveDefenseThreat, hasSufficientCombatEscort } from "@ralphschuler/screeps-defense";
 import type { CreepAction, CreepContext } from "../types";
 import { findEnergy } from "./common/energyManagement";
 import { updateWorkingState } from "./common/stateManagement";
-
-function isDangerousHostile(hostile: Creep): boolean {
-  return hostile.body.some(
-    part =>
-      part.hits > 0 &&
-      (part.type === ATTACK || part.type === RANGED_ATTACK || part.type === WORK || part.type === HEAL)
-  );
-}
 
 function getSpawnConstructionSite(ctx: CreepContext): ConstructionSite | undefined {
   return ctx.prioritizedSites.find(site => site.structureType === STRUCTURE_SPAWN);
@@ -31,8 +24,8 @@ export function pioneer(ctx: CreepContext): CreepAction {
     return { type: "remoteMoveToRoom", roomName: targetRoom, routeType: "hauler" };
   }
 
-  const dangerousHostiles = ctx.hostiles.filter(isDangerousHostile);
-  if (dangerousHostiles.length > 0) {
+  const dangerousHostiles = ctx.hostiles.filter(hasActiveDefenseThreat);
+  if (dangerousHostiles.length > 0 && !hasSufficientCombatEscort(ctx.room, dangerousHostiles)) {
     return { type: "remoteMoveToRoom", roomName: ctx.homeRoom, routeType: "hauler" };
   }
 

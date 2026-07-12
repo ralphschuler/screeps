@@ -7,17 +7,57 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
-import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+import { getActualHostileCreeps, isKnownAllyCreep } from "../alliance/nonAggressionPact";
 
 const DEFENSE_ASSIST_THREAT_PARTS = new Set<BodyPartConstant>([ATTACK, RANGED_ATTACK, WORK, HEAL, CLAIM]);
 const COORDINATED_RANGED_HEAL_MIN_HOSTILES = 2;
 const COORDINATED_RANGED_HEAL_MIN_RANGED_PARTS = 8;
 const COORDINATED_RANGED_HEAL_MIN_HEAL_PARTS = 4;
 
+interface ActiveDefenseProfile {
+  meleeCount: number;
+  rangedCount: number;
+  healerCount: number;
+  dismantlerCount: number;
+  claimCount: number;
+  boosted: boolean;
+  threatPartCount: number;
+}
+
+function getActiveDefenseProfile(hostile: Creep): ActiveDefenseProfile {
+  const profile: ActiveDefenseProfile = {
+    meleeCount: 0,
+    rangedCount: 0,
+    healerCount: 0,
+    dismantlerCount: 0,
+    claimCount: 0,
+    boosted: false,
+    threatPartCount: 0
+  };
+
+  for (const part of hostile.body ?? []) {
+    if (part.hits <= 0) continue;
+    if (part.boost !== undefined) profile.boosted = true;
+    if (!DEFENSE_ASSIST_THREAT_PARTS.has(part.type)) continue;
+
+    profile.threatPartCount++;
+    if (part.type === ATTACK) profile.meleeCount++;
+    if (part.type === RANGED_ATTACK) profile.rangedCount++;
+    if (part.type === HEAL) profile.healerCount++;
+    if (part.type === WORK) profile.dismantlerCount++;
+    if (part.type === CLAIM) profile.claimCount++;
+  }
+
+  return profile;
+}
+
+/** Return true when a non-ally has an active part that can disrupt recovery or defense. */
+export function hasActiveDefenseThreat(hostile: Creep): boolean {
+  return !isKnownAllyCreep(hostile) && getActiveDefenseProfile(hostile).threatPartCount > 0;
+}
+
 function hasVisibleDefenseThreat(room: Room): boolean {
-  return getActualHostileCreeps(room).some(hostile =>
-    hostile.body.some(part => part.hits > 0 && DEFENSE_ASSIST_THREAT_PARTS.has(part.type))
-  );
+  return getActualHostileCreeps(room).some(hasActiveDefenseThreat);
 }
 
 function hasNoLocalSpawnCapacity(room: Room): boolean {
@@ -70,6 +110,75 @@ export interface DefenseRequest {
   threat: string;
 }
 
+export interface CombatEscortRequirement {
+  guards: number;
+  rangers: number;
+}
+
+/**
+ * Calculate the minimum active guard/ranger coverage needed before civilian
+ * recovery work may continue in a hostile room.
+ *
+ * This deliberately mirrors the conservative thresholds used by defender
+ * analysis: coordinated, boosted, healing, or dismantling attacks require
+ * both melee and ranged coverage instead of a single nominal escort.
+ */
+export function getCombatEscortRequirement(hostiles: Creep[]): CombatEscortRequirement {
+  const threateningHostiles = hostiles.filter(hasActiveDefenseThreat);
+  if (threateningHostiles.length === 0) return { guards: 0, rangers: 0 };
+
+  let meleeCount = 0;
+  let rangedCount = 0;
+  let healerCount = 0;
+  let dismantlerCount = 0;
+  let claimCount = 0;
+  let boostedCount = 0;
+
+  for (const hostile of threateningHostiles) {
+    const profile = getActiveDefenseProfile(hostile);
+    meleeCount += profile.meleeCount;
+    rangedCount += profile.rangedCount;
+    healerCount += profile.healerCount;
+    dismantlerCount += profile.dismantlerCount;
+    claimCount += profile.claimCount;
+    if (profile.boosted) boostedCount++;
+  }
+
+  // A nominal defender may carry many active parts, so keep recovery work
+  // conservative rather than allowing one creep to mask a high-part wave.
+  let guards = meleeCount > 0 ? Math.max(1, Math.ceil(meleeCount / 2)) : 0;
+  let rangers = rangedCount > 0 ? Math.max(1, Math.ceil(rangedCount / 4)) : 0;
+  if (dismantlerCount > 0) guards += Math.ceil(dismantlerCount / 5);
+  if (claimCount > 0) guards = Math.max(1, guards);
+
+  if (boostedCount > 0) {
+    guards = Math.ceil(guards * 1.5);
+    rangers = Math.ceil(rangers * 1.5);
+  }
+
+  const needsHeavyResponse =
+    threateningHostiles.length >= 2 || boostedCount > 0 || healerCount > 0 || dismantlerCount > 0;
+  if (needsHeavyResponse) {
+    guards = Math.max(2, guards);
+    rangers = Math.max(2, rangers);
+  }
+
+  return { guards, rangers };
+}
+
+/**
+ * Return whether active defenders are sufficient to protect civilian recovery
+ * work against the supplied hostile snapshot. Direct callers are still protected
+ * by the same permanent/configured ally filter used by room scans.
+ */
+export function hasSufficientCombatEscort(room: Room, hostiles = getActualHostileCreeps(room)): boolean {
+  const requirement = getCombatEscortRequirement(hostiles);
+  if (requirement.guards === 0 && requirement.rangers === 0) return true;
+
+  const current = getCurrentDefenders(room);
+  return current.guards >= requirement.guards && current.rangers >= requirement.rangers;
+}
+
 /**
  * Analyze room threats and determine defender requirements
  */
@@ -107,19 +216,17 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   let rangedCount = 0;
   let healerCount = 0;
   let dismantlerCount = 0;
+  let claimCount = 0;
   let boostedCount = 0;
 
   for (const hostile of hostiles) {
-    const activeBody = hostile.body.filter(part => part.hits > 0);
-    const isBoosted = activeBody.some(part => part.boost !== undefined);
-    if (isBoosted) boostedCount++;
-
-    for (const part of activeBody) {
-      if (part.type === ATTACK) meleeCount++;
-      if (part.type === RANGED_ATTACK) rangedCount++;
-      if (part.type === HEAL) healerCount++;
-      if (part.type === WORK) dismantlerCount++;
-    }
+    const profile = getActiveDefenseProfile(hostile);
+    meleeCount += profile.meleeCount;
+    rangedCount += profile.rangedCount;
+    healerCount += profile.healerCount;
+    dismantlerCount += profile.dismantlerCount;
+    claimCount += profile.claimCount;
+    if (profile.boosted) boostedCount++;
   }
 
   if (meleeCount > 0) {
@@ -140,6 +247,11 @@ export function analyzeDefenderNeeds(room: Room): DefenderRequirement {
   if (dismantlerCount > 0) {
     result.guards += Math.ceil(dismantlerCount / 5);
     result.reasons.push(`${dismantlerCount} work parts (dismantlers)`);
+  }
+
+  if (claimCount > 0) {
+    result.guards = Math.max(1, result.guards);
+    result.reasons.push(`${claimCount} claim parts detected`);
   }
 
   if (boostedCount > 0) {
@@ -210,15 +322,21 @@ function hasActivePart(creep: Creep, parts: BodyPartConstant[]): boolean {
 export function getCurrentDefenders(room: Room): { guards: number; rangers: number; healers: number } {
   const creeps = room.find(FIND_MY_CREEPS);
 
+  const isActive = (creep: Creep): boolean => !(creep as { spawning?: boolean }).spawning;
+  const roleOf = (creep: Creep): string | undefined => (creep.memory as { role?: string }).role;
+  const isRemoteGuardAssignedHere = (creep: Creep): boolean =>
+    roleOf(creep) === "remoteGuard" &&
+    (creep.memory as { targetRoom?: string }).targetRoom === room.name;
+
   return {
     guards: creeps.filter(c =>
-      !(c as { spawning?: boolean }).spawning &&
-      (c.memory as { role?: string }).role === "guard" &&
+      isActive(c) &&
+      (roleOf(c) === "guard" || isRemoteGuardAssignedHere(c)) &&
       hasActivePart(c, [ATTACK, RANGED_ATTACK])
     ).length,
     rangers: creeps.filter(c =>
-      !(c as { spawning?: boolean }).spawning &&
-      (c.memory as { role?: string }).role === "ranger" &&
+      isActive(c) &&
+      roleOf(c) === "ranger" &&
       hasActivePart(c, [RANGED_ATTACK])
     ).length,
     healers: creeps.filter(c =>

@@ -1102,6 +1102,36 @@ describe("defense spawn throttling", () => {
     if (firstAssistIndex >= 0) assert.isBelow(refuelIndex, firstAssistIndex);
   });
 
+  it("preempts bootstrap demand with a terminal defense refuel when local energy is stranded", () => {
+    const helper = createRoom([], "W17S29", 300, 100, 2);
+    const attacked = createRoom([createHostile([RANGED_ATTACK, MOVE, HEAL, MOVE])], "W18S28", 0, 0, 5, false);
+    (helper as unknown as { terminal: StructureTerminal }).terminal = {
+      store: createStore(6_000),
+      cooldown: 0
+    } as unknown as StructureTerminal;
+    Game.rooms.W17S29 = helper;
+    Game.rooms.W18S28 = attacked;
+    (Memory as unknown as { defenseRequests: unknown[] }).defenseRequests = [
+      {
+        roomName: "W18S28",
+        guardsNeeded: 1,
+        rangersNeeded: 1,
+        healersNeeded: 1,
+        urgency: 3,
+        createdAt: Game.time,
+        threat: "spawnless ranged-heal attack"
+      }
+    ];
+
+    const { planSpawnDemand } = require("../src/spawnIntentCompiler") as typeof import("../src/spawnIntentCompiler");
+    const demands = planSpawnDemand(helper, { danger: 0, posture: "eco" } as any);
+    const refuel = demands.find(demand => demand.roleName === "hauler" && demand.task === "defenseRefuel");
+
+    assert.isOk(refuel, "bootstrap mode must still expose emergency terminal refuel demand");
+    assert.equal(refuel!.priority, SpawnPriority.EMERGENCY);
+    assert.deepEqual(refuel!.bodyOverride?.parts, [CARRY, MOVE]);
+  });
+
   it("keeps emergency refuel visible when source containers are empty but terminal reserve can be tapped", () => {
     const helper = createRoom([], "W17S29", 2300, 21, 6);
     const attacked = createRoom([createHostile([RANGED_ATTACK, MOVE, HEAL, MOVE])], "W18S28", 0, 0, 5, false);

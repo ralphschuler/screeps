@@ -1,11 +1,12 @@
 import { expect } from "chai";
-import { guard, ranger, healer, type CreepContext } from "../src/index";
+import { guard, ranger, healer, remoteGuard, type CreepContext } from "../src/index";
 import { createMockCreep, createMockRoom, resetMockGame } from "./setup";
 
 function createThreatRoom(roomName = "W2N1", body: BodyPartConstant[] = [ATTACK, MOVE]): Room {
   const hostile = {
     owner: { username: "Invader" },
-    body: body.map(type => ({ type, hits: 100 }))
+    body: body.map(type => ({ type, hits: 100 })),
+    getActiveBodyparts: (type: BodyPartConstant) => body.filter(part => part === type).length
   } as unknown as Creep;
   const room = createMockRoom(roomName);
   (room as any).find = (type: number) => (type === FIND_HOSTILE_CREEPS ? [hostile] : []);
@@ -127,6 +128,33 @@ describe("military assistance behavior", () => {
     resetMockGame();
     delete (Memory as unknown as { defenseRequests?: unknown }).defenseRequests;
     delete (Memory as unknown as { defenseAssistTrickleReleases?: unknown }).defenseAssistTrickleReleases;
+  });
+
+  it("keeps a remote guard engaged against claim and healer threats", () => {
+    const room = createThreatRoom("W2N1", [HEAL, CLAIM, MOVE]);
+    const hostile = room.find(FIND_HOSTILE_CREEPS)[0] as Creep;
+    const creep = createMockCreep("remoteGuard1", {
+      room,
+      memory: { role: "remoteGuard", homeRoom: "W1N1", targetRoom: "W2N1" },
+      body: [{ type: ATTACK, hits: 100 }, { type: MOVE, hits: 100 }],
+      pos: {
+        x: 25,
+        y: 25,
+        roomName: "W2N1",
+        getRangeTo: () => 1,
+        findClosestByRange: () => hostile,
+        isEqualTo: () => false,
+        isNearTo: () => false,
+        inRangeTo: () => false,
+        findInRange: () => [],
+        findClosestByPath: () => null,
+        lookFor: () => []
+      }
+    });
+
+    const action = remoteGuard({ creep, room, homeRoom: "W1N1" } as unknown as CreepContext);
+
+    expect(action).to.deep.equal({ type: "attack", target: hostile });
   });
 
   it("assigns an idle guard to a visible active defense request", () => {

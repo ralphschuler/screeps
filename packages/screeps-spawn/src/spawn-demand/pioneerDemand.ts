@@ -5,6 +5,7 @@
  * This module assigns exactly one viable parent room to each target, then counts
  * active and queued pioneers so bootstrap waves stay bounded.
  */
+import { getActualHostileCreeps, hasSufficientCombatEscort } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmCreepMemory, SwarmState } from "@ralphschuler/screeps-memory";
 import { getEffectiveRoomEnergyAvailable } from "../roomEnergy";
@@ -212,7 +213,10 @@ export function getPioneerSpawnAssignment(homeRoom: string, swarm: SwarmState): 
     .filter(room => room.name !== homeRoom)
     .filter(room => room.controller?.my)
     .filter(room => !roomHasOwnedSpawn(room))
-    .filter(room => !hasDangerousHostile(room))
+    .filter(room => {
+      const hostiles = getActualHostileCreeps(room);
+      return !hasDangerousHostile(room, hostiles) || hasSufficientCombatEscort(room, hostiles);
+    })
     .filter(room => countAssignedPioneers(room.name) < getPioneerTargetCount(room))
     .map(room => ({
       room,

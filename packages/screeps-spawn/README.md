@@ -147,7 +147,7 @@ This keeps the spawn facade stable while making each role family easier to read 
 [`spawnNeedsAnalyzer.ts`](./src/spawnNeedsAnalyzer.ts) is the public demand facade used by the bot and intent compiler. Deeper modules hide target-selection details while preserving the same exports:
 
 - `spawn-demand/claimerDemand.ts` - recovery reclaim, expansion claim, and remote reservation assignment order
-- `spawn-demand/pioneerDemand.ts` - spawnless owned-room bootstrap assignment and closest-parent ownership
+- `spawn-demand/pioneerDemand.ts` - spawnless owned-room bootstrap assignment, closest-parent ownership, and escort-gated recovery under hostile pressure
 - `spawn-demand/defenseAssistDemand.ts` - helper-room reinforcement demand, squad metadata, assigned-power accounting, and stale request pruning; defender need sizing and combat math/body sizing are consumed from `@ralphschuler/screeps-defense`
 - `defenseAssistTelemetry.ts` - compact helper-room telemetry for defense-assist queue, staging, affordability, assigned power, and release diagnostics
 - `spawn-demand/shared.ts` - map-distance fallback, remote safety gates, owned-spawn checks, and global utility queue enumeration

@@ -376,18 +376,18 @@ function runtimeAssertCounterAfter(counters, input, minTick, name, tags, predica
     assertCounter(counters, name, tags, predicate, message);
 }
 function ensureScenarioMemory(memory, scenarios, ownedRoomNames, tick, scenarioSeedConfirmation) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
     if (scenarios.length === 0)
         return;
-    var homeRoom = ownedRoomNames[0];
-    var existingScenarioMemory = (_a = memory.screepsmodTestingScenarios) !== null && _a !== void 0 ? _a : {};
-    var hardInvaderSeed = (_b = existingScenarioMemory.hardInvader) !== null && _b !== void 0 ? _b : scenarioSeedConfirmation === null || scenarioSeedConfirmation === void 0 ? void 0 : scenarioSeedConfirmation.hardInvader;
-    memory.screepsmodTestingScenarios = __assign(__assign({}, existingScenarioMemory), { names: scenarios, checkedAt: tick, rooms: __assign(__assign({}, ((_c = existingScenarioMemory.rooms) !== null && _c !== void 0 ? _c : {})), { home: homeRoom, remote: DEFAULT_SCENARIO_REMOTE_ROOM, economy: (_e = (_d = existingScenarioMemory.rooms) === null || _d === void 0 ? void 0 : _d.economy) !== null && _e !== void 0 ? _e : 'W2N1' }) });
+    var homeRoom = (_b = (_a = scenarioSeedConfirmation === null || scenarioSeedConfirmation === void 0 ? void 0 : scenarioSeedConfirmation.rooms) === null || _a === void 0 ? void 0 : _a.home) !== null && _b !== void 0 ? _b : ownedRoomNames[0];
+    var existingScenarioMemory = (_c = memory.screepsmodTestingScenarios) !== null && _c !== void 0 ? _c : {};
+    var hardInvaderSeed = (_d = existingScenarioMemory.hardInvader) !== null && _d !== void 0 ? _d : scenarioSeedConfirmation === null || scenarioSeedConfirmation === void 0 ? void 0 : scenarioSeedConfirmation.hardInvader;
+    memory.screepsmodTestingScenarios = __assign(__assign({}, existingScenarioMemory), { names: scenarios, checkedAt: tick, rooms: __assign(__assign({}, ((_e = existingScenarioMemory.rooms) !== null && _e !== void 0 ? _e : {})), { home: homeRoom, remote: DEFAULT_SCENARIO_REMOTE_ROOM, recovery: (_j = (_g = (_f = existingScenarioMemory.rooms) === null || _f === void 0 ? void 0 : _f.recovery) !== null && _g !== void 0 ? _g : (_h = scenarioSeedConfirmation === null || scenarioSeedConfirmation === void 0 ? void 0 : scenarioSeedConfirmation.rooms) === null || _h === void 0 ? void 0 : _h.recovery) !== null && _j !== void 0 ? _j : 'W1N2', economy: (_l = (_k = existingScenarioMemory.rooms) === null || _k === void 0 ? void 0 : _k.economy) !== null && _l !== void 0 ? _l : 'W2N1' }) });
     if (scenarios.indexOf('defense-hard-invader') >= 0 && hardInvaderSeed) {
         memory.screepsmodTestingScenarios.hardInvader = hardInvaderSeed;
     }
     if (homeRoom && scenarios.indexOf('remote-mining') >= 0) {
-        var roomMemory = (_f = memory.rooms) === null || _f === void 0 ? void 0 : _f[homeRoom];
+        var roomMemory = (_m = memory.rooms) === null || _m === void 0 ? void 0 : _m[homeRoom];
         var swarm = roomMemory === null || roomMemory === void 0 ? void 0 : roomMemory.swarm;
         if (swarm && Array.isArray(swarm.remoteAssignments) && swarm.remoteAssignments.indexOf(DEFAULT_SCENARIO_REMOTE_ROOM) < 0) {
             swarm.remoteAssignments.push(DEFAULT_SCENARIO_REMOTE_ROOM);
@@ -414,11 +414,11 @@ function assertBaselineRuntime(counters, input, ownedRoomNames) {
 }
 function assertScenarios(counters, input) {
     return __awaiter(this, void 0, void 0, function () {
-        var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, incomingNukes, _q, _r, ownedNukers, _s, _t, hardInvaderSeed, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hardInvaderDiagnostics, homeRoom, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
-        var e_6, _u;
-        var _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6;
-        return __generator(this, function (_7) {
-            switch (_7.label) {
+        var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, incomingNukes, _q, _r, ownedNukers, _s, _t, hardInvaderSeed, recoveryRoom, recoveryControllers, _u, _v, recoverySpawns, _w, _x, recoveryTowers, _y, _z, recoverySites, recoveryHostiles, _0, _1, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hardInvaderDiagnostics, homeRoom, homeTerminal, recoveryRequests, hasRecoveryRequest, terminalEnergy, initialTerminalEnergy, seededSpawnCount, seededTowerCount, refuelers, emergencyQueue, hasRefuelEvidence, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
+        var e_6, _2;
+        var _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35;
+        return __generator(this, function (_36) {
+            switch (_36.label) {
                 case 0:
                     diagnostics = {};
                     if (input.scenarios.length === 0)
@@ -427,125 +427,175 @@ function assertScenarios(counters, input) {
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 3];
                     _b = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'constructionSite' }, input.userIdFilter))];
-                case 1: return [4 /*yield*/, _b.apply(void 0, [_7.sent()])];
+                case 1: return [4 /*yield*/, _b.apply(void 0, [_36.sent()])];
                 case 2:
-                    _a = _7.sent();
+                    _a = _36.sent();
                     return [3 /*break*/, 4];
                 case 3:
                     _a = [];
-                    _7.label = 4;
+                    _36.label = 4;
                 case 4:
                     constructionSites = _a;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 7];
                     _d = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'link' }, input.userIdFilter))];
-                case 5: return [4 /*yield*/, _d.apply(void 0, [_7.sent()])];
+                case 5: return [4 /*yield*/, _d.apply(void 0, [_36.sent()])];
                 case 6:
-                    _c = _7.sent();
+                    _c = _36.sent();
                     return [3 /*break*/, 8];
                 case 7:
                     _c = [];
-                    _7.label = 8;
+                    _36.label = 8;
                 case 8:
                     linkStructures = _c;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 11];
                     _f = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'extension' }, input.userIdFilter))];
-                case 9: return [4 /*yield*/, _f.apply(void 0, [_7.sent()])];
+                case 9: return [4 /*yield*/, _f.apply(void 0, [_36.sent()])];
                 case 10:
-                    _e = _7.sent();
+                    _e = _36.sent();
                     return [3 /*break*/, 12];
                 case 11:
                     _e = [];
-                    _7.label = 12;
+                    _36.label = 12;
                 case 12:
                     extensionStructures = _e;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 15];
                     _h = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'storage' }, input.userIdFilter))];
-                case 13: return [4 /*yield*/, _h.apply(void 0, [_7.sent()])];
+                case 13: return [4 /*yield*/, _h.apply(void 0, [_36.sent()])];
                 case 14:
-                    _g = _7.sent();
+                    _g = _36.sent();
                     return [3 /*break*/, 16];
                 case 15:
                     _g = [];
-                    _7.label = 16;
+                    _36.label = 16;
                 case 16:
                     storageStructures = _g;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 19];
                     _k = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'terminal' }, input.userIdFilter))];
-                case 17: return [4 /*yield*/, _k.apply(void 0, [_7.sent()])];
+                case 17: return [4 /*yield*/, _k.apply(void 0, [_36.sent()])];
                 case 18:
-                    _j = _7.sent();
+                    _j = _36.sent();
                     return [3 /*break*/, 20];
                 case 19:
                     _j = [];
-                    _7.label = 20;
+                    _36.label = 20;
                 case 20:
                     terminalStructures = _j;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 23];
                     _m = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'lab' }, input.userIdFilter))];
-                case 21: return [4 /*yield*/, _m.apply(void 0, [_7.sent()])];
+                case 21: return [4 /*yield*/, _m.apply(void 0, [_36.sent()])];
                 case 22:
-                    _l = _7.sent();
+                    _l = _36.sent();
                     return [3 /*break*/, 24];
                 case 23:
                     _l = [];
-                    _7.label = 24;
+                    _36.label = 24;
                 case 24:
                     labStructures = _l;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 27];
                     _p = toArray;
                     return [4 /*yield*/, objects.find({ type: 'creep', name: 'ScenarioHardInvader' })];
-                case 25: return [4 /*yield*/, _p.apply(void 0, [_7.sent()])];
+                case 25: return [4 /*yield*/, _p.apply(void 0, [_36.sent()])];
                 case 26:
-                    _o = _7.sent();
+                    _o = _36.sent();
                     return [3 /*break*/, 28];
                 case 27:
                     _o = [];
-                    _7.label = 28;
+                    _36.label = 28;
                 case 28:
                     hardInvaders = _o;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 31];
                     _r = toArray;
                     return [4 /*yield*/, objects.find({ type: 'nuke' })];
-                case 29: return [4 /*yield*/, _r.apply(void 0, [_7.sent()])];
+                case 29: return [4 /*yield*/, _r.apply(void 0, [_36.sent()])];
                 case 30:
-                    _q = _7.sent();
+                    _q = _36.sent();
                     return [3 /*break*/, 32];
                 case 31:
                     _q = [];
-                    _7.label = 32;
+                    _36.label = 32;
                 case 32:
                     incomingNukes = _q;
                     if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 35];
                     _t = toArray;
                     return [4 /*yield*/, objects.find(__assign({ type: 'nuker' }, input.userIdFilter))];
-                case 33: return [4 /*yield*/, _t.apply(void 0, [_7.sent()])];
+                case 33: return [4 /*yield*/, _t.apply(void 0, [_36.sent()])];
                 case 34:
-                    _s = _7.sent();
+                    _s = _36.sent();
                     return [3 /*break*/, 36];
                 case 35:
                     _s = [];
-                    _7.label = 36;
+                    _36.label = 36;
                 case 36:
                     ownedNukers = _s;
-                    hardInvaderSeed = (_w = (_v = input.memory.screepsmodTestingScenarios) === null || _v === void 0 ? void 0 : _v.hardInvader) !== null && _w !== void 0 ? _w : (_x = input.scenarioSeedConfirmation) === null || _x === void 0 ? void 0 : _x.hardInvader;
+                    hardInvaderSeed = (_4 = (_3 = input.memory.screepsmodTestingScenarios) === null || _3 === void 0 ? void 0 : _3.hardInvader) !== null && _4 !== void 0 ? _4 : (_5 = input.scenarioSeedConfirmation) === null || _5 === void 0 ? void 0 : _5.hardInvader;
+                    recoveryRoom = (_8 = (_7 = (_6 = input.memory.screepsmodTestingScenarios) === null || _6 === void 0 ? void 0 : _6.rooms) === null || _7 === void 0 ? void 0 : _7.recovery) !== null && _8 !== void 0 ? _8 : 'W1N2';
+                    if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 39];
+                    _v = toArray;
+                    return [4 /*yield*/, objects.find(__assign({ type: 'controller', room: recoveryRoom }, input.userIdFilter))];
+                case 37: return [4 /*yield*/, _v.apply(void 0, [_36.sent()])];
+                case 38:
+                    _u = _36.sent();
+                    return [3 /*break*/, 40];
+                case 39:
+                    _u = [];
+                    _36.label = 40;
+                case 40:
+                    recoveryControllers = _u;
+                    if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 43];
+                    _x = toArray;
+                    return [4 /*yield*/, objects.find(__assign({ type: 'spawn', room: recoveryRoom }, input.userIdFilter))];
+                case 41: return [4 /*yield*/, _x.apply(void 0, [_36.sent()])];
+                case 42:
+                    _w = _36.sent();
+                    return [3 /*break*/, 44];
+                case 43:
+                    _w = [];
+                    _36.label = 44;
+                case 44:
+                    recoverySpawns = _w;
+                    if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 47];
+                    _z = toArray;
+                    return [4 /*yield*/, objects.find(__assign({ type: 'tower', room: recoveryRoom }, input.userIdFilter))];
+                case 45: return [4 /*yield*/, _z.apply(void 0, [_36.sent()])];
+                case 46:
+                    _y = _36.sent();
+                    return [3 /*break*/, 48];
+                case 47:
+                    _y = [];
+                    _36.label = 48;
+                case 48:
+                    recoveryTowers = _y;
+                    recoverySites = constructionSites.filter(function (site) { return (site === null || site === void 0 ? void 0 : site.room) === recoveryRoom && (site === null || site === void 0 ? void 0 : site.structureType) === 'spawn'; });
+                    if (!(objects === null || objects === void 0 ? void 0 : objects.find)) return [3 /*break*/, 51];
+                    _1 = toArray;
+                    return [4 /*yield*/, objects.find({ type: 'creep', room: recoveryRoom, name: 'ScenarioSpawnlessSiege' })];
+                case 49: return [4 /*yield*/, _1.apply(void 0, [_36.sent()])];
+                case 50:
+                    _0 = _36.sent();
+                    return [3 /*break*/, 52];
+                case 51:
+                    _0 = [];
+                    _36.label = 52;
+                case 52:
+                    recoveryHostiles = _0;
                     linkSites = constructionSites.filter(function (site) { return (site === null || site === void 0 ? void 0 : site.structureType) === 'link'; });
                     siteTypes = {};
                     try {
                         for (constructionSites_1 = __values(constructionSites), constructionSites_1_1 = constructionSites_1.next(); !constructionSites_1_1.done; constructionSites_1_1 = constructionSites_1.next()) {
                             site = constructionSites_1_1.value;
-                            type = String((_y = site === null || site === void 0 ? void 0 : site.structureType) !== null && _y !== void 0 ? _y : 'unknown');
-                            siteTypes[type] = ((_z = siteTypes[type]) !== null && _z !== void 0 ? _z : 0) + 1;
+                            type = String((_9 = site === null || site === void 0 ? void 0 : site.structureType) !== null && _9 !== void 0 ? _9 : 'unknown');
+                            siteTypes[type] = ((_10 = siteTypes[type]) !== null && _10 !== void 0 ? _10 : 0) + 1;
                         }
                     }
                     catch (e_6_1) { e_6 = { error: e_6_1 }; }
                     finally {
                         try {
-                            if (constructionSites_1_1 && !constructionSites_1_1.done && (_u = constructionSites_1.return)) _u.call(constructionSites_1);
+                            if (constructionSites_1_1 && !constructionSites_1_1.done && (_2 = constructionSites_1.return)) _2.call(constructionSites_1);
                         }
                         finally { if (e_6) throw e_6.error; }
                     }
@@ -585,8 +635,38 @@ function assertScenarios(counters, input) {
                         objectIds: incomingNukes.map(function (nuke) { return nuke === null || nuke === void 0 ? void 0 : nuke._id; }).filter(Boolean),
                         landingTiles: incomingNukes.map(function (nuke) { return ({ room: nuke === null || nuke === void 0 ? void 0 : nuke.room, x: nuke === null || nuke === void 0 ? void 0 : nuke.x, y: nuke === null || nuke === void 0 ? void 0 : nuke.y }); })
                     };
-                    homeRoom = (_2 = (_1 = (_0 = input.memory.screepsmodTestingScenarios) === null || _0 === void 0 ? void 0 : _0.rooms) === null || _1 === void 0 ? void 0 : _1.home) !== null && _2 !== void 0 ? _2 : (_3 = input.ownedControllers[0]) === null || _3 === void 0 ? void 0 : _3.room;
-                    diagnostics.nukeScheduling = (_4 = getNukeProcessTelemetry(input.memory, homeRoom)) !== null && _4 !== void 0 ? _4 : null;
+                    homeRoom = (_13 = (_12 = (_11 = input.memory.screepsmodTestingScenarios) === null || _11 === void 0 ? void 0 : _11.rooms) === null || _12 === void 0 ? void 0 : _12.home) !== null && _13 !== void 0 ? _13 : (_14 = input.ownedControllers[0]) === null || _14 === void 0 ? void 0 : _14.room;
+                    homeTerminal = terminalStructures.find(function (terminal) { return (terminal === null || terminal === void 0 ? void 0 : terminal.room) === homeRoom; });
+                    diagnostics.nukeScheduling = (_15 = getNukeProcessTelemetry(input.memory, homeRoom)) !== null && _15 !== void 0 ? _15 : null;
+                    recoveryRequests = Array.isArray(input.memory.defenseRequests)
+                        ? input.memory.defenseRequests
+                        : Object.values((_16 = input.memory.defenseRequests) !== null && _16 !== void 0 ? _16 : {});
+                    hasRecoveryRequest = recoveryRequests.some(function (request) { return (request === null || request === void 0 ? void 0 : request.roomName) === recoveryRoom; });
+                    terminalEnergy = Number((_18 = (_17 = homeTerminal === null || homeTerminal === void 0 ? void 0 : homeTerminal.store) === null || _17 === void 0 ? void 0 : _17.energy) !== null && _18 !== void 0 ? _18 : 0);
+                    initialTerminalEnergy = Number((_21 = (_20 = (_19 = input.scenarioSeedConfirmation) === null || _19 === void 0 ? void 0 : _19.spawnlessSiege) === null || _20 === void 0 ? void 0 : _20.homeTerminalEnergy) !== null && _21 !== void 0 ? _21 : 0);
+                    seededSpawnCount = Number((_24 = (_23 = (_22 = input.scenarioSeedConfirmation) === null || _22 === void 0 ? void 0 : _22.spawnlessSiege) === null || _23 === void 0 ? void 0 : _23.spawnCount) !== null && _24 !== void 0 ? _24 : -1);
+                    seededTowerCount = Number((_27 = (_26 = (_25 = input.scenarioSeedConfirmation) === null || _25 === void 0 ? void 0 : _25.spawnlessSiege) === null || _26 === void 0 ? void 0 : _26.towerCount) !== null && _27 !== void 0 ? _27 : -1);
+                    refuelers = values((_28 = input.memory.creeps) !== null && _28 !== void 0 ? _28 : {}).filter(function (creep) { return (creep === null || creep === void 0 ? void 0 : creep.role) === 'hauler' && (creep === null || creep === void 0 ? void 0 : creep.task) === 'defenseRefuel'; }).length;
+                    emergencyQueue = Number((_33 = (_32 = (_31 = (_30 = (_29 = input.memory.stats) === null || _29 === void 0 ? void 0 : _29.rooms) === null || _30 === void 0 ? void 0 : _30[homeRoom]) === null || _31 === void 0 ? void 0 : _31.spawn_queue) === null || _32 === void 0 ? void 0 : _32.emergency) !== null && _33 !== void 0 ? _33 : 0);
+                    hasRefuelEvidence = refuelers > 0
+                        || emergencyQueue > 0
+                        || (initialTerminalEnergy > 0 && terminalEnergy < initialTerminalEnergy && terminalEnergy >= 5000);
+                    diagnostics.spawnlessSiege = {
+                        room: recoveryRoom,
+                        ownedControllers: recoveryControllers.length,
+                        spawns: recoverySpawns.length,
+                        towers: recoveryTowers.length,
+                        spawnSites: recoverySites.length,
+                        hostileSeed: recoveryHostiles.length,
+                        seededSpawnCount: seededSpawnCount,
+                        seededTowerCount: seededTowerCount,
+                        defenseRequest: hasRecoveryRequest,
+                        emergencyQueue: emergencyQueue,
+                        refuelers: refuelers,
+                        terminalEnergy: terminalEnergy,
+                        initialTerminalEnergy: initialTerminalEnergy,
+                        hasRefuelEvidence: hasRefuelEvidence
+                    };
                     if (input.scenarios.indexOf('default-bootstrap') >= 0) {
                         runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario', 'default-bootstrap'], function () { return input.ownedControllers.length > 0 && input.spawns.length > 0; }, 'default bootstrap scenario lacks owned controller or spawn');
                     }
@@ -624,6 +704,21 @@ function assertScenarios(counters, input) {
                                 && hasCriticalNukeProcessTelemetry(input.memory, homeRoom);
                         }, "stacked-nukes scenario collapsed same-tile alerts or missed critical scheduling telemetry; diagnostics=".concat(JSON.stringify({ alerts: diagnostics.stackedNukes, scheduling: diagnostics.nukeScheduling })));
                     }
+                    if (input.scenarios.indexOf('spawnless-siege') >= 0) {
+                        runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario spawnless-siege preserves owned recovery continuity', ['scenario', 'spawnless-siege', 'recovery'], function () {
+                            var _a, _b, _c, _d;
+                            var recoveryPlan = recoverySpawns.length > 0 || recoverySites.length > 0;
+                            var recoverySwarm = (_c = (_b = (_a = input.memory.rooms) === null || _a === void 0 ? void 0 : _a[recoveryRoom]) === null || _b === void 0 ? void 0 : _b.swarm) !== null && _c !== void 0 ? _c : {};
+                            var recoveryDanger = Number((_d = recoverySwarm.danger) !== null && _d !== void 0 ? _d : 0) > 0;
+                            var spawnlessDiagnostics = diagnostics.spawnlessSiege;
+                            return recoveryControllers.length > 0
+                                && recoveryPlan
+                                && (spawnlessDiagnostics.defenseRequest === true || recoveryDanger)
+                                && spawnlessDiagnostics.hasRefuelEvidence === true
+                                && spawnlessDiagnostics.seededSpawnCount === 0
+                                && spawnlessDiagnostics.seededTowerCount === 0;
+                        }, "spawnless-siege recovery signal missing; diagnostics=".concat(JSON.stringify(diagnostics.spawnlessSiege)));
+                    }
                     if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
                         runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario defense-hard-invader seeds a 50-part hostile', ['scenario', 'defense-hard-invader', 'seed'], function () { return hasConfirmedHardInvaderSeed(hardInvaders, hardInvaderSeed); }, "hard invader scenario did not seed a 50-part hostile; diagnostics=".concat(JSON.stringify(hardInvaderDiagnostics)));
                         runtimeAssertCounterAfter(counters, input, 1200, 'scenario defense-hard-invader emits defensive runtime signal', ['scenario', 'defense-hard-invader'], function () { return hasDefenseSignal(input.memory); }, 'hard invader scenario has no danger, defense task, or defense request signal');
@@ -645,7 +740,7 @@ function assertScenarios(counters, input) {
                             });
                         };
                         hasOHLabProduct_1 = function () { return labStructures.some(function (lab) { var _a, _b, _c; return (lab === null || lab === void 0 ? void 0 : lab.mineralType) === 'OH' || ((_b = (_a = lab === null || lab === void 0 ? void 0 : lab.store) === null || _a === void 0 ? void 0 : _a.OH) !== null && _b !== void 0 ? _b : 0) > 0 || ((_c = lab === null || lab === void 0 ? void 0 : lab.cooldown) !== null && _c !== void 0 ? _c : 0) > 0; }); };
-                        economyRoom_1 = (_6 = (_5 = input.memory.screepsmodTestingScenarios) === null || _5 === void 0 ? void 0 : _5.rooms) === null || _6 === void 0 ? void 0 : _6.economy;
+                        economyRoom_1 = (_35 = (_34 = input.memory.screepsmodTestingScenarios) === null || _34 === void 0 ? void 0 : _34.rooms) === null || _35 === void 0 ? void 0 : _35.economy;
                         hasTerminalMovement = function () { return terminalStructures.some(function (terminal) {
                             var _a, _b, _c, _d, _e, _f, _g, _h;
                             if (economyRoom_1 && (terminal === null || terminal === void 0 ? void 0 : terminal.room) === economyRoom_1 && ((_b = (_a = terminal === null || terminal === void 0 ? void 0 : terminal.store) === null || _a === void 0 ? void 0 : _a.energy) !== null && _b !== void 0 ? _b : 0) > 5000)
