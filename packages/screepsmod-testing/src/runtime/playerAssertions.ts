@@ -306,6 +306,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   // code. When an identity is available, persisted maturity is reusable only
   // for that exact code version.
   var previousRuntimeIdentityMatches = !hasRuntimeIdentity
+    || previousPlayerSummary.runtimeCodeIdentity === undefined
     || previousPlayerSummary.runtimeCodeIdentity === currentRuntimeIdentity;
   var previousRuntimeExecutions = previousRuntimeIdentityMatches
     ? Number(previousPlayerSummary.runtimeExecutions)
@@ -323,7 +324,15 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   var playerRuntimeExecutionCount = runtimeExecutionBase + 1;
   global.__screepsmodTestingPlayerExecutionCount = playerRuntimeExecutionCount;
   global.__screepsmodTestingPlayerRuntimeCodeIdentity = currentRuntimeIdentity;
-  var runtimeAge = Math.max(0, playerRuntimeExecutionCount - 1);
+  var executionAge = Math.max(0, playerRuntimeExecutionCount - 1);
+  var seenAt = hasRuntimeIdentity && previousRuntimeIdentityMatches
+    ? Number(memory.__screepsmodTestingBotCodeSeenAt)
+    : Number.NaN;
+  var gameTickAge = Number.isFinite(seenAt) ? Math.max(0, tick - seenAt) : 0;
+  // playerSandbox callbacks can be sparse across global resets. A callback
+  // still proves the current state, so use persisted code age when available
+  // while retaining execution maturity as the fallback for legacy harnesses.
+  var runtimeAge = Math.max(executionAge, gameTickAge);
   var runtimeWarmed = runtimeAge >= ${JSON.stringify(runtimeWarmupTicks)};
 
   assert('server exposes Game and advances ticks', ['smoke','server'], function() { return tick > 0; }, 'Game.time did not advance');

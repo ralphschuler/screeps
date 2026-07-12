@@ -160,6 +160,40 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('warms a sparse player-sandbox callback from persisted bot-code age', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100 } },
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      __screepsmodTestingBotCodeSeenAt: 0,
+    });
+    const context = vm.createContext({
+      Game: createWarmGame(150),
+      Memory: memory,
+      global: {},
+    });
+    context.global = context;
+    context.__screepsmodTestingPlayerExecutionCount = 1;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = 'modules:main:36';
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      },
+    }, 'bot-user-id');
+
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      runtimeExecutions: 2,
+      runtimeAge: 150,
+      runtimeWarmed: true,
+      skipped: 1,
+      tick: 150,
+    });
+  });
+
   it('warms from completed player-sandbox executions instead of skipped game ticks', () => {
     const engine = new EventEmitter();
     installTestingMod({
@@ -167,7 +201,9 @@ describe('screepsmod-testing backend mod', () => {
       screepsmod: { testing: { runtimeWarmupTicks: 100 } },
     });
 
-    const memory: any = createWarmRuntimeMemory();
+    const memory: any = createWarmRuntimeMemory({
+      __screepsmodTestingBotCodeIdentity: undefined,
+    });
     const context = vm.createContext({
       Game: createWarmGame(150),
       Memory: memory,
