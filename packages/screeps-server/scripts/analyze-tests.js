@@ -8,7 +8,7 @@
  * and writes machine-readable + human-readable artifacts.
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -30,71 +30,40 @@ function safeReadJson(path) {
   }
 }
 
-function inferHarnessMode() {
+export function inferHarnessMode() {
+  let original = [];
   try {
-    const argvRaw = process.env.npm_config_argv;
-    if (argvRaw) {
-      const parsed = JSON.parse(argvRaw);
-      const tokens = [
-        ...(Array.isArray(parsed?.original) ? parsed.original : []),
-        process.env.npm_lifecycle_event,
-        ...process.argv,
-      ]
-        .filter(Boolean)
-        .map((value) => String(value).toLowerCase());
-
-      if (tokens.some((token) => token.includes('test:smoke') || token === 'smoke')) return 'smoke';
-      if (tokens.some((token) => token.includes('test:long') || token === 'long')) return 'long';
-      if (tokens.some((token) => token.includes('test:integration'))) return 'smoke';
-      if (tokens.some((token) => token.includes('smoke-alt'))) return 'smoke-alt';
-      if (tokens.some((token) => token.includes('test:packages'))) return 'packages';
-      if (tokens.some((token) => token.includes('test:performance'))) return 'long';
-      if (tokens.some((token) => token.includes('test:server'))) return 'long';
-      const modeArg = tokens
-        .filter((token) => token.startsWith('--mode='))
-        .map((token) => token.replace(/^--mode=/, ''))[0];
-      if (modeArg) return modeArg;
-      const hasModeFlag = tokens.indexOf('--mode');
-      if (hasModeFlag >= 0 && tokens[hasModeFlag + 1]) {
-        return tokens[hasModeFlag + 1];
-      }
-    }
+    const parsed = process.env.npm_config_argv ? JSON.parse(process.env.npm_config_argv) : null;
+    original = Array.isArray(parsed?.original) ? parsed.original : [];
   } catch {
-    // fallthrough
+    // Ignore malformed npm metadata and rely on lifecycle/process arguments.
+  }
+
+  const tokens = [
+    ...original,
+    process.env.npm_lifecycle_event,
+    ...process.argv,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  if (tokens.some((token) => token.includes('test:smoke') || token === 'smoke')) return 'smoke';
+  if (tokens.some((token) => token.includes('test:long') || token === 'long')) return 'long';
+  if (tokens.some((token) => token.includes('test:integration'))) return 'smoke';
+  if (tokens.some((token) => token.includes('smoke-alt'))) return 'smoke-alt';
+  if (tokens.some((token) => token.includes('test:packages'))) return 'packages';
+  if (tokens.some((token) => token.includes('test:performance'))) return 'long';
+  if (tokens.some((token) => token.includes('test:server'))) return 'long';
+  const modeArg = tokens
+    .filter((token) => token.startsWith('--mode='))
+    .map((token) => token.replace(/^--mode=/, ''))[0];
+  if (modeArg) return modeArg;
+  const hasModeFlag = tokens.indexOf('--mode');
+  if (hasModeFlag >= 0 && tokens[hasModeFlag + 1]) {
+    return tokens[hasModeFlag + 1];
   }
 
   return null;
-}
-
-function inferModeFromArtifacts() {
-  if (!existsSync(ARTIFACT_DIR)) return null;
-  let selected = null;
-  let bestMtime = -1;
-
-  try {
-    const entries = readdirSync(ARTIFACT_DIR, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
-
-    for (const entry of entries) {
-      const summaryPath = join(ARTIFACT_DIR, entry, 'summary.json');
-      if (!existsSync(summaryPath)) continue;
-
-      const { mtimeMs } = statSync(summaryPath);
-      if (mtimeMs <= bestMtime) continue;
-
-      const summary = safeReadJson(summaryPath);
-      if (!summary || typeof summary !== 'object') continue;
-      if (!['smoke', 'long', 'packages', 'integration', 'performance', 'smoke-alt'].includes(entry)) continue;
-
-      selected = entry;
-      bestMtime = mtimeMs;
-    }
-  } catch {
-    return null;
-  }
-
-  return selected;
 }
 
 function readHarnessSummary(mode) {
@@ -127,7 +96,10 @@ export function applyHarnessSummary(report, harnessSummary) {
   const validation = deriveValidation(summary, testSummary);
   const validationFailures = [];
 
-  if (summary.status && summary.status !== 'passed') validationFailures.push(`harness status: ${summary.status}`);
+  if (summary.status !== 'passed') {
+    validationFailures.push(`harness status: ${summary.status ?? 'missing'}`);
+  }
+  if (summary.checks?.modResultsPresent !== true) validationFailures.push('mod results missing');
   if (validation.transport.status !== 'passed') validationFailures.push('transport failed');
   if (validation.assertions.status !== 'passed') {
     validationFailures.push(`assertions ${validation.assertions.status}`);
@@ -191,6 +163,21 @@ export function applyHarnessSummary(report, harnessSummary) {
   return report;
 }
 
+export function markMissingHarnessEvidence(report, mode) {
+  const reason = mode
+    ? `harness summary missing for mode: ${mode}`
+    : 'harness mode could not be inferred; required harness evidence is missing';
+
+  report.summary.failed = Math.max(1, report.summary.failed);
+  report.validation = {
+    status: 'failed',
+    failures: [reason],
+    assertions: normalizeAssertionCounts(),
+    transport: { status: 'unknown', error: null },
+  };
+  return report;
+}
+
 export function buildEmptyReport() {
   return {
     timestamp: new Date().toISOString(),
@@ -224,30 +211,31 @@ export function buildEmptyReport() {
   };
 }
 
-export function generateReport() {
+export function buildReport({ mode = inferHarnessMode(), harnessSummary = readHarnessSummary(mode) } = {}) {
   const report = buildEmptyReport();
-
-  const mode = inferHarnessMode();
-  const harnessSummary = readHarnessSummary(mode);
-
-  if (harnessSummary && harnessSummary.summary && mode !== 'packages') {
-    applyHarnessSummary(report, harnessSummary);
-  }
+  report.mode = mode;
 
   if (mode === 'packages') {
-    // package suite output is intentionally left as placeholders until package runner JSON reporting is added.
+    // Package-only runs are explicit and do not require the private-server harness summary.
     report.packages.passed = true;
+  } else if (harnessSummary && harnessSummary.summary) {
+    applyHarnessSummary(report, harnessSummary);
+  } else {
+    markMissingHarnessEvidence(report, mode);
   }
 
-  if (report.integration.tests.length === 0) {
+  if (report.integration.tests.length === 0 && mode !== 'packages' && report.validation?.status !== 'failed') {
     report.integration.passed = true;
   }
-  if (report.performance.tests.length === 0) {
+  if (report.performance.tests.length === 0 && mode !== 'packages' && report.validation?.status !== 'failed') {
     report.performance.passed = true;
   }
-  if (report.packages.tests.length === 0 && !report.packages.passed) {
-    report.packages.passed = true;
-  }
+
+  return report;
+}
+
+export function generateReport() {
+  const report = buildReport();
 
   writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
   console.log(`✅ Test results written to ${REPORT_PATH}`);
@@ -265,9 +253,18 @@ function formatMetric(value, decimals, fallback = 'N/A') {
     : fallback;
 }
 
-function generateMarkdown(report) {
+export function generateMarkdown(report) {
   const passed = report.summary.failed === 0;
   const emoji = passed ? '✅' : '❌';
+  const integrationStatus = report.integration.tests.length === 0
+    ? 'Not run'
+    : report.integration.passed ? 'Passed' : 'Failed';
+  const performanceStatus = report.performance.tests.length === 0
+    ? 'Not run'
+    : report.performance.passed ? 'Passed' : 'Failed';
+  const packagesStatus = report.mode === 'packages'
+    ? report.packages.passed ? 'Passed' : 'Failed'
+    : report.packages.tests.length === 0 ? 'Not run' : report.packages.passed ? 'Passed' : 'Failed';
 
   return `# 🧪 Server Test Results ${emoji}
 
@@ -281,15 +278,20 @@ function generateMarkdown(report) {
 - **Skipped**: ⏭️ ${report.summary.skipped}
 - **Duration**: ${report.summary.duration.toFixed(2)}s
 
+## Validation
+
+${report.validation?.status === 'failed' ? '❌' : '✅'} **Status**: ${report.validation?.status ?? 'not required'}
+${report.validation?.failures?.length ? report.validation.failures.map((failure) => `- ${failure}`).join('\n') : '- none'}
+
 ## Integration Tests
 
-${report.integration.passed ? '✅' : '❌'} **Status**: ${report.integration.passed ? 'Passed' : 'Failed'}
+${integrationStatus === 'Passed' ? '✅' : integrationStatus === 'Failed' ? '❌' : '⏭️'} **Status**: ${integrationStatus}
 - **Duration**: ${report.integration.duration.toFixed(2)}s
 - **Tests**: ${report.integration.tests.length}
 
 ## Performance Tests
 
-${report.performance.passed ? '✅' : '❌'} **Status**: ${report.performance.passed ? 'Passed' : 'Failed'}
+${performanceStatus === 'Passed' ? '✅' : performanceStatus === 'Failed' ? '❌' : '⏭️'} **Status**: ${performanceStatus}
 - **Duration**: ${report.performance.duration.toFixed(2)}s
 - **Tests**: ${report.performance.tests.length}
 
@@ -301,7 +303,7 @@ ${report.performance.passed ? '✅' : '❌'} **Status**: ${report.performance.pa
 
 ## Framework Package Tests
 
-${report.packages.passed ? '✅' : '❌'} **Status**: ${report.packages.passed ? 'Passed' : 'Failed'}
+${packagesStatus === 'Passed' ? '✅' : packagesStatus === 'Failed' ? '❌' : '⏭️'} **Status**: ${packagesStatus}
 - **Duration**: ${report.packages.duration.toFixed(2)}s
 - **Tests**: ${report.packages.tests.length}
 
