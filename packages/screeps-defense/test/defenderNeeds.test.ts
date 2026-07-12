@@ -3,6 +3,7 @@ import {
   analyzeDefenderNeeds,
   createDefenseRequest,
   getCombatEscortRequirement,
+  countActiveCombatDefenders,
   getCurrentDefenders,
   hasActiveDefenseThreat,
   hasSufficientCombatEscort,
@@ -393,6 +394,21 @@ describe("defense assistance needs", () => {
 
     expect(needs.guards).to.equal(1);
     expect(needs.reasons).to.include("1 claim parts detected");
+  });
+
+  it("counts only active combat defenders for emergency decisions", () => {
+    const creeps = [
+      { spawning: false, hits: 100, memory: { role: "guard" }, body: [{ type: ATTACK, hits: 100 }] },
+      { spawning: true, hits: 100, memory: { role: "ranger" }, body: [{ type: RANGED_ATTACK, hits: 100 }] },
+      { spawning: false, hits: 0, memory: { role: "soldier" }, body: [{ type: ATTACK, hits: 100 }] },
+      { spawning: false, hits: 100, memory: { role: "worker" }, body: [{ type: WORK, hits: 100 }] },
+    ] as unknown as Creep[];
+    const room = {
+      find: (type: FindConstant) => (type === FIND_MY_CREEPS ? creeps : []),
+    } as unknown as Room;
+
+    expect(countActiveCombatDefenders(room)).to.equal(1);
+    expect(countActiveCombatDefenders(room, ["guard", "ranger", "soldier"])).to.equal(1);
   });
 
   it("does not count spawning or disarmed defenders as current defense", () => {

@@ -17,6 +17,7 @@ import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { EvacuationIntentMemory } from "@ralphschuler/screeps-memory";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+import { countActiveCombatDefenders } from "../analysis/defenderNeeds";
 
 /**
  * Evacuation configuration
@@ -264,14 +265,9 @@ export class EvacuationManager {
       if (swarm.danger >= this.config.triggerDangerLevel && swarm.posture === "siege") {
         // Only evacuate if we're clearly losing
         const hostiles = getActualHostileCreeps(room);
-        const defenders = room.find(FIND_MY_CREEPS, {
-          filter: c => {
-            const body = c.body.map(p => p.type);
-            return body.includes(ATTACK) || body.includes(RANGED_ATTACK);
-          }
-        });
+        const defenderCount = countActiveCombatDefenders(room);
 
-        if (hostiles.length > defenders.length * 3) {
+        if (hostiles.length > defenderCount * 3) {
           this.startEvacuation(roomName, "siege");
           continue;
         }

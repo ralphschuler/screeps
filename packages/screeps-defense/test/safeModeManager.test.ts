@@ -78,6 +78,18 @@ describe("safe mode manager", () => {
     assert.equal(getSafeModeCalls(), 1);
   });
 
+  it("does not let spawning or disarmed defenders suppress safe mode", () => {
+    const defenders = [
+      { spawning: true, hits: 100, memory: { role: "guard" }, body: [{ type: ATTACK, hits: 100 }] },
+      { spawning: false, hits: 100, memory: { role: "ranger" }, body: [{ type: RANGED_ATTACK, hits: 0 }] },
+    ] as unknown as Creep[];
+    const { room, getSafeModeCalls } = createRoom([createHostile([ATTACK, MOVE])], defenders);
+
+    new SafeModeManager().checkSafeMode(room, createSwarm(3));
+
+    assert.equal(getSafeModeCalls(), 1);
+  });
+
   it("can disable dangerous-hostile gating through Memory", () => {
     (Memory as any).defenseSettings = { safeModeDangerousHostilesOnly: false };
     const { room, getSafeModeCalls } = createRoom([createHostile([MOVE])]);

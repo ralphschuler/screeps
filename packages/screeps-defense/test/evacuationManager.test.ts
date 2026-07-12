@@ -10,7 +10,7 @@ function createStore() {
   } as unknown as Store<ResourceConstant>;
 }
 
-function createRoom(name: string, creeps: Creep[] = []): Room {
+function createRoom(name: string, creeps: Creep[] = [], hostiles: Creep[] = []): Room {
   const terminal = { store: createStore(), send: () => OK } as unknown as StructureTerminal;
   const storage = { store: createStore() } as unknown as StructureStorage;
   return {
@@ -20,10 +20,18 @@ function createRoom(name: string, creeps: Creep[] = []): Room {
     storage,
     find: (type: FindConstant) => {
       if (type === FIND_MY_CREEPS) return creeps;
-      if (type === FIND_HOSTILE_CREEPS || type === FIND_NUKES) return [];
+      if (type === FIND_HOSTILE_CREEPS) return hostiles;
+      if (type === FIND_NUKES) return [];
       return [];
     },
   } as unknown as Room;
+}
+
+function createHostile(): Creep {
+  return {
+    owner: { username: "Invader" },
+    body: [{ type: ATTACK, hits: 100 }],
+  } as unknown as Creep;
 }
 
 function createCreep(name: string): Creep {
@@ -50,6 +58,24 @@ describe("EvacuationManager persistence", () => {
       flags: {},
       powerCreeps: {},
     };
+  });
+
+  it("starts siege evacuation when nominal defenders are spawning", () => {
+    const source = createRoom(
+      "W1N1",
+      [{ name: "spawning-defender", spawning: true, memory: {}, body: [{ type: ATTACK, hits: 100 }] } as unknown as Creep],
+      [createHostile(), createHostile(), createHostile()],
+    );
+    const target = createRoom("W2N1");
+    (Game as any).rooms = { [source.name]: source, [target.name]: target };
+    const swarm = memoryManager.initSwarmState(source.name);
+    swarm.danger = 3;
+    swarm.posture = "siege";
+
+    const manager = new EvacuationManager();
+    manager.run();
+
+    expect(manager.getEvacuationState(source.name)).to.include({ reason: "siege", roomName: source.name });
   });
 
   it("persists the target and resumes an active evacuation after manager reset", () => {

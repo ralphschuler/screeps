@@ -314,6 +314,28 @@ function hasActivePart(creep: Creep, parts: BodyPartConstant[]): boolean {
 }
 
 /**
+ * Count own creeps that can currently contribute combat damage.
+ *
+ * Spawning creeps, dead creeps, and creeps with destroyed attack parts must not
+ * mask an emergency defense gap. Callers may provide role names when their
+ * decision uses a narrower role-based definition of combat capacity.
+ */
+export function countActiveCombatDefenders(room: Room, roles?: readonly string[]): number {
+  const allowedRoles = roles === undefined ? undefined : new Set(roles);
+
+  return room.find(FIND_MY_CREEPS).filter(creep => {
+    const hits = (creep as Creep & { hits?: number }).hits;
+    const role = (creep.memory as { role?: string } | undefined)?.role;
+
+    if ((creep as Creep & { spawning?: boolean }).spawning === true) return false;
+    if (typeof hits === "number" && hits <= 0) return false;
+    if (allowedRoles !== undefined && !allowedRoles.has(role ?? "")) return false;
+
+    return hasActivePart(creep, [ATTACK, RANGED_ATTACK]);
+  }).length;
+}
+
+/**
  * Get current active defender count in room.
  *
  * Spawning creeps and creeps with destroyed combat/heal parts cannot defend the
