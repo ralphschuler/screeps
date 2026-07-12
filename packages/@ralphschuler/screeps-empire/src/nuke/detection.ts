@@ -6,17 +6,157 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { NUKE_DAMAGE } from "./types";
-import type { IncomingNukeAlert, EmpireMemory, SwarmState } from "../types";
+import type { IncomingNukeAlert } from "../types";
+
+type NukeDetectionMemory = { incomingNukes?: IncomingNukeAlert[] };
+type NukeDetectionSwarm = {
+  nukeDetected?: boolean;
+  pheromones: { defense: number; siege: number };
+  danger: 0 | 1 | 2 | 3;
+  eventLog: Array<{ type: string; time: number; details?: string }>;
+};
+
+const roomNukeCache = new Map<string, { room: Room; tick: number; nukes: Nuke[] }>();
+let roomNukeCacheTick = -1;
+const detectedRoomTicks = new WeakMap<object, Map<string, number>>();
 
 /**
- * Detect incoming nukes in owned rooms and create alerts
+ * Read a room's incoming nukes once per tick.
+ *
+ * Room defense and the low-frequency empire coordinator both need this signal. Keeping
+ * the cache here avoids paying for duplicate FIND_NUKES scans while retaining the
+ * room-defense manager's same-tick observation cadence.
+ */
+export function getOwnedRoomNukes(room: Room): Nuke[] {
+  const tick = typeof Game !== "undefined" && Number.isFinite(Game.time) ? Game.time : -1;
+  if (tick !== roomNukeCacheTick) {
+    roomNukeCache.clear();
+    roomNukeCacheTick = tick;
+  }
+
+  const cached = roomNukeCache.get(room.name);
+  if (cached?.room === room && cached.tick === tick) return cached.nukes;
+
+  const nukes = room.find(FIND_NUKES);
+  roomNukeCache.set(room.name, { room, tick, nukes });
+  return nukes;
+}
+
+function wasRoomDetectedThisTick(empire: NukeDetectionMemory, roomName: string): boolean {
+  const ticks = detectedRoomTicks.get(empire as object);
+  return ticks?.get(roomName) === Game.time;
+}
+
+function markRoomDetected(empire: NukeDetectionMemory, roomName: string): void {
+  let ticks = detectedRoomTicks.get(empire as object);
+  if (!ticks) {
+    ticks = new Map<string, number>();
+    detectedRoomTicks.set(empire as object, ticks);
+  }
+  ticks.set(roomName, Game.time);
+}
+
+/**
+ * Detect incoming nukes for one owned room and create alerts.
+ *
+ * This is the shared same-tick seam used by room defense and empire coordination.
+ */
+export function detectIncomingNukesInRoom(
+  empire: NukeDetectionMemory,
+  room: Room,
+  swarm: NukeDetectionSwarm,
+  nukes?: Nuke[]
+): void {
+  if (wasRoomDetectedThisTick(empire, room.name)) return;
+  markRoomDetected(empire, room.name);
+  const observedNukes = nukes ?? getOwnedRoomNukes(room);
+
+  if (observedNukes.length > 0) {
+    const incomingNukes = empire.incomingNukes ?? (empire.incomingNukes = []);
+
+    // Process each nuke. IDs are stable across ticks and keep same-tile salvos separate.
+    observedNukes.forEach((nuke, index) => {
+      const timeToLand = nuke.timeToLand || 0;
+      const impactTick = Game.time + timeToLand;
+      const nukeId = getNukeTrackingId(nuke, room.name, index, impactTick);
+      const existingAlert = incomingNukes.find(alert => alert.nukeId === nukeId)
+        // Migrate one legacy coordinate-keyed alert when an ID becomes available.
+        ?? incomingNukes.find(alert =>
+          !alert.nukeId &&
+          alert.roomName === room.name &&
+          alert.landingPos.x === nuke.pos.x &&
+          alert.landingPos.y === nuke.pos.y &&
+          alert.impactTick === impactTick
+        );
+
+      if (!existingAlert) {
+        // New nuke detected - create alert
+        const alert: IncomingNukeAlert = {
+          nukeId,
+          roomName: room.name,
+          landingPos: { x: nuke.pos.x, y: nuke.pos.y },
+          impactTick,
+          timeToLand,
+          detectedAt: Game.time,
+          evacuationTriggered: false,
+          sourceRoom: nuke.launchRoomName
+        };
+
+        // Identify threatened structures
+        const threatenedStructures = identifyThreatenedStructures(room, nuke.pos);
+        alert.threatenedStructures = threatenedStructures;
+
+        incomingNukes.push(alert);
+
+        // Update swarm state
+        if (!swarm.nukeDetected) {
+          swarm.nukeDetected = true;
+          swarm.pheromones.defense = Math.min(100, swarm.pheromones.defense + 50);
+          swarm.pheromones.siege = Math.min(100, swarm.pheromones.siege + 30);
+          swarm.danger = 3 as 0 | 1 | 2 | 3;
+
+          logger.warn(
+            `INCOMING NUKE DETECTED in ${room.name}! ` +
+            `Landing at (${nuke.pos.x}, ${nuke.pos.y}), impact in ${nuke.timeToLand} ticks. ` +
+            `Source: ${nuke.launchRoomName || "unknown"}. ` +
+            `Threatened structures: ${threatenedStructures.length}`,
+            { subsystem: "Nuke" }
+          );
+
+          // Add to event log
+          swarm.eventLog.push({
+            type: "nuke_incoming",
+            time: Game.time,
+            details: `Impact in ${nuke.timeToLand} ticks at (${nuke.pos.x},${nuke.pos.y})`
+          });
+
+          // Trim event log
+          if (swarm.eventLog.length > 20) {
+            swarm.eventLog.shift();
+          }
+        }
+      } else {
+        // Update existing alert and attach an ID to legacy memory on first observation.
+        existingAlert.nukeId = nukeId;
+        existingAlert.impactTick = impactTick;
+        existingAlert.timeToLand = timeToLand;
+        existingAlert.sourceRoom = nuke.launchRoomName;
+      }
+    });
+  } else if (swarm.nukeDetected) {
+    // Nukes cleared (either impacted or something else)
+    swarm.nukeDetected = false;
+    logger.info(`Nuke threat cleared in ${room.name}`, { subsystem: "Nuke" });
+  }
+}
+
+/**
+ * Detect incoming nukes in all visible owned rooms and create alerts.
  */
 export function detectIncomingNukes(
-  empire: EmpireMemory,
-  getSwarmState: (roomName: string) => SwarmState | undefined
+  empire: NukeDetectionMemory,
+  getSwarmState: (roomName: string) => NukeDetectionSwarm | undefined
 ): void {
-  const incomingNukes = empire.incomingNukes ?? (empire.incomingNukes = []);
-
   for (const roomName in Game.rooms) {
     const room = Game.rooms[roomName];
     if (!room.controller?.my) continue;
@@ -24,83 +164,7 @@ export function detectIncomingNukes(
     const swarm = getSwarmState(roomName);
     if (!swarm) continue;
 
-    const nukes = room.find(FIND_NUKES);
-
-    if (nukes.length > 0) {
-      // Process each nuke. IDs are stable across ticks and keep same-tile salvos separate.
-      nukes.forEach((nuke, index) => {
-        const timeToLand = nuke.timeToLand || 0;
-        const impactTick = Game.time + timeToLand;
-        const nukeId = getNukeTrackingId(nuke, roomName, index, impactTick);
-        const existingAlert = incomingNukes.find(alert => alert.nukeId === nukeId)
-          // Migrate one legacy coordinate-keyed alert when an ID becomes available.
-          ?? incomingNukes.find(alert =>
-            !alert.nukeId &&
-            alert.roomName === roomName &&
-            alert.landingPos.x === nuke.pos.x &&
-            alert.landingPos.y === nuke.pos.y &&
-            alert.impactTick === impactTick
-          );
-
-        if (!existingAlert) {
-          // New nuke detected - create alert
-          const alert: IncomingNukeAlert = {
-            nukeId,
-            roomName,
-            landingPos: { x: nuke.pos.x, y: nuke.pos.y },
-            impactTick,
-            timeToLand,
-            detectedAt: Game.time,
-            evacuationTriggered: false,
-            sourceRoom: nuke.launchRoomName
-          };
-
-          // Identify threatened structures
-          const threatenedStructures = identifyThreatenedStructures(room, nuke.pos);
-          alert.threatenedStructures = threatenedStructures;
-
-          incomingNukes.push(alert);
-
-          // Update swarm state
-          if (!swarm.nukeDetected) {
-            swarm.nukeDetected = true;
-            swarm.pheromones.defense = Math.min(100, swarm.pheromones.defense + 50);
-            swarm.pheromones.siege = Math.min(100, swarm.pheromones.siege + 30);
-            swarm.danger = 3 as 0 | 1 | 2 | 3;
-
-            logger.warn(
-              `INCOMING NUKE DETECTED in ${roomName}! ` +
-              `Landing at (${nuke.pos.x}, ${nuke.pos.y}), impact in ${nuke.timeToLand} ticks. ` +
-              `Source: ${nuke.launchRoomName || "unknown"}. ` +
-              `Threatened structures: ${threatenedStructures.length}`,
-              { subsystem: "Nuke" }
-            );
-
-            // Add to event log
-            swarm.eventLog.push({
-              type: "nuke_incoming",
-              time: Game.time,
-              details: `Impact in ${nuke.timeToLand} ticks at (${nuke.pos.x},${nuke.pos.y})`
-            });
-
-            // Trim event log
-            if (swarm.eventLog.length > 20) {
-              swarm.eventLog.shift();
-            }
-          }
-        } else {
-          // Update existing alert and attach an ID to legacy memory on first observation.
-          existingAlert.nukeId = nukeId;
-          existingAlert.impactTick = impactTick;
-          existingAlert.timeToLand = timeToLand;
-          existingAlert.sourceRoom = nuke.launchRoomName;
-        }
-      });
-    } else if (swarm.nukeDetected) {
-      // Nukes cleared (either impacted or something else)
-      swarm.nukeDetected = false;
-      logger.info(`Nuke threat cleared in ${roomName}`, { subsystem: "Nuke" });
-    }
+    detectIncomingNukesInRoom(empire, room, swarm);
   }
 }
 

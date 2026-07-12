@@ -10,6 +10,7 @@
  */
 
 import { assessThreat, calculateWallRepairTarget, getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { detectIncomingNukesInRoom, getOwnedRoomNukes } from "@ralphschuler/screeps-empire";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { pheromoneManager } from "@ralphschuler/screeps-pheromones";
@@ -44,8 +45,14 @@ export class RoomDefenseManager {
     cache: { spawns: StructureSpawn[]; towers: StructureTower[] }
   ): void {
     const hostiles = getActualHostileCreeps(room);
-    const intent = this.getDefensePostureIntent(room, swarm, cache, hostiles);
+    const nukes = getOwnedRoomNukes(room);
+    const intent = this.getDefensePostureIntent(room, swarm, cache, hostiles, nukes);
     this.executeDefensePostureIntent(room, swarm, hostiles, intent);
+
+    // Publish the same-tick alert through the shared detector after posture planning.
+    // The detector reuses the cached nuke list and the empire coordinator skips this
+    // room later in the tick, preventing duplicate scans and duplicate incident work.
+    detectIncomingNukesInRoom(memoryManager.getEmpire(), room, swarm, nukes);
   }
 
   /**
@@ -55,9 +62,10 @@ export class RoomDefenseManager {
     room: Room,
     swarm: SwarmState,
     cache: { spawns: StructureSpawn[]; towers: StructureTower[] },
-    hostiles: Creep[] = getActualHostileCreeps(room)
+    hostiles: Creep[] = getActualHostileCreeps(room),
+    nukes: Nuke[] = getOwnedRoomNukes(room)
   ): DefensePostureIntent {
-    const snapshot = this.getDefensePostureSnapshot(room, swarm, cache, hostiles);
+    const snapshot = this.getDefensePostureSnapshot(room, swarm, cache, hostiles, nukes);
     return planDefensePostureIntent(snapshot);
   }
 
@@ -65,14 +73,14 @@ export class RoomDefenseManager {
     room: Room,
     swarm: SwarmState,
     cache: { spawns: StructureSpawn[]; towers: StructureTower[] },
-    hostiles: Creep[]
+    hostiles: Creep[],
+    nukes: Nuke[]
   ): DefensePostureSnapshot {
     const cluster = swarm.clusterId ? memoryManager.getCluster(swarm.clusterId) : null;
     const threat = hostiles.length > 0 ? assessThreat(room) : undefined;
     // Room processes are distributed across offsets; nuke detection must run
-    // whenever this room executes rather than on a global modulo tick.
-    const nukes = room.find(FIND_NUKES);
-
+    // whenever this room executes rather than on a global modulo tick. The shared
+    // detector cache keeps the empire coordinator from repeating this scan.
     return {
       roomName: room.name,
       time: Game.time,
