@@ -426,12 +426,17 @@ function runShell(command, commandArgs, options, log, runOptions = {}) {
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) resolve({ stdout, stderr });
-      else
-        reject(
-          new Error(
-            `${command} ${commandArgs.join(" ")} exited ${code}\n${stderr}`,
-          ),
+      else {
+        const error = new Error(
+          `${command} ${commandArgs.join(" ")} exited ${code}\n${stderr}`,
         );
+        error.command = command;
+        error.commandArgs = commandArgs;
+        error.exitCode = code;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        reject(error);
+      }
     });
   });
 }
@@ -644,6 +649,66 @@ async function collectModSummaryFromCli(options, summary) {
   summary.checks.modResultsPresent = true;
 }
 
+export function summarizeContainerState(output) {
+  const text = String(output ?? "").trim();
+  if (!text) return [];
+
+  const rows = [];
+  for (const line of text.split(/\r?\n/).map(value => value.trim()).filter(Boolean)) {
+    try {
+      const parsed = JSON.parse(line);
+      if (Array.isArray(parsed)) rows.push(...parsed);
+      else if (parsed && typeof parsed === "object") rows.push(parsed);
+    } catch {
+      // Keep malformed Docker output in the raw artifact; do not discard diagnostics.
+    }
+  }
+  if (!rows.length) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object") return [parsed];
+    } catch {
+      // Non-JSON `docker compose ps` output is still preserved by the caller.
+    }
+  }
+  return rows;
+}
+
+export function isTransportFailure(error) {
+  const message = formatHarnessError(error);
+  return /ECONNREFUSED|ECONNRESET|EPIPE|ETIMEDOUT|Timed out waiting|game time did not advance|API authentication|docker .* exited|server .* (stopped|exited|unavailable)/i.test(message);
+}
+
+export function updateValidationStatus(summary, transportError) {
+  const testSummary = summary.metrics.screepsmodTesting ?? {};
+  const total = Number(testSummary.total ?? 0);
+  const failed = Number(testSummary.failed ?? 0);
+  const skipped = Number(testSummary.skipped ?? 0);
+  const assertionStatus = failed > 0
+    ? "failed"
+    : total <= 0
+      ? "unknown"
+      : skipped > 0
+        ? "incomplete"
+        : "passed";
+
+  summary.metrics.validation = {
+    assertions: {
+      status: assertionStatus,
+      total,
+      passed: Number(testSummary.passed ?? Math.max(0, total - failed - skipped)),
+      failed,
+      skipped,
+    },
+    transport: {
+      status: transportError ? "failed" : "passed",
+      error: transportError ? String(transportError?.message ?? formatHarnessError(transportError)) : null,
+    },
+  };
+  return summary.metrics.validation;
+}
+
 export function summarizeServerLogDiagnostics(logText, sampleLimit = 3) {
   const lines = String(logText ?? "")
     .split(/\r?\n/)
@@ -700,64 +765,93 @@ export function summarizeServerLogDiagnostics(logText, sampleLimit = 3) {
   };
 }
 
-async function collectLogs(options, summary, log) {
-  try {
-    const composeLogs = await runShell(
-      "docker",
-      [
-        "compose",
-        "-f",
-        "docker-compose.ci.yml",
-        "-p",
-        options.projectName,
-        "logs",
-        "--no-color",
-      ],
-      options,
-      log,
-      { cwd: options.serverRoot, capture: true },
-    );
-    let processLogs = { stdout: "", stderr: "" };
+export async function collectLogs(options, summary, log, runShellFn = runShell) {
+  const runBestEffort = async (command, commandArgs, label) => {
     try {
-      processLogs = await runShell(
-        "docker",
-        [
-          "compose",
-          "-f",
-          "docker-compose.ci.yml",
-          "-p",
-          options.projectName,
-          "exec",
-          "-T",
-          "screeps",
-          "sh",
-          "-lc",
-          "cat /screeps/logs/*.log 2>/dev/null || true",
-        ],
+      const result = await runShellFn(
+        command,
+        commandArgs,
         options,
         log,
         { cwd: options.serverRoot, capture: true },
       );
+      return { label, ok: true, exitCode: 0, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
     } catch (error) {
-      summary.errors.push(`process log collection skipped: ${error.message}`);
+      return {
+        label,
+        ok: false,
+        exitCode: Number.isInteger(error?.exitCode) ? error.exitCode : null,
+        stdout: error?.stdout ?? "",
+        stderr: error?.stderr ?? "",
+        error: formatHarnessError(error),
+      };
     }
-    const sanitized =
-      `${composeLogs.stdout}${composeLogs.stderr}\n${processLogs.stdout}${processLogs.stderr}`.replace(
-        /(token|password|secret|key)=([^\s]+)/gi,
-        "$1=[REDACTED]",
-      );
-    fs.writeFileSync(path.join(options.artifactsDir, "docker.log"), sanitized);
-    summary.metrics.serverLogDiagnostics = summarizeServerLogDiagnostics(sanitized);
-    if (!sanitized.includes("[screepsmod-testing] Mod loaded")) {
-      throw new Error(
-        "screepsmod-testing load marker not found in server logs",
-      );
-    }
-    summary.checks.modLoaded = true;
-  } catch (error) {
+  };
+
+  const projectArgs = ["compose", "-f", "docker-compose.ci.yml", "-p", options.projectName];
+  const composeLogs = await runBestEffort(
+    "docker",
+    [...projectArgs, "logs", "--no-color"],
+    "compose logs",
+  );
+  const composeState = await runBestEffort(
+    "docker",
+    [...projectArgs, "ps", "-a", "--format", "json"],
+    "compose ps",
+  );
+  const processLogs = await runBestEffort(
+    "docker",
+    [
+      ...projectArgs,
+      "exec",
+      "-T",
+      "screeps",
+      "sh",
+      "-lc",
+      "cat /screeps/logs/*.log 2>/dev/null || true",
+    ],
+    "process logs",
+  );
+
+  const redact = value => String(value ?? "").replace(
+    /(token|password|secret|key)=([^\s]+)/gi,
+    "$1=[REDACTED]",
+  );
+  const commandOutput = result => [
+    `=== ${result.label} (ok=${result.ok}, exitCode=${result.exitCode ?? "unknown"}) ===`,
+    redact(result.stdout),
+    redact(result.stderr),
+    result.error ? `error: ${redact(result.error)}` : "",
+  ].filter(Boolean).join("\n");
+  const sanitized = [commandOutput(composeLogs), commandOutput(composeState), commandOutput(processLogs)].join("\n\n");
+  fs.writeFileSync(path.join(options.artifactsDir, "docker.log"), sanitized);
+
+  const containerRows = summarizeContainerState(composeState.stdout);
+  summary.metrics.containerDiagnostics = {
+    capturedAt: new Date().toISOString(),
+    composePsRaw: redact(composeState.stdout),
+    containers: containerRows.map(row => ({
+      name: row.Name ?? row.name ?? null,
+      service: row.Service ?? row.service ?? null,
+      state: row.State ?? row.state ?? null,
+      status: row.Status ?? row.status ?? null,
+      exitCode: row.ExitCode ?? row.exitCode ?? null,
+    })),
+    commands: [composeLogs, composeState, processLogs].map(result => ({
+      label: result.label,
+      ok: result.ok,
+      exitCode: result.exitCode,
+      error: result.error ? redact(result.error) : null,
+    })),
+  };
+  summary.metrics.serverLogDiagnostics = summarizeServerLogDiagnostics(sanitized);
+
+  if (!sanitized.includes("[screepsmod-testing] Mod loaded")) {
+    const error = new Error("screepsmod-testing load marker not found in server logs");
     summary.errors.push(`log collection failed: ${error.message}`);
     throw error;
   }
+  summary.checks.modLoaded = true;
 }
 
 export function shouldContinuePolling({ nowMs, endAtMs, polls, maxTicks, ticksAdvanced }) {
@@ -993,13 +1087,17 @@ export async function runPrivateServerTest(options = parseHarnessArgs()) {
       criticalConsoleErrors: summary.metrics.criticalConsoleErrors ?? 0
     };
     validateSmokeSummary(summary, options);
+    updateValidationStatus(summary, null);
     await writeSummary(options, summary, "passed");
     return summary;
   } catch (error) {
     recordHarnessError(summary, error);
-    try {
-      await collectLogs(options, summary, log);
-    } catch {}
+    if (!summary.metrics.containerDiagnostics) {
+      try {
+        await collectLogs(options, summary, log);
+      } catch {}
+    }
+    updateValidationStatus(summary, isTransportFailure(error) ? error : null);
     await writeFailedSummaryForError(options, summary, error);
     throw error;
   } finally {

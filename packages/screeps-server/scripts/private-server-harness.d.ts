@@ -36,6 +36,10 @@ export function inspectMemorySnapshot(memory: any, summary: any, now?: Date, opt
 export function prepareArtifactsDir(options: { artifactsDir: string }): void;
 export function formatHarnessError(error: unknown): string;
 export function recordHarnessError(summary: any, error: unknown): string;
+export function summarizeContainerState(output: string): any[];
+export function isTransportFailure(error: unknown): boolean;
+export function updateValidationStatus(summary: any, transportError?: unknown): any;
+export function collectLogs(options: HarnessOptions, summary: any, log: (message: string) => unknown, runShellFn?: (...args: any[]) => Promise<any>): Promise<void>;
 export function writeFailedSummaryForError(options: HarnessOptions, summary: any, error: unknown): Promise<any>;
 export function resolveAvailablePorts(options: {
   serverPort: number;

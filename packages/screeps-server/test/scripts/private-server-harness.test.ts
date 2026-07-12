@@ -7,10 +7,12 @@ import zlib from "node:zlib";
 import {
   buildEnsureBotUserCommand,
   buildSeedRuntimeScenariosCommand,
+  collectLogs,
   createInitialSummary,
   decodeMemoryData,
   hasSmokeValidationEvidence,
   inspectMemorySnapshot,
+  isTransportFailure,
   parseHarnessArgs,
   parseRuntimeWarmupTicks,
   parseScenarioList,
@@ -22,8 +24,10 @@ import {
   resolveScreepsApiConstructor,
   restartScreepsRuntime,
   shouldContinuePolling,
+  summarizeContainerState,
   summarizeServerLogDiagnostics,
   updatePollingProgress,
+  updateValidationStatus,
   validateSmokeSummary,
   writeFailedSummaryForError,
 } from "../../scripts/private-server-harness.js";
@@ -313,6 +317,73 @@ describe("private-server harness module", () => {
     expect(diagnostics.samples.unhandledRejectionsUnknown[0]).to.include("something else exploded");
     expect(diagnostics.samples.dbErrors[0]).to.include("DBERR");
     expect(diagnostics.samples.typeErrors[0]).to.include("reading 'cpu'");
+  });
+
+  it("parses stopped Docker containers without losing exit codes", () => {
+    expect(summarizeContainerState(JSON.stringify({
+      Name: "screeps-ci-screeps-1",
+      Service: "screeps",
+      State: "exited",
+      Status: "Exited (137)",
+      ExitCode: 137,
+    }))).to.deep.equal([{
+      Name: "screeps-ci-screeps-1",
+      Service: "screeps",
+      State: "exited",
+      Status: "Exited (137)",
+      ExitCode: 137,
+    }]);
+    expect(summarizeContainerState("not-json")).to.deep.equal([]);
+  });
+
+  it("separates passed assertions from a failed transport after the server exits", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.metrics.screepsmodTesting = { total: 43, passed: 43, failed: 0, skipped: 0 };
+
+    updateValidationStatus(summary, new Error("connect ECONNREFUSED 127.0.0.1:21027"));
+
+    expect(summary.metrics.validation).to.deep.equal({
+      assertions: { status: "passed", total: 43, passed: 43, failed: 0, skipped: 0 },
+      transport: {
+        status: "failed",
+        error: "connect ECONNREFUSED 127.0.0.1:21027",
+      },
+    });
+    expect(isTransportFailure(new Error("screepsmod-testing skipped 4 runtime checks after warmup"))).to.equal(false);
+  });
+
+  it("keeps incomplete assertions distinct from a transport failure", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.metrics.screepsmodTesting = { total: 47, passed: 43, failed: 0, skipped: 4 };
+
+    updateValidationStatus(summary, new Error("connect ECONNRESET 127.0.0.1:21027"));
+
+    expect(summary.metrics.validation.assertions).to.deep.equal({
+      status: "incomplete",
+      total: 47,
+      passed: 43,
+      failed: 0,
+      skipped: 4,
+    });
+    expect(summary.metrics.validation.transport.status).to.equal("failed");
+  });
+
+  it("preserves Docker state and logs when the service has already exited", async () => {
+    const artifactsDir = fs.mkdtempSync(path.join(os.tmpdir(), "screeps-harness-diagnostics-"));
+    const options = parseHarnessArgs([`--artifactsDir=${artifactsDir}`], {});
+    const summary = createInitialSummary(options);
+    const runShellFn = async (_command: string, args: string[]) => {
+      if (args.includes("logs")) return { stdout: "[screepsmod-testing] Mod loaded\\nserver output", stderr: "" };
+      if (args.includes("ps")) return { stdout: JSON.stringify({ Name: "screeps", State: "exited", ExitCode: 137 }), stderr: "" };
+      return { stdout: "process log", stderr: "" };
+    };
+
+    await collectLogs(options, summary, () => {}, runShellFn);
+
+    const state = summary.metrics.containerDiagnostics;
+    expect(state.containers).to.deep.equal([{ name: "screeps", service: null, state: "exited", status: null, exitCode: 137 }]);
+    expect(fs.readFileSync(path.join(artifactsDir, "docker.log"), "utf8")).to.include("server output");
+    expect(fs.readFileSync(path.join(artifactsDir, "docker.log"), "utf8")).to.include("ExitCode");
   });
 
   it("records mod results, task-board rooms, and critical console errors from Memory", () => {
