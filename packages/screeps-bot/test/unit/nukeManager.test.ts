@@ -9,6 +9,8 @@ import {
   coordinateNukeSalvos,
   coordinateWithSieges,
   detectIncomingNukes,
+  detectIncomingNukesInRoom,
+  getOwnedRoomNukes,
   estimateSquadEta,
   evaluateNukeCandidates,
   initializeNukeTracking,
@@ -128,6 +130,43 @@ describe("Nuke Manager", () => {
       detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
 
       expect(swarm.nukeDetected).to.be.false;
+    });
+
+    it("should reuse one room nuke scan for repeated same-tick observation", () => {
+      let findCalls = 0;
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: () => {
+          findCalls += 1;
+          return [];
+        }
+      } as unknown as Room;
+
+      getOwnedRoomNukes(mockRoom);
+      getOwnedRoomNukes(mockRoom);
+
+      expect(findCalls).to.equal(1);
+    });
+
+    it("should skip empire re-observation after room defense publishes the same tick", () => {
+      let findCalls = 0;
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: () => {
+          findCalls += 1;
+          return [];
+        }
+      } as unknown as Room;
+      const swarm = createDefaultSwarmState();
+      const empire = memoryManager.getEmpire() as any;
+      getSwarmStateStub.withArgs("W1N1").returns(swarm);
+
+      detectIncomingNukesInRoom(empire, mockRoom, swarm, []);
+      detectIncomingNukes(empire, getSwarmStateStub as any);
+
+      expect(findCalls).to.equal(0);
     });
 
     it("should detect incoming nukes when no owned nuker is available", () => {

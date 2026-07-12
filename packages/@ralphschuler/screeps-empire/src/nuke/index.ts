@@ -4,6 +4,7 @@
  * Coordinates all nuke operations: detection, targeting, launching, defense, and logistics
  */
 
+import { logger } from "@ralphschuler/screeps-core";
 import { terminalManager } from "@ralphschuler/screeps-economy";
 import type { NukeConfig } from "./types";
 import { DEFAULT_NUKE_CONFIG } from "./types";
@@ -64,14 +65,13 @@ export class NukeCoordinator {
     const empire = this.getEmpire();
     const offensive = options.offensive ?? true;
 
-    // Initialize nuke tracking if needed
+    // Defensive observation is an independent, cheap phase. Room defense may have
+    // already populated the same-tick observation cache before this process runs.
     initializeNukeTracking(empire);
-
-    // Defensive observation is independent of offensive nuker availability.
+    const defensiveStart = this.getCpuUsed();
     detectIncomingNukes(empire, this.getSwarmState);
-
-    // Handle evacuation for threatened rooms
     this.handleEvacuations(empire);
+    this.recordCpu("defensiveObservationCpu", defensiveStart);
 
     if (!offensive) {
       // Keep landed-alert cleanup active without evaluating targets, moving
@@ -80,6 +80,12 @@ export class NukeCoordinator {
       return;
     }
 
+    const offensiveStart = this.getCpuUsed();
+    this.runOffensiveCoordination(empire);
+    this.recordCpu("offensiveCoordinationCpu", offensiveStart);
+  }
+
+  private runOffensiveCoordination(empire: EmpireMemory): void {
     // Process counter-nuke strategies
     processCounterNukeStrategies(
       empire,
@@ -121,6 +127,19 @@ export class NukeCoordinator {
 
     // Clean up old tracking data
     cleanupNukeTracking(empire);
+  }
+
+  private getCpuUsed(): number | undefined {
+    return typeof Game !== "undefined" && typeof Game.cpu?.getUsed === "function"
+      ? Game.cpu.getUsed()
+      : undefined;
+  }
+
+  private recordCpu(key: string, start: number | undefined): void {
+    if (start === undefined) return;
+    const current = this.getCpuUsed();
+    if (current === undefined) return;
+    logger.stat?.(key, Math.max(0, current - start), "cpu", { subsystem: "Nuke" });
   }
 
   /**
