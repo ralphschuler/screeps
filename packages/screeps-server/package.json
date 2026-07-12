@@ -27,7 +27,7 @@
     "cpu:snapshot": "node scripts/export-live-structural-snapshot.js",
     "cpu:benchmark": "node scripts/run-cpu-benchmark.js",
     "cpu:arena": "node scripts/run-arena-benchmark.js",
-    "posttest": "node scripts/analyze-tests.js"
+    "posttest": "node scripts/analyze-tests.js --mode=smoke"
   },
   "keywords": [
     "screeps",
