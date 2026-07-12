@@ -6,7 +6,7 @@
  * supported by cartographer, so we strip it out before passing to cartographer.
  */
 
-import { moveTo as cartographerMoveTo } from "screeps-cartographer";
+import { moveTo as cartographerMoveTo, type MoveTarget } from "screeps-cartographer";
 
 export interface ExtendedMoveToOpts extends MoveToOpts {
   /** Cache TTL in ticks - stripped before passing to cartographer */
@@ -15,7 +15,7 @@ export interface ExtendedMoveToOpts extends MoveToOpts {
 
 export function cachedMoveTo(
   creep: Creep,
-  target: RoomPosition | { pos: RoomPosition },
+  target: RoomPosition | { pos: RoomPosition } | MoveTarget,
   opts?: ExtendedMoveToOpts
 ): ScreepsReturnCode {
   // Strip out cacheTtl since cartographer doesn't support it

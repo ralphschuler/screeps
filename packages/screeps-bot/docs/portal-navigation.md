@@ -48,7 +48,10 @@ moveTo(creep, target, {
 
 ### Cross-Shard Movement
 
-For explicit cross-shard carrier roles, see `src/roles/crossShardCarrier.ts` for production example:
+Cartographer can route through intrashard portals, but explicit cross-shard
+movement must target the exact portal tile (`range: 0`). A normal object target
+uses range 1 and leaves the creep adjacent to the portal. For carrier roles,
+see `src/roles/crossShardCarrier.ts` for the production example:
 
 ```typescript
 import { moveTo } from "screeps-cartographer";
@@ -58,10 +61,11 @@ const creep = Game.creeps["MyCreep"];
 // Move to portal room
 moveTo(creep, new RoomPosition(25, 25, portalRoom));
 
-// Move to portal (Cartographer handles portal entry automatically)
+// Move onto the portal tile. A default object target stops at range 1,
+// which does not trigger cross-shard traversal.
 const portal = Game.getObjectById(portalId);
 if (portal) {
-  moveTo(creep, portal);
+  moveTo(creep, { pos: portal.pos, range: 0 });
 }
 ```
 

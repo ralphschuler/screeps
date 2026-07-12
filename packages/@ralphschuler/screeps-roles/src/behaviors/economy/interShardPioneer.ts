@@ -26,7 +26,9 @@ function moveToPortal(ctx: CreepContext, memory: InterShardMemoryFields): CreepA
   if (ctx.room.name !== memory.portalRoom) return { type: "moveToRoom", roomName: memory.portalRoom };
   const portal = findPortal(ctx.room, memory.targetShard);
   if (!portal) return { type: "idle" };
-  return { type: "moveTo", target: portal.pos };
+  // A portal only transfers a creep standing on its tile. Cartographer's
+  // default target range is 1, which leaves inter-shard pioneers adjacent forever.
+  return { type: "moveTo", target: { pos: portal.pos, range: 0 } };
 }
 
 function getSpawnConstructionSite(ctx: CreepContext): ConstructionSite | undefined {
