@@ -14,6 +14,7 @@
 import type { SwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "@ralphschuler/screeps-core";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
+import { countActiveCombatDefenders } from "../analysis/defenderNeeds";
 
 interface DefenseSettingsMemory {
   defenseSettings?: {
@@ -121,18 +122,13 @@ export class SafeModeManager {
       return true;
     }
 
-    // Check if we have enough defenders
-    const defenders = room.find(FIND_MY_CREEPS, {
-      filter: c => {
-        const memory = c.memory as unknown as { role?: string };
-        const role = memory.role;
-        return role === "guard" || role === "ranger" || role === "soldier";
-      }
-    });
+    // Check if we have enough active combat defenders. Keep safe mode's
+    // role-based semantics while excluding spawning and disarmed creeps.
+    const defenderCount = countActiveCombatDefenders(room, ["guard", "ranger", "soldier"]);
 
     // Trigger if overwhelmed (3:1 ratio)
-    if (safeModeHostiles.length > defenders.length * 3) {
-      logger.warn(`Overwhelmed: ${safeModeHostiles.length} safe-mode-relevant hostiles vs ${defenders.length} defenders`, {
+    if (safeModeHostiles.length > defenderCount * 3) {
+      logger.warn(`Overwhelmed: ${safeModeHostiles.length} safe-mode-relevant hostiles vs ${defenderCount} defenders`, {
         subsystem: "Defense"
       });
       return true;
@@ -140,7 +136,7 @@ export class SafeModeManager {
 
     // Check if hostiles are boosted or carry enough active WORK/HEAL to quickly dismantle or sustain a siege.
     const highImpactHostiles = safeModeHostiles.filter(isHighImpactSiegeHostile);
-    if (highImpactHostiles.length > 0 && defenders.length < highImpactHostiles.length * 2) {
+    if (highImpactHostiles.length > 0 && defenderCount < highImpactHostiles.length * 2) {
       logger.warn(`High-impact siege hostiles detected: ${highImpactHostiles.length}`, { subsystem: "Defense" });
       return true;
     }

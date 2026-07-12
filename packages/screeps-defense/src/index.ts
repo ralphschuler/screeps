@@ -56,6 +56,7 @@ export {
 export {
   analyzeDefenderNeeds,
   createDefenseRequest,
+  countActiveCombatDefenders,
   getCombatEscortRequirement,
   hasActiveDefenseThreat,
   getCurrentDefenders,
