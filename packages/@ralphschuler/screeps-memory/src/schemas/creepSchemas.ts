@@ -65,6 +65,8 @@ export interface CreepState {
   targetId?: Id<_HasId>;
   /** Serialized target position for actions without a persistent object */
   targetPos?: { x: number; y: number; roomName: string };
+  /** Exact movement range when the action supplied one */
+  targetRange?: number;
   /** Room name target (for moveToRoom actions) */
   targetRoom?: string;
   /** Tick when this state was entered */

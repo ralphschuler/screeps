@@ -26062,12 +26062,12 @@ timeout: 25
 if ("target" in e && e.target && "id" in e.target && (r.targetId = e.target.id),
 "moveToRoom" !== e.type && "remoteMoveToRoom" !== e.type || (r.targetRoom = e.roomName),
 "moveTo" === e.type || "remoteMoveTo" === e.type) {
-var n = "pos" in e.target ? e.target.pos : e.target;
+var n = e.target, a = "pos" in n ? n.pos : n;
 r.targetPos = {
-x: n.x,
-y: n.y,
-roomName: n.roomName
-};
+x: a.x,
+y: a.y,
+roomName: a.roomName
+}, "range" in n && "number" == typeof n.range && (r.targetRange = n.range);
 }
 return "withdraw" === e.type && (r.data = {
 resourceType: e.resourceType
@@ -26132,31 +26132,32 @@ valid: !0
 };
 }(a);
 if (a && s.valid) if (function(e, t) {
+var r, o, n;
 if (!e) return !0;
 switch (e.action) {
 case "harvest":
 case "harvestMineral":
 case "pickup":
 case "withdraw":
-return !!t.isFull || !(!e.targetId || (r = Game.getObjectById(e.targetId)));
+return !!t.isFull || !(!e.targetId || (a = Game.getObjectById(e.targetId)));
 
 case "harvestDeposit":
 if (t.isFull) return !0;
 if (e.targetId) {
-if (!(r = Game.getObjectById(e.targetId))) return !0;
-if ("object" == typeof r && "cooldown" in r && r.cooldown > 100) return !0;
+if (!(a = Game.getObjectById(e.targetId))) return !0;
+if ("object" == typeof a && "cooldown" in a && a.cooldown > 100) return !0;
 }
 return !1;
 
 case "transfer":
 case "build":
-return !!t.isEmpty || !(!e.targetId || (r = Game.getObjectById(e.targetId)));
+return !!t.isEmpty || !(!e.targetId || (a = Game.getObjectById(e.targetId)));
 
 case "repair":
 if (t.isEmpty) return !0;
 if (e.targetId) {
-if (!(r = Game.getObjectById(e.targetId))) return !0;
-if ("object" == typeof (i = r) && null !== i && "hits" in i && "hitsMax" in i && r.hits >= r.hitsMax) return !0;
+if (!(a = Game.getObjectById(e.targetId))) return !0;
+if ("object" == typeof (n = a) && null !== n && "hits" in n && "hitsMax" in n && a.hits >= a.hitsMax) return !0;
 }
 return !1;
 
@@ -26165,18 +26166,18 @@ return t.isEmpty;
 
 case "moveToRoom":
 case "remoteMoveToRoom":
-return void 0 !== e.targetRoom && t.room.name === e.targetRoom && !(0 === (a = t.creep.pos).x || 49 === a.x || 0 === a.y || 49 === a.y);
+return void 0 !== e.targetRoom && t.room.name === e.targetRoom && !(0 === (o = t.creep.pos).x || 49 === o.x || 0 === o.y || 49 === o.y);
 
 case "moveTo":
 case "remoteMoveTo":
-var r;
-if (e.targetId && (r = Game.getObjectById(e.targetId)) && "object" == typeof r && "pos" in r) {
-var o = r;
-return t.creep.pos.inRangeTo(o.pos, 1);
+var a;
+if (e.targetId && (a = Game.getObjectById(e.targetId)) && "object" == typeof a && "pos" in a) {
+var i = a;
+return t.creep.pos.inRangeTo(i.pos, 1);
 }
 if (e.targetPos) {
-var n = new RoomPosition(e.targetPos.x, e.targetPos.y, e.targetPos.roomName);
-return t.creep.pos.inRangeTo(n, 1);
+var s = new RoomPosition(e.targetPos.x, e.targetPos.y, e.targetPos.roomName);
+return t.creep.pos.inRangeTo(s, null !== (r = e.targetRange) && void 0 !== r ? r : 1);
 }
 return !1;
 
@@ -26186,7 +26187,6 @@ return !0;
 default:
 return !1;
 }
-var a, i;
 }(a, e)) Tm.info("State completed, evaluating new action", {
 room: e.creep.pos.roomName,
 creep: e.creep.name,
@@ -26267,13 +26267,21 @@ target: i
 } : null;
 
 case "moveTo":
-return i ? {
+if (i) return {
 type: "moveTo",
 target: i
-} : e.targetPos ? {
+};
+if (e.targetPos) {
+var u = new RoomPosition(e.targetPos.x, e.targetPos.y, e.targetPos.roomName);
+return {
 type: "moveTo",
-target: new RoomPosition(e.targetPos.x, e.targetPos.y, e.targetPos.roomName)
-} : null;
+target: void 0 === e.targetRange ? u : {
+pos: u,
+range: e.targetRange
+}
+};
+}
+return null;
 
 case "moveToRoom":
 return e.targetRoom ? {
@@ -26282,22 +26290,22 @@ roomName: e.targetRoom
 } : null;
 
 case "remoteMoveTo":
-return "harvester" !== (u = null === (n = e.data) || void 0 === n ? void 0 : n.routeType) && "hauler" !== u && "reserver" !== u && "guard" !== u ? null : i ? {
+return "harvester" !== (l = null === (n = e.data) || void 0 === n ? void 0 : n.routeType) && "hauler" !== l && "reserver" !== l && "guard" !== l ? null : i ? {
 type: "remoteMoveTo",
 target: i,
-routeType: u
+routeType: l
 } : e.targetPos ? {
 type: "remoteMoveTo",
-target: new RoomPosition(e.targetPos.x, e.targetPos.y, e.targetPos.roomName),
-routeType: u
+target: u = new RoomPosition(e.targetPos.x, e.targetPos.y, e.targetPos.roomName),
+routeType: l
 } : null;
 
 case "remoteMoveToRoom":
-var u;
-return "harvester" !== (u = null === (a = e.data) || void 0 === a ? void 0 : a.routeType) && "hauler" !== u && "reserver" !== u && "guard" !== u ? null : e.targetRoom ? {
+var l;
+return "harvester" !== (l = null === (a = e.data) || void 0 === a ? void 0 : a.routeType) && "hauler" !== l && "reserver" !== l && "guard" !== l ? null : e.targetRoom ? {
 type: "remoteMoveToRoom",
 roomName: e.targetRoom,
-routeType: u
+routeType: l
 } : null;
 
 case "idle":
@@ -28123,7 +28131,10 @@ return "shard" in t && t.shard === o;
 }));
 return n ? {
 type: "moveTo",
-target: n.pos
+target: {
+pos: n.pos,
+range: 0
+}
 } : {
 type: "idle"
 };
@@ -31931,7 +31942,10 @@ return "shard" in t && t.shard === o;
 }));
 return n ? {
 type: "moveTo",
-target: n.pos
+target: {
+pos: n.pos,
+range: 0
+}
 } : {
 type: "idle"
 };

@@ -33,8 +33,24 @@ export interface CreepState {
   action: string;
   /** Target ID for the action */
   targetId?: Id<_HasId>;
+  /** Serialized target position for movement actions */
+  targetPos?: { x: number; y: number; roomName: string };
+  /** Exact movement range when the action supplied one */
+  targetRange?: number;
   /** State-specific data */
   data?: unknown;
+}
+
+/**
+ * A movement target with an explicit acceptable range.
+ *
+ * Portal traversal requires range 0 because a creep must step onto the
+ * portal tile; the movement libraries otherwise default object/position
+ * targets to range 1.
+ */
+export interface CreepMoveTarget {
+  pos: RoomPosition;
+  range: number;
 }
 
 /**
@@ -73,9 +89,9 @@ export type CreepAction =
   | { type: "attackController"; target: StructureController }
 
   // Movement actions
-  | { type: "moveTo"; target: RoomPosition | RoomObject }
+  | { type: "moveTo"; target: RoomPosition | RoomObject | CreepMoveTarget }
   | { type: "moveToRoom"; roomName: string }
-  | { type: "remoteMoveTo"; target: RoomPosition | RoomObject; routeType: RemoteMoveRouteType }
+  | { type: "remoteMoveTo"; target: RoomPosition | RoomObject | CreepMoveTarget; routeType: RemoteMoveRouteType }
   | { type: "remoteMoveToRoom"; roomName: string; routeType: RemoteMoveRouteType }
   | { type: "flee"; from: RoomPosition[] }
   | { type: "wait"; position: RoomPosition }

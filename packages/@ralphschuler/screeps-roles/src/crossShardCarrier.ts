@@ -204,11 +204,12 @@ function handleEnteringPortal(
     return;
   }
 
-  // Move to portal
-  cachedMoveTo(creep, targetPortal, { cacheTtl: 20 });
+  // Move onto the portal tile. A default object target stops at range 1 and
+  // never triggers cross-shard traversal.
+  cachedMoveTo(creep, { pos: targetPortal.pos, range: 0 }, { cacheTtl: 20 });
 
-  // Check if we're adjacent to portal (about to enter)
-  if (creep.pos.isNearTo(targetPortal)) {
+  // Report only after the creep reaches the exact traversal tile.
+  if (creep.pos.isEqualTo(targetPortal.pos)) {
     logger.info(
       `CrossShardCarrier ${creep.name} entering portal to ${request.targetShard}`,
       { subsystem: "CrossShardCarrier" }

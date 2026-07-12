@@ -268,7 +268,7 @@ function isStateComplete(state: CreepState | undefined, ctx: CreepContext): bool
           state.targetPos.y,
           state.targetPos.roomName
         );
-        return ctx.creep.pos.inRangeTo(targetPos, 1);
+        return ctx.creep.pos.inRangeTo(targetPos, state.targetRange ?? 1);
       }
 
       return false;
@@ -303,10 +303,14 @@ function actionToState(action: CreepAction, _ctx: CreepContext): CreepState {
     state.targetRoom = action.roomName;
   }
 
-  // Store serialized target position for moveTo actions without stable IDs (e.g., RoomPosition)
+  // Store serialized target position for move actions without stable IDs.
   if (action.type === "moveTo" || action.type === "remoteMoveTo") {
-    const pos = "pos" in action.target ? action.target.pos : action.target;
+    const target = action.target;
+    const pos = "pos" in target ? target.pos : target;
     state.targetPos = { x: pos.x, y: pos.y, roomName: pos.roomName };
+    if ("range" in target && typeof target.range === "number") {
+      state.targetRange = target.range;
+    }
   }
 
   // Store additional data based on action type
@@ -404,7 +408,13 @@ function stateToAction(state: CreepState): CreepAction | null {
           state.targetPos.y,
           state.targetPos.roomName
         );
-        return { type: "moveTo", target: targetPos };
+        return {
+          type: "moveTo",
+          target:
+            state.targetRange === undefined
+              ? targetPos
+              : { pos: targetPos, range: state.targetRange }
+        };
       }
 
       return null;
