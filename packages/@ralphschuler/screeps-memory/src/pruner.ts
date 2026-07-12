@@ -67,6 +67,7 @@ export class MemoryPruner {
     stats.eventLogs = this.pruneEventLogs(MAX_EVENT_LOG_ENTRIES);
     stats.staleIntel = this.pruneStaleIntel(MAX_INTEL_AGE);
     stats.marketHistory = this.pruneMarketHistory(MAX_MARKET_HISTORY_AGE);
+    this.pruneOldNukes();
     this.pruneStaleRoomMemory();
 
     const sizeAfter = this.getRawMemorySize();
@@ -238,18 +239,18 @@ export class MemoryPruner {
 
     let pruned = 0;
 
-    // Remove landed nukes from tracking
+    // Remove landed nukes from tracking while keeping the array dense.
+    // Entries at the current tick remain available to impact-time handling;
+    // only records strictly older than the current tick are expired.
     if (empire.nukesInFlight) {
-      for (const nukeId in empire.nukesInFlight) {
-        const nuke = empire.nukesInFlight[nukeId];
-        if (nuke.impactTick < Game.time) {
-          delete empire.nukesInFlight[nukeId];
-          pruned++;
-        }
-      }
+      const initialCount = empire.nukesInFlight.length;
+      empire.nukesInFlight = empire.nukesInFlight.filter(
+        nuke => nuke.impactTick >= Game.time
+      );
+      pruned += initialCount - empire.nukesInFlight.length;
     }
 
-    // Remove old incoming nuke alerts
+    // Remove old incoming nuke alerts using the same impact boundary.
     if (empire.incomingNukes) {
       const initialCount = empire.incomingNukes.length;
       empire.incomingNukes = empire.incomingNukes.filter(
