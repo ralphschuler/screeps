@@ -56,10 +56,14 @@ export {
 export {
   analyzeDefenderNeeds,
   createDefenseRequest,
+  getCombatEscortRequirement,
+  hasActiveDefenseThreat,
   getCurrentDefenders,
   getDefenderPriorityBoost,
+  hasSufficientCombatEscort,
   needsDefenseAssistance,
   needsEmergencyDefenders,
+  type CombatEscortRequirement,
   type DefenderRequirement,
   type DefenseRequest,
 } from "./analysis/defenderNeeds";

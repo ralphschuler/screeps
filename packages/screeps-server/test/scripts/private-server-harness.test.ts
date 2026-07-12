@@ -1002,6 +1002,21 @@ describe("private-server harness module", () => {
     expect(command).to.not.include("const defenseRoom=hasScenario('remote-mining')?remoteRoom:homeRoom;");
   });
 
+  it("seeds a spawnless recovery room with coordinated pressure and helper terminal energy", () => {
+    const options = parseHarnessArgs(["--room=E1N1", "--scenarios=spawnless-siege"], {});
+    const command = buildSeedRuntimeScenariosCommand(options);
+
+    expect(command).to.include("const recoveryRoom='W1N4'");
+    expect(command).to.include("hasScenario('spawnless-siege')");
+    expect(command).to.include("ScenarioSpawnlessSiege");
+    expect(command).to.include("structureType:'spawn',progress:0");
+    expect(command).to.include("{$and:[{room:recoveryRoom},{type:'spawn'},{user:userId}]}");
+    expect(command).to.include("{$and:[{room:recoveryRoom},{type:'tower'},{user:userId}]}");
+    expect(command).to.include("store:{energy:6000}");
+    expect(command).to.include("{$and:[{room:homeRoom},{type:'source'}]},{$set:{energy:0,ticksToRegeneration:9999}");
+    expect(command).to.include("spawnlessSiege={room:recoveryRoom");
+  });
+
   it("seeds the hard invader scenario with enough room capacity for real defender bodies", () => {
     const options = parseHarnessArgs(["--room=E1N1", "--scenarios=defense-hard-invader"], {});
     const command = buildSeedRuntimeScenariosCommand(options);

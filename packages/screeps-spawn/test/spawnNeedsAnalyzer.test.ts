@@ -59,6 +59,24 @@ describe("spawn needs mature reserve recovery", () => {
     expect(getRoleTargetCount(room.name, "upgrader", { danger: 3, posture: "defense" } as SwarmState)).to.equal(1);
   });
 
+  it("requests remote guards for active claim threats", () => {
+    const home = makeRoom(0, 0);
+    const hostile = { owner: { username: "Invader" }, body: [{ type: CLAIM, hits: 100 }] } as unknown as Creep;
+    const remote = {
+      name: "W2N1",
+      controller: { my: false },
+      find: (type: FindConstant) => type === FIND_HOSTILE_CREEPS ? [hostile] : []
+    } as unknown as Room;
+    Game.rooms[home.name] = home;
+    Game.rooms[remote.name] = remote;
+
+    expect(needsRole("W1N1", "remoteGuard", {
+      danger: 0,
+      posture: "eco",
+      remoteAssignments: ["W2N1"]
+    } as SwarmState)).to.equal(true);
+  });
+
   it("restores normal RCL6 upgrader targets after storage and terminal reserves recover", () => {
     const room = makeRoom(60_000, 25_000);
     Game.rooms[room.name] = room;

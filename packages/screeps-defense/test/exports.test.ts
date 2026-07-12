@@ -13,6 +13,9 @@ import {
   calculateAggregateDefenseResponsePlan,
   calculateCombatPower,
   emptyCombatPower,
+  getCombatEscortRequirement,
+  hasActiveDefenseThreat,
+  hasSufficientCombatEscort,
   multiplyCombatPower,
 
   // Threat Assessment
@@ -54,6 +57,9 @@ describe('@ralphschuler/screeps-defense', () => {
       expect(calculateCombatPower).to.be.a('function');
       expect(emptyCombatPower).to.be.a('function');
       expect(multiplyCombatPower).to.be.a('function');
+      expect(getCombatEscortRequirement).to.be.a('function');
+      expect(hasActiveDefenseThreat).to.be.a('function');
+      expect(hasSufficientCombatEscort).to.be.a('function');
     });
 
     it('should export threat assessment functions', () => {

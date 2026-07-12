@@ -216,6 +216,22 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     });
   }
 
+  function hasSpawnlessSiegeSignal() {
+    var scenarioRooms = ((memory.screepsmodTestingScenarios || {}).rooms) || {};
+    var recoveryRoomName = scenarioRooms.recovery || 'W1N2';
+    var recoveryRoom = game.rooms && game.rooms[recoveryRoomName];
+    if (!recoveryRoom || !recoveryRoom.controller || !recoveryRoom.controller.my) return false;
+    var spawns = recoveryRoom.find(FIND_MY_SPAWNS) || [];
+    var spawnSites = recoveryRoom.find(FIND_MY_CONSTRUCTION_SITES, { filter: function(site) { return site.structureType === STRUCTURE_SPAWN; } }) || [];
+    var recoveryMemory = ((memory.rooms || {})[recoveryRoomName] || {}).swarm || {};
+    var requests = values(memory.defenseRequests || {});
+    var hasRecoveryRequest = requests.some(function(request) { return request && request.roomName === recoveryRoomName; });
+    var hasRecoveryDanger = (recoveryMemory.danger || 0) > 0;
+    var homeRoom = scenarioRooms.home && game.rooms && game.rooms[scenarioRooms.home];
+    var hasTerminalReserve = Boolean(homeRoom && homeRoom.terminal && homeRoom.terminal.store[RESOURCE_ENERGY] >= 5000);
+    return (spawns.length > 0 || spawnSites.length > 0) && (hasRecoveryRequest || hasRecoveryDanger) && hasTerminalReserve;
+  }
+
   function linkNetworkPoints(room) {
     var links = room.find(FIND_MY_STRUCTURES, { filter: function(structure) { return structure.structureType === STRUCTURE_LINK; } }) || [];
     var sites = room.find(FIND_MY_CONSTRUCTION_SITES, { filter: function(site) { return site.structureType === STRUCTURE_LINK; } }) || [];
@@ -330,6 +346,9 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   }
   if (hasScenario('defense-hard-invader')) {
     runtimeAssertAfter(1200, 'hard invader scenario emits defensive runtime signal', ['scenario','defense-hard-invader'], hasDefenseSignal, 'hard invader scenario has no danger, defense task, or defense request signal');
+  }
+  if (hasScenario('spawnless-siege')) {
+    runtimeAssert('spawnless-siege preserves recovery continuity under hostile pressure', ['scenario','spawnless-siege','recovery'], hasSpawnlessSiegeSignal, 'spawnless recovery room has no spawn/site, room-scoped defensive signal, or helper terminal reserve');
   }
   if (hasScenario('alliance-safety')) {
     runtimeAssert('alliance scenario keeps permanent allies untargeted', ['scenario','alliance-safety'], function() {

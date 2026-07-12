@@ -8,7 +8,7 @@
  * - Special role requirements
  */
 
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, hasActiveDefenseThreat } from "@ralphschuler/screeps-defense";
 import { type CrossShardTransferRequest, resourceTransferCoordinator } from "./botIntegration";
 import { countCreepsByRole, countCreepsOfRole, countRemoteCreepsByTargetRoom } from "./creepCounts";
 import { memoryManager } from "@ralphschuler/screeps-memory";
@@ -258,9 +258,7 @@ export function needsRole(roomName: string, role: string, swarm: SwarmState, isB
 
       // Check for hostile creeps with combat parts
       const hostiles = getActualHostileCreeps(remoteRoom);
-      const dangerousHostiles = hostiles.filter(h =>
-        h.body.some(p => p.type === ATTACK || p.type === RANGED_ATTACK || p.type === WORK)
-      );
+      const dangerousHostiles = hostiles.filter(hasActiveDefenseThreat);
 
       if (dangerousHostiles.length > 0) {
         // Check how many guards are already assigned to this remote

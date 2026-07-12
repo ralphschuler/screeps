@@ -295,6 +295,13 @@ function getTestHostileCreeps(room) {
   return findTestRoomObjects(room, global.FIND_HOSTILE_CREEPS).filter(creep => !isAlliedTestEntity(creep));
 }
 
+function hasTestActiveDefenseThreat(hostile) {
+  if (isAlliedTestEntity(hostile)) return false;
+  return (hostile?.body ?? []).some(part =>
+    isTestActivePart(part) && ['attack', 'ranged_attack', 'work', 'heal', 'claim'].includes(getTestPartType(part))
+  );
+}
+
 function hasTestActivePart(creep, partTypes) {
   return (creep?.body ?? []).some(part => isTestActivePart(part) && partTypes.includes(getTestPartType(part)));
 }
@@ -308,6 +315,7 @@ function analyzeTestDefenderNeeds(room) {
   let rangedCount = 0;
   let healerCount = 0;
   let dismantlerCount = 0;
+  let claimCount = 0;
   let boostedCount = 0;
 
   for (const hostile of hostiles) {
@@ -319,6 +327,7 @@ function analyzeTestDefenderNeeds(room) {
       if (type === 'ranged_attack') rangedCount++;
       if (type === 'heal') healerCount++;
       if (type === 'work') dismantlerCount++;
+      if (type === 'claim') claimCount++;
     }
   }
 
@@ -337,6 +346,10 @@ function analyzeTestDefenderNeeds(room) {
   if (dismantlerCount > 0) {
     result.guards += Math.ceil(dismantlerCount / 5);
     result.reasons.push(`${dismantlerCount} work parts detected`);
+  }
+  if (claimCount > 0) {
+    result.guards = Math.max(1, result.guards);
+    result.reasons.push(`${claimCount} claim parts detected`);
   }
   if (boostedCount > 0) {
     result.guards = Math.ceil(result.guards * 1.5);
@@ -360,11 +373,34 @@ function analyzeTestDefenderNeeds(room) {
 
 function getTestCurrentDefenders(room) {
   const creeps = findTestRoomObjects(room, global.FIND_MY_CREEPS);
+  const isAssignedRemoteGuard = creep => creep.memory?.role === 'remoteGuard' && creep.memory?.targetRoom === room.name;
   return {
-    guards: creeps.filter(creep => !creep.spawning && creep.memory?.role === 'guard' && hasTestActivePart(creep, ['attack', 'ranged_attack'])).length,
+    guards: creeps.filter(creep =>
+      !creep.spawning &&
+      (creep.memory?.role === 'guard' || isAssignedRemoteGuard(creep)) &&
+      hasTestActivePart(creep, ['attack', 'ranged_attack'])
+    ).length,
     rangers: creeps.filter(creep => !creep.spawning && creep.memory?.role === 'ranger' && hasTestActivePart(creep, ['ranged_attack'])).length,
     healers: creeps.filter(creep => !creep.spawning && creep.memory?.role === 'healer' && hasTestActivePart(creep, ['heal'])).length
   };
+}
+
+function getTestCombatEscortRequirement(hostiles) {
+  const activeHostiles = hostiles.filter(hasTestActiveDefenseThreat);
+  const needs = analyzeTestDefenderNeeds({
+    find: findConstant => findConstant === global.FIND_HOSTILE_CREEPS ? activeHostiles : []
+  });
+  return {
+    guards: needs.guards,
+    rangers: needs.rangers
+  };
+}
+
+function hasTestSufficientCombatEscort(room, hostiles = getTestHostileCreeps(room)) {
+  const requirement = getTestCombatEscortRequirement(hostiles);
+  if (requirement.guards === 0 && requirement.rangers === 0) return true;
+  const current = getTestCurrentDefenders(room);
+  return current.guards >= requirement.guards && current.rangers >= requirement.rangers;
 }
 
 function getTestDefenderPriorityBoost(room, swarm, role) {
@@ -524,6 +560,7 @@ const stubs = {
     filterKnownAllyPowerCreeps: (powerCreeps) => filterAlliedTestEntities(powerCreeps),
     filterKnownAllyStructures: (structures) => filterAlliedTestEntities(structures),
     getActualHostileCreeps: getTestHostileCreeps,
+    hasActiveDefenseThreat: hasTestActiveDefenseThreat,
     getActualHostilePowerCreeps: (room) => room.find(global.FIND_HOSTILE_POWER_CREEPS).filter(powerCreep => !isAlliedTestEntity(powerCreep)),
     getActualHostileStructures: (room) => room.find(global.FIND_HOSTILE_STRUCTURES).filter(structure => !isAlliedTestEntity(structure)),
     getKnownHostileCreeps: getTestHostileCreeps,
@@ -533,8 +570,10 @@ const stubs = {
     hasKnownHostiles: (room) => getTestHostileCreeps(room).length > 0,
     analyzeDefenderNeeds: analyzeTestDefenderNeeds,
     createDefenseRequest: createTestDefenseRequest,
+    getCombatEscortRequirement: getTestCombatEscortRequirement,
     getCurrentDefenders: getTestCurrentDefenders,
     getDefenderPriorityBoost: getTestDefenderPriorityBoost,
+    hasSufficientCombatEscort: hasTestSufficientCombatEscort,
     needsDefenseAssistance: needsTestDefenseAssistance,
     needsEmergencyDefenders: needsTestEmergencyDefenders,
     addCombatPower: addTestCombatPower,

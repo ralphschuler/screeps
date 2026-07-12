@@ -252,7 +252,7 @@ function ensureScenarioMemory(
   scenarioSeedConfirmation?: any
 ): void {
   if (scenarios.length === 0) return;
-  const homeRoom = ownedRoomNames[0];
+  const homeRoom = scenarioSeedConfirmation?.rooms?.home ?? ownedRoomNames[0];
   const existingScenarioMemory = memory.screepsmodTestingScenarios ?? {};
   const hardInvaderSeed = existingScenarioMemory.hardInvader ?? scenarioSeedConfirmation?.hardInvader;
   memory.screepsmodTestingScenarios = {
@@ -263,6 +263,7 @@ function ensureScenarioMemory(
       ...(existingScenarioMemory.rooms ?? {}),
       home: homeRoom,
       remote: DEFAULT_SCENARIO_REMOTE_ROOM,
+      recovery: existingScenarioMemory.rooms?.recovery ?? scenarioSeedConfirmation?.rooms?.recovery ?? 'W1N2',
       economy: existingScenarioMemory.rooms?.economy ?? 'W2N1'
     }
   };
@@ -312,6 +313,12 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   const incomingNukes = objects?.find ? await toArray(await objects.find({ type: 'nuke' })) : [];
   const ownedNukers = objects?.find ? await toArray(await objects.find({ type: 'nuker', ...input.userIdFilter })) : [];
   const hardInvaderSeed = input.memory.screepsmodTestingScenarios?.hardInvader ?? input.scenarioSeedConfirmation?.hardInvader;
+  const recoveryRoom = input.memory.screepsmodTestingScenarios?.rooms?.recovery ?? 'W1N2';
+  const recoveryControllers = objects?.find ? await toArray(await objects.find({ type: 'controller', room: recoveryRoom, ...input.userIdFilter })) : [];
+  const recoverySpawns = objects?.find ? await toArray(await objects.find({ type: 'spawn', room: recoveryRoom, ...input.userIdFilter })) : [];
+  const recoveryTowers = objects?.find ? await toArray(await objects.find({ type: 'tower', room: recoveryRoom, ...input.userIdFilter })) : [];
+  const recoverySites = constructionSites.filter(site => site?.room === recoveryRoom && site?.structureType === 'spawn');
+  const recoveryHostiles = objects?.find ? await toArray(await objects.find({ type: 'creep', room: recoveryRoom, name: 'ScenarioSpawnlessSiege' })) : [];
   const linkSites = constructionSites.filter(site => site?.structureType === 'link');
   const siteTypes: Record<string, number> = {};
   for (const site of constructionSites) {
@@ -355,7 +362,37 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     landingTiles: incomingNukes.map(nuke => ({ room: nuke?.room, x: nuke?.x, y: nuke?.y }))
   };
   const homeRoom = input.memory.screepsmodTestingScenarios?.rooms?.home ?? input.ownedControllers[0]?.room;
+  const homeTerminal = terminalStructures.find(terminal => terminal?.room === homeRoom);
   diagnostics.nukeScheduling = getNukeProcessTelemetry(input.memory, homeRoom) ?? null;
+  const recoveryRequests = Array.isArray(input.memory.defenseRequests)
+    ? input.memory.defenseRequests
+    : Object.values(input.memory.defenseRequests ?? {});
+  const hasRecoveryRequest = recoveryRequests.some((request: any) => request?.roomName === recoveryRoom);
+  const terminalEnergy = Number(homeTerminal?.store?.energy ?? 0);
+  const initialTerminalEnergy = Number(input.scenarioSeedConfirmation?.spawnlessSiege?.homeTerminalEnergy ?? 0);
+  const seededSpawnCount = Number(input.scenarioSeedConfirmation?.spawnlessSiege?.spawnCount ?? -1);
+  const seededTowerCount = Number(input.scenarioSeedConfirmation?.spawnlessSiege?.towerCount ?? -1);
+  const refuelers = values(input.memory.creeps ?? {}).filter(creep => creep?.role === 'hauler' && creep?.task === 'defenseRefuel').length;
+  const emergencyQueue = Number(input.memory.stats?.rooms?.[homeRoom]?.spawn_queue?.emergency ?? 0);
+  const hasRefuelEvidence = refuelers > 0
+    || emergencyQueue > 0
+    || (initialTerminalEnergy > 0 && terminalEnergy < initialTerminalEnergy && terminalEnergy >= 5000);
+  diagnostics.spawnlessSiege = {
+    room: recoveryRoom,
+    ownedControllers: recoveryControllers.length,
+    spawns: recoverySpawns.length,
+    towers: recoveryTowers.length,
+    spawnSites: recoverySites.length,
+    hostileSeed: recoveryHostiles.length,
+    seededSpawnCount,
+    seededTowerCount,
+    defenseRequest: hasRecoveryRequest,
+    emergencyQueue,
+    refuelers,
+    terminalEnergy,
+    initialTerminalEnergy,
+    hasRefuelEvidence
+  };
 
   if (input.scenarios.indexOf('default-bootstrap') >= 0) {
     runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario default-bootstrap has owned controller and spawn', ['scenario','default-bootstrap'], () => input.ownedControllers.length > 0 && input.spawns.length > 0, 'default bootstrap scenario lacks owned controller or spawn');
@@ -391,6 +428,25 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
         && distinctAlertIds.size >= 2
         && hasCriticalNukeProcessTelemetry(input.memory, homeRoom);
     }, `stacked-nukes scenario collapsed same-tile alerts or missed critical scheduling telemetry; diagnostics=${JSON.stringify({ alerts: diagnostics.stackedNukes, scheduling: diagnostics.nukeScheduling })}`);
+  }
+  if (input.scenarios.indexOf('spawnless-siege') >= 0) {
+    runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario spawnless-siege preserves owned recovery continuity', ['scenario','spawnless-siege','recovery'], () => {
+      const recoveryPlan = recoverySpawns.length > 0 || recoverySites.length > 0;
+      const recoverySwarm = input.memory.rooms?.[recoveryRoom]?.swarm ?? {};
+      const recoveryDanger = Number(recoverySwarm.danger ?? 0) > 0;
+      const spawnlessDiagnostics = diagnostics.spawnlessSiege as {
+        defenseRequest?: boolean;
+        hasRefuelEvidence?: boolean;
+        seededSpawnCount?: number;
+        seededTowerCount?: number;
+      };
+      return recoveryControllers.length > 0
+        && recoveryPlan
+        && (spawnlessDiagnostics.defenseRequest === true || recoveryDanger)
+        && spawnlessDiagnostics.hasRefuelEvidence === true
+        && spawnlessDiagnostics.seededSpawnCount === 0
+        && spawnlessDiagnostics.seededTowerCount === 0;
+    }, `spawnless-siege recovery signal missing; diagnostics=${JSON.stringify(diagnostics.spawnlessSiege)}`);
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
     runtimeAssertCounter(

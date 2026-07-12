@@ -1,4 +1,4 @@
-import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
+import { getActualHostileCreeps, hasActiveDefenseThreat } from "@ralphschuler/screeps-defense";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 
 /**
@@ -59,13 +59,8 @@ export function hasUnsafeRemoteIntel(roomName: string): boolean {
 }
 
 /** Combat-capable hostile creeps that require local/remote response. */
-export function hasDangerousHostile(room: Room): boolean {
-  return getActualHostileCreeps(room).some(hostile =>
-    hostile.body.some(part =>
-      part.hits > 0 &&
-      (part.type === ATTACK || part.type === RANGED_ATTACK || part.type === WORK || part.type === HEAL)
-    )
-  );
+export function hasDangerousHostile(room: Room, hostiles = getActualHostileCreeps(room)): boolean {
+  return hostiles.some(hasActiveDefenseThreat);
 }
 
 export function roomHasOwnedSpawn(room: Room): boolean {

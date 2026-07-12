@@ -244,6 +244,59 @@ describe('screepsmod-testing backend mod', () => {
     );
   });
 
+  it('does not accept a home-room defense signal as spawnless recovery evidence', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100, scenarios: ['spawnless-siege'] } }
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: {
+        names: ['spawnless-siege'],
+        rooms: { home: 'W1N1', recovery: 'W1N4' }
+      },
+      defenseRequests: [{ roomName: 'W1N1', urgency: 3 }]
+    });
+    const recoveryRoom = {
+      name: 'W1N4',
+      controller: { my: true },
+      find: (type: number) => type === 2 ? [{ structureType: 'spawn' }] : []
+    };
+    const context = vm.createContext({
+      Game: {
+        ...createWarmGame(1300),
+        rooms: {
+          W1N1: {
+            name: 'W1N1',
+            controller: { my: true },
+            terminal: { my: true, store: { energy: 6000 } },
+            find: () => []
+          },
+          W1N4: recoveryRoom
+        }
+      },
+      Memory: memory,
+      FIND_MY_SPAWNS: 1,
+      FIND_MY_CONSTRUCTION_SITES: 2,
+      STRUCTURE_SPAWN: 'spawn',
+      RESOURCE_ENERGY: 'energy',
+      global: {}
+    });
+    context.global = context;
+    context.__screepsmodTestingPlayerExecutionCount = 1200;
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      }
+    }, 'bot-user-id');
+
+    expect(memory.screepsmodTestingPlayer.failures.map((failure: any) => failure.name)).to.include(
+      'spawnless-siege preserves recovery continuity under hostile pressure'
+    );
+  });
+
   it('passes construction scenario when the site is already completed and builder memory remains', () => {
     const engine = new EventEmitter();
     installTestingMod({

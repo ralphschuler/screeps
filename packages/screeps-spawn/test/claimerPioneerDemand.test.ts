@@ -15,6 +15,7 @@ type RoomOptions = {
   owner?: string;
   reserver?: string;
   hostileCreeps?: Creep[];
+  myCreeps?: Creep[];
   energyAvailable?: number;
   energyCapacityAvailable?: number;
 };
@@ -46,7 +47,10 @@ function createRoom(name: string, opts: RoomOptions = {}): Room {
       if (type === FIND_HOSTILE_CREEPS) {
         return opts.hostileCreeps ?? [];
       }
-      if (type === FIND_MY_CREEPS || type === FIND_MY_STRUCTURES || type === FIND_STRUCTURES || type === FIND_MINERALS) {
+      if (type === FIND_MY_CREEPS) {
+        return opts.myCreeps ?? [];
+      }
+      if (type === FIND_MY_STRUCTURES || type === FIND_STRUCTURES || type === FIND_MINERALS) {
         return [];
       }
       return [];
@@ -68,6 +72,15 @@ function createDangerousHostile(username = "Invader", parts: BodyPartConstant[] 
     owner: { username },
     body: parts.map(type => ({ type, hits: 100 }))
   } as Creep;
+}
+
+function createCombatEscort(role: "guard" | "ranger" = "guard"): Creep {
+  const combatPart = role === "guard" ? ATTACK : RANGED_ATTACK;
+  return {
+    spawning: false,
+    memory: { role },
+    body: [combatPart, MOVE].map(type => ({ type, hits: 100 }))
+  } as unknown as Creep;
 }
 
 function addStableHomeCreep(name: string, role: string, homeRoom = "E1N1"): void {
@@ -557,10 +570,39 @@ describe("claimer and pioneer demand", () => {
     expect(needsRole("E1N1", "pioneer", createSwarm())).to.equal(false);
   });
 
-  it("does not send pioneers into spawnless owned rooms with dangerous hostiles", () => {
-    Game.rooms.E2N1 = createRoom("E2N1", { my: true, hostileCreeps: [createDangerousHostile()] });
+  it("allows a pioneer into a hostile spawnless room when the escort covers the attack", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", {
+      my: true,
+      spawnSite: true,
+      hostileCreeps: [createDangerousHostile()],
+      myCreeps: [createCombatEscort()]
+    });
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.deep.equal({
+      targetRoom: "E2N1",
+      task: "bootstrapSpawn",
+      priority: SpawnPriority.EMERGENCY
+    });
+  });
+
+  it("does not send pioneers into a spawnless room with an underpowered escort", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", {
+      my: true,
+      spawnSite: true,
+      hostileCreeps: [createDangerousHostile(), createDangerousHostile()],
+      myCreeps: [createCombatEscort()]
+    });
 
     expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
-    expect(needsRole("E1N1", "pioneer", createSwarm())).to.equal(false);
+  });
+
+  it("treats hostile claim parts as dangerous for pioneer recovery", () => {
+    Game.rooms.E2N1 = createRoom("E2N1", {
+      my: true,
+      spawnSite: true,
+      hostileCreeps: [createDangerousHostile("Invader", [CLAIM])]
+    });
+
+    expect(getPioneerSpawnAssignment("E1N1", createSwarm())).to.equal(null);
   });
 });

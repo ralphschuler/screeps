@@ -2,7 +2,10 @@ import { expect } from "chai";
 import {
   analyzeDefenderNeeds,
   createDefenseRequest,
+  getCombatEscortRequirement,
   getCurrentDefenders,
+  hasActiveDefenseThreat,
+  hasSufficientCombatEscort,
   needsDefenseAssistance,
 } from "../src/analysis/defenderNeeds";
 import { EmergencyResponseManager, EmergencyLevel } from "../src/emergency/emergencyResponse";
@@ -30,7 +33,11 @@ function createRoom(
   incomingNukeCount = 0
 ): Room {
   const spawns = Array.from({ length: spawnCount }, () => ({ spawning: false }));
-  const friendlyCreeps = friendlyRoles.map(role => ({ memory: { role } }));
+  const friendlyCreeps = friendlyRoles.map(role => ({
+    spawning: false,
+    memory: { role },
+    body: [{ type: role === "ranger" ? RANGED_ATTACK : role === "healer" ? HEAL : ATTACK, hits: 100 }]
+  }));
   return {
     name: "W1N1",
     energyAvailable: 800,
@@ -315,6 +322,77 @@ describe("defense assistance needs", () => {
     const state = manager.assess(room, swarm);
 
     expect(state.level).to.equal(EmergencyLevel.HIGH);
+  });
+
+  it("ignores harmless scouts when sizing recovery escort coverage", () => {
+    expect(getCombatEscortRequirement([createHostile([MOVE])])).to.deep.equal({ guards: 0, rangers: 0 });
+  });
+
+  it("never classifies permanent or configured allies as recovery threats", () => {
+    const permanentAlly = { ...createHostile([ATTACK]), owner: { username: "TooAngel" } } as Creep;
+    const configuredAlly = { ...createHostile([CLAIM]), owner: { username: "ConfiguredFriend" } } as Creep;
+    (Memory as any).diplomacy = { allies: ["ConfiguredFriend"] };
+
+    expect(hasActiveDefenseThreat(permanentAlly)).to.equal(false);
+    expect(hasActiveDefenseThreat(configuredAlly)).to.equal(false);
+    expect(getCombatEscortRequirement([permanentAlly, configuredAlly])).to.deep.equal({ guards: 0, rangers: 0 });
+  });
+
+  it("counts an assigned active remote guard as escort coverage only in its target room", () => {
+    const assigned = {
+      spawning: false,
+      memory: { role: "remoteGuard", targetRoom: "W1N1" },
+      body: [{ type: ATTACK, hits: 100 }]
+    } as unknown as Creep;
+    const elsewhere = {
+      spawning: false,
+      memory: { role: "remoteGuard", targetRoom: "W2N1" },
+      body: [{ type: ATTACK, hits: 100 }]
+    } as unknown as Creep;
+    const room = {
+      name: "W1N1",
+      find: (type: FindConstant) => (type === FIND_MY_CREEPS ? [assigned, elsewhere] : [])
+    } as unknown as Room;
+
+    expect(getCurrentDefenders(room)).to.deep.equal({ guards: 1, rangers: 0, healers: 0 });
+  });
+
+  it("requires matching guard and ranger coverage for a coordinated attack", () => {
+    const hostiles = [
+      createHostile([ATTACK, MOVE]),
+      createHostile([RANGED_ATTACK, HEAL, MOVE])
+    ];
+
+    expect(getCombatEscortRequirement(hostiles)).to.deep.equal({ guards: 2, rangers: 2 });
+
+    const underpowered = createRoom(hostiles, 5, 0, ["guard"]);
+    expect(hasSufficientCombatEscort(underpowered)).to.equal(false);
+
+    const covered = createRoom(hostiles, 5, 0, ["guard", "guard", "ranger", "ranger"]);
+    expect(hasSufficientCombatEscort(covered)).to.equal(true);
+  });
+
+  it("does not let one nominal guard cover a high-part melee attacker", () => {
+    const hostile = createHostile([ATTACK, ATTACK, ATTACK, ATTACK, MOVE]);
+
+    expect(getCombatEscortRequirement([hostile]).guards).to.be.greaterThan(1);
+    expect(hasSufficientCombatEscort(createRoom([hostile], 5, 0, ["guard"]))).to.equal(false);
+  });
+
+  it("requires an escort for hostile controller attackers", () => {
+    const hostile = createHostile([CLAIM]);
+
+    expect(getCombatEscortRequirement([hostile])).to.deep.equal({ guards: 1, rangers: 0 });
+    expect(hasSufficientCombatEscort(createRoom([hostile], 5, 0))).to.equal(false);
+  });
+
+  it("creates a guard requirement for claim attackers even when a spawn exists", () => {
+    const room = createRoom([createHostile([CLAIM])], 5, 1);
+
+    const needs = analyzeDefenderNeeds(room);
+
+    expect(needs.guards).to.equal(1);
+    expect(needs.reasons).to.include("1 claim parts detected");
   });
 
   it("does not count spawning or disarmed defenders as current defense", () => {

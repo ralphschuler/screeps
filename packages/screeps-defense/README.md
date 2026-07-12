@@ -222,6 +222,8 @@ The coordinator:
 
 - `analyzeDefenderNeeds()` sizes guards/rangers/healers only from visible real threats; peaceful RCL3+ rooms do not get high-priority defender requirements here.
 - `getCurrentDefenders()` counts only active, non-spawning defenders with live combat/heal parts so damaged or still-spawning creeps cannot mask emergency deficits.
+- `getCombatEscortRequirement()` sizes the minimum guard/ranger coverage for hostile recovery work, including boosted, healing, dismantling, and `CLAIM` attackers.
+- `hasSufficientCombatEscort()` requires role-matched active coverage; a single nominal defender cannot authorize civilian recovery against a coordinated wave.
 - `calculateCombatPower()` scores only active `BodyPartDefinition` entries (`hits > 0`) while treating body constants as generated active bodies.
 - `buildDefenseAssistBody()` selects guard/ranger/healer bodies that outclass visible attackers when affordable.
 - `calculateAggregateDefenseResponsePlan()` sizes multi-creep friendly power, including healer coverage, above visible hostile power.

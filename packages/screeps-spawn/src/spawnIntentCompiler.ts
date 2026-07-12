@@ -140,6 +140,27 @@ export function planSpawnDemand(room: Room, swarm: SwarmState): SpawnDemand[] {
   const isEmergency = isEmergencySpawnState(room.name);
   const demands: SpawnDemand[] = [];
 
+  // Terminal-backed defense refuel is the bootstrap escape hatch: without it,
+  // a room with stranded spawn energy can return early on its larvaWorker path
+  // and never birth the hauler needed to unlock the emergency reserve.
+  const bootstrapRefuel = getDefenseRefuelSpawnAssignment(room.name, "hauler");
+  if (bootstrapRefuel) {
+    const def = ROLE_DEFINITIONS.hauler;
+    if (def) {
+      const current = counts.get("hauler") ?? 0;
+      return [{
+        roleName: "hauler",
+        def,
+        current,
+        target: current + 1,
+        missing: 1,
+        priority: bootstrapRefuel.priority,
+        task: bootstrapRefuel.task,
+        bodyOverride: bootstrapRefuel.body
+      }];
+    }
+  }
+
   if (isBootstrapMode(room.name, room)) {
     const roleName = getBootstrapRole(room.name, room, swarm);
     if (!roleName) return demands;
