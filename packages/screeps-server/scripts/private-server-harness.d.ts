@@ -3,6 +3,8 @@ export interface HarnessOptions {
   durationMinutes?: number;
   maxTicks?: number;
   tickPollMs?: number;
+  diagnosticTimeoutMs?: number;
+  diagnosticMaxOutputBytes?: number;
   tickRate?: number;
   runtimeWarmupTicks?: number;
   serverPort?: number;
@@ -36,6 +38,7 @@ export function inspectMemorySnapshot(memory: any, summary: any, now?: Date, opt
 export function prepareArtifactsDir(options: { artifactsDir: string }): void;
 export function formatHarnessError(error: unknown): string;
 export function recordHarnessError(summary: any, error: unknown): string;
+export function runShell(command: string, args: string[], options: HarnessOptions, log: (message: string) => unknown, runOptions?: Record<string, unknown>): Promise<any>;
 export function summarizeContainerState(output: string): any[];
 export function isTransportFailure(error: unknown): boolean;
 export function updateValidationStatus(summary: any, transportError?: unknown): any;
