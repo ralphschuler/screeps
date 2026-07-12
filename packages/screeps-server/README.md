@@ -108,6 +108,8 @@ Expected files:
 - `docker.log`
 - `scenario-<name>.json` for each configured runtime scenario
 
+Failed runs also preserve best-effort Docker/process logs in `docker.log`, stopped-service state and exit codes under `metrics.containerDiagnostics`, and separate assertion/transport outcomes under `metrics.validation`.
+
 `summary.json`/`summary.md` preserve merged and source-specific in-game assertion results:
 
 - `metrics.screepsmodTesting` merged from player sandbox + backend cronjob
