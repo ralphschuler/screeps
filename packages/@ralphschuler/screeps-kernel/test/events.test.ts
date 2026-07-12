@@ -455,6 +455,34 @@ describe("EventBus", () => {
       expect(eventBus.getStats().queueSize).to.equal(35);
     });
 
+    it("should enforce one queue allowance when processQueue is called twice in one tick", () => {
+      const processedEvents: string[] = [];
+      eventBus.updateConfig({ maxEventsPerTick: 2 });
+      eventBus.on("cpu.spike", event => {
+        processedEvents.push(event.subsystem);
+      });
+
+      Game.cpu.bucket = 1500;
+      for (const subsystem of ["first", "second", "third"]) {
+        eventBus.emit("cpu.spike", {
+          cpuUsed: 100,
+          cpuLimit: 50,
+          subsystem
+        });
+      }
+
+      Game.cpu.bucket = 5000;
+      eventBus.processQueue();
+      eventBus.processQueue();
+
+      expect(processedEvents).to.deep.equal(["first", "second"]);
+      expect(eventBus.getStats().queueSize).to.equal(1);
+
+      Game.time++;
+      eventBus.processQueue();
+      expect(processedEvents).to.deep.equal(["first", "second", "third"]);
+    });
+
     it("should process full maxEventsPerTick when bucket >= lowBucketThreshold", () => {
       const processedEvents: string[] = [];
 
