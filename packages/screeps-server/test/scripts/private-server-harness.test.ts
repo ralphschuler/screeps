@@ -23,6 +23,7 @@ import {
   resolveAvailablePorts,
   resolveScreepsApiConstructor,
   restartScreepsRuntime,
+  runShell,
   shouldContinuePolling,
   summarizeContainerState,
   summarizeServerLogDiagnostics,
@@ -31,8 +32,23 @@ import {
   validateSmokeSummary,
   writeFailedSummaryForError,
 } from "../../scripts/private-server-harness.js";
+import { redactSensitive } from "../../scripts/validation-utils.js";
 
 describe("private-server harness module", () => {
+  it("redacts sensitive object fields and JSON-like strings", () => {
+    const value = redactSensitive({
+      password: "server-secret",
+      nested: { token: "api-secret" },
+      message: '{"password":"server-secret","token":"api-secret"} key=raw-secret',
+    }) as any;
+
+    expect(value.password).to.equal("[REDACTED]");
+    expect(value.nested.token).to.equal("[REDACTED]");
+    expect(value.message).to.not.include("server-secret");
+    expect(value.message).to.not.include("api-secret");
+    expect(value.message).to.not.include("raw-secret");
+  });
+
   it("resolves screeps-api constructors from CommonJS and ESM namespace shapes", () => {
     class Api {}
 
@@ -118,6 +134,8 @@ describe("private-server harness module", () => {
     expect(options.durationMinutes).to.equal(15);
     expect(options.maxTicks).to.equal(10000);
     expect(options.tickPollMs).to.equal(10000);
+    expect(options.diagnosticTimeoutMs).to.equal(30000);
+    expect(options.diagnosticMaxOutputBytes).to.equal(256000);
     expect(options.tickRate).to.equal(20);
     expect(options.serverPort).to.equal(21025);
     expect(options.cliPort).to.equal(21026);
@@ -190,6 +208,13 @@ describe("private-server harness module", () => {
       baseCliPort: 21026,
       attemptedPairs: 1,
     });
+  });
+
+  it("falls back to bounded diagnostic defaults for invalid limits", () => {
+    const options = parseHarnessArgs(["--diagnosticTimeoutMs=invalid", "--diagnosticMaxOutputBytes=0"], {});
+
+    expect(options.diagnosticTimeoutMs).to.equal(30000);
+    expect(options.diagnosticMaxOutputBytes).to.equal(256000);
   });
 
   it("parses long defaults and environment overrides", () => {
@@ -352,6 +377,21 @@ describe("private-server harness module", () => {
     expect(isTransportFailure(new Error("screepsmod-testing skipped 4 runtime checks after warmup"))).to.equal(false);
   });
 
+  it("rejects inconsistent assertion counts instead of marking them passed", () => {
+    const summary = createInitialSummary(parseHarnessArgs([], {}));
+    summary.metrics.screepsmodTesting = { total: 10, passed: 8, failed: 0, skipped: 0 };
+
+    updateValidationStatus(summary, null);
+
+    expect(summary.metrics.validation.assertions).to.deep.equal({
+      status: "inconsistent",
+      total: 10,
+      passed: 8,
+      failed: 0,
+      skipped: 0,
+    });
+  });
+
   it("keeps incomplete assertions distinct from a transport failure", () => {
     const summary = createInitialSummary(parseHarnessArgs([], {}));
     summary.metrics.screepsmodTesting = { total: 47, passed: 43, failed: 0, skipped: 4 };
@@ -366,6 +406,40 @@ describe("private-server harness module", () => {
       skipped: 4,
     });
     expect(summary.metrics.validation.transport.status).to.equal("failed");
+  });
+
+  it("captures stream output after process exit and bounds diagnostic output", async () => {
+    const options = parseHarnessArgs([], {});
+    const result = await runShell(
+      process.execPath,
+      ["-e", "process.stdout.write('tail'.repeat(100)); process.exit(0)"],
+      options,
+      () => {},
+      { capture: true, maxOutputBytes: 32, timeoutMs: 1000 },
+    );
+
+    expect(result.stdout).to.include("tail");
+    expect(Buffer.byteLength(result.stdout)).to.be.at.most(32);
+    expect(result.outputTruncated).to.equal(true);
+  });
+
+  it("terminates bounded diagnostic commands that exceed their timeout", async () => {
+    const options = parseHarnessArgs([], {});
+    let error: any;
+    try {
+      await runShell(
+        process.execPath,
+        ["-e", "setTimeout(() => {}, 1000)"],
+        options,
+        () => {},
+        { capture: true, timeoutMs: 20, maxOutputBytes: 32 },
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error?.timedOut).to.equal(true);
+    expect(error?.message).to.match(/Timed out running/);
   });
 
   it("preserves Docker state and logs when the service has already exited", async () => {

@@ -8,6 +8,12 @@ import zlib from "node:zlib";
 import { appendCpuBenchmarkSample } from "./cpu-benchmark-model.js";
 import { ensureLiveCloneAuth, seedLiveCloneSnapshot } from "./live-clone-seeder.js";
 import { createServerControlPlane, parseTickRate } from "./server-control-plane.js";
+import {
+  deriveValidation,
+  limitOutput,
+  redactSensitive,
+  redactString,
+} from "./validation-utils.js";
 
 const legacyApiRequire = createRequire(new URL("../../../package.json", import.meta.url));
 const ScreepsAPI = resolveScreepsApiConstructor(legacyApiRequire("screeps-api"));
@@ -61,6 +67,8 @@ export function createLegacyScreepsApiAdapter(ScreepsHttpClient) {
 const DEFAULT_RUNTIME_WARMUP_TICKS = 100;
 const DEFAULT_SMOKE_DURATION_MINUTES = 15;
 const DEFAULT_SMOKE_MAX_TICKS = 10000;
+const DEFAULT_DIAGNOSTIC_TIMEOUT_MS = 30_000;
+const DEFAULT_DIAGNOSTIC_MAX_OUTPUT_BYTES = 256_000;
 const DEFAULT_RUNTIME_SCENARIOS = [
   "default-bootstrap",
   "construction-economy",
@@ -86,6 +94,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_SERVER_ROOT = path.resolve(__dirname, "..");
 const DEFAULT_REPO_ROOT = path.resolve(DEFAULT_SERVER_ROOT, "../..");
+
+function parsePositiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 function parseArgMap(argv) {
   const args = new Map();
@@ -162,6 +175,14 @@ export function parseHarnessArgs(
     ),
     maxTicks: Number(args.get("maxTicks") ?? (mode === "long" ? 72000 : DEFAULT_SMOKE_MAX_TICKS)),
     tickPollMs: Number(args.get("tickPollMs") ?? 10000),
+    diagnosticTimeoutMs: parsePositiveNumber(
+      args.get("diagnosticTimeoutMs"),
+      DEFAULT_DIAGNOSTIC_TIMEOUT_MS,
+    ),
+    diagnosticMaxOutputBytes: parsePositiveNumber(
+      args.get("diagnosticMaxOutputBytes"),
+      DEFAULT_DIAGNOSTIC_MAX_OUTPUT_BYTES,
+    ),
     tickRate: parseTickRate(args.get("tickRate") ?? env.SCREEPS_TICK_RATE ?? 20),
     runtimeWarmupTicks: parseRuntimeWarmupTicks(
       args.get("runtimeWarmupTicks"),
@@ -253,6 +274,8 @@ export function createInitialSummary(options, now = new Date()) {
     tickRate: options.tickRate,
     roomName: options.roomName,
     scenarios: options.scenarios ?? [],
+    diagnosticTimeoutMs: options.diagnosticTimeoutMs,
+    diagnosticMaxOutputBytes: options.diagnosticMaxOutputBytes,
     liveCloneSnapshot: options.liveCloneSnapshot ?? null,
     botBundle: options.botBundle ?? null,
     checks: {},
@@ -293,9 +316,7 @@ export function parseScenarioSeedConfirmationOutput(output) {
 }
 
 function sanitizeScenarioSeedOutput(output) {
-  return String(output ?? "")
-    .replace(/(token|password|secret|key)=([^\s]+)/gi, "$1=[REDACTED]")
-    .slice(0, 4000);
+  return limitOutput(redactString(output), 4000).value;
 }
 
 export function recordScenarioSeedConfirmation(options, summary, output) {
@@ -313,7 +334,7 @@ export function recordScenarioSeedConfirmation(options, summary, output) {
   summary.metrics.scenarioSeedConfirmation = confirmation;
   fs.writeFileSync(
     path.join(options.artifactsDir, SCENARIO_SEED_CONFIRMATION_FILENAME),
-    JSON.stringify(confirmation, null, 2),
+    JSON.stringify(redactSensitive(confirmation), null, 2),
   );
   return confirmation;
 }
@@ -387,7 +408,7 @@ export function formatHarnessError(error) {
 }
 
 export function recordHarnessError(summary, error) {
-  const message = formatHarnessError(error);
+  const message = limitOutput(redactString(formatHarnessError(error)), 4000).value;
   if (!summary.errors.includes(message)) summary.errors.push(message);
   return message;
 }
@@ -403,7 +424,7 @@ function createLogger(options) {
   };
 }
 
-function runShell(command, commandArgs, options, log, runOptions = {}) {
+export function runShell(command, commandArgs, options, log, runOptions = {}) {
   log(`$ ${command} ${commandArgs.join(" ")}`);
   return new Promise((resolve, reject) => {
     const child = spawn(command, commandArgs, {
@@ -412,32 +433,71 @@ function runShell(command, commandArgs, options, log, runOptions = {}) {
       stdio: runOptions.capture ? ["ignore", "pipe", "pipe"] : "inherit",
     });
 
+    const maxOutputBytes = runOptions.maxOutputBytes ?? Number.POSITIVE_INFINITY;
     let stdout = "";
     let stderr = "";
-    if (child.stdout)
-      child.stdout.on("data", (chunk) => {
-        stdout += chunk.toString();
-      });
-    if (child.stderr)
-      child.stderr.on("data", (chunk) => {
-        stderr += chunk.toString();
-      });
+    let outputTruncated = false;
+    let settled = false;
+    let timeout;
 
-    child.on("error", reject);
-    child.on("exit", (code) => {
-      if (code === 0) resolve({ stdout, stderr });
-      else {
+    const append = (current, chunk) => {
+      const result = limitOutput(`${current}${chunk.toString()}`, maxOutputBytes);
+      outputTruncated ||= result.truncated;
+      return result.value;
+    };
+    const cleanup = () => {
+      if (timeout) clearTimeout(timeout);
+      child.removeListener("error", onError);
+      child.removeListener("close", onClose);
+    };
+    const settleReject = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const onError = (error) => settleReject(error);
+    const onClose = (code, signal) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (code === 0) {
+        resolve({ stdout, stderr, outputTruncated });
+        return;
+      }
+      const error = new Error(
+        `${command} ${commandArgs.join(" ")} exited ${code ?? "unknown"}${signal ? ` (${signal})` : ""}\n${stderr}`,
+      );
+      error.command = command;
+      error.commandArgs = commandArgs;
+      error.exitCode = code;
+      error.signal = signal;
+      error.stdout = stdout;
+      error.stderr = stderr;
+      error.outputTruncated = outputTruncated;
+      settleReject(error);
+    };
+
+    if (child.stdout) child.stdout.on("data", (chunk) => { stdout = append(stdout, chunk); });
+    if (child.stderr) child.stderr.on("data", (chunk) => { stderr = append(stderr, chunk); });
+    child.once("error", onError);
+    child.once("close", onClose);
+
+    if (Number.isFinite(runOptions.timeoutMs) && runOptions.timeoutMs > 0) {
+      timeout = setTimeout(() => {
         const error = new Error(
-          `${command} ${commandArgs.join(" ")} exited ${code}\n${stderr}`,
+          `Timed out running ${command} ${commandArgs.join(" ")} after ${runOptions.timeoutMs}ms`,
         );
         error.command = command;
         error.commandArgs = commandArgs;
-        error.exitCode = code;
         error.stdout = stdout;
         error.stderr = stderr;
-        reject(error);
-      }
-    });
+        error.outputTruncated = outputTruncated;
+        error.timedOut = true;
+        child.kill("SIGTERM");
+        settleReject(error);
+      }, runOptions.timeoutMs);
+    }
   });
 }
 
@@ -677,35 +737,11 @@ export function summarizeContainerState(output) {
 
 export function isTransportFailure(error) {
   const message = formatHarnessError(error);
-  return /ECONNREFUSED|ECONNRESET|EPIPE|ETIMEDOUT|Timed out waiting|game time did not advance|API authentication|docker .* exited|server .* (stopped|exited|unavailable)/i.test(message);
+  return /ECONNREFUSED|ECONNRESET|EPIPE|ETIMEDOUT|Timed out (?:waiting|running)|game time did not advance|API authentication|docker .* exited|server .* (stopped|exited|unavailable)/i.test(message);
 }
 
 export function updateValidationStatus(summary, transportError) {
-  const testSummary = summary.metrics.screepsmodTesting ?? {};
-  const total = Number(testSummary.total ?? 0);
-  const failed = Number(testSummary.failed ?? 0);
-  const skipped = Number(testSummary.skipped ?? 0);
-  const assertionStatus = failed > 0
-    ? "failed"
-    : total <= 0
-      ? "unknown"
-      : skipped > 0
-        ? "incomplete"
-        : "passed";
-
-  summary.metrics.validation = {
-    assertions: {
-      status: assertionStatus,
-      total,
-      passed: Number(testSummary.passed ?? Math.max(0, total - failed - skipped)),
-      failed,
-      skipped,
-    },
-    transport: {
-      status: transportError ? "failed" : "passed",
-      error: transportError ? String(transportError?.message ?? formatHarnessError(transportError)) : null,
-    },
-  };
+  summary.metrics.validation = deriveValidation(summary, summary.metrics.screepsmodTesting, transportError);
   return summary.metrics.validation;
 }
 
@@ -773,9 +809,21 @@ export async function collectLogs(options, summary, log, runShellFn = runShell) 
         commandArgs,
         options,
         log,
-        { cwd: options.serverRoot, capture: true },
+        {
+          cwd: options.serverRoot,
+          capture: true,
+          timeoutMs: options.diagnosticTimeoutMs ?? DEFAULT_DIAGNOSTIC_TIMEOUT_MS,
+          maxOutputBytes: options.diagnosticMaxOutputBytes ?? DEFAULT_DIAGNOSTIC_MAX_OUTPUT_BYTES,
+        },
       );
-      return { label, ok: true, exitCode: 0, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+      return {
+        label,
+        ok: true,
+        exitCode: 0,
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? "",
+        outputTruncated: result.outputTruncated === true,
+      };
     } catch (error) {
       return {
         label,
@@ -783,6 +831,7 @@ export async function collectLogs(options, summary, log, runShellFn = runShell) 
         exitCode: Number.isInteger(error?.exitCode) ? error.exitCode : null,
         stdout: error?.stdout ?? "",
         stderr: error?.stderr ?? "",
+        outputTruncated: error?.outputTruncated === true,
         error: formatHarnessError(error),
       };
     }
@@ -813,23 +862,21 @@ export async function collectLogs(options, summary, log, runShellFn = runShell) 
     "process logs",
   );
 
-  const redact = value => String(value ?? "").replace(
-    /(token|password|secret|key)=([^\s]+)/gi,
-    "$1=[REDACTED]",
-  );
+  const maxOutputBytes = options.diagnosticMaxOutputBytes ?? DEFAULT_DIAGNOSTIC_MAX_OUTPUT_BYTES;
+  const sanitize = (value) => limitOutput(redactString(value), maxOutputBytes).value;
   const commandOutput = result => [
-    `=== ${result.label} (ok=${result.ok}, exitCode=${result.exitCode ?? "unknown"}) ===`,
-    redact(result.stdout),
-    redact(result.stderr),
-    result.error ? `error: ${redact(result.error)}` : "",
+    `=== ${result.label} (ok=${result.ok}, exitCode=${result.exitCode ?? "unknown"}, truncated=${result.outputTruncated === true}) ===`,
+    sanitize(result.stdout),
+    sanitize(result.stderr),
+    result.error ? `error: ${sanitize(result.error)}` : "",
   ].filter(Boolean).join("\n");
   const sanitized = [commandOutput(composeLogs), commandOutput(composeState), commandOutput(processLogs)].join("\n\n");
-  fs.writeFileSync(path.join(options.artifactsDir, "docker.log"), sanitized);
+  fs.writeFileSync(path.join(options.artifactsDir, "docker.log"), sanitize(sanitized));
 
   const containerRows = summarizeContainerState(composeState.stdout);
   summary.metrics.containerDiagnostics = {
     capturedAt: new Date().toISOString(),
-    composePsRaw: redact(composeState.stdout),
+    composePsRaw: sanitize(composeState.stdout),
     containers: containerRows.map(row => ({
       name: row.Name ?? row.name ?? null,
       service: row.Service ?? row.service ?? null,
@@ -841,7 +888,7 @@ export async function collectLogs(options, summary, log, runShellFn = runShell) 
       label: result.label,
       ok: result.ok,
       exitCode: result.exitCode,
-      error: result.error ? redact(result.error) : null,
+      error: result.error ? sanitize(result.error) : null,
     })),
   };
   summary.metrics.serverLogDiagnostics = summarizeServerLogDiagnostics(sanitized);
@@ -980,9 +1027,10 @@ export function validateSmokeSummary(summary, options = {}) {
 async function writeSummary(options, summary, status) {
   summary.status = status;
   summary.finishedAt = new Date().toISOString();
+  const persistedSummary = redactSensitive(summary);
   fs.writeFileSync(
     path.join(options.artifactsDir, "summary.json"),
-    JSON.stringify(summary, null, 2),
+    JSON.stringify(persistedSummary, null, 2),
   );
 
   const testSummary = summary.metrics.screepsmodTesting;
@@ -992,13 +1040,17 @@ async function writeSummary(options, summary, status) {
     );
     fs.writeFileSync(
       path.join(options.artifactsDir, `scenario-${scenario}.json`),
-      JSON.stringify({ scenario, status, failures: scenarioResults, summary: testSummary ?? null }, null, 2),
+      JSON.stringify(
+        redactSensitive({ scenario, status, failures: scenarioResults, summary: testSummary ?? null }),
+        null,
+        2,
+      ),
     );
   }
 
   fs.writeFileSync(
     path.join(options.artifactsDir, "summary.md"),
-    `# Screeps ${options.mode} run\n\nStatus: ${status}\n\nStarted: ${summary.startedAt}\nFinished: ${summary.finishedAt}\n\nChecks:\n\n\`\`\`json\n${JSON.stringify(summary.checks, null, 2)}\n\`\`\`\n\nMetrics:\n\n\`\`\`json\n${JSON.stringify(summary.metrics, null, 2)}\n\`\`\`\n\nErrors:\n\n${summary.errors.map((e) => `- ${e}`).join("\n") || "- none"}\n`,
+    `# Screeps ${options.mode} run\n\nStatus: ${status}\n\nStarted: ${summary.startedAt}\nFinished: ${summary.finishedAt}\n\nChecks:\n\n\`\`\`json\n${JSON.stringify(persistedSummary.checks, null, 2)}\n\`\`\`\n\nMetrics:\n\n\`\`\`json\n${JSON.stringify(persistedSummary.metrics, null, 2)}\n\`\`\`\n\nErrors:\n\n${persistedSummary.errors.map((e) => `- ${e}`).join("\n") || "- none"}\n`,
   );
 }
 

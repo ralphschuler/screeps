@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from '
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { deriveValidation, normalizeAssertionCounts } from './validation-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -114,65 +115,71 @@ function durationSecondsFromSummary(summary) {
   return Math.max(0, (finish - start) / 1000);
 }
 
-function applyHarnessSummary(report, harnessSummary) {
+export function applyHarnessSummary(report, harnessSummary) {
   const summary = harnessSummary?.summary;
-  if (!summary) return;
+  if (!summary) return report;
 
   const testSummary =
     summary.metrics?.screepsmodTesting
     || summary.metrics?.screepsmodTestingPlayer
     || null;
   const backendSummary = summary.metrics?.screepsmodTestingBackend || null;
+  const validation = deriveValidation(summary, testSummary);
+  const validationFailures = [];
 
-  if (testSummary && Number.isFinite(Number(testSummary.total))) {
-    const total = Number(testSummary.total || 0);
-    const failed = Number(testSummary.failed || 0);
-    const skipped = Number(testSummary.skipped || 0);
-    const passed = Math.max(0, total - failed - skipped);
+  if (summary.status && summary.status !== 'passed') validationFailures.push(`harness status: ${summary.status}`);
+  if (validation.transport.status !== 'passed') validationFailures.push('transport failed');
+  if (validation.assertions.status !== 'passed') {
+    validationFailures.push(`assertions ${validation.assertions.status}`);
+  }
+  if (backendSummary) {
+    const backendAssertions = normalizeAssertionCounts(backendSummary);
+    if (backendAssertions.status !== 'passed') {
+      validationFailures.push(`backend assertions ${backendAssertions.status}`);
+    }
+  }
 
+  if (testSummary) {
+    const counts = validation.assertions;
     report.integration.tests.push({
       name: testSummary.source || 'screepsmod-testing',
-      total,
-      passed,
-      failed,
-      skipped,
+      ...counts,
     });
-
     report.integration.passed =
-      failed === 0
+      counts.status === 'passed'
       && summary.checks?.modResultsPresent === true
+      && validation.transport.status === 'passed'
       && summary.status === 'passed';
-
-    report.summary.total += total;
-    report.summary.passed += passed;
-    report.summary.failed += failed;
-    report.summary.skipped += skipped;
+    report.summary.total += counts.total;
+    report.summary.passed += counts.passed;
+    report.summary.failed += counts.failed;
+    report.summary.skipped += counts.skipped;
   }
 
-  if (backendSummary && Number.isFinite(Number(backendSummary.total))) {
-    const total = Number(backendSummary.total || 0);
-    const failed = Number(backendSummary.failed || 0);
-    const skipped = Number(backendSummary.skipped || 0);
-    const passed = Math.max(0, total - failed - skipped);
-
+  if (backendSummary) {
+    const counts = normalizeAssertionCounts(backendSummary);
     report.performance.tests.push({
       name: backendSummary.source || 'screepsmod-testing-backend',
-      total,
-      passed,
-      failed,
-      skipped,
+      ...counts,
     });
-
     report.performance.passed =
-      failed === 0
+      counts.status === 'passed'
       && summary.checks?.modResultsPresent === true
+      && validation.transport.status === 'passed'
       && summary.status === 'passed';
-
-    report.summary.total += total;
-    report.summary.passed += passed;
-    report.summary.failed += failed;
-    report.summary.skipped += skipped;
+    report.summary.total += counts.total;
+    report.summary.passed += counts.passed;
+    report.summary.failed += counts.failed;
+    report.summary.skipped += counts.skipped;
   }
+
+  if (validationFailures.length > 0 && report.summary.failed === 0) report.summary.failed = 1;
+  report.validation = {
+    status: validationFailures.length === 0 ? 'passed' : 'failed',
+    failures: validationFailures,
+    assertions: validation.assertions,
+    transport: validation.transport,
+  };
 
   const elapsedSeconds = durationSecondsFromSummary(summary);
   if (elapsedSeconds > 0) {
@@ -181,9 +188,10 @@ function applyHarnessSummary(report, harnessSummary) {
     report.performance.duration = elapsedSeconds;
     report.packages.duration = elapsedSeconds;
   }
+  return report;
 }
 
-function buildEmptyReport() {
+export function buildEmptyReport() {
   return {
     timestamp: new Date().toISOString(),
     summary: {
@@ -216,7 +224,7 @@ function buildEmptyReport() {
   };
 }
 
-function generateReport() {
+export function generateReport() {
   const report = buildEmptyReport();
 
   const mode = inferHarnessMode();
@@ -318,18 +326,20 @@ function generateAndHandleBaselineComparison(report) {
   }
 }
 
-try {
-  const report = generateReport();
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  try {
+    const report = generateReport();
 
-  if (report.summary.failed > 0) {
-    console.error('❌ Some tests failed');
+    if (report.summary.failed > 0 || report.validation?.status === 'failed') {
+      console.error('❌ Validation failed');
+      process.exit(1);
+    } else {
+      console.log('✅ All tests passed');
+      generateAndHandleBaselineComparison(report);
+      process.exit(0);
+    }
+  } catch (error) {
+    console.error('Error generating report:', error);
     process.exit(1);
-  } else {
-    console.log('✅ All tests passed');
-    generateAndHandleBaselineComparison(report);
-    process.exit(0);
   }
-} catch (error) {
-  console.error('Error generating report:', error);
-  process.exit(1);
 }
