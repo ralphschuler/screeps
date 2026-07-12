@@ -89,6 +89,7 @@ describe('screepsmod-testing backend mod', () => {
     });
     context.global = context;
     context.__screepsmodTestingPlayerExecutionCount = 1200;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = 'modules:main:36';
 
     const sandbox = {
       run(code: string) {
@@ -143,6 +144,7 @@ describe('screepsmod-testing backend mod', () => {
     });
     context.global = context;
     context.__screepsmodTestingPlayerExecutionCount = 1200;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = 'modules:main:36';
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -206,6 +208,132 @@ describe('screepsmod-testing backend mod', () => {
       tick: 10_099,
     });
     expect(context.__screepsmodTestingPlayerExecutionCount).to.equal(101);
+  });
+
+  it('preserves player-sandbox maturity across a runtime global reset', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100 } },
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      screepsmodTestingPlayer: {
+        source: 'screepsmod-testing-player-sandbox',
+        runtimeExecutions: 100,
+        runtimeAge: 99,
+        runtimeWarmed: false,
+        runtimeCodeIdentity: 'modules:main:36',
+        tick: 99,
+      },
+    });
+    const context = vm.createContext({
+      Game: createWarmGame(100),
+      Memory: memory,
+      global: {},
+    });
+    context.global = context;
+    // A Screeps global reset clears the sandbox global, but not Memory.
+    context.__screepsmodTestingPlayerExecutionCount = 0;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = undefined;
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      },
+    }, 'bot-user-id');
+
+    expect(context.__screepsmodTestingPlayerExecutionCount).to.equal(101);
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      runtimeExecutions: 101,
+      runtimeAge: 100,
+      runtimeWarmed: true,
+      skipped: 1,
+      tick: 100,
+    });
+  });
+
+  it('does not reuse player-sandbox maturity after a bot-code identity change', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100 } },
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      __screepsmodTestingBotCodeIdentity: 'modules:main:37',
+      screepsmodTestingPlayer: {
+        source: 'screepsmod-testing-player-sandbox',
+        runtimeExecutions: 1200,
+        runtimeAge: 1199,
+        runtimeWarmed: true,
+        runtimeCodeIdentity: 'modules:main:36',
+        tick: 1200,
+      },
+    });
+    const context = vm.createContext({
+      Game: createWarmGame(100),
+      Memory: memory,
+      global: {},
+    });
+    context.global = context;
+    context.__screepsmodTestingPlayerExecutionCount = 1200;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = 'modules:main:36';
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      },
+    }, 'bot-user-id');
+
+    expect(context.__screepsmodTestingPlayerExecutionCount).to.equal(1);
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      runtimeExecutions: 1,
+      runtimeAge: 0,
+      runtimeWarmed: false,
+      runtimeCodeIdentity: 'modules:main:37',
+      tick: 100,
+    });
+  });
+
+  it('preserves legacy player-sandbox maturity when code identity is unavailable', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100 } },
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      __screepsmodTestingBotCodeIdentity: undefined,
+      screepsmodTestingPlayer: {
+        source: 'screepsmod-testing-player-sandbox',
+        runtimeExecutions: 100,
+        runtimeAge: 99,
+        runtimeWarmed: false,
+        tick: 99,
+      },
+    });
+    const context = vm.createContext({
+      Game: createWarmGame(100),
+      Memory: memory,
+      global: {},
+    });
+    context.global = context;
+    context.__screepsmodTestingPlayerExecutionCount = 100;
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      },
+    }, 'bot-user-id');
+
+    expect(context.__screepsmodTestingPlayerExecutionCount).to.equal(101);
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      runtimeExecutions: 101,
+      runtimeAge: 100,
+      runtimeWarmed: true,
+      tick: 100,
+    });
   });
 
   it('does not require role memory on visible hostile creeps in player-sandbox assertions', () => {
@@ -285,6 +413,7 @@ describe('screepsmod-testing backend mod', () => {
     });
     context.global = context;
     context.__screepsmodTestingPlayerExecutionCount = 1200;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = 'modules:main:36';
 
     engine.emit('playerSandbox', {
       run(code: string) {
@@ -397,6 +526,7 @@ describe('screepsmod-testing backend mod', () => {
     });
     context.global = context;
     context.__screepsmodTestingPlayerExecutionCount = context.Game.time;
+    context.__screepsmodTestingPlayerRuntimeCodeIdentity = 'modules:main:36';
 
     engine.emit('playerSandbox', {
       run(code: string) {
