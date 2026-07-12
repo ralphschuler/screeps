@@ -132,6 +132,16 @@ export class EventBus {
    */
   private coalescedQueueMap = new Map<string, QueuedEvent>();
   private handlerIdCounter = 0;
+  /**
+   * Shared deferred-processing allowance for the current game tick.
+   *
+   * Kernel and bot lifecycle code both call processQueue() around scheduled
+   * work. Keying the allowance by Game.time keeps those calls from doubling
+   * the configured event budget while still allowing same-tick emissions to
+   * consume the remaining allowance.
+   */
+  private queueBudgetTick: number | null = null;
+  private queueBudgetRemaining = 0;
   private stats = {
     eventsEmitted: 0,
     eventsProcessed: 0,
@@ -450,27 +460,41 @@ export class EventBus {
    * Call this at the beginning of each tick before processing
    */
   public startTick(): void {
-    // Currently no tick-specific caches to clear in this implementation
-    // This method exists for API compatibility with other EventBus implementations
+    // The deferred-processing allowance is keyed by Game.time instead of
+    // being reset here, so a second lifecycle caller cannot reset the budget.
+  }
+
+  private getQueueAllowanceForBucket(bucket: number): number {
+    return bucket < this.config.lowBucketThreshold
+      ? Math.floor(this.config.maxEventsPerTick / 2)
+      : this.config.maxEventsPerTick;
   }
 
   /**
-   * Process queued events
-   * Call this each tick to process deferred events
+   * Process queued events.
+   *
+   * This method is safe to call more than once in a tick. All callers share
+   * one bucket-aware allowance, so kernel and bot lifecycle handoffs cannot
+   * process twice the configured maxEventsPerTick. Events emitted by a
+   * handler or scheduled process can still use the remaining same-tick
+   * allowance.
    */
   public processQueue(): void {
     const bucket = Game.cpu.bucket;
-    
+
     // Skip if bucket is too low
     if (bucket < this.config.criticalBucketThreshold) {
       return;
     }
 
-    // Determine how many events to process
-    let maxEvents = this.config.maxEventsPerTick;
-    if (bucket < this.config.lowBucketThreshold) {
-      // Reduce processing in low bucket
-      maxEvents = Math.floor(maxEvents / 2);
+    const currentTick = Game.time;
+    if (this.queueBudgetTick !== currentTick) {
+      this.queueBudgetTick = currentTick;
+      this.queueBudgetRemaining = this.getQueueAllowanceForBucket(bucket);
+    }
+
+    if (this.queueBudgetRemaining <= 0) {
+      return;
     }
 
     // Clean up old events
@@ -485,12 +509,22 @@ export class EventBus {
     }
     this.eventQueue = retainedEvents;
 
+    // A later call in the same tick may observe a different bucket in tests
+    // or a host runtime; never let that call exceed the shared allowance.
+    const allowance = Math.min(
+      this.queueBudgetRemaining,
+      this.getQueueAllowanceForBucket(bucket)
+    );
+
     // Process events
     let processed = 0;
-    while (this.eventQueue.length > 0 && processed < maxEvents) {
+    while (this.eventQueue.length > 0 && processed < allowance) {
       const event = this.eventQueue.shift();
       if (event) {
         this.removeQueuedEventFromMap(event);
+        // Reserve the allowance before invoking handlers so a re-entrant
+        // processQueue() call cannot process the same tick twice.
+        this.queueBudgetRemaining--;
         this.processEvent(event.name, event.payload);
         processed++;
       }
@@ -557,6 +591,8 @@ export class EventBus {
     this.handlers.clear();
     this.eventQueue = [];
     this.coalescedQueueMap.clear();
+    this.queueBudgetTick = null;
+    this.queueBudgetRemaining = 0;
     this.resetStats();
   }
 
