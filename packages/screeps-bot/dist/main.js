@@ -5342,7 +5342,7 @@ marketHistory: 0,
 bytesSaved: 0
 };
 t.deadCreeps = this.pruneDeadCreeps(), t.eventLogs = this.pruneEventLogs(20), t.staleIntel = this.pruneStaleIntel(fr),
-t.marketHistory = this.pruneMarketHistory(5e3), this.pruneStaleRoomMemory();
+t.marketHistory = this.pruneMarketHistory(5e3), this.pruneOldNukes(), this.pruneStaleRoomMemory();
 var r = this.getRawMemorySize();
 return t.bytesSaved = Math.max(0, e - r), t.bytesSaved > 0 && U.info("Memory pruning complete", {
 subsystem: "MemoryPruner",
@@ -5413,15 +5413,15 @@ return e.decayTick > Game.time;
 var e = Memory.empire;
 if (!e) return 0;
 var t = 0;
-if (e.nukesInFlight) for (var r in e.nukesInFlight) e.nukesInFlight[r].impactTick < Game.time && (delete e.nukesInFlight[r],
-t++);
-if (e.incomingNukes) {
-var o = e.incomingNukes.length;
-e.incomingNukes = e.incomingNukes.filter(function(e) {
+if (e.nukesInFlight) {
+var r = e.nukesInFlight.length;
+e.nukesInFlight = e.nukesInFlight.filter(function(e) {
 return e.impactTick >= Game.time;
-}), t += o - e.incomingNukes.length;
+}), t += r - e.nukesInFlight.length;
 }
-return t;
+return e.incomingNukes && (r = e.incomingNukes.length, e.incomingNukes = e.incomingNukes.filter(function(e) {
+return e.impactTick >= Game.time;
+}), t += r - e.incomingNukes.length), t;
 }, e.prototype.pruneStaleRoomMemory = function() {
 var e, t, r, o;
 if (!Memory.rooms) return 0;
