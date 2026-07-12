@@ -297,8 +297,32 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   var rooms = values(game.rooms || {});
   var ownedRooms = rooms.filter(function(room) { return room && room.controller && room.controller.my; });
   var tick = Number(game.time || 0);
-  var playerRuntimeExecutionCount = Number(global.__screepsmodTestingPlayerExecutionCount || 0) + 1;
+  var previousPlayerSummary = memory.screepsmodTestingPlayer || {};
+  var currentRuntimeIdentity = typeof memory.__screepsmodTestingBotCodeIdentity === 'string'
+    ? memory.__screepsmodTestingBotCodeIdentity
+    : undefined;
+  var hasRuntimeIdentity = typeof currentRuntimeIdentity === 'string' && currentRuntimeIdentity.length > 0;
+  // Keep the pre-identity behavior for harnesses that cannot inspect uploaded
+  // code. When an identity is available, persisted maturity is reusable only
+  // for that exact code version.
+  var previousRuntimeIdentityMatches = !hasRuntimeIdentity
+    || previousPlayerSummary.runtimeCodeIdentity === currentRuntimeIdentity;
+  var previousRuntimeExecutions = previousRuntimeIdentityMatches
+    ? Number(previousPlayerSummary.runtimeExecutions)
+    : 0;
+  var globalRuntimeIdentityMatches = !hasRuntimeIdentity
+    || global.__screepsmodTestingPlayerRuntimeCodeIdentity === currentRuntimeIdentity
+    || previousRuntimeIdentityMatches;
+  var globalRuntimeExecutions = globalRuntimeIdentityMatches
+    ? Number(global.__screepsmodTestingPlayerExecutionCount)
+    : 0;
+  var runtimeExecutionBase = Math.max(
+    Number.isFinite(previousRuntimeExecutions) ? previousRuntimeExecutions : 0,
+    Number.isFinite(globalRuntimeExecutions) ? globalRuntimeExecutions : 0
+  );
+  var playerRuntimeExecutionCount = runtimeExecutionBase + 1;
   global.__screepsmodTestingPlayerExecutionCount = playerRuntimeExecutionCount;
+  global.__screepsmodTestingPlayerRuntimeCodeIdentity = currentRuntimeIdentity;
   var runtimeAge = Math.max(0, playerRuntimeExecutionCount - 1);
   var runtimeWarmed = runtimeAge >= ${JSON.stringify(runtimeWarmupTicks)};
 
@@ -378,6 +402,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     runtimeWarmupTicks: ${JSON.stringify(runtimeWarmupTicks)},
     runtimeExecutions: playerRuntimeExecutionCount,
     runtimeAge: runtimeAge,
+    runtimeCodeIdentity: currentRuntimeIdentity,
     scenarios: configuredScenarios,
     tick: tick,
     duration: Date.now() - started
