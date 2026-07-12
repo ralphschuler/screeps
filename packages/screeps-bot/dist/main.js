@@ -2837,8 +2837,7 @@ return e < this.config.lowBucketThreshold ? Math.floor(this.config.maxEventsPerT
 var e, t, r = Game.cpu.bucket;
 if (!(r < this.config.criticalBucketThreshold)) {
 var o = Game.time;
-if (this.queueBudgetTick !== o && (this.queueBudgetTick = o, this.queueBudgetRemaining = this.getQueueAllowanceForBucket(r)),
-!(this.queueBudgetRemaining <= 0)) {
+this.queueBudgetTick !== o && (this.queueBudgetTick = o, this.queueBudgetRemaining = this.getQueueAllowanceForBucket(r));
 var n = Game.time, i = [];
 try {
 for (var s = a(this.eventQueue), c = s.next(); !c.done; c = s.next()) n - (m = c.value).queuedAt > this.config.maxEventAge ? this.dropQueuedEvent(m) : i.push(m);
@@ -2853,12 +2852,10 @@ c && !c.done && (t = s.return) && t.call(s);
 if (e) throw e.error;
 }
 }
-this.eventQueue = i;
-for (var u = Math.min(this.queueBudgetRemaining, this.getQueueAllowanceForBucket(r)), l = 0; this.eventQueue.length > 0 && l < u; ) {
+if (this.eventQueue = i, !(this.queueBudgetRemaining <= 0)) for (var u = Math.min(this.queueBudgetRemaining, this.getQueueAllowanceForBucket(r)), l = 0; this.eventQueue.length > 0 && this.queueBudgetRemaining > 0 && l < u; ) {
 var m;
 (m = this.eventQueue.shift()) && (this.removeQueuedEventFromMap(m), this.queueBudgetRemaining--,
 this.processEvent(m.name, m.payload), l++);
-}
 }
 }
 }, e.prototype.getStats = function() {

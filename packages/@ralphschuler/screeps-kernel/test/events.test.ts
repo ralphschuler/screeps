@@ -483,6 +483,52 @@ describe("EventBus", () => {
       expect(processedEvents).to.deep.equal(["first", "second", "third"]);
     });
 
+    it("should not overspend the shared allowance during re-entrant processing", () => {
+      const processedEvents: string[] = [];
+      eventBus.updateConfig({ maxEventsPerTick: 2 });
+      let reentered = false;
+      eventBus.on("cpu.spike", event => {
+        processedEvents.push(event.subsystem);
+        if (!reentered) {
+          reentered = true;
+          eventBus.processQueue();
+        }
+      });
+
+      Game.cpu.bucket = 1500;
+      for (const subsystem of ["first", "second", "third"]) {
+        eventBus.emit("cpu.spike", {
+          cpuUsed: 100,
+          cpuLimit: 50,
+          subsystem
+        });
+      }
+
+      Game.cpu.bucket = 5000;
+      eventBus.processQueue();
+
+      expect(processedEvents).to.deep.equal(["first", "second"]);
+      expect(eventBus.getStats().queueSize).to.equal(1);
+    });
+
+    it("should expire queued events even when the low-bucket allowance is zero", () => {
+      eventBus.updateConfig({ maxEventsPerTick: 1, maxEventAge: 10 });
+      Game.cpu.bucket = 1500;
+      Game.time = 1000;
+      eventBus.emit("cpu.spike", {
+        cpuUsed: 100,
+        cpuLimit: 50,
+        subsystem: "expired"
+      });
+
+      Game.cpu.bucket = 1500;
+      Game.time = 1011;
+      eventBus.processQueue();
+
+      expect(eventBus.getStats().queueSize).to.equal(0);
+      expect(eventBus.getStats().eventsDropped).to.equal(1);
+    });
+
     it("should process full maxEventsPerTick when bucket >= lowBucketThreshold", () => {
       const processedEvents: string[] = [];
 
