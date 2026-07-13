@@ -26,7 +26,10 @@ RUN apt-get update \
 
 WORKDIR /screeps
 COPY packages/screeps-server/docker-entrypoint.sh /usr/local/bin/screeps-ci-entrypoint
-RUN chmod +x /usr/local/bin/screeps-ci-entrypoint \
+COPY packages/screeps-server/steam-webapi-ci-stub.cjs /tmp/steam-webapi-ci-stub.cjs
+RUN cp /tmp/steam-webapi-ci-stub.cjs /usr/local/lib/node_modules/screeps/node_modules/steam-webapi/index.js \
+  && rm /tmp/steam-webapi-ci-stub.cjs \
+  && chmod +x /usr/local/bin/screeps-ci-entrypoint \
   && useradd --create-home --shell /bin/bash screeps \
   && chown -R screeps:screeps /screeps
 
