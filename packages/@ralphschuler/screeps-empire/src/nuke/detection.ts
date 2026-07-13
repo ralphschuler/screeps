@@ -16,6 +16,7 @@ type NukeDetectionSwarm = {
   eventLog: Array<{ type: string; time: number; details?: string }>;
 };
 
+const THREATENED_STRUCTURES_REFRESH_INTERVAL = 10;
 const roomNukeCache = new Map<string, { room: Room; tick: number; nukes: Nuke[] }>();
 let roomNukeCacheTick = -1;
 const detectedRoomTicks = new WeakMap<object, Map<string, number>>();
@@ -75,6 +76,18 @@ export function detectIncomingNukesInRoom(
     const incomingNukes = empire.incomingNukes ?? (empire.incomingNukes = []);
 
     // Process each nuke. IDs are stable across ticks and keep same-tile salvos separate.
+    // Multiple nukes can share a landing tile; reuse one room lookup for that tile.
+    const threatenedStructureSnapshots = new Map<string, string[]>();
+    const getThreatenedStructures = (nuke: Nuke): string[] => {
+      const key = `${room.name}:${nuke.pos.x}:${nuke.pos.y}`;
+      const cached = threatenedStructureSnapshots.get(key);
+      if (cached) return cached;
+
+      const snapshot = identifyThreatenedStructures(room, nuke.pos);
+      threatenedStructureSnapshots.set(key, snapshot);
+      return snapshot;
+    };
+
     observedNukes.forEach((nuke, index) => {
       const timeToLand = nuke.timeToLand || 0;
       const impactTick = Game.time + timeToLand;
@@ -103,8 +116,9 @@ export function detectIncomingNukesInRoom(
         };
 
         // Identify threatened structures
-        const threatenedStructures = identifyThreatenedStructures(room, nuke.pos);
+        const threatenedStructures = getThreatenedStructures(nuke);
         alert.threatenedStructures = threatenedStructures;
+        alert.threatenedStructuresUpdatedAt = Game.time;
 
         incomingNukes.push(alert);
 
@@ -141,6 +155,19 @@ export function detectIncomingNukesInRoom(
         existingAlert.impactTick = impactTick;
         existingAlert.timeToLand = timeToLand;
         existingAlert.sourceRoom = nuke.launchRoomName;
+
+        // Structures may be built, damaged, or destroyed while a nuke is in flight.
+        // Refresh legacy snapshots immediately and current snapshots at a bounded cadence.
+        const snapshotTick = existingAlert.threatenedStructuresUpdatedAt;
+        const shouldRefreshSnapshot = !Array.isArray(existingAlert.threatenedStructures)
+          || typeof snapshotTick !== "number"
+          || !Number.isFinite(snapshotTick)
+          || Game.time < snapshotTick
+          || Game.time - snapshotTick >= THREATENED_STRUCTURES_REFRESH_INTERVAL;
+        if (shouldRefreshSnapshot) {
+          existingAlert.threatenedStructures = getThreatenedStructures(nuke);
+          existingAlert.threatenedStructuresUpdatedAt = Game.time;
+        }
       }
     });
   } else if (swarm.nukeDetected) {

@@ -408,11 +408,19 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   }
   if (input.scenarios.indexOf('nukerless-nuke') >= 0) {
     runtimeAssertCounterAfter(counters, input, 1200, 'scenario nukerless-nuke records an inbound alert without an owned nuker', ['scenario','nukerless-nuke'], () => {
-      const alerts = (input.memory.empire?.incomingNukes ?? []) as Array<{ roomName?: string; timeToLand?: number; sourceRoom?: string }>;
+      const alerts = (input.memory.empire?.incomingNukes ?? []) as Array<{
+        roomName?: string;
+        timeToLand?: number;
+        sourceRoom?: string;
+        threatenedStructuresUpdatedAt?: number;
+      }>;
       const rooms = Object.values(input.memory.rooms ?? {}) as Array<{ swarm?: { danger?: number; nukeDetected?: boolean } }>;
       return ownedNukers.length === 0
         && incomingNukes.length > 0
-        && alerts.some(alert => (!homeRoom || alert.roomName === homeRoom) && (alert.timeToLand ?? 0) > 0 && alert.sourceRoom === 'ScenarioNukeSource')
+        && alerts.some(alert => (!homeRoom || alert.roomName === homeRoom)
+          && (alert.timeToLand ?? 0) > 0
+          && alert.sourceRoom === 'ScenarioNukeSource'
+          && typeof alert.threatenedStructuresUpdatedAt === 'number')
         && rooms.some(room => room.swarm?.danger === 3 || room.swarm?.nukeDetected === true)
         && hasCriticalNukeProcessTelemetry(input.memory, homeRoom);
     }, `nukerless-nuke scenario did not record defensive alert or critical scheduling telemetry; diagnostics=${JSON.stringify({ alert: diagnostics.nukerlessNuke, scheduling: diagnostics.nukeScheduling })}`);
