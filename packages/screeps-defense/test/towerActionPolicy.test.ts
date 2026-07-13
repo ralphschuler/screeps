@@ -59,6 +59,38 @@ describe("tower action policy", () => {
     expect(target).to.equal(woundedRanger);
   });
 
+  it("fails closed for permanent allies and selects only a real hostile", () => {
+    const ally = hostile("ally", { [HEAL]: 1 });
+    (ally as any).owner = { username: "TooAngel" };
+    const enemy = hostile("enemy", { [ATTACK]: 1 });
+
+    expect(selectTowerTarget([ally])).to.equal(null);
+    expect(selectTowerTarget([ally, enemy])).to.equal(enemy);
+  });
+
+  it("fails closed for configured allies in tower actions", () => {
+    const previousMemory = (globalThis as any).Memory;
+    const configuredAlly = hostile("configured-ally", { [ATTACK]: 1 });
+    (configuredAlly as any).owner = { username: "FriendlyNeighbor" };
+
+    try {
+      (globalThis as any).Memory = { empire: { diplomacy: { allies: ["FriendlyNeighbor"] } } };
+      const action = selectTowerAction({
+        tower: tower(),
+        hostiles: [configuredAlly],
+        posture: "eco",
+        rcl: 8,
+        danger: 1,
+        isCombatPosture: false,
+        wallRepairTarget: 1000,
+      });
+
+      expect(action).to.deep.equal({ type: "idle" });
+    } finally {
+      (globalThis as any).Memory = previousMemory;
+    }
+  });
+
   it("allows wounded hostile tie-breaker rollback", () => {
     const fullRanger = hostile("full-ranger", { [RANGED_ATTACK]: 1 }, false, 500, 500);
     const woundedRanger = hostile("wounded-ranger", { [RANGED_ATTACK]: 1 }, false, 125, 500);
