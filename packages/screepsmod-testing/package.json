@@ -21,7 +21,7 @@
   "license": "Unlicense",
   "devDependencies": {
     "@types/node": "^24.13.2",
-    "typescript": "^5.4.3"
+    "typescript": "^7.0.2"
   },
   "screepsmod": {
     "backend": "dist/backend.js"
