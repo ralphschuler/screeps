@@ -364,6 +364,8 @@ interface FrequencyDefaults { interval: number; minBucket: number; cpuBudget: nu
 export class Kernel {
   private config: KernelConfig;
   private processes: Map<string, Process> = new Map();
+  /** Processes whose CPU budget was inherited from frequency defaults. */
+  private defaultBudgetProcessIds: Set<string> = new Set();
   private bucketMode: BucketMode = "normal";
   private tickCpuUsed = 0;
   private initialized = false;
@@ -478,6 +480,11 @@ export class Kernel {
     };
 
     this.processes.set(options.id, process);
+    if (options.cpuBudget === undefined) {
+      this.defaultBudgetProcessIds.add(options.id);
+    } else {
+      this.defaultBudgetProcessIds.delete(options.id);
+    }
     this.queueDirty = true; // Mark queue for rebuild
     logger.debug(`Kernel: Registered process "${process.name}" (${process.id})`, { subsystem: "Kernel" });
   }
@@ -488,6 +495,7 @@ export class Kernel {
   public unregisterProcess(id: string): boolean {
     const deleted = this.processes.delete(id);
     if (deleted) {
+      this.defaultBudgetProcessIds.delete(id);
       this.queueDirty = true; // Mark queue for rebuild
       logger.debug(`Kernel: Unregistered process ${id}`, { subsystem: "Kernel" });
     }
@@ -760,6 +768,10 @@ export class Kernel {
     // NOTE: This mutates the config object - see method documentation
     this.config.frequencyCpuBudgets = adaptiveBudgets;
     this.frequencyDefaults = this.buildFrequencyDefaults();
+
+    if (this.hasFrequencyBudgetChanges(previousBudgets, adaptiveBudgets)) {
+      this.synchronizeDefaultBudgetProcesses();
+    }
 
     // Log budget changes periodically for visibility
     if (Game.time % 500 === 0) {
@@ -1678,6 +1690,24 @@ export class Kernel {
     return { ...this.config };
   }
 
+  private hasFrequencyBudgetChanges(
+    previousBudgets: Record<ProcessFrequency, number>,
+    nextBudgets: Record<ProcessFrequency, number>
+  ): boolean {
+    return (Object.keys(nextBudgets) as ProcessFrequency[]).some(
+      (frequency) => previousBudgets[frequency] !== nextBudgets[frequency]
+    );
+  }
+
+  private synchronizeDefaultBudgetProcesses(): void {
+    for (const processId of this.defaultBudgetProcessIds) {
+      const process = this.processes.get(processId);
+      if (process) {
+        process.cpuBudget = this.frequencyDefaults[process.frequency].cpuBudget;
+      }
+    }
+  }
+
   /**
    * Get frequency defaults for a process frequency
    */
@@ -1692,6 +1722,7 @@ export class Kernel {
     this.config = { ...this.config, ...config };
     this.validateConfig();
     this.frequencyDefaults = this.buildFrequencyDefaults();
+    this.synchronizeDefaultBudgetProcesses();
   }
 
   /**
