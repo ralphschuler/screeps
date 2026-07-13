@@ -66,16 +66,28 @@ export interface ThreatAnalysis {
 }
 
 /**
+ * Optional same-tick observations supplied by the room coordinator.
+ *
+ * Room defense already performs one bounded hostile/nuke observation. Passing the
+ * snapshots through keeps threat analysis pure and avoids repeating FIND_* scans.
+ */
+export interface ThreatAssessmentObservations {
+  hostiles?: Creep[];
+  nukes?: Nuke[];
+}
+
+/**
  * Assess threat level in a room
  * 
  * **IMPORTANT**: Automatically excludes allied entities (permanent allies)
  * 
  * @param room - Room to analyze
+ * @param observations - Optional observations already collected for this room/tick
  * @returns Comprehensive threat analysis
  */
-export function assessThreat(room: Room): ThreatAnalysis {
-  const hostiles = getActualHostileCreeps(room);
-  const nukes = room.find(FIND_NUKES);
+export function assessThreat(room: Room, observations: ThreatAssessmentObservations = {}): ThreatAnalysis {
+  const hostiles = observations.hostiles ?? getActualHostileCreeps(room);
+  const nukes = observations.nukes ?? room.find(FIND_NUKES);
   
   // Incoming nukes are critical even when no hostile creep is visible.
   // Keep the empty-room fast path only for rooms with no nuke threat.

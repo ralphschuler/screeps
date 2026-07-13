@@ -170,11 +170,15 @@ export class RoomNode {
         pheromoneManager.updateMetrics(room, swarm);
       }
 
-      // Update threat assessment
-      roomDefenseManager.updateThreatAssessment(room, swarm, { spawns: cache.spawns, towers: cache.towers });
+      // Update threat assessment and share the bounded nuke observation with the
+      // emergency coordinator; both consumers must use the same room/tick snapshot.
+      const observedNukes = roomDefenseManager.updateThreatAssessment(room, swarm, {
+        spawns: cache.spawns,
+        towers: cache.towers
+      });
 
       // Assess emergency situation and coordinate response
-      emergencyResponseManager.assess(room, swarm);
+      emergencyResponseManager.assess(room, swarm, observedNukes);
 
       // Check safe mode trigger
       safeModeManager.checkSafeMode(room, swarm);

@@ -14,7 +14,7 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { EvacuationIntentMemory } from "@ralphschuler/screeps-memory";
+import type { EvacuationIntentMemory, IncomingNukeAlert } from "@ralphschuler/screeps-memory";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 import { countActiveCombatDefenders } from "../analysis/defenderNeeds";
@@ -236,29 +236,34 @@ export class EvacuationManager {
       const swarm = memoryManager.getSwarmState(roomName);
       if (!swarm) continue;
 
-      // Check for nuke - primary condition is nuke presence
-      const nukes = room.find(FIND_NUKES);
-      if (nukes.length > 0) {
-        const nearestNuke = nukes.reduce((a, b) =>
-          (a.timeToLand ?? Infinity) < (b.timeToLand ?? Infinity) ? a : b
+      // Nuke detection is owned by the shared empire observation path. Consume
+      // persisted alerts here instead of scanning FIND_NUKES a second time.
+      const nukeAlerts = (memoryManager.getEmpire().incomingNukes ?? []).filter(
+        alert => alert.roomName === roomName
+          && !alert.evacuationTriggered
+          // impactTick is the persisted deadline. Do not trust a stale
+          // timeToLand value after a global reset or delayed process run.
+          && Number.isFinite(alert.impactTick)
+          && alert.impactTick > Game.time
+          && alert.impactTick - Game.time <= this.config.nukeEvacuationLeadTime
+      );
+      const nearestNuke = nukeAlerts
+        .filter(alert => this.hasCriticalStructures(alert))
+        .sort((a, b) => a.impactTick - b.impactTick)[0];
+
+      if (nearestNuke) {
+        const timeToLand = nearestNuke.impactTick - Game.time;
+        logger.warn(
+          `Triggering evacuation for ${roomName}: ${nukeAlerts.length} nuke(s) detected, impact in ${timeToLand} ticks`,
+          { subsystem: "Evacuation" }
         );
 
-        if ((nearestNuke.timeToLand ?? Infinity) <= this.config.nukeEvacuationLeadTime) {
-          // Set detection flag if not already set (for coordination with nuke manager)
-          if (!swarm.nukeDetected) {
-            swarm.nukeDetected = true;
-          }
-          
-          // Increase urgency based on number of nukes
-          const nukeCount = nukes.length;
-          logger.warn(
-            `Triggering evacuation for ${roomName}: ${nukeCount} nuke(s) detected, impact in ${nearestNuke.timeToLand ?? 0} ticks`,
-            { subsystem: "Evacuation" }
-          );
-          
-          this.startEvacuation(roomName, "nuke", Game.time + (nearestNuke.timeToLand ?? 0));
-          continue;
+        if (this.startEvacuation(roomName, "nuke", nearestNuke.impactTick)) {
+          // The evacuation manager owns this mutation. Mark all same-room alerts
+          // together so stacked nukes remain distinct without repeated side effects.
+          for (const alert of nukeAlerts) alert.evacuationTriggered = true;
         }
+        continue;
       }
 
       // Check for siege (danger level 3)
@@ -273,6 +278,14 @@ export class EvacuationManager {
         }
       }
     }
+  }
+
+  private hasCriticalStructures(alert: IncomingNukeAlert): boolean {
+    return (alert.threatenedStructures ?? []).some(structure =>
+      structure.includes(STRUCTURE_SPAWN)
+      || structure.includes(STRUCTURE_STORAGE)
+      || structure.includes(STRUCTURE_TERMINAL)
+    );
   }
 
   /**

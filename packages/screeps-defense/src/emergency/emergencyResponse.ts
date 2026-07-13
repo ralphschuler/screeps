@@ -65,11 +65,14 @@ export class EmergencyResponseManager {
   private emergencyStates: Map<string, EmergencyState> = new Map();
 
   /**
-   * Assess and respond to threats in a room
+   * Assess and respond to threats in a room.
+   *
+   * The room coordinator may pass its same-tick nuke observation so emergency
+   * handling does not perform a second FIND_NUKES scan.
    */
-  public assess(room: Room, swarm: SwarmState): EmergencyState {
+  public assess(room: Room, swarm: SwarmState, observedNukes?: Nuke[]): EmergencyState {
     const existingState = this.emergencyStates.get(room.name);
-    const emergencyLevel = this.calculateEmergencyLevel(room, swarm);
+    const emergencyLevel = this.calculateEmergencyLevel(room, swarm, observedNukes);
 
     if (emergencyLevel === EmergencyLevel.NONE) {
       this.clearBoostPriority(room.name);
@@ -132,7 +135,7 @@ export class EmergencyResponseManager {
   /**
    * Calculate emergency level based on room state
    */
-  private calculateEmergencyLevel(room: Room, swarm: SwarmState): EmergencyLevel {
+  private calculateEmergencyLevel(room: Room, swarm: SwarmState, observedNukes?: Nuke[]): EmergencyLevel {
     const hostiles = getActualHostileCreeps(room);
 
     // Critical structures and incoming nukes remain emergencies even when the
@@ -144,7 +147,7 @@ export class EmergencyResponseManager {
           s.structureType === STRUCTURE_TERMINAL) &&
         s.hits < s.hitsMax * 0.3
     });
-    const incomingNukes = room.find(FIND_NUKES);
+    const incomingNukes = observedNukes ?? room.find(FIND_NUKES);
 
     // No emergency if no danger signal, hostile, critical structure, or nuke.
     if (swarm.danger === 0 && hostiles.length === 0 && criticalStructures.length === 0 && incomingNukes.length === 0) {
@@ -153,7 +156,7 @@ export class EmergencyResponseManager {
 
     const needs = analyzeDefenderNeeds(room);
     const current = getCurrentDefenders(room);
-    const threat = assessThreat(room);
+    const threat = assessThreat(room, { hostiles, nukes: incomingNukes });
 
     if (criticalStructures.length > 0 || incomingNukes.length > 0) {
       return EmergencyLevel.CRITICAL;

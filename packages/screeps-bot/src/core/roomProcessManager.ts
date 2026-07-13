@@ -15,6 +15,7 @@
  */
 
 import { getActualHostileCreeps } from "@ralphschuler/screeps-core";
+import { getOwnedRoomNukes } from "@ralphschuler/screeps-empire";
 import { memoryManager } from "@ralphschuler/screeps-memory";
 import { getConfig } from "../config";
 import { ProcessPriority, kernel, type Process as RoomProcess } from "./kernel";
@@ -72,7 +73,10 @@ function hasNukeThreat(room: Room): boolean {
   const scanInterval = lowBucket ? NUKE_PRIORITY_SCAN_INTERVAL_LOW_BUCKET : NUKE_PRIORITY_SCAN_INTERVAL;
   if (cached && Game.time - cached.checkedAt < scanInterval) return cached.active;
 
-  const active = room.find(FIND_NUKES).length > 0;
+  // Use the same per-room/tick observation cache consumed by room defense. The
+  // scheduler may observe first to promote the room without issuing a second
+  // FIND_NUKES query when RoomNode runs later in this tick.
+  const active = getOwnedRoomNukes(room).length > 0;
   nukePriorityScanCache.set(room.name, { checkedAt: Game.time, active });
   return active;
 }

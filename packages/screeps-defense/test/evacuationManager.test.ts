@@ -10,7 +10,13 @@ function createStore() {
   } as unknown as Store<ResourceConstant>;
 }
 
-function createRoom(name: string, creeps: Creep[] = [], hostiles: Creep[] = []): Room {
+function createRoom(
+  name: string,
+  creeps: Creep[] = [],
+  hostiles: Creep[] = [],
+  nukes: Nuke[] = [],
+  onNukeFind?: () => void
+): Room {
   const terminal = { store: createStore(), send: () => OK } as unknown as StructureTerminal;
   const storage = { store: createStore() } as unknown as StructureStorage;
   return {
@@ -21,7 +27,10 @@ function createRoom(name: string, creeps: Creep[] = [], hostiles: Creep[] = []):
     find: (type: FindConstant) => {
       if (type === FIND_MY_CREEPS) return creeps;
       if (type === FIND_HOSTILE_CREEPS) return hostiles;
-      if (type === FIND_NUKES) return [];
+      if (type === FIND_NUKES) {
+        onNukeFind?.();
+        return nukes;
+      }
       return [];
     },
   } as unknown as Room;
@@ -58,6 +67,87 @@ describe("EvacuationManager persistence", () => {
       flags: {},
       powerCreeps: {},
     };
+  });
+
+  it("consumes a persisted critical nuke alert without rescanning the room", () => {
+    let nukeFinds = 0;
+    const source = createRoom("W1N1", [], [], [], () => nukeFinds++);
+    const target = createRoom("W2N1");
+    (Game as any).rooms = { [source.name]: source, [target.name]: target };
+    const swarm = memoryManager.initSwarmState(source.name);
+    const empire = memoryManager.getEmpire();
+    empire.incomingNukes = [{
+      nukeId: "nuke-a",
+      roomName: source.name,
+      landingPos: { x: 25, y: 25 },
+      impactTick: 500,
+      timeToLand: 400,
+      detectedAt: 100,
+      threatenedStructures: [`${STRUCTURE_SPAWN}-25,25`],
+      evacuationTriggered: false,
+      sourceRoom: "W9N9"
+    }];
+
+    const manager = new EvacuationManager();
+    manager.run();
+
+    expect(manager.getEvacuationState(source.name)).to.include({ reason: "nuke" });
+    expect(empire.incomingNukes[0]?.evacuationTriggered).to.equal(true);
+    expect(nukeFinds).to.equal(0);
+    expect(swarm.posture).to.equal("evacuate");
+  });
+
+  it("ignores expired alerts even when timeToLand is stale and positive", () => {
+    let nukeFinds = 0;
+    const source = createRoom("W1N1", [], [], [], () => nukeFinds++);
+    const target = createRoom("W2N1");
+    (Game as any).rooms = { [source.name]: source, [target.name]: target };
+    memoryManager.initSwarmState(source.name);
+    const empire = memoryManager.getEmpire();
+    empire.incomingNukes = [{
+      nukeId: "expired-nuke",
+      roomName: source.name,
+      landingPos: { x: 25, y: 25 },
+      impactTick: 99,
+      // Legacy/stale value must not revive an already-landed alert.
+      timeToLand: 400,
+      detectedAt: 50,
+      threatenedStructures: [`${STRUCTURE_SPAWN}-25,25`],
+      evacuationTriggered: false,
+      sourceRoom: "W9N9"
+    }];
+
+    const manager = new EvacuationManager();
+    manager.run();
+
+    expect(manager.getEvacuationState(source.name)).to.equal(undefined);
+    expect(empire.incomingNukes[0]?.evacuationTriggered).to.equal(false);
+    expect(nukeFinds).to.equal(0);
+  });
+
+  it("uses the persisted impact tick as the evacuation deadline", () => {
+    const source = createRoom("W1N1");
+    const target = createRoom("W2N1");
+    (Game as any).rooms = { [source.name]: source, [target.name]: target };
+    memoryManager.initSwarmState(source.name);
+    const empire = memoryManager.getEmpire();
+    empire.incomingNukes = [{
+      nukeId: "deadline-nuke",
+      roomName: source.name,
+      landingPos: { x: 25, y: 25 },
+      impactTick: 500,
+      // Deliberately stale; impactTick is authoritative.
+      timeToLand: 1,
+      detectedAt: 50,
+      threatenedStructures: [`${STRUCTURE_SPAWN}-25,25`],
+      evacuationTriggered: false,
+      sourceRoom: "W9N9"
+    }];
+
+    const manager = new EvacuationManager();
+    manager.run();
+
+    expect(manager.getEvacuationState(source.name)).to.include({ reason: "nuke", deadline: 500 });
   });
 
   it("starts siege evacuation when nominal defenders are spawning", () => {

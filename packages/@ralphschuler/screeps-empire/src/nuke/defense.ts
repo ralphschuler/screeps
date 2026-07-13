@@ -5,40 +5,10 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
-import type { IncomingNukeAlert, EmpireMemory, SwarmState } from "../types";
+import type { EmpireMemory, SwarmState } from "../types";
 import { isKnownAllyNukeTarget } from "./allySafety";
 import type { NukeConfig } from "./types";
 import { NUKE_COST } from "./types";
-
-/**
- * Trigger evacuation procedures for a room under nuke threat
- */
-export function triggerEvacuation(
-  room: Room,
-  alert: IncomingNukeAlert,
-  swarm: SwarmState
-): void {
-  // Update posture to evacuate if impact is imminent
-  if (alert.timeToLand < 5000) {
-    swarm.posture = "evacuate";
-    logger.warn(
-      `EVACUATION TRIGGERED for ${room.name}: Critical structures threatened by nuke!`,
-      { subsystem: "Nuke" }
-    );
-  } else {
-    // Set defensive posture and prepare
-    if (swarm.posture !== "war" && swarm.posture !== "evacuate") {
-      swarm.posture = "defensive";
-    }
-    logger.warn(
-      `NUKE DEFENSE PREPARATION in ${room.name}: Critical structures in blast radius`,
-      { subsystem: "Nuke" }
-    );
-  }
-
-  // Increase defense pheromone
-  swarm.pheromones.defense = 100;
-}
 
 /**
  * Process counter-nuke strategies
