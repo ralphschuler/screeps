@@ -1,4 +1,5 @@
 const ALLY_NAMES = ['TooAngel', 'TedRoastBeef'];
+const PLAYER_ASSERTION_INTERVAL_TICKS = 50;
 
 const MERGE_RUNTIME_SUMMARIES_SOURCE = `function mergeRuntimeSummaries(sources, tick, startedAt, runtimeWarmupTicks, scenarios) {
   function cloneSource(summary) {
@@ -62,7 +63,10 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   const mergeRuntimeSummariesSource = MERGE_RUNTIME_SUMMARIES_SOURCE;
 
   return `
-(function screepsmodTestingPlayerSandbox() {
+(function installScreepsmodTestingPlayerSandbox() {
+  var assertionIntervalTicks = ${JSON.stringify(PLAYER_ASSERTION_INTERVAL_TICKS)};
+
+  function runScreepsmodTestingPlayerAssertions() {
   var started = Date.now();
   var failures = [];
   var passed = 0;
@@ -297,6 +301,7 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   var rooms = values(game.rooms || {});
   var ownedRooms = rooms.filter(function(room) { return room && room.controller && room.controller.my; });
   var tick = Number(game.time || 0);
+  global.__screepsmodTestingLastPlayerAssertionTick = tick;
   var previousPlayerSummary = memory.screepsmodTestingPlayer || {};
   var currentRuntimeIdentity = typeof memory.__screepsmodTestingBotCodeIdentity === 'string'
     ? memory.__screepsmodTestingBotCodeIdentity
@@ -424,6 +429,36 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     backend: memory.screepsmodTestingBackend,
     legacy: memory.screepsmodTestingLegacy
   }, tick, started, ${JSON.stringify(runtimeWarmupTicks)}, configuredScenarios);
+  }
+
+  runScreepsmodTestingPlayerAssertions();
+
+  try {
+    var mainModule = typeof require === 'function' ? require('main') : undefined;
+    if (!global.__screepsmodTestingPlayerLoopWrapped && mainModule && typeof mainModule.loop === 'function') {
+      var originalLoop = mainModule.loop;
+      mainModule.loop = function screepsmodTestingLoopWrapper() {
+        try {
+          return originalLoop.apply(this, arguments);
+        } finally {
+          var currentTick = Number(typeof Game === 'object' && Game ? Game.time : 0);
+          var lastAssertionTick = Number(global.__screepsmodTestingLastPlayerAssertionTick);
+          if (!Number.isFinite(lastAssertionTick) || currentTick - lastAssertionTick >= assertionIntervalTicks) {
+            try {
+              runScreepsmodTestingPlayerAssertions();
+            } catch (error) {
+              if (typeof console === 'object' && console && typeof console.log === 'function') {
+                console.log('[screepsmod-testing] recurring player assertions failed: ' + (error && (error.stack || error.message) || String(error)));
+              }
+            }
+          }
+        }
+      };
+      global.__screepsmodTestingPlayerLoopWrapped = true;
+    }
+  } catch (error) {
+    // Legacy/non-runtime test sandboxes may not expose require('main').
+  }
 }).call(global);
 `;
 }

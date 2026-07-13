@@ -129,6 +129,60 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('refreshes player assertions from later loop executions without recreating the sandbox', () => {
+    const engine = new EventEmitter();
+    installTestingMod({
+      engine,
+      screepsmod: { testing: { runtimeWarmupTicks: 100 } },
+    });
+
+    const memory: any = createWarmRuntimeMemory({
+      __screepsmodTestingBotCodeSeenAt: 0,
+    });
+    let loopRuns = 0;
+    const mainModule = {
+      loop() {
+        loopRuns += 1;
+        return loopRuns;
+      },
+    };
+    const context = vm.createContext({
+      Game: createWarmGame(1),
+      Memory: memory,
+      global: {},
+      require(moduleName: string) {
+        if (moduleName === 'main') return mainModule;
+        throw new Error(`Unknown module ${moduleName}`);
+      },
+    });
+    context.global = context;
+
+    engine.emit('playerSandbox', {
+      run(code: string) {
+        return vm.runInContext(code, context);
+      },
+    }, 'bot-user-id');
+
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      runtimeWarmed: false,
+      runtimeExecutions: 1,
+      tick: 1,
+    });
+
+    context.Game.time = 49;
+    expect(mainModule.loop()).to.equal(1);
+    expect(memory.screepsmodTestingPlayer.tick).to.equal(1);
+
+    context.Game.time = 100;
+    expect(mainModule.loop()).to.equal(2);
+    expect(memory.screepsmodTestingPlayer).to.deep.include({
+      runtimeWarmed: true,
+      runtimeAge: 100,
+      runtimeExecutions: 2,
+      tick: 100,
+    });
+  });
+
   it('uses configured player-sandbox warmup ticks for smoke runtime assertions', () => {
     const engine = new EventEmitter();
     installTestingMod({
