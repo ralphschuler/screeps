@@ -2981,9 +2981,10 @@ frequencyCpuBudgets: u
 
 var We, He, Ke = function() {
 function e(e) {
-this.processes = new Map, this.bucketMode = "normal", this.tickCpuUsed = 0, this.initialized = !1,
-this.lastExecutedProcessId = null, this.lastExecutedIndex = -1, this.processQueue = [],
-this.queueDirty = !0, this.skippedProcessesThisTick = 0, this.tickFrequencyCpuUsed = {
+this.processes = new Map, this.defaultBudgetProcessIds = new Set, this.bucketMode = "normal",
+this.tickCpuUsed = 0, this.initialized = !1, this.lastExecutedProcessId = null,
+this.lastExecutedIndex = -1, this.processQueue = [], this.queueDirty = !0, this.skippedProcessesThisTick = 0,
+this.tickFrequencyCpuUsed = {
 high: 0,
 medium: 0,
 low: 0
@@ -3034,12 +3035,13 @@ suspensionReason: null,
 consecutiveCpuSkips: 0
 }
 };
-this.processes.set(e.id, m), this.queueDirty = !0, _e.debug('Kernel: Registered process "'.concat(m.name, '" (').concat(m.id, ")"), {
+this.processes.set(e.id, m), void 0 === e.cpuBudget ? this.defaultBudgetProcessIds.add(e.id) : this.defaultBudgetProcessIds.delete(e.id),
+this.queueDirty = !0, _e.debug('Kernel: Registered process "'.concat(m.name, '" (').concat(m.id, ")"), {
 subsystem: "Kernel"
 });
 }, e.prototype.unregisterProcess = function(e) {
 var t = this.processes.delete(e);
-return t && (this.queueDirty = !0, _e.debug("Kernel: Unregistered process ".concat(e), {
+return t && (this.defaultBudgetProcessIds.delete(e), this.queueDirty = !0, _e.debug("Kernel: Unregistered process ".concat(e), {
 subsystem: "Kernel"
 })), t;
 }, e.prototype.getProcess = function(e) {
@@ -3202,6 +3204,7 @@ low: W("low", e, t, r, o)
 var r;
 }(this.config.adaptiveBudgetConfig, this.frequencyUtilization);
 if (this.config.frequencyCpuBudgets = t, this.frequencyDefaults = this.buildFrequencyDefaults(),
+this.hasFrequencyBudgetChanges(e, t) && this.synchronizeDefaultBudgetProcesses(),
 Game.time % 500 == 0) {
 var r = Object.keys(Game.rooms).length, n = Game.cpu.bucket, a = this.formatFrequencyUtilization(this.frequencyUtilization);
 _e.info("Adaptive budgets updated: rooms=".concat(r, ", bucket=").concat(n, ", ") + "high=".concat(t.high.toFixed(3), " (").concat(this.formatBudgetDelta(e.high, t.high), "), ") + "medium=".concat(t.medium.toFixed(3), " (").concat(this.formatBudgetDelta(e.medium, t.medium), "), ") + "low=".concat(t.low.toFixed(3), " (").concat(this.formatBudgetDelta(e.low, t.low), "), ") + "util=".concat(a), {
@@ -3635,10 +3638,33 @@ estimatedCpuReduction: d
 };
 }, e.prototype.getConfig = function() {
 return o({}, this.config);
+}, e.prototype.hasFrequencyBudgetChanges = function(e, t) {
+return Object.keys(t).some(function(r) {
+return e[r] !== t[r];
+});
+}, e.prototype.synchronizeDefaultBudgetProcesses = function() {
+var e, t;
+try {
+for (var r = a(this.defaultBudgetProcessIds), o = r.next(); !o.done; o = r.next()) {
+var n = o.value, i = this.processes.get(n);
+i && (i.cpuBudget = this.frequencyDefaults[i.frequency].cpuBudget);
+}
+} catch (t) {
+e = {
+error: t
+};
+} finally {
+try {
+o && !o.done && (t = r.return) && t.call(r);
+} finally {
+if (e) throw e.error;
+}
+}
 }, e.prototype.getFrequencyDefaults = function(e) {
 return o({}, this.frequencyDefaults[e]);
 }, e.prototype.updateConfig = function(e) {
-this.config = o(o({}, this.config), e), this.validateConfig(), this.frequencyDefaults = this.buildFrequencyDefaults();
+this.config = o(o({}, this.config), e), this.validateConfig(), this.frequencyDefaults = this.buildFrequencyDefaults(),
+this.synchronizeDefaultBudgetProcesses();
 }, e.prototype.updateFromCpuConfig = function(e) {
 this.updateConfig(Fe(e));
 }, e.prototype.on = function(e, t, r) {
