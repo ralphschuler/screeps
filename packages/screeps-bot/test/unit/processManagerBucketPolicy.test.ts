@@ -288,6 +288,28 @@ describe("Process manager bucket policy", () => {
     expect(process?.name).to.not.include("nuke response");
   });
 
+  it("assigns distinct scheduler offsets to distributed owned rooms", () => {
+    const room = (name: string) =>
+      ({
+        name,
+        controller: { my: true, level: 8 },
+        find: () => []
+      }) as unknown as Room;
+
+    global.Game.rooms = {
+      W1N1: room("W1N1"),
+      W1N2: room("W1N2")
+    };
+    global.Game.spawns = {};
+
+    roomProcessManager.syncRoomProcesses();
+
+    expect(kernel.getProcess("room:W1N1")?.tickModulo).to.equal(5);
+    expect(kernel.getProcess("room:W1N1")?.tickOffset).to.equal(0);
+    expect(kernel.getProcess("room:W1N2")?.tickModulo).to.equal(5);
+    expect(kernel.getProcess("room:W1N2")?.tickOffset).to.equal(1);
+  });
+
   it("bounds nuke priority scans while the bucket is low", () => {
     const { lowMode } = getConfig().cpu.bucketThresholds;
     let nukeScans = 0;

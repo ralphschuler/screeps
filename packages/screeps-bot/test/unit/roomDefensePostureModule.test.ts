@@ -110,6 +110,93 @@ describe("Room defense posture Module", () => {
     });
   });
 
+  it("plans structure loss on every distributed room-process offset", () => {
+    for (const time of [101, 102, 103, 104]) {
+      const intent = planDefensePostureIntent(
+        snapshot({
+          time,
+          previousStructures: {
+            lastStructureCount: 3,
+            spawns: ["spawn1", "spawn2"],
+            towers: ["tower1"],
+            lastTick: time - 1
+          },
+          currentStructures: {
+            spawns: ["spawn1"],
+            towers: []
+          }
+        })
+      );
+
+      assert.deepEqual(intent.kernelEvents, [
+        {
+          type: "structure.destroyed",
+          payload: { roomName: "W1N1", structureType: STRUCTURE_SPAWN, structureId: "unknown", source: "W1N1" }
+        },
+        {
+          type: "structure.destroyed",
+          payload: { roomName: "W1N1", structureType: STRUCTURE_TOWER, structureId: "unknown", source: "W1N1" }
+        }
+      ]);
+      assert.deepEqual(intent.nextStructureTracking, {
+        lastStructureCount: 1,
+        spawns: ["spawn1"],
+        towers: [],
+        lastTick: time
+      });
+    }
+  });
+
+  it("detects a spawn loss even when another structure is added in the same tick", () => {
+    const intent = planDefensePostureIntent(
+      snapshot({
+        time: 101,
+        previousStructures: {
+          lastStructureCount: 2,
+          spawns: ["spawn1"],
+          towers: ["tower1"],
+          lastTick: 100
+        },
+        currentStructures: {
+          spawns: [],
+          towers: ["tower1", "tower2"]
+        }
+      })
+    );
+
+    assert.deepEqual(intent.kernelEvents, [
+      {
+        type: "structure.destroyed",
+        payload: { roomName: "W1N1", structureType: STRUCTURE_SPAWN, structureId: "unknown", source: "W1N1" }
+      }
+    ]);
+    assert.deepEqual(intent.nextStructureTracking, {
+      lastStructureCount: 2,
+      spawns: [],
+      towers: ["tower1", "tower2"],
+      lastTick: 101
+    });
+  });
+
+  it("does not re-emit structure loss for the same room tick", () => {
+    const intent = planDefensePostureIntent(
+      snapshot({
+        previousStructures: {
+          lastStructureCount: 2,
+          spawns: ["spawn1"],
+          towers: ["tower1"],
+          lastTick: 100
+        },
+        currentStructures: {
+          spawns: [],
+          towers: []
+        }
+      })
+    );
+
+    assert.deepEqual(intent.kernelEvents, []);
+  });
+
   it("plans first nuke detection on every room-process offset", () => {
     for (const time of [100, 101, 102, 103, 104]) {
       const detected = planDefensePostureIntent(
