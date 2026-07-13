@@ -403,6 +403,77 @@ describe("Kernel Process Scheduling", () => {
       expect(kernel.hasCpuBudget()).to.be.false;
     });
 
+    it("should update registered default budgets without changing explicit overrides", () => {
+      kernel.registerProcess({
+        id: "default-high",
+        name: "Default High",
+        frequency: "high",
+        execute: () => {}
+      });
+      kernel.registerProcess({
+        id: "default-medium",
+        name: "Default Medium",
+        frequency: "medium",
+        execute: () => {}
+      });
+      kernel.registerProcess({
+        id: "default-low",
+        name: "Default Low",
+        frequency: "low",
+        execute: () => {}
+      });
+      kernel.registerProcess({
+        id: "explicit-budget",
+        name: "Explicit Budget",
+        frequency: "high",
+        cpuBudget: 0,
+        execute: () => {}
+      });
+
+      kernel.updateConfig({
+        frequencyCpuBudgets: {
+          high: 0.01,
+          medium: 0.02,
+          low: 0.03
+        }
+      });
+
+      expect(kernel.getProcess("default-high")!.cpuBudget).to.equal(0.01);
+      expect(kernel.getProcess("default-medium")!.cpuBudget).to.equal(0.02);
+      expect(kernel.getProcess("default-low")!.cpuBudget).to.equal(0.03);
+      expect(kernel.getProcess("explicit-budget")!.cpuBudget).to.equal(0);
+    });
+
+    it("should synchronize registered default budgets after adaptive updates", () => {
+      const originalGetUsed = Game.cpu.getUsed;
+      let used = 0;
+      Game.cpu.getUsed = () => used;
+      Game.cpu.limit = 100;
+
+      kernel.registerProcess({
+        id: "adaptive-proc",
+        name: "Adaptive",
+        frequency: "high",
+        interval: 1,
+        execute: () => {
+          used += 70;
+        }
+      });
+
+      try {
+        used = 0;
+        kernel.run();
+        Game.time++;
+        used = 0;
+        kernel.run();
+
+        const process = kernel.getProcess("adaptive-proc")!;
+        expect(process.cpuBudget).to.equal(kernel.getConfig().frequencyCpuBudgets.high);
+      } finally {
+        Game.cpu.getUsed = originalGetUsed;
+      }
+    });
+
     it("should adapt high-frequency budget downward after heavy utilization", () => {
       const originalGetUsed = Game.cpu.getUsed;
       let used = 0;
