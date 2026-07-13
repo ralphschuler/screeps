@@ -1,3 +1,4 @@
+import { filterKnownAllyCreeps } from "../alliance/nonAggressionPact";
 import type { TowerTargetOptions } from "./policyTypes";
 
 /**
@@ -6,12 +7,15 @@ import type { TowerTargetOptions } from "./policyTypes";
  * The score favors creeps that can heal, fight, claim, or dismantle. When two
  * hostiles have equal tactical priority, wounded creeps are preferred so towers
  * finish kills instead of spreading damage.
+ *
+ * The policy filters allies at its public boundary instead of trusting every
+ * caller to have already filtered raw FIND_HOSTILE_CREEPS results.
  */
 export function selectTowerTarget(hostiles: Creep[], options: TowerTargetOptions = {}): Creep | null {
   const preferWoundedTargets = options.preferWoundedTargets !== false;
   let bestTarget: Creep | null = null;
 
-  for (const hostile of hostiles) {
+  for (const hostile of filterKnownAllyCreeps(hostiles)) {
     if (!bestTarget || compareTowerTargets(hostile, bestTarget, preferWoundedTargets) < 0) {
       bestTarget = hostile;
     }
