@@ -456,13 +456,45 @@ function runBackendBotAssertions(config) {
     });
 }
 function installBackendCronjobRunner(config) {
+    var _this = this;
     if (!config.cronjobs)
         return;
-    config.cronjobs.screepsmodTesting = [1, function () {
-            runBackendBotAssertions(config).catch(function (error) {
-                console.log("[screepsmod-testing] backend assertion cronjob failed: ".concat((error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message) || String(error)));
+    var inFlight;
+    var rerunRequested = false;
+    var run = function () {
+        if (inFlight) {
+            rerunRequested = true;
+            return inFlight;
+        }
+        inFlight = (function () { return __awaiter(_this, void 0, void 0, function () {
+            var error_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        rerunRequested = false;
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, runBackendBotAssertions(config)];
+                    case 2:
+                        _a.sent();
+                        return [3 /*break*/, 4];
+                    case 3:
+                        error_1 = _a.sent();
+                        console.log("[screepsmod-testing] backend assertion cronjob failed: ".concat((error_1 === null || error_1 === void 0 ? void 0 : error_1.stack) || (error_1 === null || error_1 === void 0 ? void 0 : error_1.message) || String(error_1)));
+                        return [3 /*break*/, 4];
+                    case 4:
+                        if (rerunRequested) return [3 /*break*/, 0];
+                        _a.label = 5;
+                    case 5: return [2 /*return*/];
+                }
             });
-        }];
+        }); })().finally(function () {
+            inFlight = undefined;
+        });
+        return inFlight;
+    };
+    config.cronjobs.screepsmodTesting = [1, run];
 }
 /**
  * Backend module export for screepsmod.
