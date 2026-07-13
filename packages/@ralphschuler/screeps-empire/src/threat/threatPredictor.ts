@@ -11,6 +11,7 @@
 import { logger } from "@ralphschuler/screeps-core";
 import { getActualHostileCreeps } from "@ralphschuler/screeps-defense";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
+import { getAdjacentRooms, isHostileApproachingRoom } from "./threatGeometry";
 
 /**
  * Hostile creep tracking
@@ -232,7 +233,7 @@ export class ThreatPredictor {
 
         for (const track of tracks) {
           // Check if hostile is approaching owned room
-          if (this.isApproaching(track, ownedRoom.name)) {
+          if (isHostileApproachingRoom(track, ownedRoom.name)) {
             threateningCount++;
             totalStrength += this.calculateCreepStrength(track);
           }
@@ -252,44 +253,6 @@ export class ThreatPredictor {
         }
       }
     }
-  }
-
-  /**
-   * Check if hostile is approaching target room
-   */
-  private isApproaching(track: HostileCreepTrack, targetRoom: string): boolean {
-    if (!track.vector) return false;
-    if (track.lastPos.roomName === targetRoom) return true;
-
-    // Check if movement vector points towards target room
-    // This is a simplified check - a more sophisticated implementation
-    // would use pathfinding to determine actual approach
-    return this.getAdjacentRooms(track.lastPos.roomName).includes(targetRoom);
-  }
-
-  /**
-   * Get adjacent room names
-   */
-  private getAdjacentRooms(roomName: string): string[] {
-    const match = roomName.match(/([EW])(\d+)([NS])(\d+)/);
-    if (!match) return [];
-
-    const [, ewDir, xStr, nsDir, yStr] = match;
-    const x = parseInt(xStr, 10);
-    const y = parseInt(yStr, 10);
-
-    const adjacent: string[] = [];
-
-    // North
-    adjacent.push(`${ewDir}${x}${nsDir}${nsDir === "N" ? y + 1 : y - 1}`);
-    // South
-    adjacent.push(`${ewDir}${x}${nsDir}${nsDir === "N" ? y - 1 : y + 1}`);
-    // East
-    adjacent.push(`${ewDir === "E" ? x + 1 : x - 1}${nsDir}${y}`);
-    // West
-    adjacent.push(`${ewDir === "E" ? x - 1 : x + 1}${nsDir}${y}`);
-
-    return adjacent;
   }
 
   /**
@@ -331,7 +294,7 @@ export class ThreatPredictor {
         let hostileCount = 0;
 
         // Check adjacent rooms for hostile forces
-        const adjacentRooms = this.getAdjacentRooms(ownedRoom.name);
+        const adjacentRooms = getAdjacentRooms(ownedRoom.name);
         adjacentRooms.push(ownedRoom.name); // Include the room itself
 
         for (const adjacentRoom of adjacentRooms) {
@@ -339,6 +302,8 @@ export class ThreatPredictor {
           if (!tracks) continue;
 
           for (const track of tracks) {
+            if (!isHostileApproachingRoom(track, ownedRoom.name)) continue;
+
             totalStrength += this.calculateCreepStrength(track);
             hostileCount++;
           }
