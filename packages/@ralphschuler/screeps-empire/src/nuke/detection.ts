@@ -5,6 +5,9 @@
  */
 
 import { logger } from "@ralphschuler/screeps-core";
+import {
+  hasCriticalStructuresThreatened as hasCriticalStructuresThreatenedPolicy,
+} from "@ralphschuler/screeps-defense/nuke-threat-policy";
 import { NUKE_DAMAGE } from "./types";
 import type { IncomingNukeAlert } from "../types";
 
@@ -250,4 +253,15 @@ export function identifyThreatenedStructures(room: Room, landingPos: RoomPositio
   }
 
   return threatened;
+}
+
+/**
+ * Check whether an incoming nuke alert threatens evacuation-critical structures.
+ *
+ * @deprecated Import `hasCriticalStructuresThreatened` from
+ * `@ralphschuler/screeps-defense`; this compatibility export delegates to that
+ * canonical policy.
+ */
+export function hasCriticalStructuresThreatened(alert: IncomingNukeAlert): boolean {
+  return hasCriticalStructuresThreatenedPolicy(alert);
 }

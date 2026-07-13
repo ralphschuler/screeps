@@ -181,6 +181,10 @@ export default {
           replacement: path.resolve(__dirname, "../screeps-chemistry/src/index.ts")
         },
         {
+          find: "@ralphschuler/screeps-defense/nuke-threat-policy",
+          replacement: path.resolve(__dirname, "../screeps-defense/src/emergency/nukeThreatPolicy.ts")
+        },
+        {
           find: "@ralphschuler/screeps-defense",
           replacement: path.resolve(__dirname, "../screeps-defense/src/index.ts")
         },
