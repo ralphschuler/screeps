@@ -47,6 +47,8 @@ export interface IncomingNukeAlert {
   detectedAt: number;
   /** Structures in blast radius */
   threatenedStructures?: string[];
+  /** Game tick when the derived structure snapshot was last refreshed */
+  threatenedStructuresUpdatedAt?: number;
   /** Whether evacuation has been triggered */
   evacuationTriggered: boolean;
   /** Identified source room (if known) */

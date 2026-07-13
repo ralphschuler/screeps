@@ -158,6 +158,8 @@ detectIncomingNukes()
 // Critical structures are recorded in the persisted alert. The room defense
 // coordinator forwards its same-tick nuke snapshot to emergency handling, while
 // EvacuationManager consumes Memory.empire.incomingNukes without rescanning.
+// The derived structure list is refreshed every 10 visible-room ticks; legacy
+// alerts without a snapshot timestamp are refreshed on their next observation.
 //
 // impactTick is the authoritative deadline. Evacuation starts only when:
 // impactTick - Game.time <= nukeEvacuationLeadTime (default: 5000 ticks).

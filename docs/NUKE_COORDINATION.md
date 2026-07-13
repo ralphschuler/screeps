@@ -184,6 +184,7 @@ interface IncomingNukeAlert {
   timeToLand: number;               // Ticks remaining
   detectedAt: number;               // First detection tick
   threatenedStructures?: string[];  // Structures in blast radius
+  threatenedStructuresUpdatedAt?: number; // Last derived snapshot tick
   evacuationTriggered: boolean;     // Whether evacuation started
   sourceRoom?: string;              // Nuke source (for counter-strike)
 }

@@ -17730,29 +17730,10 @@ r || (r = new Map, Js.set(e, r)), r.set(t, Game.time);
 }(e, t.name);
 var i = null != o ? o : $s(t);
 if (i.length > 0) {
-var s = null !== (n = e.incomingNukes) && void 0 !== n ? n : e.incomingNukes = [];
-i.forEach(function(e, o) {
-var n, i = e.timeToLand || 0, c = Game.time + i, u = function(e, t, r, o) {
-return e.id ? String(e.id) : [ "fallback", t, e.pos.x, e.pos.y, o, e.launchRoomName || "unknown", r ].join(":");
-}(e, t.name, o, c), l = null !== (n = s.find(function(e) {
-return e.nukeId === u;
-})) && void 0 !== n ? n : s.find(function(r) {
-return !r.nukeId && r.roomName === t.name && r.landingPos.x === e.pos.x && r.landingPos.y === e.pos.y && r.impactTick === c;
-});
-if (l) l.nukeId = u, l.impactTick = c, l.timeToLand = i, l.sourceRoom = e.launchRoomName; else {
-var m = {
-nukeId: u,
-roomName: t.name,
-landingPos: {
-x: e.pos.x,
-y: e.pos.y
-},
-impactTick: c,
-timeToLand: i,
-detectedAt: Game.time,
-evacuationTriggered: !1,
-sourceRoom: e.launchRoomName
-}, d = function(e, t) {
+var s = null !== (n = e.incomingNukes) && void 0 !== n ? n : e.incomingNukes = [], c = new Map, u = function(e) {
+var r = "".concat(t.name, ":").concat(e.pos.x, ":").concat(e.pos.y), o = c.get(r);
+if (o) return o;
+var n = function(e, t) {
 var r, o, n = [], i = e.lookForAtArea(LOOK_STRUCTURES, Math.max(0, t.y - 2), Math.max(0, t.x - 2), Math.min(49, t.y + 2), Math.min(49, t.x + 2), !0);
 try {
 for (var s = a(i), c = s.next(); !c.done; c = s.next()) {
@@ -17775,8 +17756,38 @@ if (r) throw r.error;
 }
 return n;
 }(t, e.pos);
-m.threatenedStructures = d, s.push(m), r.nukeDetected || (r.nukeDetected = !0, r.pheromones.defense = Math.min(100, r.pheromones.defense + 50),
-r.pheromones.siege = Math.min(100, r.pheromones.siege + 30), r.danger = 3, U.warn("INCOMING NUKE DETECTED in ".concat(t.name, "! ") + "Landing at (".concat(e.pos.x, ", ").concat(e.pos.y, "), impact in ").concat(e.timeToLand, " ticks. ") + "Source: ".concat(e.launchRoomName || "unknown", ". ") + "Threatened structures: ".concat(d.length), {
+return c.set(r, n), n;
+};
+i.forEach(function(e, o) {
+var n, a = e.timeToLand || 0, i = Game.time + a, c = function(e, t, r, o) {
+return e.id ? String(e.id) : [ "fallback", t, e.pos.x, e.pos.y, o, e.launchRoomName || "unknown", r ].join(":");
+}(e, t.name, o, i), l = null !== (n = s.find(function(e) {
+return e.nukeId === c;
+})) && void 0 !== n ? n : s.find(function(r) {
+return !r.nukeId && r.roomName === t.name && r.landingPos.x === e.pos.x && r.landingPos.y === e.pos.y && r.impactTick === i;
+});
+if (l) {
+l.nukeId = c, l.impactTick = i, l.timeToLand = a, l.sourceRoom = e.launchRoomName;
+var m = l.threatenedStructuresUpdatedAt;
+(!Array.isArray(l.threatenedStructures) || "number" != typeof m || !Number.isFinite(m) || Game.time < m || Game.time - m >= 10) && (l.threatenedStructures = u(e),
+l.threatenedStructuresUpdatedAt = Game.time);
+} else {
+var d = {
+nukeId: c,
+roomName: t.name,
+landingPos: {
+x: e.pos.x,
+y: e.pos.y
+},
+impactTick: i,
+timeToLand: a,
+detectedAt: Game.time,
+evacuationTriggered: !1,
+sourceRoom: e.launchRoomName
+}, p = u(e);
+d.threatenedStructures = p, d.threatenedStructuresUpdatedAt = Game.time, s.push(d),
+r.nukeDetected || (r.nukeDetected = !0, r.pheromones.defense = Math.min(100, r.pheromones.defense + 50),
+r.pheromones.siege = Math.min(100, r.pheromones.siege + 30), r.danger = 3, U.warn("INCOMING NUKE DETECTED in ".concat(t.name, "! ") + "Landing at (".concat(e.pos.x, ", ").concat(e.pos.y, "), impact in ").concat(e.timeToLand, " ticks. ") + "Source: ".concat(e.launchRoomName || "unknown", ". ") + "Threatened structures: ".concat(p.length), {
 subsystem: "Nuke"
 }), r.eventLog.push({
 type: "nuke_incoming",

@@ -105,6 +105,8 @@ export interface IncomingNukeAlert {
   timeToLand: number;
   detectedAt: number;
   threatenedStructures?: string[];
+  /** Game tick when the derived structure snapshot was last refreshed */
+  threatenedStructuresUpdatedAt?: number;
   evacuationTriggered: boolean;
   sourceRoom?: string;
 }

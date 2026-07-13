@@ -686,7 +686,13 @@ function assertScenarios(counters, input) {
                             var rooms = Object.values((_c = input.memory.rooms) !== null && _c !== void 0 ? _c : {});
                             return ownedNukers.length === 0
                                 && incomingNukes.length > 0
-                                && alerts.some(function (alert) { var _a; return (!homeRoom || alert.roomName === homeRoom) && ((_a = alert.timeToLand) !== null && _a !== void 0 ? _a : 0) > 0 && alert.sourceRoom === 'ScenarioNukeSource'; })
+                                && alerts.some(function (alert) {
+                                    var _a;
+                                    return (!homeRoom || alert.roomName === homeRoom)
+                                        && ((_a = alert.timeToLand) !== null && _a !== void 0 ? _a : 0) > 0
+                                        && alert.sourceRoom === 'ScenarioNukeSource'
+                                        && typeof alert.threatenedStructuresUpdatedAt === 'number';
+                                })
                                 && rooms.some(function (room) { var _a, _b; return ((_a = room.swarm) === null || _a === void 0 ? void 0 : _a.danger) === 3 || ((_b = room.swarm) === null || _b === void 0 ? void 0 : _b.nukeDetected) === true; })
                                 && hasCriticalNukeProcessTelemetry(input.memory, homeRoom);
                         }, "nukerless-nuke scenario did not record defensive alert or critical scheduling telemetry; diagnostics=".concat(JSON.stringify({ alert: diagnostics.nukerlessNuke, scheduling: diagnostics.nukeScheduling })));

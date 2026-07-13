@@ -205,11 +205,15 @@ describe("Nuke Manager", () => {
         { id: "nuke-a", timeToLand: 1000, launchRoomName: "W2N2", pos: landingPos },
         { id: "nuke-b", timeToLand: 1000, launchRoomName: "W3N3", pos: landingPos }
       ];
+      let structureLookups = 0;
       const mockRoom = {
         name: "W1N1",
         controller: { my: true },
         find: (type: FindConstant) => type === FIND_NUKES ? nukes : [],
-        lookForAtArea: () => []
+        lookForAtArea: () => {
+          structureLookups += 1;
+          return [];
+        }
       } as unknown as Room;
 
       // @ts-ignore
@@ -217,15 +221,107 @@ describe("Nuke Manager", () => {
       getSwarmStateStub.withArgs("W1N1").returns(swarm);
 
       detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
-      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
 
       const alerts = memoryManager.getEmpire().incomingNukes ?? [];
       expect(alerts).to.have.length(2);
+      expect(structureLookups).to.equal(1);
       expect(alerts.map(alert => alert.nukeId).sort()).to.deep.equal(["nuke-a", "nuke-b"]);
       expect(alerts.map(alert => alert.landingPos)).to.deep.equal([
         { x: landingPos.x, y: landingPos.y },
         { x: landingPos.x, y: landingPos.y }
       ]);
+    });
+
+    it("should refresh threatened structures after the bounded snapshot interval", () => {
+      const swarm = createDefaultSwarmState();
+      const nuke = {
+        id: "nuke-refresh",
+        timeToLand: 1000,
+        launchRoomName: "W2N2",
+        pos: { x: 25, y: 25, roomName: "W1N1" }
+      };
+      let structures: Array<{ structure: Structure }> = [];
+      let structureLookups = 0;
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: (type: FindConstant) => type === FIND_NUKES ? [nuke] : [],
+        lookForAtArea: () => {
+          structureLookups += 1;
+          return structures;
+        }
+      } as unknown as Room;
+
+      // @ts-ignore
+      global.Game.rooms["W1N1"] = mockRoom;
+      getSwarmStateStub.withArgs("W1N1").returns(swarm);
+
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
+      expect(memoryManager.getEmpire().incomingNukes?.[0]?.threatenedStructures).to.deep.equal([]);
+      expect(structureLookups).to.equal(1);
+
+      structures = [{
+        structure: {
+          structureType: STRUCTURE_SPAWN,
+          hits: 100,
+          pos: { x: 25, y: 25 }
+        } as unknown as Structure
+      }];
+      // A normal same-tick/nearby observation does not rescan the room.
+      (global.Game as any).time += 9;
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
+      expect(memoryManager.getEmpire().incomingNukes?.[0]?.threatenedStructures).to.deep.equal([]);
+      expect(structureLookups).to.equal(1);
+
+      (global.Game as any).time += 1;
+      detectIncomingNukes(memoryManager.getEmpire() as any, getSwarmStateStub as any);
+      expect(memoryManager.getEmpire().incomingNukes?.[0]?.threatenedStructures)
+        .to.deep.equal([`${STRUCTURE_SPAWN}-25,25`]);
+      expect(structureLookups).to.equal(2);
+    });
+
+    it("should refresh legacy alerts without a snapshot timestamp", () => {
+      const swarm = createDefaultSwarmState();
+      const nuke = {
+        id: "legacy-alert-nuke",
+        timeToLand: 1000,
+        launchRoomName: "W2N2",
+        pos: { x: 25, y: 25, roomName: "W1N1" }
+      };
+      const mockRoom = {
+        name: "W1N1",
+        controller: { my: true },
+        find: (type: FindConstant) => type === FIND_NUKES ? [nuke] : [],
+        lookForAtArea: () => [{
+          structure: {
+            structureType: STRUCTURE_SPAWN,
+            hits: 100,
+            pos: { x: 25, y: 25 }
+          }
+        }]
+      } as unknown as Room;
+      const empire = memoryManager.getEmpire() as any;
+      empire.incomingNukes = [{
+        nukeId: nuke.id,
+        roomName: "W1N1",
+        landingPos: { x: 25, y: 25 },
+        impactTick: Game.time + nuke.timeToLand,
+        timeToLand: nuke.timeToLand,
+        detectedAt: Game.time - 100,
+        threatenedStructures: [],
+        evacuationTriggered: false,
+        sourceRoom: nuke.launchRoomName
+      }];
+
+      // @ts-ignore
+      global.Game.rooms["W1N1"] = mockRoom;
+      getSwarmStateStub.withArgs("W1N1").returns(swarm);
+
+      detectIncomingNukes(empire, getSwarmStateStub as any);
+
+      expect(empire.incomingNukes[0].threatenedStructures)
+        .to.deep.equal([`${STRUCTURE_SPAWN}-25,25`]);
+      expect(empire.incomingNukes[0].threatenedStructuresUpdatedAt).to.equal((global.Game as any).time);
     });
   });
 

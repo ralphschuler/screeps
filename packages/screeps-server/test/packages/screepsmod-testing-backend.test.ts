@@ -727,6 +727,7 @@ describe('screepsmod-testing backend mod', () => {
           roomName: 'W1N1',
           impactTick: 5000,
           timeToLand: 3000,
+          threatenedStructuresUpdatedAt: 2000,
           sourceRoom: 'ScenarioNukeSource'
         }]
       },
