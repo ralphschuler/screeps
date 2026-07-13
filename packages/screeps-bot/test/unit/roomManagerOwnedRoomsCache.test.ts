@@ -31,6 +31,17 @@ describe("RoomManager owned-room cache", () => {
     clearGameObjectCache();
   });
 
+  it("keeps bulk room execution isolated when one room fails", () => {
+    const ownedRoom = createRoom("W1N1", true);
+    // @ts-ignore: test setup for Game globals
+    global.Game.rooms = { W1N1: ownedRoom };
+    const runStub = sandbox.stub(RoomNode.prototype, "run").throws(new Error("room failure"));
+    const manager = new RoomManager();
+
+    assert.doesNotThrow(() => manager.run());
+    sinon.assert.calledOnceWithExactly(runStub, 1);
+  });
+
   it("reuses the framework owned-room snapshot across room manager entry points in one tick", () => {
     const ownedRoom = createRoom("W1N1", true);
     const neutralRoom = createRoom("W2N2", false);

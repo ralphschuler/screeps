@@ -113,6 +113,8 @@ The kernel tracks process health based on:
 
 **Auto-Suspension**: Processes with health score < 30 are automatically suspended for investigation.
 
+Room processes preserve two failure boundaries: bulk room iteration catches a failed room so sibling rooms continue, while kernel-owned room execution rethrows the failure so the kernel records it, applies backoff, and can trip the circuit breaker. Room CPU measurements close in a `finally` block on both success and failure paths.
+
 ### 3. Event-Driven Communication
 
 Processes communicate via the event bus:

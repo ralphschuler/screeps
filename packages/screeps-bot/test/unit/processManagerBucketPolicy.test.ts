@@ -1,16 +1,20 @@
 import { expect } from "chai";
+import sinon from "sinon";
 
 import { getConfig } from "../../src/config";
 import { creepProcessManager } from "../../src/core/creepProcessManager";
 import { roomProcessManager } from "../../src/core/roomProcessManager";
 import { kernel } from "../../src/core/kernel";
 import { ProcessPriority } from "../../src/core/kernel";
+import { RoomNode } from "../../src/core/roomNode";
 import { Game as MockGame } from "./mock";
 
 describe("Process manager bucket policy", () => {
   let tickCounter = 0;
+  let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     tickCounter++;
 
     // @ts-ignore allow overriding global Game object for tests
@@ -44,6 +48,33 @@ describe("Process manager bucket policy", () => {
 
     creepProcessManager.reset();
     roomProcessManager.reset();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("propagates room failures to kernel health accounting", () => {
+    const room = {
+      name: "W1N1",
+      controller: { my: true, level: 8 },
+      find: (type: FindConstant) => {
+        if (type === FIND_NUKES) return [{ id: "nuke-1", timeToLand: 50000 }] as unknown as Nuke[];
+        return [];
+      }
+    } as unknown as Room;
+
+    global.Game.rooms = { W1N1: room };
+    global.Game.spawns = {};
+    roomProcessManager.syncRoomProcesses();
+    sandbox.stub(RoomNode.prototype, "run").throws(new Error("room execution failed"));
+
+    kernel.run();
+
+    const process = kernel.getProcess("room:W1N1");
+    expect(process?.stats.errorCount).to.equal(1);
+    expect(process?.stats.consecutiveErrors).to.equal(1);
+    expect(process?.state).to.equal("error");
   });
 
   it("maps creep priorities to bucket-aware minBucket values", () => {
