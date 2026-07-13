@@ -254,6 +254,10 @@ Emergency manager:
 - Activates safe mode for critical threats
 - Coordinates evacuation if needed
 
+### Shared nuke observation
+
+The bot room coordinator performs the bounded `FIND_NUKES` observation once per visible owned room/tick and passes that snapshot to threat and emergency policy. The empire nuke detector persists object-ID keyed alerts in `Memory.empire.incomingNukes`; `EvacuationManager` consumes those alerts idempotently and is the sole owner of evacuation-trigger mutation. This keeps stacked nukes distinct and prevents duplicate scans or competing evacuation state updates.
+
 ### Emergency helper-room refuel
 
 When a visible urgent defense request cannot afford a defender body, the spawn and

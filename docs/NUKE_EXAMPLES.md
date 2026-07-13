@@ -155,12 +155,13 @@ detectIncomingNukes()
 // Log: "INCOMING NUKE DETECTED in W1N1! Landing at (25, 25), 
 //       impact in 50000 ticks. Source: W5N5. Threatened structures: 2"
 
-// Critical structures threatened (spawn, storage):
-triggerEvacuation(room, alert)
-
-// timeToLand = 50000 >= 5000
-// → posture: "defensive" (prepare, not evacuate yet)
-// → pheromones.defense: 100
+// Critical structures are recorded in the persisted alert. The room defense
+// coordinator forwards its same-tick nuke snapshot to emergency handling, while
+// EvacuationManager consumes Memory.empire.incomingNukes without rescanning.
+//
+// impactTick is the authoritative deadline. Evacuation starts only when:
+// impactTick - Game.time <= nukeEvacuationLeadTime (default: 5000 ticks).
+// At 50000 ticks remaining, the room stays in defensive preparation posture.
 
 // Log: "NUKE DEFENSE PREPARATION in W1N1: 
 //       Critical structures in blast radius"

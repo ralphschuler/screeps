@@ -43,7 +43,7 @@ export class RoomDefenseManager {
     room: Room,
     swarm: SwarmState,
     cache: { spawns: StructureSpawn[]; towers: StructureTower[] }
-  ): void {
+  ): Nuke[] {
     const hostiles = getActualHostileCreeps(room);
     const nukes = getOwnedRoomNukes(room);
     const intent = this.getDefensePostureIntent(room, swarm, cache, hostiles, nukes);
@@ -53,6 +53,7 @@ export class RoomDefenseManager {
     // The detector reuses the cached nuke list and the empire coordinator skips this
     // room later in the tick, preventing duplicate scans and duplicate incident work.
     detectIncomingNukesInRoom(memoryManager.getEmpire(), room, swarm, nukes);
+    return nukes;
   }
 
   /**
@@ -77,7 +78,7 @@ export class RoomDefenseManager {
     nukes: Nuke[]
   ): DefensePostureSnapshot {
     const cluster = swarm.clusterId ? memoryManager.getCluster(swarm.clusterId) : null;
-    const threat = hostiles.length > 0 ? assessThreat(room) : undefined;
+    const threat = hostiles.length > 0 ? assessThreat(room, { hostiles, nukes }) : undefined;
     // Room processes are distributed across offsets; nuke detection must run
     // whenever this room executes rather than on a global modulo tick. The shared
     // detector cache keeps the empire coordinator from repeating this scan.

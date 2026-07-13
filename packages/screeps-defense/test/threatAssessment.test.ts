@@ -174,6 +174,28 @@ describe('Threat Assessment', () => {
       expect(analysis.recommendedResponse).to.equal('safemode');
     });
 
+    it('should use supplied nuke observations without rescanning FIND_NUKES', () => {
+      const incomingNuke = {
+        id: 'nuke-snapshot',
+        launchRoomName: 'W2N2',
+        timeToLand: 5000
+      } as unknown as Nuke;
+      let nukeScans = 0;
+      mockRoom.find = (type: number) => {
+        if (type === FIND_NUKES) {
+          nukeScans++;
+          throw new Error('unexpected duplicate nuke scan');
+        }
+        return [];
+      };
+
+      const analysis = assessThreat(mockRoom, { nukes: [incomingNuke] });
+
+      expect(analysis.dangerLevel).to.equal(3);
+      expect(analysis.recommendedResponse).to.equal('safemode');
+      expect(nukeScans).to.equal(0);
+    });
+
     it('should detect hostile creeps', () => {
       const mockHostile = {
         id: 'hostile1',

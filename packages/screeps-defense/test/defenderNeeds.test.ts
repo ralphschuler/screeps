@@ -31,7 +31,8 @@ function createRoom(
   friendlyRoles: string[] = [],
   controllerOwned = true,
   criticalStructure = false,
-  incomingNukeCount = 0
+  incomingNukeCount = 0,
+  onNukeFind?: () => void
 ): Room {
   const spawns = Array.from({ length: spawnCount }, () => ({ spawning: false }));
   const friendlyCreeps = friendlyRoles.map(role => ({
@@ -53,7 +54,10 @@ function createRoom(
           ? [{ structureType: STRUCTURE_SPAWN, hits: 10, hitsMax: 100 }]
           : [];
       }
-      if (type === FIND_NUKES) return Array.from({ length: incomingNukeCount }, () => ({}));
+      if (type === FIND_NUKES) {
+        onNukeFind?.();
+        return Array.from({ length: incomingNukeCount }, () => ({}));
+      }
       return [];
     }
   } as unknown as Room;
@@ -278,6 +282,20 @@ describe("defense assistance needs", () => {
 
     expect(state.level).to.equal(EmergencyLevel.CRITICAL);
     expect((Memory as any).boostDefensePriority?.W1N1).to.equal(true);
+  });
+
+  it("uses the room nuke snapshot supplied by the coordinator", () => {
+    let nukeScans = 0;
+    const room = createRoom([], 6, 1, [], true, false, 1, () => nukeScans++);
+    const manager = new EmergencyResponseManager();
+    const state = manager.assess(room, {
+      danger: 0,
+      posture: "eco",
+      pheromones: { defense: 0, war: 0, siege: 0 }
+    } as any, [{} as Nuke]);
+
+    expect(state.level).to.equal(EmergencyLevel.CRITICAL);
+    expect(nukeScans).to.equal(0);
   });
 
   it("records the tick when an existing emergency escalates", () => {

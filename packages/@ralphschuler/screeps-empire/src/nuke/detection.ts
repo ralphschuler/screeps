@@ -224,16 +224,3 @@ export function identifyThreatenedStructures(room: Room, landingPos: RoomPositio
 
   return threatened;
 }
-
-/**
- * Check if an alert contains critical structures
- */
-export function hasCriticalStructuresThreatened(alert: IncomingNukeAlert): boolean {
-  if (!alert.threatenedStructures) return false;
-  
-  return alert.threatenedStructures.some(s => 
-    s.includes(STRUCTURE_SPAWN) || 
-    s.includes(STRUCTURE_STORAGE) || 
-    s.includes(STRUCTURE_TERMINAL)
-  );
-}

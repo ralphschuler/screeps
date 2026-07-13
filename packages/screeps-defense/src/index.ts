@@ -99,6 +99,7 @@ export {
   estimateDefenderCost,
   logThreatAnalysis,
   type ThreatAnalysis,
+  type ThreatAssessmentObservations,
 } from "./threat/threatAssessment";
 
 // Tower action policy

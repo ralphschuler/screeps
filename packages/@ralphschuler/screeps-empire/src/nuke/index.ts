@@ -8,8 +8,8 @@ import { logger } from "@ralphschuler/screeps-core";
 import { terminalManager } from "@ralphschuler/screeps-economy";
 import type { NukeConfig } from "./types";
 import { DEFAULT_NUKE_CONFIG } from "./types";
-import { detectIncomingNukes, hasCriticalStructuresThreatened } from "./detection";
-import { triggerEvacuation, processCounterNukeStrategies, canAffordNuke } from "./defense";
+import { detectIncomingNukes } from "./detection";
+import { processCounterNukeStrategies, canAffordNuke } from "./defense";
 import { evaluateNukeCandidates } from "./targeting";
 import { loadNukers, manageNukeResources, createResourceTransferRequest } from "./logistics";
 import {
@@ -70,7 +70,6 @@ export class NukeCoordinator {
     initializeNukeTracking(empire);
     const defensiveStart = this.getCpuUsed();
     detectIncomingNukes(empire, this.getSwarmState);
-    this.handleEvacuations(empire);
     this.recordCpu("defensiveObservationCpu", defensiveStart);
 
     if (!offensive) {
@@ -140,29 +139,6 @@ export class NukeCoordinator {
     const current = this.getCpuUsed();
     if (current === undefined) return;
     logger.stat?.(key, Math.max(0, current - start), "cpu", { subsystem: "Nuke" });
-  }
-
-  /**
-   * Handle evacuation triggers for rooms with incoming nukes
-   */
-  private handleEvacuations(empire: EmpireMemory): void {
-    if (!empire.incomingNukes) return;
-
-    for (const alert of empire.incomingNukes) {
-      if (alert.evacuationTriggered) continue;
-
-      const hasCriticalStructures = hasCriticalStructuresThreatened(alert);
-      if (!hasCriticalStructures) continue;
-
-      const room = Game.rooms[alert.roomName];
-      if (!room) continue;
-
-      const swarm = this.getSwarmState(alert.roomName);
-      if (!swarm) continue;
-
-      triggerEvacuation(room, alert, swarm);
-      alert.evacuationTriggered = true;
-    }
   }
 
   /**
