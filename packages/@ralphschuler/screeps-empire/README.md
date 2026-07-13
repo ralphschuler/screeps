@@ -105,7 +105,7 @@ pixelGen.run();
 
 ### Threat Predictor
 
-Analyzes hostile creep patterns and predicts potential threats to owned rooms.
+Analyzes hostile creep patterns and predicts potential threats to owned rooms. Adjacent-room predictions use signed room geometry and require an observed movement vector toward the owned room; hostiles already inside an owned room remain immediate threats.
 
 ```typescript
 import { 
