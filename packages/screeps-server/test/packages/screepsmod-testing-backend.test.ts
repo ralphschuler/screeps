@@ -937,6 +937,69 @@ describe('screepsmod-testing backend mod', () => {
     expect(memory.screepsmodTestingBackend.diagnostics.errorSamples[0]).to.include('ReferenceError');
   });
 
+  it('serializes overlapping backend cronjob executions to prevent stale Memory writes', async () => {
+    const envStore = new Map<string, string>([
+      ['gameTime', '150'],
+      ['memory:user1', JSON.stringify(createWarmRuntimeMemory())],
+    ]);
+    let activeUserReads = 0;
+    let maximumActiveUserReads = 0;
+    let userReadCount = 0;
+    let releaseFirstUserRead: (() => void) | undefined;
+    let firstUserReadStarted: (() => void) | undefined;
+    const firstUserRead = new Promise<void>((resolve) => { firstUserReadStarted = resolve; });
+    const firstUserReadRelease = new Promise<void>((resolve) => { releaseFirstUserRead = resolve; });
+    const user = { _id: 'user1', username: 'swarm-bot', cpuAvailable: 9000 };
+    const config = {
+      cronjobs: {},
+      common: {
+        storage: {
+          env: {
+            keys: { GAMETIME: 'gameTime', MEMORY: 'memory:' },
+            get: async (key: string) => envStore.get(key),
+            set: async (key: string, value: string) => { envStore.set(key, value); },
+          },
+          db: {
+            users: {
+              findOne: async ({ username }: any) => {
+                if (username !== 'swarm-bot') return null;
+                userReadCount += 1;
+                activeUserReads += 1;
+                maximumActiveUserReads = Math.max(maximumActiveUserReads, activeUserReads);
+                if (userReadCount === 1) {
+                  firstUserReadStarted?.();
+                  await firstUserReadRelease;
+                }
+                activeUserReads -= 1;
+                return user;
+              },
+            },
+            'users.notifications': { find: async () => [] },
+            'rooms.objects': {
+              find: async (query: any) => {
+                if (query.type === 'controller') return [{ room: 'W1N1', user: 'user1' }];
+                if (query.type === 'spawn') return [{ room: 'W1N1', user: 'user1' }];
+                if (query.type === 'creep') return [{ room: 'W1N1', user: 'user1' }];
+                return [];
+              },
+            },
+          },
+        },
+      },
+    };
+
+    installTestingMod(config);
+    const cronjob = (config.cronjobs as any).screepsmodTesting[1];
+    const firstRun = cronjob();
+    await firstUserRead;
+    const secondRun = cronjob();
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(maximumActiveUserReads).to.equal(1);
+    releaseFirstUserRead?.();
+    await Promise.all([firstRun, secondRun]);
+  });
+
   it('loads durable scenario seed confirmation from backend storage env', async () => {
     const envStore = new Map<string, string>([
       ['gameTime', '600'],

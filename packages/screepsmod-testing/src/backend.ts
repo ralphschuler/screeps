@@ -349,11 +349,33 @@ async function runBackendBotAssertions(config: any): Promise<void> {
 
 function installBackendCronjobRunner(config: any): void {
   if (!config.cronjobs) return;
-  config.cronjobs.screepsmodTesting = [1, () => {
-    runBackendBotAssertions(config).catch((error: any) => {
-      console.log(`[screepsmod-testing] backend assertion cronjob failed: ${error?.stack || error?.message || String(error)}`);
+
+  let inFlight: Promise<void> | undefined;
+  let rerunRequested = false;
+
+  const run = (): Promise<void> => {
+    if (inFlight) {
+      rerunRequested = true;
+      return inFlight;
+    }
+
+    inFlight = (async () => {
+      do {
+        rerunRequested = false;
+        try {
+          await runBackendBotAssertions(config);
+        } catch (error: any) {
+          console.log(`[screepsmod-testing] backend assertion cronjob failed: ${error?.stack || error?.message || String(error)}`);
+        }
+      } while (rerunRequested);
+    })().finally(() => {
+      inFlight = undefined;
     });
-  }];
+
+    return inFlight;
+  };
+
+  config.cronjobs.screepsmodTesting = [1, run];
 }
 
 /**
