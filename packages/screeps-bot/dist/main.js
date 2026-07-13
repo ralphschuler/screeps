@@ -33850,9 +33850,8 @@ var o = X(e), n = Js(e), a = this.getDefensePostureIntent(e, t, r, o, n);
 this.executeDefensePostureIntent(e, t, o, a), $s(Sr.getEmpire(), e, t, n);
 }, e.prototype.getDefensePostureIntent = function(e, t, r, o, n) {
 return void 0 === o && (o = X(e)), void 0 === n && (n = Js(e)), function(e, t) {
-if (e.time % 5 == 0) {
 var r = e.currentStructures.spawns.length + e.currentStructures.towers.length, o = e.previousStructures;
-o && o.lastTick < e.time && r < o.lastStructureCount && (e.currentStructures.spawns.length < o.spawns.length && t.kernelEvents.push({
+o && o.lastTick < e.time && (e.currentStructures.spawns.length < o.spawns.length && t.kernelEvents.push({
 type: "structure.destroyed",
 payload: {
 roomName: e.roomName,
@@ -33874,7 +33873,6 @@ spawns: s([], i(e.currentStructures.spawns), !1),
 towers: s([], i(e.currentStructures.towers), !1),
 lastTick: e.time
 };
-}
 }(c = this.getDefensePostureSnapshot(e, t, r, o, n), u = {
 nextDanger: c.currentDanger,
 nextNukeDetected: c.nukeDetected,

@@ -155,12 +155,13 @@ export function planDefensePostureIntent(snapshot: DefensePostureSnapshot): Defe
 }
 
 function planStructureEvents(snapshot: DefensePostureSnapshot, intent: DefensePostureIntent): void {
-  if (snapshot.time % 5 !== 0) return;
-
+  // The room process is already cadence- and offset-aware. Applying a global
+  // modulo here would skip structure-loss detection for distributed rooms whose
+  // scheduler offset does not match zero.
   const currentStructureCount = snapshot.currentStructures.spawns.length + snapshot.currentStructures.towers.length;
   const previous = snapshot.previousStructures;
 
-  if (previous && previous.lastTick < snapshot.time && currentStructureCount < previous.lastStructureCount) {
+  if (previous && previous.lastTick < snapshot.time) {
     if (snapshot.currentStructures.spawns.length < previous.spawns.length) {
       intent.kernelEvents.push({
         type: "structure.destroyed",
