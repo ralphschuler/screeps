@@ -112,6 +112,33 @@ describe("RoomNode construction scheduling", () => {
     return sandbox.stub(roomConstructionManager, "runConstruction");
   }
 
+  it("finalizes room stats when a room collaborator fails", () => {
+    const room = createRoom(true);
+    const swarm = {
+      posture: "eco",
+      danger: 0
+    };
+    stubRoomNodeCollaborators(swarm);
+    (roomDefenseManager.updateThreatAssessment as unknown as sinon.SinonStub).throws(
+      new Error("threat assessment failed")
+    );
+    (globalThis as { Game: typeof Game }).Game = {
+      ...originalGame,
+      time: 1003,
+      rooms: { W1N1: room },
+      cpu: { ...originalGame.cpu, bucket: 10000, getUsed: () => 0 }
+    };
+
+    assert.throws(
+      () => new RoomNode("W1N1", { enableProcessing: false, enablePheromones: false }).run(1),
+      "threat assessment failed"
+    );
+    assert.isTrue(
+      (unifiedStats.endRoom as unknown as sinon.SinonStub).calledOnceWithExactly("W1N1", 0),
+      "room stats must be finalized on failed room execution"
+    );
+  });
+
   it("runs construction when the room process resumes after the remembered due tick", () => {
     const room = createRoom(true);
     const swarm = {

@@ -144,97 +144,100 @@ export class RoomNode {
   public run(totalOwnedRooms: number): void {
     const cpuStart = unifiedStats.startRoom(this.roomName);
 
-    const room = Game.rooms[this.roomName];
-    if (!room || !room.controller?.my) {
-      unifiedStats.endRoom(this.roomName, cpuStart);
-      return;
-    }
+    try {
+      const room = Game.rooms[this.roomName];
+      if (!room || !room.controller?.my) {
+        return;
+      }
 
-    const lowBucket = Game.cpu.bucket < 6000;
+      const lowBucket = Game.cpu.bucket < 6000;
 
-    // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
-    // Skip under bucket pressure; direct reads are cheaper than warming broad caches for small active rooms.
-    if (!lowBucket) {
-      prefetchRoomObjects(room);
-    }
-
-    // Get or initialize swarm state
-    const swarm = memoryManager.getOrInitSwarmState(this.roomName);
-
-    // Get cached room structures to avoid repeated room.find() calls
-    const cache = getStructureCache(room);
-
-    // Update metrics (only every 5 ticks to match pheromone update interval)
-    // This avoids expensive room.find() calls every tick; defer signal-only metrics while bucket recovers.
-    if (this.config.enablePheromones && !lowBucket && Game.time % 5 === 0) {
-      pheromoneManager.updateMetrics(room, swarm);
-    }
-
-    // Update threat assessment
-    roomDefenseManager.updateThreatAssessment(room, swarm, { spawns: cache.spawns, towers: cache.towers });
-
-    // Assess emergency situation and coordinate response
-    emergencyResponseManager.assess(room, swarm);
-
-    // Check safe mode trigger
-    safeModeManager.checkSafeMode(room, swarm);
-
-    // Update evolution stage. Missing-structure scans are planning work; skip during recovery.
-    if (this.config.enableEvolution) {
-      evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
+      // OPTIMIZATION: Prefetch commonly accessed room objects to warm the object cache.
+      // Skip under bucket pressure; direct reads are cheaper than warming broad caches for small active rooms.
       if (!lowBucket) {
-        evolutionManager.updateMissingStructures(swarm, room);
+        prefetchRoomObjects(room);
       }
-    }
 
-    // Update posture
-    postureManager.updatePosture(swarm);
+      // Get or initialize swarm state
+      const swarm = memoryManager.getOrInitSwarmState(this.roomName);
 
-    // Update pheromones. These are strategic signals, not survival work, under bucket pressure.
-    if (this.config.enablePheromones && !lowBucket) {
-      pheromoneManager.updatePheromones(swarm, room);
-    }
+      // Get cached room structures to avoid repeated room.find() calls
+      const cache = getStructureCache(room);
 
-    // Run tower control
-    if (this.config.enableTowers) {
-      roomDefenseManager.runTowerControl(room, swarm, cache.towers);
-    }
+      // Update metrics (only every 5 ticks to match pheromone update interval)
+      // This avoids expensive room.find() calls every tick; defer signal-only metrics while bucket recovers.
+      if (this.config.enablePheromones && !lowBucket && Game.time % 5 === 0) {
+        pheromoneManager.updateMetrics(room, swarm);
+      }
 
-    // Run construction
-    // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
-    // Regular construction runs at standard interval to balance CPU usage. During bucket
-    // recovery, only spawnless bootstrap or active-danger construction may run, and both
-    // paths are forced through the manager's capped critical-only branch.
-    const allowLowBucketCriticalRecovery = cache.spawns.length === 0 || swarm.danger >= 2;
-    if (this.config.enableConstruction && (!lowBucket || allowLowBucketCriticalRecovery)) {
-      const rcl = room.controller?.level ?? 1;
-      const constructionInterval = roomConstructionManager.getConstructionInterval(rcl);
-      const allowFullConstruction = postureManager.allowsBuilding(swarm.posture);
-      const allowCriticalDefenseConstruction = !allowFullConstruction && swarm.danger >= 2;
-      const criticalOnly = allowCriticalDefenseConstruction || (lowBucket && allowLowBucketCriticalRecovery);
+      // Update threat assessment
+      roomDefenseManager.updateThreatAssessment(room, swarm, { spawns: cache.spawns, towers: cache.towers });
 
-      if ((allowFullConstruction || criticalOnly) && isRoomConstructionDue(swarm, Game.time, constructionInterval)) {
-        roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns, {
-          criticalOnly
+      // Assess emergency situation and coordinate response
+      emergencyResponseManager.assess(room, swarm);
+
+      // Check safe mode trigger
+      safeModeManager.checkSafeMode(room, swarm);
+
+      // Update evolution stage. Missing-structure scans are planning work; skip during recovery.
+      if (this.config.enableEvolution) {
+        evolutionManager.updateEvolutionStage(swarm, room, totalOwnedRooms);
+        if (!lowBucket) {
+          evolutionManager.updateMissingStructures(swarm, room);
+        }
+      }
+
+      // Update posture
+      postureManager.updatePosture(swarm);
+
+      // Update pheromones. These are strategic signals, not survival work, under bucket pressure.
+      if (this.config.enablePheromones && !lowBucket) {
+        pheromoneManager.updatePheromones(swarm, room);
+      }
+
+      // Run tower control
+      if (this.config.enableTowers) {
+        roomDefenseManager.runTowerControl(room, swarm, cache.towers);
+      }
+
+      // Run construction
+      // Perimeter defense runs more frequently in early game (RCL 2-3) for faster fortification
+      // Regular construction runs at standard interval to balance CPU usage. During bucket
+      // recovery, only spawnless bootstrap or active-danger construction may run, and both
+      // paths are forced through the manager's capped critical-only branch.
+      const allowLowBucketCriticalRecovery = cache.spawns.length === 0 || swarm.danger >= 2;
+      if (this.config.enableConstruction && (!lowBucket || allowLowBucketCriticalRecovery)) {
+        const rcl = room.controller?.level ?? 1;
+        const constructionInterval = roomConstructionManager.getConstructionInterval(rcl);
+        const allowFullConstruction = postureManager.allowsBuilding(swarm.posture);
+        const allowCriticalDefenseConstruction = !allowFullConstruction && swarm.danger >= 2;
+        const criticalOnly = allowCriticalDefenseConstruction || (lowBucket && allowLowBucketCriticalRecovery);
+
+        if ((allowFullConstruction || criticalOnly) && isRoomConstructionDue(swarm, Game.time, constructionInterval)) {
+          roomConstructionManager.runConstruction(room, swarm, cache.constructionSites, cache.spawns, {
+            criticalOnly
+          });
+          recordRoomConstructionRun(swarm, Game.time, constructionInterval);
+        }
+      }
+
+      // Run resource processing (every 5 ticks)
+      if (this.config.enableProcessing && !lowBucket && Game.time % 5 === 0) {
+        roomEconomyManager.runResourceProcessing(room, swarm, {
+          factory: cache.factory,
+          powerSpawn: cache.powerSpawn,
+          links: cache.links,
+          sources: cache.sources
         });
-        recordRoomConstructionRun(swarm, Game.time, constructionInterval);
       }
-    }
 
-    // Run resource processing (every 5 ticks)
-    if (this.config.enableProcessing && !lowBucket && Game.time % 5 === 0) {
-      roomEconomyManager.runResourceProcessing(room, swarm, {
-        factory: cache.factory,
-        powerSpawn: cache.powerSpawn,
-        links: cache.links,
-        sources: cache.sources
-      });
+      // Record room stats with unified stats system
+      const cpuUsed = Game.cpu.getUsed() - cpuStart;
+      unifiedStats.recordRoom(room, cpuUsed);
+    } finally {
+      // Always close the room measurement, including failed collaborator runs.
+      unifiedStats.endRoom(this.roomName, cpuStart);
     }
-
-    // Record room stats with unified stats system
-    const cpuUsed = Game.cpu.getUsed() - cpuStart;
-    unifiedStats.recordRoom(room, cpuUsed);
-    unifiedStats.endRoom(this.roomName, cpuStart);
   }
 }
 
@@ -315,17 +318,10 @@ export class RoomManager {
 
     // Run the node
     const node = this.nodes.get(room.name)!;
-    try {
-      node.run(totalOwned);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      const stack = err instanceof Error && err.stack ? err.stack : undefined;
-      logger.error(`Error in room ${room.name}: ${errorMessage}`, {
-        subsystem: "RoomManager",
-        room: room.name,
-        meta: { stack }
-      });
-    }
+    // Kernel-owned room processes must observe failures so their health counters,
+    // backoff, and circuit breaker can react. The bulk RoomManager.run() path
+    // retains the fault-isolating catch above for non-kernel callers.
+    node.run(totalOwned);
   }
 }
 

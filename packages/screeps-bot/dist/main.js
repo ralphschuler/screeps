@@ -36096,8 +36096,10 @@ function e(e, t) {
 void 0 === t && (t = {}), this.roomName = e, this.config = o(o({}, dv), t);
 }
 return e.prototype.run = function(e) {
-var t, r, o, n = ts.startRoom(this.roomName), i = Game.rooms[this.roomName];
-if (i && (null === (t = i.controller) || void 0 === t ? void 0 : t.my)) {
+var t, r, o, n = ts.startRoom(this.roomName);
+try {
+var i = Game.rooms[this.roomName];
+if (!i || !(null === (t = i.controller) || void 0 === t ? void 0 : t.my)) return;
 var s = Game.cpu.bucket < 6e3;
 s || function(e) {
 var t, r, o;
@@ -36187,8 +36189,10 @@ links: u.links,
 sources: u.sources
 });
 var y = Game.cpu.getUsed() - n;
-ts.recordRoom(i, y), ts.endRoom(this.roomName, n);
-} else ts.endRoom(this.roomName, n);
+ts.recordRoom(i, y);
+} finally {
+ts.endRoom(this.roomName, n);
+}
 }, e;
 }(), gv = function() {
 function e() {
@@ -36263,19 +36267,8 @@ return Array.from(this.nodes.values());
 var t;
 if (null === (t = e.controller) || void 0 === t ? void 0 : t.my) {
 this.nodes.has(e.name) || this.nodes.set(e.name, new vv(e.name));
-var r = Tt().length, o = this.nodes.get(e.name);
-try {
-o.run(r);
-} catch (t) {
-var n = t instanceof Error ? t.message : String(t), a = t instanceof Error && t.stack ? t.stack : void 0;
-ml.error("Error in room ".concat(e.name, ": ").concat(n), {
-subsystem: "RoomManager",
-room: e.name,
-meta: {
-stack: a
-}
-});
-}
+var r = Tt().length;
+this.nodes.get(e.name).run(r);
 }
 }, e;
 }(), hv = new gv, Rv = new Map;
