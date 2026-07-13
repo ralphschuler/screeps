@@ -78,7 +78,7 @@ npm run server:ci:down
 
 ## Required In-Game Checks
 
-`screepsmod-testing` must assert server and bot state from inside the game runtime. CI warms player assertions over 100 completed sandbox executions—not merely elapsed game ticks—and requires zero skipped assertions afterward. Player-sandbox summaries and bot-code warmup timestamps are also persisted outside user `Memory`, preventing backend/player write races from producing stale false-green results.
+`screepsmod-testing` must assert server and bot state from inside the game runtime. The player-sandbox hook installs a 50-tick assertion callback around the test bot loop so long-lived sandboxes refresh evidence without requiring a global reset. CI requires the current bot code to reach its 100-tick warmup and then reports zero skipped assertions. Player-sandbox summaries and bot-code warmup timestamps are also persisted outside user `Memory`, preventing backend/player write races from producing stale false-green results.
 
 - ticks advancing
 - our bot user/room/spawn exists
