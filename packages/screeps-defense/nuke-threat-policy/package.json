@@ -1,0 +1,4 @@
+{
+  "main": "../dist/emergency/nukeThreatPolicy.js",
+  "types": "../dist/emergency/nukeThreatPolicy.d.ts"
+}

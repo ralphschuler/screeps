@@ -258,6 +258,20 @@ Emergency manager:
 
 The bot room coordinator performs the bounded `FIND_NUKES` observation once per visible owned room/tick and passes that snapshot to threat and emergency policy. The empire nuke detector persists object-ID keyed alerts in `Memory.empire.incomingNukes`; `EvacuationManager` consumes those alerts idempotently and is the sole owner of evacuation-trigger mutation. This keeps stacked nukes distinct and prevents duplicate scans or competing evacuation state updates.
 
+Use the canonical pure predicate when deciding whether a persisted alert threatens evacuation-critical structures:
+
+```typescript
+import { hasCriticalStructuresThreatened } from "@ralphschuler/screeps-defense";
+
+if (hasCriticalStructuresThreatened(alert)) {
+  // Apply nuke evacuation policy.
+}
+```
+
+Consumers that need only this pure policy can use the lightweight
+`@ralphschuler/screeps-defense/nuke-threat-policy` subpath without loading the
+full defense package.
+
 ### Emergency helper-room refuel
 
 When a visible urgent defense request cannot afford a defender body, the spawn and

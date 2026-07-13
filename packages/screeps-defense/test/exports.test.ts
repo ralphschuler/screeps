@@ -44,7 +44,8 @@ import {
   safeModeManager,
   SafeModeManager,
   evacuationManager,
-  EvacuationManager
+  EvacuationManager,
+  hasCriticalStructuresThreatened
 } from '../src/index';
 
 describe('@ralphschuler/screeps-defense', () => {
@@ -85,6 +86,7 @@ describe('@ralphschuler/screeps-defense', () => {
     });
     
     it('should export emergency response components', () => {
+      expect(hasCriticalStructuresThreatened).to.be.a('function');
       expect(EmergencyResponseManager).to.be.a('function'); // Constructor
       expect(emergencyResponseManager).to.be.an('object');
       expect(EmergencyLevel).to.be.an('object');

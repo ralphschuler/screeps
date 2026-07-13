@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Public `hasCriticalStructuresThreatened()` nuke policy and lightweight `nuke-threat-policy` package subpath
 - Framework documentation and examples
 - npm publishing workflow
 - Package marked as publishable

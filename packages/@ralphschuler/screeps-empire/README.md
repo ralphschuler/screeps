@@ -141,6 +141,16 @@ for (const pred of predictions) {
 }
 ```
 
+## Nuke helper compatibility
+
+`hasCriticalStructuresThreatened()` remains exported from the empire package and its previous `nuke/detection` module for compatibility. It is deprecated there and delegates to the canonical defense policy without duplicating the predicate.
+
+New consumers should migrate to:
+
+```typescript
+import { hasCriticalStructuresThreatened } from "@ralphschuler/screeps-defense";
+```
+
 ## Architecture
 
 This package follows the **dependency inversion principle**: 

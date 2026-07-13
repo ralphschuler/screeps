@@ -165,6 +165,11 @@ export {
 export { safeModeManager, SafeModeManager } from "./emergency/safeModeManager";
 
 export {
+  hasCriticalStructuresThreatened,
+  type NukeStructureThreat,
+} from "./emergency/nukeThreatPolicy";
+
+export {
   evacuationManager,
   EvacuationManager,
   type EvacuationState,

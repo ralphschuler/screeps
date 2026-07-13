@@ -14,10 +14,11 @@
 
 import { logger } from "@ralphschuler/screeps-core";
 import { memoryManager } from "@ralphschuler/screeps-memory";
-import type { EvacuationIntentMemory, IncomingNukeAlert } from "@ralphschuler/screeps-memory";
+import type { EvacuationIntentMemory } from "@ralphschuler/screeps-memory";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { getActualHostileCreeps } from "../alliance/nonAggressionPact";
 import { countActiveCombatDefenders } from "../analysis/defenderNeeds";
+import { hasCriticalStructuresThreatened } from "./nukeThreatPolicy";
 
 /**
  * Evacuation configuration
@@ -248,7 +249,7 @@ export class EvacuationManager {
           && alert.impactTick - Game.time <= this.config.nukeEvacuationLeadTime
       );
       const nearestNuke = nukeAlerts
-        .filter(alert => this.hasCriticalStructures(alert))
+        .filter(hasCriticalStructuresThreatened)
         .sort((a, b) => a.impactTick - b.impactTick)[0];
 
       if (nearestNuke) {
@@ -278,14 +279,6 @@ export class EvacuationManager {
         }
       }
     }
-  }
-
-  private hasCriticalStructures(alert: IncomingNukeAlert): boolean {
-    return (alert.threatenedStructures ?? []).some(structure =>
-      structure.includes(STRUCTURE_SPAWN)
-      || structure.includes(STRUCTURE_STORAGE)
-      || structure.includes(STRUCTURE_TERMINAL)
-    );
   }
 
   /**
