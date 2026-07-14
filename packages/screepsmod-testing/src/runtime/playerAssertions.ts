@@ -436,13 +436,11 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
   runScreepsmodTestingPlayerAssertions();
 
   try {
-    var mainModule = typeof require === 'function' ? require('main') : undefined;
-    if (!global.__screepsmodTestingPlayerLoopWrapped && mainModule && typeof mainModule.loop === 'function') {
-      var originalLoop = mainModule.loop;
-      mainModule.loop = function screepsmodTestingLoopWrapper() {
-        try {
-          return originalLoop.apply(this, arguments);
-        } finally {
+    var runtimeRequire = typeof require === 'function' ? require : undefined;
+    if (runtimeRequire) {
+      runtimeRequire.initGlobals = runtimeRequire.initGlobals || {};
+      if (!runtimeRequire.initGlobals.__screepsmodTestingPlayerAssertions) {
+        runtimeRequire.initGlobals.__screepsmodTestingPlayerAssertions = function() {
           var currentTick = Number(typeof Game === 'object' && Game ? Game.time : 0);
           var lastAssertionTick = Number(global.__screepsmodTestingLastPlayerAssertionTick);
           if (!Number.isFinite(lastAssertionTick) || currentTick - lastAssertionTick >= assertionIntervalTicks) {
@@ -454,12 +452,11 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
               }
             }
           }
-        }
-      };
-      global.__screepsmodTestingPlayerLoopWrapped = true;
+        };
+      }
     }
   } catch (error) {
-    // Legacy/non-runtime test sandboxes may not expose require('main').
+    // Legacy/non-runtime test sandboxes may not expose require.initGlobals.
   }
 }).call(global);
 `;
