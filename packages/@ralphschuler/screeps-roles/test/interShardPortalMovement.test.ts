@@ -55,13 +55,24 @@ function createPortalRoom() {
 }
 
 describe("inter-shard portal movement", () => {
+  let localMemory: string;
+
   beforeEach(() => {
     resetMockGame();
     (globalThis.Game as typeof Game & { shard?: { name: string } }).shard = { name: "shard1" };
+    localMemory = "";
+    (globalThis as unknown as { InterShardMemory: InterShardMemory }).InterShardMemory = {
+      getLocal: () => localMemory,
+      setLocal: value => {
+        localMemory = value;
+      },
+      getRemote: () => null,
+    };
   });
 
-  it("asks claim scouts to step onto the portal tile", () => {
+  it("stages claim scout memory before asking it to step onto the portal tile", () => {
     const { room, portal } = createPortalRoom();
+    localMemory = JSON.stringify({ "portals:": { room: room.name } });
     const creep = createMockCreep("interShardScout", {
       room,
       memory: {
@@ -79,9 +90,36 @@ describe("inter-shard portal movement", () => {
       pos: portal.pos,
       range: 0,
     });
+    const root = JSON.parse(localMemory);
+    expect(root["portals:"]).to.deep.equal({ room: room.name });
+    expect(root["creepHandoffs:"].outgoing[creep.name].memory).to.include({
+      role: "interShardScout",
+      targetShard: "shard0",
+      portalRoom: room.name,
+    });
   });
 
-  it("asks pioneers to step onto the portal tile", () => {
+  it("holds a claim scout outside the portal when its memory cannot be staged", () => {
+    const { room } = createPortalRoom();
+    const oversizedPayload = JSON.stringify({ existing: "x".repeat(102350) });
+    localMemory = oversizedPayload;
+    const creep = createMockCreep("interShardScout", {
+      room,
+      memory: {
+        role: "interShardScout",
+        homeRoom: "W1N1",
+        targetShard: "shard0",
+        portalRoom: room.name,
+      },
+    });
+
+    expect(interShardClaimer(createContext(creep, room))).to.deep.equal({
+      type: "idle",
+    });
+    expect(localMemory).to.equal(oversizedPayload);
+  });
+
+  it("stages pioneer memory before asking it to step onto the portal tile", () => {
     const { room, portal } = createPortalRoom();
     const creep = createMockCreep("interShardPioneer", {
       room,
@@ -100,6 +138,9 @@ describe("inter-shard portal movement", () => {
       pos: portal.pos,
       range: 0,
     });
+    expect(JSON.parse(localMemory)["creepHandoffs:"].outgoing[creep.name].memory.role).to.equal(
+      "interShardPioneer",
+    );
   });
 
   it("preserves an exact portal range when reconstructing a movement state", () => {
