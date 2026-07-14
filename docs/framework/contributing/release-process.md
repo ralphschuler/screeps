@@ -75,6 +75,19 @@ npm version major -w @ralphschuler/screeps-mynew
 
 ---
 
+## Automated repository release
+
+Merges to `main` run `.github/workflows/release.yml`. After the release job succeeds, that workflow calls `.github/workflows/publish-framework.yml` as a reusable workflow. The handoff is restricted to the first successful attempt of the trusted `main` release job, so a rerun does not repeat npm publication. Framework packages are selected from the repository manifest and published with npm provenance.
+
+Before changing this handoff, run the non-publishing checks locally:
+
+```bash
+npm run publish:framework:check
+npm run test:scripts -- --test-name-pattern="framework publication"
+```
+
+The manual `workflow_dispatch` path remains available for an explicit package scope. Do not select `all` for a test: publication is irreversible. If publication must be rolled back, identify the last known good release and deploy that bot bundle; do not republish an existing npm version.
+
 ## Pre-Release Checklist
 
 ### 1. Code Quality
