@@ -718,7 +718,7 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
-  it('keeps spawnless pressure resolution pending until the scenario has run for 1200 ticks', async () => {
+  it('requires distributed cohort release evidence before accepting spawnless pressure resolution', async () => {
     const memory = createWarmRuntimeMemory({
       screepsmodTestingScenarios: {
         names: ['spawnless-siege'],
@@ -788,9 +788,82 @@ describe('screepsmod-testing backend mod', () => {
 
     roomObjects.pop();
     delete memory.defenseRequests;
+    const pressureOnly = await runAtTick(1300);
+    expect(pressureOnly.failures.map((failure: any) => failure.name)).to.include(
+      'scenario spawnless-siege resolves hard pressure after distributed defense staging'
+    );
+
+    const validEntries = scenarioSeedConfirmation.spawnlessSiege.seededDefenders.map(defender => ({
+      name: defender.name,
+      helperRoom: defender.room,
+      targetRoom: 'W1N4',
+      reason: 'squad-quorum',
+      releasedAt: 500,
+    }));
+    const invalidEvidence = [
+      { seededAt: 99, targetRoom: 'W1N4', entries: validEntries },
+      { seededAt: 100, targetRoom: 'W9N9', entries: validEntries },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, name: 'Foreign' } : entry) },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, helperRoom: 'W9N9' } : entry) },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, targetRoom: 'W9N9' } : entry) },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, reason: 'hard-threat-trickle' } : entry) },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, releasedAt: 851 } : entry) },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, releasedAt: 501 } : entry) },
+      { seededAt: 100, targetRoom: 'W1N4', entries: validEntries.map((entry, index) => index === 0 ? { ...entry, reason: 'parity-ready' } : entry) },
+    ];
+    for (const evidence of invalidEvidence) {
+      memory.screepsmodTestingScenarios.spawnlessSiege.distributedReleaseEvidence = evidence;
+      const rejected = await runAtTick(1300);
+      expect(rejected.failures.map((failure: any) => failure.name)).to.include(
+        'scenario spawnless-siege resolves hard pressure after distributed defense staging'
+      );
+    }
+
+    memory.screepsmodTestingScenarios.spawnlessSiege.distributedReleaseEvidence = {
+      seededAt: 100,
+      targetRoom: 'W1N4',
+      entries: [...validEntries, { ...validEntries[0], name: 'Foreign' }],
+    };
+    const bounded = await runAtTick(1300);
+    expect(bounded.failed).to.equal(0);
+    expect(memory.screepsmodTestingScenarios.spawnlessSiege.distributedReleaseEvidence.entries).to.have.length(5);
+    delete memory.screepsmodTestingScenarios.spawnlessSiege.distributedReleaseEvidence;
+
+    memory.creeps = {
+      ...memory.creeps,
+      GuardA: { homeRoom: 'W1N1', assistTarget: 'W1N4', defenseAssistReleasedAt: 500, defenseAssistReleaseReason: 'squad-quorum' },
+      GuardB: { homeRoom: 'W1N1', assistTarget: 'W1N4', defenseAssistReleasedAt: 500, defenseAssistReleaseReason: 'squad-quorum' },
+      RangerA: { homeRoom: 'W2N4', assistTarget: 'W1N4', defenseAssistReleasedAt: 500, defenseAssistReleaseReason: 'squad-quorum' },
+      RangerB: { homeRoom: 'W2N4', assistTarget: 'W1N4', defenseAssistReleasedAt: 500, defenseAssistReleaseReason: 'squad-quorum' },
+      Healer: { homeRoom: 'W2N4', assistTarget: 'W1N4', defenseAssistReleasedAt: 501, defenseAssistReleaseReason: 'squad-quorum' },
+    };
+    const nonAtomic = await runAtTick(1300);
+    expect(nonAtomic.failures.map((failure: any) => failure.name)).to.include(
+      'scenario spawnless-siege resolves hard pressure after distributed defense staging'
+    );
+
+    memory.creeps.Healer.defenseAssistReleasedAt = 500;
     const resolved = await runAtTick(1300);
     expect(resolved.failed).to.equal(0);
-    expect(resolved.diagnostics.scenarios.spawnlessSiege).to.deep.include({ pressureResolved: true });
+    expect(resolved.diagnostics.scenarios.spawnlessSiege).to.deep.include({
+      pressureResolved: true,
+      distributedReleaseConfirmed: true,
+      releasedDefenders: 5,
+      releasedHelperRooms: 2,
+    });
+
+    delete memory.creeps.GuardA;
+    delete memory.creeps.GuardB;
+    delete memory.creeps.RangerA;
+    delete memory.creeps.RangerB;
+    delete memory.creeps.Healer;
+    const persisted = await runAtTick(1350);
+    expect(persisted.failed).to.equal(0);
+    expect(persisted.diagnostics.scenarios.spawnlessSiege).to.deep.include({
+      distributedReleaseConfirmed: true,
+      releasedDefenders: 5,
+      releasedHelperRooms: 2,
+    });
   });
 
   it('uses durable hard-invader seed confirmation when runtime Memory lost the seed details', async () => {

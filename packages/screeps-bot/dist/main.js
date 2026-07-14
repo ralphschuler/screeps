@@ -29403,18 +29403,18 @@ if (e.creep.room.name !== e.homeRoom) return null;
 var r = Ri(t);
 if (!r) return null;
 if (void 0 !== t.defenseAssistReleasedAt) return null;
-var o = Mo(r), n = Po(o), a = n ? Ip(r) : [], c = n ? a.length : function(e, t) {
+var o = Mo(r), n = Po(o), a = n ? Ip(r) : function(e, t) {
 var r = Ri(e);
 return e.defenseSquadId && r ? Object.values(Game.creeps).filter(function(o) {
 return function(e, t, r, o) {
 var n = e.memory;
 return n.defenseSquadId === t && n.homeRoom === o && Pp(e, r);
 }(o, e.defenseSquadId, r, t);
-}).length : 0;
-}(t, e.homeRoom), u = function(e, t) {
+}) : [];
+}(t, e.homeRoom), c = function(e, t) {
 var r;
 return t ? 5 : null !== (r = e.defenseSquadSize) && void 0 !== r ? r : 1;
-}(t, n), l = function(e, t) {
+}(t, n), u = function(e, t) {
 if (void 0 === e.defenseSquadCreatedAt) return !0;
 var r = t ? 750 : 250;
 return Game.time - e.defenseSquadCreatedAt >= r;
@@ -29445,8 +29445,8 @@ score: 0
 }(e);
 return r.attack + r.ranged + r.dismantle > 0 && r.score >= t.total.score && r.partCount >= t.total.partCount;
 }(a, o)) return Gp(a, "parity-ready"), null;
-if (c >= u) return n ? Gp(a, "squad-quorum") : Op(t, "squad-quorum"), null;
-if (l) {
+if (a.length >= c) return Gp(a, "squad-quorum"), null;
+if (u) {
 if (!n) return Op(t, "expired-staging"), null;
 if (function(e, t, r, o) {
 var n, a;
@@ -29464,13 +29464,13 @@ return !(void 0 !== m && Game.time - m < 50 || (u[l] = Game.time, 0));
 }(e.creep, e.homeRoom, r, a)) return Op(t, "hard-threat-trickle"), null;
 }
 } else {
-if (c >= u) return Op(t, "squad-quorum"), null;
-if (l) return Op(t, "expired-staging"), null;
+if (a.length >= c) return Gp(a, "squad-quorum"), null;
+if (u) return Op(t, "expired-staging"), null;
 }
-var m = Ml(e.room.name);
+var l = Ml(e.room.name);
 return {
 type: "wait",
-position: null != m ? m : e.creep.pos
+position: null != l ? l : e.creep.pos
 };
 }
 

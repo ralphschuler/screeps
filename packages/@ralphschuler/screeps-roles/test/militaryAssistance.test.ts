@@ -470,6 +470,30 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
     expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
       .to.equal("squad-quorum");
+    expect((rangerMate.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("squad-quorum");
+    expect((healerMate.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("squad-quorum");
+  });
+
+  it("releases visible soft-threat assistance when the local squad has combat parity", () => {
+    createThreatRoom("W2N1", [ATTACK, MOVE]);
+    const ctx = createAssistContext("guard", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        defenseSquadId: "assist:W1N1:W2N1:soft-parity",
+        defenseSquadSize: 3,
+        defenseSquadCreatedAt: Game.time
+      }
+    });
+    Game.creeps[ctx.creep.name] = ctx.creep;
+
+    const action = guard(ctx);
+
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("parity-ready");
   });
 
   it("keeps hard-threat defense assists staged after the normal timeout until parity is ready", () => {
