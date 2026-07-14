@@ -2,7 +2,11 @@ import { logger } from "@ralphschuler/screeps-core";
 import {
   createDefaultInterShardMemory,
   deserializeInterShardMemory,
+  getActiveInterShardCreepHandoffNames,
   loadLocalInterShardMemory as loadFrameworkLocalInterShardMemory,
+  publishInterShardCreepPresence,
+  restoreInterShardCreepMemory,
+  stageInterShardCreepMemory,
   writeLocalInterShardMemory,
   type InterShardFootprintTarget,
   type InterShardMemoryWriteSection
@@ -10,6 +14,7 @@ import {
 import { runEconomyRole, runUtilityRole } from "@ralphschuler/screeps-roles";
 import { spawnQueue, SpawnPriority } from "@ralphschuler/screeps-spawn";
 import type { BodyTemplate } from "@ralphschuler/screeps-spawn";
+import { recoverStrandedInterShardCreepMemory } from "./creepMemoryRecovery";
 
 const TARGET_SHARDS = ["shard0", "shard1", "shard2", "shard3", "shardX"];
 const CORE_SHARD = "shard1";
@@ -137,11 +142,12 @@ function getOwnedSpawnRooms(): Room[] {
 }
 
 function countCreepsFor(role: string, targetShard: string): number {
-  let count = 0;
+  const activeNames = new Set(getActiveInterShardCreepHandoffNames({ role, targetShard }));
   for (const creep of Object.values(Game.creeps)) {
     const memory = creep.memory as CreepMemory & { targetShard?: string };
-    if (memory.role === role && memory.targetShard === targetShard) count++;
+    if (memory.role === role && memory.targetShard === targetShard) activeNames.add(creep.name);
   }
+  let count = activeNames.size;
   for (const room of getOwnedSpawnRooms()) {
     count += spawnQueue.getPendingRequests(room.name).filter(req => req.role === role && req.additionalMemory?.targetShard === targetShard).length;
   }
@@ -288,14 +294,23 @@ function estimateOwnedRoomsAcrossShards(): number {
 }
 
 function countInFlightClaims(): number {
-  let count = 0;
+  const activeNames = new Set<string>();
+  const targetShards = new Set([...TARGET_SHARDS, ...(Memory.interShardOperation?.targetShards ?? [])]);
+  for (const targetShard of targetShards) {
+    if (targetShard === getCurrentShard()) continue;
+    for (const name of getActiveInterShardCreepHandoffNames({ role: "interShardClaimer", targetShard })) {
+      activeNames.add(name);
+    }
+  }
   for (const creep of Object.values(Game.creeps)) {
-    if ((creep.memory as CreepMemory).role === "interShardClaimer") count++;
+    if ((creep.memory as CreepMemory).role === "interShardClaimer") activeNames.add(creep.name);
   }
+
+  let pending = 0;
   for (const room of getOwnedSpawnRooms()) {
-    count += spawnQueue.getPendingRequests(room.name).filter(request => request.role === "interShardClaimer").length;
+    pending += spawnQueue.getPendingRequests(room.name).filter(request => request.role === "interShardClaimer").length;
   }
-  return count;
+  return activeNames.size + pending;
 }
 
 function hasFreeClaimSlot(_op: ReturnType<typeof ensureOperationState>): boolean {
@@ -330,14 +345,21 @@ function updateLocalTargetStatus(): void {
   if (!op || !target) return;
 
   const ownedRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
+  const operationCreepPresent = Object.values(Game.creeps).some(creep =>
+    (creep.memory as CreepMemory).role?.startsWith?.("interShard")
+  );
   if (ownedRooms.length > 0) {
     target.status = ownedRooms.some(room => room.find(FIND_MY_SPAWNS).length > 0) ? "established" : "claimed";
     target.claimTargetRoom = ownedRooms[0]?.name ?? target.claimTargetRoom;
     target.arrivedAt ??= Game.time;
     target.lastUpdate = Game.time;
-  } else if (Object.values(Game.creeps).some(creep => (creep.memory as CreepMemory).role?.startsWith?.("interShard"))) {
+  } else if (operationCreepPresent) {
     if (target.status === "unreached") target.status = "reached";
     target.arrivedAt ??= Game.time;
+    target.lastUpdate = Game.time;
+  } else if (target.status === "reached") {
+    target.status = "unreached";
+    target.blockedReason = "No live intershard operation creep remains on target shard";
     target.lastUpdate = Game.time;
   }
 
@@ -366,16 +388,25 @@ function applyCpuFloors(): void {
 
 export function runInterShardFootprintEarly(): void {
   const mem = ensureMemory();
+  const currentShard = getCurrentShard();
+  const creeps = Object.values(Game.creeps);
+  restoreInterShardCreepMemory(creeps, [...new Set([...TARGET_SHARDS, ...(mem.targetShards ?? [])])]);
+  if (Game.time % 10 === 0) stageInterShardCreepMemory([]);
+
   if (mem.enabled === false) return;
   mem.lastRun = Game.time;
+  const ownedRoomPresent = hasOwnedRoom();
+  for (const creep of creeps) recoverStrandedInterShardCreepMemory(creep, currentShard);
+  publishInterShardCreepPresence(creeps);
+
   ensureOperationState();
   updateLocalTargetStatus();
   applyCpuFloors();
 
   // Only manually run operation creeps before the no-owned-room guard. Owned shards
   // let the normal kernel creep process run them exactly once.
-  if (hasOwnedRoom()) return;
-  for (const creep of Object.values(Game.creeps)) {
+  if (ownedRoomPresent) return;
+  for (const creep of creeps) {
     const role = (creep.memory as CreepMemory).role;
     if (role === "interShardClaimer" || role === "interShardScout") runUtilityRole(creep);
     if (role === "interShardPioneer") runEconomyRole(creep);
@@ -399,23 +430,25 @@ export function runInterShardFootprintSpawner(): void {
 
     const portal = getPortalForTarget(targetShard);
     if (!portal) {
-      requestScout(home, targetShard);
-      target.blockedReason = "No known safe intershard portal yet; scouting sector centers";
-      target.lastUpdate = Game.time;
+      if (target.status !== "reached") {
+        requestScout(home, targetShard);
+        target.blockedReason = "No known safe intershard portal yet; scouting sector centers";
+        target.lastUpdate = Game.time;
+      }
       continue;
     }
 
     target.portalRoom = portal.room;
     target.portalPos = portal.pos;
     target.destinationRoom = portal.targetRoom;
-    target.lastUpdate = Game.time;
+    if (target.status !== "reached") target.lastUpdate = Game.time;
 
     if (target.status === "claimed" || target.status === "bootstrapping") {
       requestPioneer(home, target, portal);
     } else if (hasFreeClaimSlot(op)) {
       requestClaimer(home, targetShard, portal);
     } else {
-      requestFootprintScout(home, targetShard, portal);
+      if (target.status !== "reached") requestFootprintScout(home, targetShard, portal);
       target.status = target.status === "unreached" ? "unreached" : target.status;
       target.blockedReason = "GCL claim slots are full; sending footprint scout only until a claim slot opens";
     }

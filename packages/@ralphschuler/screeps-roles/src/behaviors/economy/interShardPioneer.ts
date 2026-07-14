@@ -1,3 +1,4 @@
+import { stageInterShardCreepMemory } from "@ralphschuler/screeps-intershard";
 import type { CreepAction, CreepContext } from "../types";
 import { findEnergy } from "./common/energyManagement";
 import { updateWorkingState } from "./common/stateManagement";
@@ -26,6 +27,7 @@ function moveToPortal(ctx: CreepContext, memory: InterShardMemoryFields): CreepA
   if (ctx.room.name !== memory.portalRoom) return { type: "moveToRoom", roomName: memory.portalRoom };
   const portal = findPortal(ctx.room, memory.targetShard);
   if (!portal) return { type: "idle" };
+  if (!stageInterShardCreepMemory([ctx.creep]).written) return { type: "idle" };
   // A portal only transfers a creep standing on its tile. Cartographer's
   // default target range is 1, which leaves inter-shard pioneers adjacent forever.
   return { type: "moveTo", target: { pos: portal.pos, range: 0 } };
