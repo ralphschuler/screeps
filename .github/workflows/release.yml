@@ -43,7 +43,7 @@ jobs:
             echo "Error: Not on main branch (current: $CURRENT_BRANCH)"
             exit 1
           fi
-          
+
           git add packages/screeps-bot/dist/
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -75,3 +75,16 @@ jobs:
           allow_updates: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-framework:
+    name: Publish framework packages
+    needs: release
+    # A rerun must not make a second npm publication attempt for the same release.
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.release.result == 'success' && github.run_attempt == 1
+    uses: ./.github/workflows/publish-framework.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
