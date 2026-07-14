@@ -146,14 +146,17 @@ describe('screepsmod-testing backend mod', () => {
         return loopRuns;
       },
     };
+    const runtimeRequire: any = (moduleName: string) => {
+      if (moduleName === 'main') return mainModule;
+      throw new Error(`Unknown module ${moduleName}`);
+    };
+    runtimeRequire.initGlobals = {};
+    const originalLoop = mainModule.loop;
     const context = vm.createContext({
       Game: createWarmGame(1),
       Memory: memory,
       global: {},
-      require(moduleName: string) {
-        if (moduleName === 'main') return mainModule;
-        throw new Error(`Unknown module ${moduleName}`);
-      },
+      require: runtimeRequire,
     });
     context.global = context;
 
@@ -168,13 +171,19 @@ describe('screepsmod-testing backend mod', () => {
       runtimeExecutions: 1,
       tick: 1,
     });
+    expect(mainModule.loop).to.equal(originalLoop);
+
+    const runBotLoop = () => {
+      Object.values(runtimeRequire.initGlobals).forEach((initializer: any) => initializer());
+      return originalLoop();
+    };
 
     context.Game.time = 49;
-    expect(mainModule.loop()).to.equal(1);
+    expect(runBotLoop()).to.equal(1);
     expect(memory.screepsmodTestingPlayer.tick).to.equal(1);
 
     context.Game.time = 100;
-    expect(mainModule.loop()).to.equal(2);
+    expect(runBotLoop()).to.equal(2);
     expect(memory.screepsmodTestingPlayer).to.deep.include({
       runtimeWarmed: true,
       runtimeAge: 100,
