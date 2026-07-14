@@ -86,6 +86,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runBackendRuntimeAssertions = runBackendRuntimeAssertions;
 var ALLY_NAMES = ['TooAngel', 'TedRoastBeef'];
 var DEFAULT_SCENARIO_REMOTE_ROOM = 'W1N2';
+var SPAWNLESS_DISTRIBUTED_RELEASE_DEADLINE_TICKS = 750;
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -237,6 +238,73 @@ function countCreepRoles(memory) {
     }
     return counts;
 }
+function isSpawnlessReleaseEvidenceEntry(value, seededDefendersByName, targetRoom, seededAt) {
+    var _a;
+    if (!isObject(value))
+        return false;
+    var seededDefender = seededDefendersByName.get(String((_a = value.name) !== null && _a !== void 0 ? _a : ''));
+    var elapsed = Number(value.releasedAt) - seededAt;
+    return Boolean(seededDefender)
+        && value.helperRoom === seededDefender.room
+        && value.targetRoom === targetRoom
+        && (value.reason === 'squad-quorum' || value.reason === 'parity-ready')
+        && Number.isFinite(Number(value.releasedAt))
+        && elapsed >= 0
+        && elapsed <= SPAWNLESS_DISTRIBUTED_RELEASE_DEADLINE_TICKS;
+}
+function updateSpawnlessReleaseEvidence(input, seededDefenders, targetRoom) {
+    var e_3, _a;
+    var _b, _c, _d, _e, _f, _g, _h, _j;
+    var _k;
+    var scenariosMemory = (_b = (_k = input.memory).screepsmodTestingScenarios) !== null && _b !== void 0 ? _b : (_k.screepsmodTestingScenarios = {});
+    var scenarioMemory = isObject(scenariosMemory.spawnlessSiege)
+        ? scenariosMemory.spawnlessSiege
+        : (scenariosMemory.spawnlessSiege = {});
+    var seededAt = Number((_d = (_c = input.scenarioSeedConfirmation) === null || _c === void 0 ? void 0 : _c.seededAt) !== null && _d !== void 0 ? _d : scenariosMemory.seededAt);
+    var seededDefendersByName = new Map(seededDefenders
+        .filter(function (defender) { return typeof (defender === null || defender === void 0 ? void 0 : defender.name) === 'string' && typeof (defender === null || defender === void 0 ? void 0 : defender.room) === 'string'; })
+        .map(function (defender) { return [defender.name, defender]; }));
+    var previous = scenarioMemory.distributedReleaseEvidence;
+    var previousEntries = isObject(previous)
+        && Number(previous.seededAt) === seededAt
+        && previous.targetRoom === targetRoom
+        && Array.isArray(previous.entries)
+        ? previous.entries.filter(function (entry) {
+            return isSpawnlessReleaseEvidenceEntry(entry, seededDefendersByName, targetRoom, seededAt);
+        })
+        : [];
+    var evidence = new Map(previousEntries.slice(0, seededDefendersByName.size).map(function (entry) { return [entry.name, entry]; }));
+    try {
+        for (var seededDefendersByName_1 = __values(seededDefendersByName), seededDefendersByName_1_1 = seededDefendersByName_1.next(); !seededDefendersByName_1_1.done; seededDefendersByName_1_1 = seededDefendersByName_1.next()) {
+            var _l = __read(seededDefendersByName_1_1.value, 2), name = _l[0], seededDefender = _l[1];
+            var creepMemory = (_e = input.memory.creeps) === null || _e === void 0 ? void 0 : _e[name];
+            var entry = {
+                name: name,
+                helperRoom: String((_f = creepMemory === null || creepMemory === void 0 ? void 0 : creepMemory.homeRoom) !== null && _f !== void 0 ? _f : ''),
+                targetRoom: String((_h = (_g = creepMemory === null || creepMemory === void 0 ? void 0 : creepMemory.assistTarget) !== null && _g !== void 0 ? _g : creepMemory === null || creepMemory === void 0 ? void 0 : creepMemory.targetRoom) !== null && _h !== void 0 ? _h : ''),
+                reason: String((_j = creepMemory === null || creepMemory === void 0 ? void 0 : creepMemory.defenseAssistReleaseReason) !== null && _j !== void 0 ? _j : ''),
+                releasedAt: Number(creepMemory === null || creepMemory === void 0 ? void 0 : creepMemory.defenseAssistReleasedAt),
+            };
+            if (entry.helperRoom !== seededDefender.room)
+                continue;
+            if (!isSpawnlessReleaseEvidenceEntry(entry, seededDefendersByName, targetRoom, seededAt))
+                continue;
+            evidence.set(name, entry);
+        }
+    }
+    catch (e_3_1) { e_3 = { error: e_3_1 }; }
+    finally {
+        try {
+            if (seededDefendersByName_1_1 && !seededDefendersByName_1_1.done && (_a = seededDefendersByName_1.return)) _a.call(seededDefendersByName_1);
+        }
+        finally { if (e_3) throw e_3.error; }
+    }
+    var entries = __spreadArray([], __read(seededDefendersByName.keys()), false).map(function (name) { return evidence.get(name); })
+        .filter(function (entry) { return entry !== undefined; });
+    var durableEvidence = { seededAt: seededAt, targetRoom: targetRoom, entries: entries };
+    scenarioMemory.distributedReleaseEvidence = durableEvidence;
+    return entries;
+}
 function hardDefenseCreepsAreNotTiny(memory, creeps) {
     return creeps.every(function (creep) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
@@ -278,7 +346,7 @@ function hasConfirmedHardInvaderSeed(hardInvaders, hardInvaderSeed) {
         && hardInvaderSeed.objectId.length > 0;
 }
 function collectRemoteAssignments(memory) {
-    var e_3, _a;
+    var e_4, _a;
     var _b, _c, _d;
     var assignments = {};
     var rooms = (_b = memory.rooms) !== null && _b !== void 0 ? _b : {};
@@ -290,17 +358,17 @@ function collectRemoteAssignments(memory) {
                 assignments[roomName] = remotes.filter(function (remote) { return typeof remote === 'string'; });
         }
     }
-    catch (e_3_1) { e_3 = { error: e_3_1 }; }
+    catch (e_4_1) { e_4 = { error: e_4_1 }; }
     finally {
         try {
             if (_f && !_f.done && (_a = _e.return)) _a.call(_e);
         }
-        finally { if (e_3) throw e_3.error; }
+        finally { if (e_4) throw e_4.error; }
     }
     return assignments;
 }
 function collectKnownRoomIntel(memory) {
-    var e_4, _a;
+    var e_5, _a;
     var _b, _c, _d, _e, _f, _g;
     var knownRooms = (_c = (_b = memory.empire) === null || _b === void 0 ? void 0 : _b.knownRooms) !== null && _c !== void 0 ? _c : {};
     var summary = {};
@@ -316,17 +384,17 @@ function collectKnownRoomIntel(memory) {
             };
         }
     }
-    catch (e_4_1) { e_4 = { error: e_4_1 }; }
+    catch (e_5_1) { e_5 = { error: e_5_1 }; }
     finally {
         try {
             if (_j && !_j.done && (_a = _h.return)) _a.call(_h);
         }
-        finally { if (e_4) throw e_4.error; }
+        finally { if (e_5) throw e_5.error; }
     }
     return summary;
 }
 function collectSpawnQueueTelemetry(memory) {
-    var e_5, _a;
+    var e_6, _a;
     var _b, _c, _d;
     var statsRooms = (_c = (_b = memory.stats) === null || _b === void 0 ? void 0 : _b.rooms) !== null && _c !== void 0 ? _c : {};
     var queues = {};
@@ -337,12 +405,12 @@ function collectSpawnQueueTelemetry(memory) {
                 queues[roomName] = statsRooms[roomName].spawn_queue;
         }
     }
-    catch (e_5_1) { e_5 = { error: e_5_1 }; }
+    catch (e_6_1) { e_6 = { error: e_6_1 }; }
     finally {
         try {
             if (_f && !_f.done && (_a = _e.return)) _a.call(_e);
         }
-        finally { if (e_5) throw e_5.error; }
+        finally { if (e_6) throw e_6.error; }
     }
     return queues;
 }
@@ -427,8 +495,8 @@ function assertBaselineRuntime(counters, input, ownedRoomNames) {
 }
 function assertScenarios(counters, input) {
     return __awaiter(this, void 0, void 0, function () {
-        var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, incomingNukes, _q, _r, ownedNukers, _s, _t, hardInvaderSeed, recoveryRoom, recoveryControllers, _u, _v, recoverySpawns, _w, _x, recoveryTowers, _y, _z, recoverySites, recoveryHostiles, _0, _1, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hardInvaderDiagnostics, homeRoom, homeTerminal, recoveryRequests, hasRecoveryRequest, terminalEnergy, initialTerminalEnergy, seededSpawnCount, seededTowerCount, seededDefenders, seededDefenderRooms, spawnlessHostileSeedConfirmed, pressureResolved, spawnSiteProgress, refuelers, emergencyQueue, hasRefuelEvidence, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
-        var e_6, _2;
+        var diagnostics, objects, constructionSites, _a, _b, linkStructures, _c, _d, extensionStructures, _e, _f, storageStructures, _g, _h, terminalStructures, _j, _k, labStructures, _l, _m, hardInvaders, _o, _p, incomingNukes, _q, _r, ownedNukers, _s, _t, hardInvaderSeed, recoveryRoom, recoveryControllers, _u, _v, recoverySpawns, _w, _x, recoveryTowers, _y, _z, recoverySites, recoveryHostiles, _0, _1, linkSites, siteTypes, constructionSites_1, constructionSites_1_1, site, type, hardInvaderDiagnostics, homeRoom, homeTerminal, recoveryRequests, hasRecoveryRequest, terminalEnergy, initialTerminalEnergy, seededSpawnCount, seededTowerCount, seededDefenders, seededDefenderRooms, releaseEvidence, releasedHelperRooms, releaseTicks, releaseReasons, distributedReleaseConfirmed, spawnlessHostileSeedConfirmed, pressureResolved, spawnSiteProgress, refuelers, emergencyQueue, hasRefuelEvidence, hasOHReactionMemory_1, hasOHLabProduct_1, economyRoom_1, hasTerminalMovement;
+        var e_7, _2;
         var _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41;
         return __generator(this, function (_42) {
             switch (_42.label) {
@@ -605,12 +673,12 @@ function assertScenarios(counters, input) {
                             siteTypes[type] = ((_10 = siteTypes[type]) !== null && _10 !== void 0 ? _10 : 0) + 1;
                         }
                     }
-                    catch (e_6_1) { e_6 = { error: e_6_1 }; }
+                    catch (e_7_1) { e_7 = { error: e_7_1 }; }
                     finally {
                         try {
                             if (constructionSites_1_1 && !constructionSites_1_1.done && (_2 = constructionSites_1.return)) _2.call(constructionSites_1);
                         }
-                        finally { if (e_6) throw e_6.error; }
+                        finally { if (e_7) throw e_7.error; }
                     }
                     diagnostics.constructionSites = constructionSites.length;
                     diagnostics.constructionCompletedExtensions = extensionStructures.length;
@@ -663,6 +731,17 @@ function assertScenarios(counters, input) {
                         ? input.scenarioSeedConfirmation.spawnlessSiege.seededDefenders
                         : [];
                     seededDefenderRooms = new Set(seededDefenders.map(function (defender) { return defender === null || defender === void 0 ? void 0 : defender.room; }).filter(Boolean));
+                    releaseEvidence = input.scenarios.indexOf('spawnless-siege') >= 0
+                        ? updateSpawnlessReleaseEvidence(input, seededDefenders, recoveryRoom)
+                        : [];
+                    releasedHelperRooms = new Set(releaseEvidence.map(function (entry) { return entry.helperRoom; }));
+                    releaseTicks = new Set(releaseEvidence.map(function (entry) { return entry.releasedAt; }));
+                    releaseReasons = new Set(releaseEvidence.map(function (entry) { return entry.reason; }));
+                    distributedReleaseConfirmed = seededDefenders.length > 0
+                        && releaseEvidence.length === seededDefenders.length
+                        && releasedHelperRooms.size >= 2
+                        && releaseTicks.size === 1
+                        && releaseReasons.size === 1;
                     spawnlessHostileSeedConfirmed = Boolean((_31 = (_30 = input.scenarioSeedConfirmation) === null || _30 === void 0 ? void 0 : _30.spawnlessSiege) === null || _31 === void 0 ? void 0 : _31.enemy)
                         || ((_33 = (_32 = input.memory.screepsmodTestingScenarios) === null || _32 === void 0 ? void 0 : _32.spawnlessSiege) === null || _33 === void 0 ? void 0 : _33.hostileSeeded) === true;
                     pressureResolved = spawnlessHostileSeedConfirmed && recoveryHostiles.length === 0;
@@ -685,6 +764,10 @@ function assertScenarios(counters, input) {
                         seededDefenderRooms: seededDefenderRooms.size,
                         spawnSiteProgress: spawnSiteProgress,
                         pressureResolved: pressureResolved,
+                        distributedReleaseConfirmed: distributedReleaseConfirmed,
+                        releasedDefenders: releaseEvidence.length,
+                        releasedHelperRooms: releasedHelperRooms.size,
+                        releasedReasons: __spreadArray([], __read(releaseReasons), false),
                         defenseRequest: hasRecoveryRequest,
                         emergencyQueue: emergencyQueue,
                         refuelers: refuelers,
@@ -752,8 +835,8 @@ function assertScenarios(counters, input) {
                                 && ((_f = spawnlessDiagnostics.seededDefenderRooms) !== null && _f !== void 0 ? _f : 0) >= 2;
                         }, "spawnless-siege recovery signal missing; diagnostics=".concat(JSON.stringify(diagnostics.spawnlessSiege)));
                         runtimeAssertCounterAfterScenarioTicks(counters, input, 1200, 'scenario spawnless-siege resolves hard pressure after distributed defense staging', ['scenario', 'spawnless-siege', 'recovery', 'reinforcement'], function () {
-                            return pressureResolved;
-                        }, "spawnless-siege hard pressure remained after distributed defense staging; diagnostics=".concat(JSON.stringify(diagnostics.spawnlessSiege)));
+                            return distributedReleaseConfirmed && pressureResolved;
+                        }, "spawnless-siege distributed release or hard-pressure resolution missing; diagnostics=".concat(JSON.stringify(diagnostics.spawnlessSiege)));
                     }
                     if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
                         runtimeAssertCounter(counters, input.botRuntimeWarmed, 'scenario defense-hard-invader seeds a 50-part hostile', ['scenario', 'defense-hard-invader', 'seed'], function () { return hasConfirmedHardInvaderSeed(hardInvaders, hardInvaderSeed); }, "hard invader scenario did not seed a 50-part hostile; diagnostics=".concat(JSON.stringify(hardInvaderDiagnostics)));

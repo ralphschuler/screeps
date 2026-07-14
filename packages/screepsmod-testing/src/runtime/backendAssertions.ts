@@ -2,6 +2,7 @@ import { RuntimeFailure, RuntimeSummary } from './summary';
 
 const ALLY_NAMES = ['TooAngel', 'TedRoastBeef'];
 const DEFAULT_SCENARIO_REMOTE_ROOM = 'W1N2';
+const SPAWNLESS_DISTRIBUTED_RELEASE_DEADLINE_TICKS = 750;
 
 export interface BackendAssertionInput {
   config: any;
@@ -140,6 +141,87 @@ function countCreepRoles(memory: any): Record<string, number> {
     counts[role] = (counts[role] ?? 0) + 1;
   }
   return counts;
+}
+
+interface SpawnlessReleaseEvidenceEntry {
+  name: string;
+  helperRoom: string;
+  targetRoom: string;
+  reason: string;
+  releasedAt: number;
+}
+
+interface SpawnlessReleaseEvidence {
+  seededAt: number;
+  targetRoom: string;
+  entries: SpawnlessReleaseEvidenceEntry[];
+}
+
+function isSpawnlessReleaseEvidenceEntry(
+  value: unknown,
+  seededDefendersByName: Map<string, any>,
+  targetRoom: string,
+  seededAt: number
+): value is SpawnlessReleaseEvidenceEntry {
+  if (!isObject(value)) return false;
+  const seededDefender = seededDefendersByName.get(String(value.name ?? ''));
+  const elapsed = Number(value.releasedAt) - seededAt;
+  return Boolean(seededDefender)
+    && value.helperRoom === seededDefender.room
+    && value.targetRoom === targetRoom
+    && (value.reason === 'squad-quorum' || value.reason === 'parity-ready')
+    && Number.isFinite(Number(value.releasedAt))
+    && elapsed >= 0
+    && elapsed <= SPAWNLESS_DISTRIBUTED_RELEASE_DEADLINE_TICKS;
+}
+
+function updateSpawnlessReleaseEvidence(
+  input: BackendAssertionInput,
+  seededDefenders: any[],
+  targetRoom: string
+): SpawnlessReleaseEvidenceEntry[] {
+  const scenariosMemory = input.memory.screepsmodTestingScenarios ??= {};
+  const scenarioMemory = isObject(scenariosMemory.spawnlessSiege)
+    ? scenariosMemory.spawnlessSiege
+    : (scenariosMemory.spawnlessSiege = {});
+  const seededAt = Number(input.scenarioSeedConfirmation?.seededAt ?? scenariosMemory.seededAt);
+  const seededDefendersByName = new Map(
+    seededDefenders
+      .filter(defender => typeof defender?.name === 'string' && typeof defender?.room === 'string')
+      .map(defender => [defender.name, defender])
+  );
+  const previous = scenarioMemory.distributedReleaseEvidence;
+  const previousEntries = isObject(previous)
+    && Number(previous.seededAt) === seededAt
+    && previous.targetRoom === targetRoom
+    && Array.isArray(previous.entries)
+    ? previous.entries.filter((entry: unknown) =>
+      isSpawnlessReleaseEvidenceEntry(entry, seededDefendersByName, targetRoom, seededAt))
+    : [];
+  const evidence = new Map<string, SpawnlessReleaseEvidenceEntry>(
+    previousEntries.slice(0, seededDefendersByName.size).map(entry => [entry.name, entry])
+  );
+
+  for (const [name, seededDefender] of seededDefendersByName) {
+    const creepMemory = input.memory.creeps?.[name];
+    const entry = {
+      name,
+      helperRoom: String(creepMemory?.homeRoom ?? ''),
+      targetRoom: String(creepMemory?.assistTarget ?? creepMemory?.targetRoom ?? ''),
+      reason: String(creepMemory?.defenseAssistReleaseReason ?? ''),
+      releasedAt: Number(creepMemory?.defenseAssistReleasedAt),
+    };
+    if (entry.helperRoom !== seededDefender.room) continue;
+    if (!isSpawnlessReleaseEvidenceEntry(entry, seededDefendersByName, targetRoom, seededAt)) continue;
+    evidence.set(name, entry);
+  }
+
+  const entries = [...seededDefendersByName.keys()]
+    .map(name => evidence.get(name))
+    .filter((entry): entry is SpawnlessReleaseEvidenceEntry => entry !== undefined);
+  const durableEvidence: SpawnlessReleaseEvidence = { seededAt, targetRoom, entries };
+  scenarioMemory.distributedReleaseEvidence = durableEvidence;
+  return entries;
 }
 
 function hardDefenseCreepsAreNotTiny(memory: any, creeps: any[]): boolean {
@@ -391,6 +473,17 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     ? input.scenarioSeedConfirmation.spawnlessSiege.seededDefenders
     : [];
   const seededDefenderRooms = new Set(seededDefenders.map((defender: any) => defender?.room).filter(Boolean));
+  const releaseEvidence = input.scenarios.indexOf('spawnless-siege') >= 0
+    ? updateSpawnlessReleaseEvidence(input, seededDefenders, recoveryRoom)
+    : [];
+  const releasedHelperRooms = new Set(releaseEvidence.map(entry => entry.helperRoom));
+  const releaseTicks = new Set(releaseEvidence.map(entry => entry.releasedAt));
+  const releaseReasons = new Set(releaseEvidence.map(entry => entry.reason));
+  const distributedReleaseConfirmed = seededDefenders.length > 0
+    && releaseEvidence.length === seededDefenders.length
+    && releasedHelperRooms.size >= 2
+    && releaseTicks.size === 1
+    && releaseReasons.size === 1;
   const spawnlessHostileSeedConfirmed = Boolean(input.scenarioSeedConfirmation?.spawnlessSiege?.enemy)
     || input.memory.screepsmodTestingScenarios?.spawnlessSiege?.hostileSeeded === true;
   const pressureResolved = spawnlessHostileSeedConfirmed && recoveryHostiles.length === 0;
@@ -413,6 +506,10 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     seededDefenderRooms: seededDefenderRooms.size,
     spawnSiteProgress,
     pressureResolved,
+    distributedReleaseConfirmed,
+    releasedDefenders: releaseEvidence.length,
+    releasedHelperRooms: releasedHelperRooms.size,
+    releasedReasons: [...releaseReasons],
     defenseRequest: hasRecoveryRequest,
     emergencyQueue,
     refuelers,
@@ -488,8 +585,8 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
         && (spawnlessDiagnostics.seededDefenderRooms ?? 0) >= 2;
     }, `spawnless-siege recovery signal missing; diagnostics=${JSON.stringify(diagnostics.spawnlessSiege)}`);
     runtimeAssertCounterAfterScenarioTicks(counters, input, 1200, 'scenario spawnless-siege resolves hard pressure after distributed defense staging', ['scenario','spawnless-siege','recovery','reinforcement'], () => {
-      return pressureResolved;
-    }, `spawnless-siege hard pressure remained after distributed defense staging; diagnostics=${JSON.stringify(diagnostics.spawnlessSiege)}`);
+      return distributedReleaseConfirmed && pressureResolved;
+    }, `spawnless-siege distributed release or hard-pressure resolution missing; diagnostics=${JSON.stringify(diagnostics.spawnlessSiege)}`);
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
     runtimeAssertCounter(
