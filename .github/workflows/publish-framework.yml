@@ -4,25 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       publish_scope:
-        description: 'Publish scope'
+        description: "Exact framework package scope (for example: empire), or all"
         required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - kernel
-          - pathfinding
-          - remote-mining
-          - roles
-          - console
-          - stats
-          - spawn
-          - chemistry
-          - defense
-          - economy
-          - utils
-          - tasks
-          - posis
+        default: "all"
+        type: string
   release:
     types: [published]
 
@@ -32,38 +17,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    
-    strategy:
-      matrix:
-        package:
-          - name: '@ralphschuler/screeps-kernel'
-            path: 'packages/@ralphschuler/screeps-kernel'
-          - name: '@ralphschuler/screeps-pathfinding'
-            path: 'packages/@ralphschuler/screeps-pathfinding'
-          - name: '@ralphschuler/screeps-remote-mining'
-            path: 'packages/@ralphschuler/screeps-remote-mining'
-          - name: '@ralphschuler/screeps-roles'
-            path: 'packages/@ralphschuler/screeps-roles'
-          - name: '@ralphschuler/screeps-console'
-            path: 'packages/@ralphschuler/screeps-console'
-          - name: '@ralphschuler/screeps-stats'
-            path: 'packages/@ralphschuler/screeps-stats'
-          - name: '@ralphschuler/screeps-spawn'
-            path: 'packages/screeps-spawn'
-          - name: '@ralphschuler/screeps-chemistry'
-            path: 'packages/screeps-chemistry'
-          - name: '@ralphschuler/screeps-defense'
-            path: 'packages/screeps-defense'
-          - name: '@ralphschuler/screeps-economy'
-            path: 'packages/screeps-economy'
-          - name: '@ralphschuler/screeps-utils'
-            path: 'packages/screeps-utils'
-          - name: '@ralphschuler/screeps-posis'
-            path: 'packages/screeps-posis'
-
-    defaults:
-      run:
-        working-directory: ${{ matrix.package.path }}
 
     steps:
       - name: Checkout code
@@ -74,34 +27,48 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
 
       - name: Install workspace dependencies
         run: npm ci --ignore-scripts
-        working-directory: .
+
+      - name: Validate release package selection
+        if: github.event_name == 'release'
+        run: node scripts/publish-framework-package.mjs --list --all --json
+
+      - name: Validate manual package selection
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_scope != 'all'
+        run: node scripts/publish-framework-package.mjs --list --package "$PUBLISH_SCOPE" --json
+        env:
+          PUBLISH_SCOPE: ${{ inputs.publish_scope }}
+
+      - name: Validate manual all-package selection
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_scope == 'all'
+        run: node scripts/publish-framework-package.mjs --list --all --json
 
       - name: Build all dependencies
         run: npm run build:all
-        working-directory: .
 
-      - name: Run tests
-        run: |
-          if [ -f "package.json" ] && grep -q '"test"' package.json; then
-            npm test
-          else
-            echo "No tests defined for ${{ matrix.package.name }}"
-          fi
+      - name: Run workspace tests
+        run: npm run test:all
 
-      - name: Publish to npm
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.publish_scope == 'all' || contains(matrix.package.name, github.event.inputs.publish_scope)))
-        run: node scripts/publish-framework-package.mjs --package "${{ matrix.package.path }}" --publish --access public --provenance
-        working-directory: .
+      - name: Publish release packages to npm
+        if: github.event_name == 'release'
+        run: node scripts/publish-framework-package.mjs --all --publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Dry run publish (for PRs and testing)
-        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
-        run: node scripts/publish-framework-package.mjs --package "${{ matrix.package.path }}" --dry-run --access public
-        working-directory: .
+      - name: Publish all packages to npm manually
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_scope == 'all'
+        run: node scripts/publish-framework-package.mjs --all --publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish one exact package to npm manually
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_scope != 'all'
+        run: node scripts/publish-framework-package.mjs --package "$PUBLISH_SCOPE" --publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PUBLISH_SCOPE: ${{ inputs.publish_scope }}

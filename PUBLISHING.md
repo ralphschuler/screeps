@@ -17,31 +17,51 @@ This guide covers the complete process for publishing framework packages to npm,
 
 ## Overview
 
-The Screeps framework consists of 7 reusable packages published under the `@ralphschuler` npm scope:
+Package manifests are the publication inventory. `scripts/publish-framework-package.mjs` selects packages that:
 
-1. **@ralphschuler/screeps-kernel** - Process scheduler with CPU budget management
-2. **@ralphschuler/screeps-pathfinding** - Advanced pathfinding utilities
-3. **@ralphschuler/screeps-remote-mining** - Remote mining system
-4. **@ralphschuler/screeps-roles** - Reusable role behaviors
-5. **@ralphschuler/screeps-console** - Console command framework
-6. **@ralphschuler/screeps-stats** - Stats collection and export
-7. **@ralphschuler/screeps-visuals** - Visualization system (private, not published)
+- use the `@ralphschuler/screeps-` prefix;
+- are not marked `private`;
+- expose both `main` and `types` entry points;
+- have a publishable internal runtime-dependency closure.
+
+List the current inventory and dependency-safe publication order without staging or publishing:
+
+```bash
+node scripts/publish-framework-package.mjs --list
+node scripts/publish-framework-package.mjs --list --json
+```
 
 ## Package Status
 
-| Package | npm Published | Version | Build Status | Tests | License |
-|---------|--------------|---------|--------------|-------|---------|
-| screeps-kernel | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
-| screeps-pathfinding | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
-| screeps-remote-mining | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
-| screeps-roles | ❌ Not yet | 0.1.0 | ⚠️ Broken* | ✅ Passing | Unlicense |
-| screeps-console | ❌ Not yet | 0.1.0 | ⚠️ Broken** | ✅ Passing | Unlicense |
-| screeps-stats | ❌ Not yet | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
-| screeps-visuals | N/A (private) | 0.1.0 | ✅ Working | ✅ Passing | Unlicense |
+The following tested snapshot is kept in parity with manifest discovery:
 
-*Note: screeps-roles build issues tracked in [#1010](https://github.com/ralphschuler/screeps/issues/1010)
+<!-- framework-package-inventory:start -->
 
-**Note: screeps-console has TypeScript compilation errors due to missing dependencies and type mismatches
+| Package                               | Exact dispatch scope | Version |
+| ------------------------------------- | -------------------- | ------- |
+| `@ralphschuler/screeps-core`          | `core`               | 0.1.0   |
+| `@ralphschuler/screeps-kernel`        | `kernel`             | 0.1.0   |
+| `@ralphschuler/screeps-cache`         | `cache`              | 0.1.0   |
+| `@ralphschuler/screeps-chemistry`     | `chemistry`          | 0.1.0   |
+| `@ralphschuler/screeps-console`       | `console`            | 0.1.0   |
+| `@ralphschuler/screeps-layouts`       | `layouts`            | 0.1.0   |
+| `@ralphschuler/screeps-stats`         | `stats`              | 0.2.0   |
+| `@ralphschuler/screeps-memory`        | `memory`             | 0.1.0   |
+| `@ralphschuler/screeps-defense`       | `defense`            | 0.1.0   |
+| `@ralphschuler/screeps-economy`       | `economy`            | 0.1.0   |
+| `@ralphschuler/screeps-empire`        | `empire`             | 0.1.0   |
+| `@ralphschuler/screeps-intershard`    | `intershard`         | 0.1.0   |
+| `@ralphschuler/screeps-pathfinding`   | `pathfinding`        | 0.1.0   |
+| `@ralphschuler/screeps-utils`         | `utils`              | 0.1.0   |
+| `@ralphschuler/screeps-pheromones`    | `pheromones`         | 0.1.0   |
+| `@ralphschuler/screeps-posis`         | `posis`              | 1.0.0   |
+| `@ralphschuler/screeps-remote-mining` | `remote-mining`      | 0.1.0   |
+| `@ralphschuler/screeps-roles`         | `roles`              | 0.1.0   |
+| `@ralphschuler/screeps-standards`     | `standards`          | 0.1.0   |
+
+<!-- framework-package-inventory:end -->
+
+Private packages, applications, and public packages with a private or otherwise ineligible internal runtime dependency are excluded automatically. Exact selection of an excluded package fails with the dependency reason. Do not infer npm registry status from this source inventory; verify a release with `npm view <package>`.
 
 ## Prerequisites
 
@@ -54,6 +74,7 @@ Before you can publish packages to npm, ensure you have:
 - Authentication token with publish permissions
 
 To create an npm token:
+
 ```bash
 npm login
 npm token create --read-write
@@ -72,6 +93,7 @@ Configure the following GitHub secrets:
 - `NPM_TOKEN` - npm authentication token with publish permissions
 
 To add secrets in GitHub:
+
 1. Go to repository Settings → Secrets and variables → Actions
 2. Click "New repository secret"
 3. Name: `NPM_TOKEN`, Value: your npm token
@@ -114,6 +136,7 @@ For testing or emergency releases, you can publish manually:
 #### 1. Update Version
 
 Choose the appropriate version bump:
+
 - **Patch** (0.1.0 → 0.1.1): Bug fixes, no API changes
 - **Minor** (0.1.0 → 0.2.0): New features, backward compatible
 - **Major** (0.1.0 → 1.0.0): Breaking changes
@@ -124,6 +147,7 @@ npm version patch  # or minor, or major
 ```
 
 This automatically:
+
 - Updates package.json version
 - Creates a git commit
 - Creates a git tag
@@ -136,10 +160,12 @@ Edit `CHANGELOG.md` to document changes:
 ## [0.1.1] - 2026-01-02
 
 ### Fixed
+
 - Fixed CPU budget calculation edge case
 - Corrected process priority sorting
 
 ### Added
+
 - New debug logging options
 ```
 
@@ -150,6 +176,7 @@ npm run build
 ```
 
 Verify the build output in `dist/`:
+
 ```bash
 ls -la dist/
 ```
@@ -186,6 +213,7 @@ npm install /tmp/screeps-publish-check/scope_ralphschuler__screeps-kernel/verify
 ```
 
 Verify the package works:
+
 ```bash
 node -e "const kernel = require('@ralphschuler/screeps-kernel'); console.log(kernel);"
 ```
@@ -201,11 +229,13 @@ For scoped packages (`@ralphschuler/*`), the script passes `--access public` and
 #### 8. Verify Publication
 
 Check the package on npm:
+
 ```bash
 npm view @ralphschuler/screeps-kernel
 ```
 
 Visit the npm page:
+
 ```
 https://www.npmjs.com/package/@ralphschuler/screeps-kernel
 ```
@@ -243,10 +273,12 @@ Location: `.github/workflows/publish-framework.yml`
 
 Publish specific packages on demand:
 
-1. Go to GitHub Actions → Publish Framework Packages
-2. Click "Run workflow"
-3. Select scope: `all`, `kernel`, `pathfinding`, etc.
-4. Click "Run workflow"
+1. Go to GitHub Actions → Publish Framework Packages.
+2. Click "Run workflow".
+3. Enter `all` or one exact dispatch scope from the tested inventory above.
+4. Click "Run workflow".
+
+The helper rejects unknown, partial, private, or otherwise ineligible scopes before the build. Scope matching is exact; for example, `empire` selects only `@ralphschuler/screeps-empire`.
 
 #### 2. GitHub Release
 
@@ -276,11 +308,14 @@ The automated workflow performs:
 1. ✅ Checkout code
 2. ✅ Setup Node.js 24
 3. ✅ Install dependencies
-4. ✅ Build all packages (ensures dependencies are available)
-5. ✅ Run tests
-6. ✅ Stage each package through `scripts/publish-framework-package.mjs`
-7. ✅ Normalize internal monorepo dependency ranges in the staged package manifest
-8. ✅ Publish to npm with provenance, or dry-run through the same staging path
+4. ✅ Validate the manifest-driven `all` set or one exact manual scope
+5. ✅ Build all packages
+6. ✅ Run all workspace tests once
+7. ✅ Stage selected packages in dependency-safe order
+8. ✅ Normalize internal monorepo dependency ranges in each staged manifest
+9. ✅ Publish to npm with provenance
+
+Use `npm run publish:framework:dry-run` locally for non-publishing validation; the release workflow has no unreachable PR dry-run branch.
 
 ### Workflow Security
 
@@ -309,6 +344,7 @@ We follow [Semantic Versioning 2.0.0](https://semver.org/):
 - Internal refactoring (no API changes)
 
 Examples:
+
 - Fix CPU budget calculation bug
 - Optimize pathfinding cache lookup
 - Fix typos in README
@@ -321,6 +357,7 @@ Examples:
 - New optional parameters
 
 Examples:
+
 - Add new event type to kernel
 - Add portal cache invalidation method
 - Add new behavior to roles package
@@ -334,6 +371,7 @@ Examples:
 - Renamed exports
 
 Examples:
+
 - Remove deprecated `kernel.legacy()` method
 - Change `PortalManager` constructor signature
 - Rename `execute()` to `run()` in Process interface
@@ -347,6 +385,7 @@ For alpha/beta releases:
 - **Release Candidate**: `1.0.0-rc.1`, `1.0.0-rc.2`
 
 Publish pre-releases with:
+
 ```bash
 npm publish --tag alpha
 npm publish --tag beta
@@ -358,6 +397,7 @@ npm publish --tag rc
 Current state: All packages are `0.x.y`
 
 Meaning:
+
 - APIs may change without warning
 - No guarantee of backward compatibility
 - Not recommended for production use
@@ -366,13 +406,7 @@ Once stable, promote to `1.0.0`.
 
 ### Version Compatibility
 
-Maintain this compatibility matrix in FRAMEWORK.md:
-
-| Package | Depends On | Compatible Versions |
-|---------|-----------|---------------------|
-| screeps-roles | screeps-defense | 0.1.x |
-| screeps-remote-mining | screeps-cartographer | ^1.8.13 |
-| screeps-pathfinding | screeps-cartographer | ^1.8.13 |
+Package manifests are authoritative for compatibility ranges. Inspect the current framework manifests with `npm query '[name^="@ralphschuler/screeps-"]'` and validate normalized publish artifacts with `npm run publish:framework:check`; do not duplicate a static compatibility matrix here.
 
 ## Pre-Publish Validation
 
@@ -385,6 +419,7 @@ npm run build
 ```
 
 Check for TypeScript errors:
+
 ```bash
 tsc --noEmit
 ```
@@ -408,6 +443,7 @@ npm run publish:framework:check
 This fails if any packed package manifest still contains `workspace:*` or an internal `@ralphschuler/screeps-*` wildcard dependency.
 
 Should NOT include:
+
 - `src/` (only `dist/` should be published)
 - `test/`
 - `.github/`
@@ -416,6 +452,7 @@ Should NOT include:
 - `tsconfig.json`
 
 SHOULD include:
+
 - `dist/`
 - `README.md`
 - `LICENSE`
@@ -425,6 +462,7 @@ SHOULD include:
 ### 4. Package Metadata
 
 Verify package.json has:
+
 - ✅ Correct version number
 - ✅ Complete description
 - ✅ Keywords for discoverability
@@ -445,6 +483,7 @@ Verify package.json has:
 ### 6. Dependencies
 
 Check for:
+
 - No broken dependencies
 - Peer dependencies correctly specified
 - Version ranges are appropriate
@@ -456,6 +495,7 @@ npm ls
 ### 7. License Files
 
 Each package must have:
+
 - LICENSE file (Unlicense)
 - Correct license field in package.json
 
@@ -499,6 +539,7 @@ echo "✅ Package validation complete!"
 #### Issue: "You do not have permission to publish"
 
 **Solution:**
+
 - Verify you're logged in: `npm whoami`
 - Check you have access to `@ralphschuler` scope
 - Verify `NPM_TOKEN` secret is set correctly
@@ -507,6 +548,7 @@ echo "✅ Package validation complete!"
 #### Issue: "Version already published"
 
 **Solution:**
+
 - Check current version on npm: `npm view @ralphschuler/screeps-kernel version`
 - Bump version: `npm version patch`
 - Cannot republish same version - must increment
@@ -514,6 +556,7 @@ echo "✅ Package validation complete!"
 #### Issue: "Package not found" after publishing
 
 **Solution:**
+
 - Wait 1-2 minutes for npm CDN to update
 - Check npm website directly
 - Clear npm cache: `npm cache clean --force`
@@ -521,6 +564,7 @@ echo "✅ Package validation complete!"
 #### Issue: Build fails with missing dependencies
 
 **Solution:**
+
 - Run `npm run build:all` from repository root
 - Ensure internal packages are built first
 - Check package.json `peerDependencies`
@@ -528,6 +572,7 @@ echo "✅ Package validation complete!"
 #### Issue: Tests fail in CI but pass locally
 
 **Solution:**
+
 - Check Node.js version matches CI and repository baseline (Node.js 24.x / `>=24 <25`)
 - Ensure all devDependencies are installed
 - Look for environment-specific issues
@@ -535,6 +580,7 @@ echo "✅ Package validation complete!"
 #### Issue: "ENEEDAUTH" error
 
 **Solution:**
+
 - Re-login: `npm login`
 - Regenerate token: `npm token create`
 - Update `NPM_TOKEN` secret in GitHub
@@ -542,69 +588,42 @@ echo "✅ Package validation complete!"
 ### Debug Commands
 
 Check npm configuration:
+
 ```bash
 npm config list
 ```
 
 Verify authentication:
+
 ```bash
 npm whoami
 ```
 
 Check package info:
+
 ```bash
 npm view @ralphschuler/screeps-kernel
 ```
 
 List your published packages:
+
 ```bash
 npm access ls-packages
 ```
 
 ## Package Dependencies
 
-### Dependency Graph
+### Dependency Graph and Publishing Order
 
-```
-screeps-kernel (standalone)
-├── No dependencies
+Do not maintain a second hand-written dependency graph. The publication helper reads current `dependencies`, `peerDependencies`, and `optionalDependencies` from eligible manifests, then applies a deterministic topological order. Dependencies selected in the same run are published before their dependents; cycles fail before any package is staged.
 
-screeps-pathfinding (standalone)
-├── No dependencies
+Inspect the exact current order with:
 
-screeps-remote-mining
-└── peerDependencies
-    └── screeps-cartographer: ^1.8.13
-
-screeps-roles
-├── screeps-cartographer: ^1.8.13
-└── @ralphschuler/screeps-defense: *
-
-screeps-console (standalone)
-├── No dependencies
-
-screeps-stats (standalone)
-├── No dependencies
-
-screeps-visuals (private)
-├── Not published
+```bash
+node scripts/publish-framework-package.mjs --list
 ```
 
-### Publishing Order
-
-When publishing multiple packages, follow this order to satisfy dependencies:
-
-1. **Tier 1 - Standalone Packages** (no dependencies)
-   - screeps-kernel
-   - screeps-pathfinding
-   - screeps-console
-   - screeps-stats
-
-2. **Tier 2 - Packages with external peer dependencies**
-   - screeps-remote-mining (depends on screeps-cartographer)
-
-3. **Tier 3 - Packages with internal dependencies**
-   - screeps-roles (depends on screeps-defense)
+`--all` and multiple `--package` selections use this same order. Packages with private or otherwise ineligible internal runtime dependencies are excluded from `--all` and rejected by exact selection, so a release cannot publish an unusable dependency closure. Package authors must still run `npm run publish:framework:check` before release.
 
 ### Internal Package References
 
@@ -629,10 +648,12 @@ The staging script packs the source package, extracts it, rewrites internal `@ra
 
 ### External Dependencies
 
-Current external dependencies:
-- `screeps-cartographer: ^1.8.13` (peer dependency)
+Current external framework dependency:
+
+- `screeps-cartographer: ^1.8.15` (runtime or peer dependency, depending on package)
 
 When adding new external dependencies:
+
 1. Verify package is maintained
 2. Use semantic version ranges
 3. Add to both `dependencies` and `peerDependencies` as appropriate
@@ -697,5 +718,6 @@ After initial publishing:
 ## Support
 
 For questions or issues:
+
 - GitHub Issues: https://github.com/ralphschuler/screeps/issues
 - GitHub Discussions: https://github.com/ralphschuler/screeps/discussions
