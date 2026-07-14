@@ -21,6 +21,11 @@ const DEPENDENCY_SECTIONS = [
   "devDependencies",
 ];
 const INTERNAL_PACKAGE_PREFIX = "@ralphschuler/screeps-";
+const PUBLISH_ORDER_DEPENDENCY_SECTIONS = [
+  "dependencies",
+  "peerDependencies",
+  "optionalDependencies",
+];
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = process.env.PUBLISH_FRAMEWORK_REPO_ROOT
@@ -32,12 +37,14 @@ const packagesRoot = process.env.PUBLISH_FRAMEWORK_PACKAGES_DIR
 
 function usage() {
   return `Usage:
-  node scripts/publish-framework-package.mjs --package <name-or-path> [--check|--dry-run|--publish]
+  node scripts/publish-framework-package.mjs --package <name-path-or-exact-scope> [--check|--dry-run|--publish]
   node scripts/publish-framework-package.mjs --all --check
+  node scripts/publish-framework-package.mjs --list [--package <name-path-or-exact-scope>] [--json]
 
 Options:
-  --package <name-or-path>  Package name or package directory to stage.
-  --all                     Stage all public framework packages with main/types entries.
+  --package <selection>     Select one exact package name, directory, or short scope.
+  --all                     Select all eligible public framework packages and dependencies.
+  --list                    List selected publishable packages without staging them.
   --check                   Pack staged package and fail on publish-time dependency issues (default).
   --dry-run                 Run npm publish --dry-run for the normalized tarball.
   --publish                 Run npm publish for the normalized tarball.
@@ -59,6 +66,7 @@ function parseArgs(argv) {
   const args = {
     packages: [],
     all: false,
+    list: false,
     mode: "check",
     access: "public",
     provenance: false,
@@ -80,6 +88,9 @@ function parseArgs(argv) {
       }
       case "--all":
         args.all = true;
+        break;
+      case "--list":
+        args.list = true;
         break;
       case "--check":
         args.mode = "check";
@@ -123,6 +134,10 @@ function parseArgs(argv) {
     }
   }
 
+  if (args.all && args.packages.length > 0) {
+    fail("Select either --all or one or more --package values, not both.");
+  }
+  if (args.list && args.packages.length === 0) args.all = true;
   if (!args.all && args.packages.length === 0) {
     fail(`Select --all or at least one --package.\n${usage()}`);
   }
@@ -174,37 +189,163 @@ function loadWorkspacePackages() {
   return packageByName;
 }
 
-function isFrameworkPublishCandidate(workspacePackage) {
-  const manifest = workspacePackage.manifest;
-  return (
-    workspacePackage.name.startsWith(INTERNAL_PACKAGE_PREFIX) &&
-    manifest.private !== true &&
-    typeof manifest.main === "string" &&
-    typeof manifest.types === "string"
-  );
+function isFrameworkPublishCandidate(workspacePackage, packageByName) {
+  return publishCandidateRejection(workspacePackage, packageByName) === null;
+}
+
+function packageScope(packageName) {
+  return packageName.startsWith(INTERNAL_PACKAGE_PREFIX)
+    ? packageName.slice(INTERNAL_PACKAGE_PREFIX.length)
+    : null;
+}
+
+function publishCandidateRejection(
+  workspacePackage,
+  packageByName,
+  visiting = new Set(),
+) {
+  if (!workspacePackage.name.startsWith(INTERNAL_PACKAGE_PREFIX)) {
+    return "package name is outside the framework scope";
+  }
+  if (workspacePackage.private) return "package is private";
+  if (typeof workspacePackage.manifest.main !== "string") {
+    return "package has no main entry point";
+  }
+  if (typeof workspacePackage.manifest.types !== "string") {
+    return "package has no types entry point";
+  }
+  if (!packageByName || visiting.has(workspacePackage.name)) return null;
+
+  const nextVisiting = new Set(visiting).add(workspacePackage.name);
+  for (const section of PUBLISH_ORDER_DEPENDENCY_SECTIONS) {
+    const dependencyNames = Object.keys(
+      workspacePackage.manifest[section] ?? {},
+    ).sort();
+    for (const dependencyName of dependencyNames) {
+      if (!dependencyName.startsWith(INTERNAL_PACKAGE_PREFIX)) continue;
+      const dependency = packageByName.get(dependencyName);
+      if (!dependency) {
+        return `dependency ${dependencyName} is not a discovered workspace package`;
+      }
+      const dependencyRejection = publishCandidateRejection(
+        dependency,
+        packageByName,
+        nextVisiting,
+      );
+      if (dependencyRejection) {
+        return `dependency ${dependencyName} is not publishable (${dependencyRejection})`;
+      }
+    }
+  }
+  return null;
+}
+
+function requirePublishCandidate(workspacePackage, selection, packageByName) {
+  const rejection = publishCandidateRejection(workspacePackage, packageByName);
+  if (rejection) {
+    fail(`Package selection ${selection} is not publishable: ${rejection}`);
+  }
+  return workspacePackage;
 }
 
 function resolvePackage(selection, packageByName) {
-  if (packageByName.has(selection)) return packageByName.get(selection);
+  const exactName = packageByName.get(selection);
+  if (exactName)
+    return requirePublishCandidate(exactName, selection, packageByName);
+
+  const exactScopeMatches = [...packageByName.values()].filter(
+    (workspacePackage) => packageScope(workspacePackage.name) === selection,
+  );
+  if (exactScopeMatches.length === 1) {
+    return requirePublishCandidate(
+      exactScopeMatches[0],
+      selection,
+      packageByName,
+    );
+  }
+  if (exactScopeMatches.length > 1) {
+    fail(`Ambiguous exact package scope: ${selection}`);
+  }
 
   const candidates = [
     path.resolve(process.cwd(), selection),
     path.resolve(repoRoot, selection),
   ];
   for (const candidate of candidates) {
-    const manifestPath = path.join(candidate, "package.json");
-    if (!existsSync(manifestPath)) continue;
-    const manifest = readJson(manifestPath);
-    return {
-      dir: candidate,
-      manifest,
-      name: manifest.name,
-      private: manifest.private === true,
-      version: manifest.version,
-    };
+    const workspacePackage = [...packageByName.values()].find(
+      (current) => path.resolve(current.dir) === candidate,
+    );
+    if (workspacePackage)
+      return requirePublishCandidate(
+        workspacePackage,
+        selection,
+        packageByName,
+      );
+    if (existsSync(path.join(candidate, "package.json"))) {
+      fail(`Package path is not a discovered workspace package: ${selection}`);
+    }
   }
 
-  fail(`Unable to resolve package selection: ${selection}`);
+  fail(`Unable to resolve exact publishable package selection: ${selection}`);
+}
+
+function orderPackagesForPublication(packages) {
+  const selectedByName = new Map(
+    packages.map((workspacePackage) => [
+      workspacePackage.name,
+      workspacePackage,
+    ]),
+  );
+  const state = new Map();
+  const stack = [];
+  const ordered = [];
+
+  function visit(workspacePackage) {
+    const currentState = state.get(workspacePackage.name);
+    if (currentState === "visited") return;
+    if (currentState === "visiting") {
+      const cycleStart = stack.indexOf(workspacePackage.name);
+      const cycle = [...stack.slice(cycleStart), workspacePackage.name];
+      fail(`Internal framework dependency cycle: ${cycle.join(" -> ")}`);
+    }
+
+    state.set(workspacePackage.name, "visiting");
+    stack.push(workspacePackage.name);
+    const dependencies = new Set();
+    for (const section of PUBLISH_ORDER_DEPENDENCY_SECTIONS) {
+      for (const dependencyName of Object.keys(
+        workspacePackage.manifest[section] ?? {},
+      )) {
+        if (selectedByName.has(dependencyName))
+          dependencies.add(dependencyName);
+      }
+    }
+    for (const dependencyName of [...dependencies].sort()) {
+      visit(selectedByName.get(dependencyName));
+    }
+    stack.pop();
+    state.set(workspacePackage.name, "visited");
+    ordered.push(workspacePackage);
+  }
+
+  for (const workspacePackage of [...selectedByName.values()].sort(
+    (left, right) => left.name.localeCompare(right.name),
+  )) {
+    visit(workspacePackage);
+  }
+  return ordered;
+}
+
+function listedPackage(workspacePackage) {
+  return {
+    name: workspacePackage.name,
+    path: path
+      .relative(repoRoot, workspacePackage.dir)
+      .split(path.sep)
+      .join("/"),
+    scope: packageScope(workspacePackage.name),
+    version: workspacePackage.version,
+  };
 }
 
 function run(command, args, options = {}) {
@@ -239,7 +380,9 @@ function parseNpmPackJson(stdout) {
     }
     return parsed[0];
   } catch (error) {
-    throw new Error(`Failed to parse npm pack JSON output: ${error.message}\n${stdout}`);
+    throw new Error(
+      `Failed to parse npm pack JSON output: ${error.message}\n${stdout}`,
+    );
   }
 }
 
@@ -247,7 +390,13 @@ function packPackage(packageDir, packDestination) {
   mkdirSync(packDestination, { recursive: true });
   const result = run(
     "npm",
-    ["pack", "--ignore-scripts", "--json", "--pack-destination", packDestination],
+    [
+      "pack",
+      "--ignore-scripts",
+      "--json",
+      "--pack-destination",
+      packDestination,
+    ],
     { cwd: packageDir },
   );
   const packInfo = parseNpmPackJson(result.stdout);
@@ -271,7 +420,11 @@ function extractPackage(tarballPath, destination) {
 }
 
 function normalizeWorkspaceVersion(specifier, concreteVersion) {
-  if (specifier === "*" || specifier === "workspace:*" || specifier === "workspace:") {
+  if (
+    specifier === "*" ||
+    specifier === "workspace:*" ||
+    specifier === "workspace:"
+  ) {
     return concreteVersion;
   }
   if (specifier === "workspace:^") return `^${concreteVersion}`;
@@ -377,7 +530,9 @@ function stageAndNormalizePackage(workspacePackage, packageByName, runRoot) {
 
   const verifyTarball = packPackage(stagedPackageDir, verifyPackDir);
   const verifiedPackageDir = extractPackage(verifyTarball, verifyExtractDir);
-  const verifiedManifest = readJson(path.join(verifiedPackageDir, "package.json"));
+  const verifiedManifest = readJson(
+    path.join(verifiedPackageDir, "package.json"),
+  );
   validatePublishManifest(verifiedManifest, packageByName);
 
   return {
@@ -392,7 +547,12 @@ function stageAndNormalizePackage(workspacePackage, packageByName, runRoot) {
 }
 
 function runPublishCommand(staged, args) {
-  const publishArgs = ["publish", staged.verifyTarball, "--access", args.access];
+  const publishArgs = [
+    "publish",
+    staged.verifyTarball,
+    "--access",
+    args.access,
+  ];
   if (args.mode === "dry-run") publishArgs.push("--dry-run");
   if (args.mode === "publish" && args.provenance) {
     publishArgs.push("--provenance");
@@ -411,36 +571,57 @@ function packageStat(packageDir) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const packageByName = loadWorkspacePackages();
-  const selections = args.all
-    ? [...packageByName.values()]
-        .filter(isFrameworkPublishCandidate)
-        .sort((left, right) => left.name.localeCompare(right.name))
-    : args.packages.map((selection) => resolvePackage(selection, packageByName));
+  const selectedPackages = args.all
+    ? [...packageByName.values()].filter((workspacePackage) =>
+        isFrameworkPublishCandidate(workspacePackage, packageByName),
+      )
+    : args.packages.map((selection) =>
+        resolvePackage(selection, packageByName),
+      );
+  const selections = orderPackagesForPublication(selectedPackages);
+
+  if (args.list) {
+    const packages = selections.map(listedPackage);
+    if (args.json)
+      console.log(JSON.stringify({ mode: "list", packages }, null, 2));
+    else
+      for (const workspacePackage of packages) {
+        console.log(
+          `${workspacePackage.scope}\t${workspacePackage.name}\t${workspacePackage.path}`,
+        );
+      }
+    return;
+  }
 
   const runRoot = createRunRoot(args);
   const summary = [];
 
   try {
     for (const workspacePackage of selections) {
-      if (!workspacePackage?.dir || !packageStat(workspacePackage.dir)?.isDirectory()) {
-        throw new Error(`Invalid package directory for ${workspacePackage?.name ?? "unknown"}`);
-      }
-
-      if (workspacePackage.private) {
-        console.log(`skip ${workspacePackage.name}: package is private`);
-        summary.push({ name: workspacePackage.name, skipped: true, reason: "private" });
-        continue;
+      if (
+        !workspacePackage?.dir ||
+        !packageStat(workspacePackage.dir)?.isDirectory()
+      ) {
+        throw new Error(
+          `Invalid package directory for ${workspacePackage?.name ?? "unknown"}`,
+        );
       }
 
       console.log(`stage ${workspacePackage.name}@${workspacePackage.version}`);
-      const staged = stageAndNormalizePackage(workspacePackage, packageByName, runRoot);
+      const staged = stageAndNormalizePackage(
+        workspacePackage,
+        packageByName,
+        runRoot,
+      );
       for (const change of staged.changes) {
         console.log(
           `normalize ${staged.packageName}: ${change.section}.${change.dependencyName} ${change.from} -> ${change.to}`,
         );
       }
       if (staged.changes.length === 0) {
-        console.log(`normalize ${staged.packageName}: no internal workspace ranges found`);
+        console.log(
+          `normalize ${staged.packageName}: no internal workspace ranges found`,
+        );
       }
 
       if (args.mode === "dry-run" || args.mode === "publish") {
@@ -462,7 +643,9 @@ function main() {
   }
 
   if (args.json) {
-    console.log(JSON.stringify({ mode: args.mode, packages: summary }, null, 2));
+    console.log(
+      JSON.stringify({ mode: args.mode, packages: summary }, null, 2),
+    );
   }
 }
 
