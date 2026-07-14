@@ -718,6 +718,81 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
+  it('keeps spawnless pressure resolution pending until the scenario has run for 1200 ticks', async () => {
+    const memory = createWarmRuntimeMemory({
+      screepsmodTestingScenarios: {
+        names: ['spawnless-siege'],
+        seededAt: 100,
+        rooms: { home: 'W1N1', recovery: 'W1N4' },
+      },
+      defenseRequests: [{ roomName: 'W1N4', urgency: 3 }],
+    });
+    const roomObjects = [
+      { type: 'controller', room: 'W1N4', user: 'user1' },
+      { type: 'constructionSite', room: 'W1N4', structureType: 'spawn', user: 'user1', progress: 0 },
+      { type: 'terminal', room: 'W1N1', user: 'user1', store: { energy: 5500 } },
+      { type: 'creep', room: 'W1N4', name: 'ScenarioSpawnlessSiege', user: 'enemy1' },
+    ];
+    const scenarioSeedConfirmation = {
+      seededAt: 100,
+      rooms: { home: 'W1N1', recovery: 'W1N4' },
+      spawnlessSiege: {
+        enemy: 'ScenarioSpawnlessSiege',
+        homeTerminalEnergy: 6000,
+        spawnCount: 0,
+        towerCount: 0,
+        seededDefenders: [
+          { name: 'GuardA', room: 'W1N1', role: 'guard' },
+          { name: 'GuardB', room: 'W1N1', role: 'guard' },
+          { name: 'RangerA', room: 'W2N4', role: 'ranger' },
+          { name: 'RangerB', room: 'W2N4', role: 'ranger' },
+          { name: 'Healer', room: 'W2N4', role: 'healer' },
+        ],
+      },
+    };
+    const runAtTick = (tick: number) => runBackendRuntimeAssertions({
+      config: {},
+      storage: {
+        db: {
+          'rooms.objects': {
+            find: async (query: Record<string, unknown>) => roomObjects.filter(object =>
+              Object.entries(query).every(([key, value]) => (object as Record<string, unknown>)[key] === value)
+            ),
+          },
+        },
+      },
+      memory,
+      tick,
+      runtimeWarmupTicks: 100,
+      botRuntimeWarmed: true,
+      user: { cpuAvailable: 9000 },
+      userId: 'user1',
+      userIdFilter: { user: 'user1' },
+      ownedControllers: [{ room: 'W1N1', user: 'user1' }, { room: 'W1N4', user: 'user1' }],
+      spawns: [{ room: 'W1N1', user: 'user1' }],
+      creeps: [{ room: 'W1N1', user: 'user1', name: 'Worker1', body: [{ type: 'work', hits: 100 }] }],
+      errorSamples: [],
+      scenarios: ['spawnless-siege'],
+      startedAt: Date.now(),
+      scenarioSeedConfirmation,
+    });
+
+    const pending = await runAtTick(1299);
+    expect(pending.failed).to.equal(0);
+    expect(pending.skipped).to.equal(1);
+
+    const due = await runAtTick(1300);
+    expect(due.failures.map((failure: any) => failure.name)).to.include(
+      'scenario spawnless-siege resolves hard pressure after distributed defense staging'
+    );
+
+    roomObjects.pop();
+    delete memory.defenseRequests;
+    const resolved = await runAtTick(1300);
+    expect(resolved.failed).to.equal(0);
+    expect(resolved.diagnostics.scenarios.spawnlessSiege).to.deep.include({ pressureResolved: true });
+  });
+
   it('uses durable hard-invader seed confirmation when runtime Memory lost the seed details', async () => {
     const memory = createWarmRuntimeMemory({
       screepsmodTestingScenarios: {

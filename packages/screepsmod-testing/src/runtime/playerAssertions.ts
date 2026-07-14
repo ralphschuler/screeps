@@ -231,9 +231,11 @@ export function buildPlayerSandboxTestSource(runtimeWarmupTicks: number, scenari
     var requests = values(memory.defenseRequests || {});
     var hasRecoveryRequest = requests.some(function(request) { return request && request.roomName === recoveryRoomName; });
     var hasRecoveryDanger = (recoveryMemory.danger || 0) > 0;
+    var spawnlessSeed = (memory.screepsmodTestingScenarios || {}).spawnlessSiege || {};
+    var pressureResolved = spawnlessSeed.hostileSeeded === true && !hasRecoveryRequest && !hasRecoveryDanger;
     var homeRoom = scenarioRooms.home && game.rooms && game.rooms[scenarioRooms.home];
     var hasTerminalReserve = Boolean(homeRoom && homeRoom.terminal && homeRoom.terminal.store[RESOURCE_ENERGY] >= 5000);
-    return (spawns.length > 0 || spawnSites.length > 0) && (hasRecoveryRequest || hasRecoveryDanger) && hasTerminalReserve;
+    return (spawns.length > 0 || spawnSites.length > 0) && (hasRecoveryRequest || hasRecoveryDanger || pressureResolved) && hasTerminalReserve;
   }
 
   function linkNetworkPoints(room) {

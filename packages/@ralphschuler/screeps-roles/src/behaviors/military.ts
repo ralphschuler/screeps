@@ -152,42 +152,54 @@ function countDefenseAssistMembersForRole(targetRoom: string, role: DefenseAssis
   }).length;
 }
 
-function isReadyDefenseAssistTargetMember(creep: Creep, assistTarget: string, homeRoom: string): boolean {
+/**
+ * Count staged members across every safe helper room for one target. Reinforcement
+ * planning deliberately distributes a hard-threat response across helpers, so a
+ * per-home quorum can deadlock while the empire already has enough combined power.
+ */
+function isReadyDefenseAssistTargetMember(creep: Creep, assistTarget: string): boolean {
   const memory = creep.memory as unknown as SwarmCreepMemory;
   return (
     getDefenseAssistTargetRoom(memory) === assistTarget &&
-    memory.homeRoom === homeRoom &&
-    creep.room.name === homeRoom &&
-    !creep.spawning
+    isDefenseAssistRole(memory.role) &&
+    memory.homeRoom !== undefined &&
+    memory.defenseAssistReleasedAt === undefined &&
+    creep.room.name === memory.homeRoom &&
+    !creep.spawning &&
+    getActualHostileCreeps(creep.room).length === 0
   );
 }
 
-function getReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: string): Creep[] {
+function getReadyDefenseAssistTargetMembers(assistTarget: string): Creep[] {
   return Object.values(Game.creeps).filter(creep =>
-    isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom)
+    isReadyDefenseAssistTargetMember(creep, assistTarget)
   );
 }
 
-function countReadyDefenseAssistTargetMembers(assistTarget: string, homeRoom: string): number {
-  return getReadyDefenseAssistTargetMembers(assistTarget, homeRoom).length;
+function countReadyDefenseAssistTargetMembers(assistTarget: string): number {
+  return getReadyDefenseAssistTargetMembers(assistTarget).length;
 }
 
-function calculateReadyDefenseAssistTargetPower(assistTarget: string, homeRoom: string): CombatPower {
-  return getReadyDefenseAssistTargetMembers(assistTarget, homeRoom)
-    .reduce((total, creep) => {
-      const activeBody = creep.body.filter(part => part.hits > 0);
-      return addCombatPower(total, calculateCombatPower(activeBody));
-    }, emptyCombatPower());
+function calculateReadyDefenseAssistTargetPower(readyMembers: Creep[]): CombatPower {
+  return readyMembers.reduce((total, creep) => {
+    const activeBody = creep.body.filter(part => part.hits > 0);
+    return addCombatPower(total, calculateCombatPower(activeBody));
+  }, emptyCombatPower());
 }
 
 function hasReadyDefenseAssistParity(
-  assistTarget: string,
-  homeRoom: string,
+  readyMembers: Creep[],
   threatProfile: DefenseAssistThreatProfile
 ): boolean {
-  const readyPower = calculateReadyDefenseAssistTargetPower(assistTarget, homeRoom);
+  const readyPower = calculateReadyDefenseAssistTargetPower(readyMembers);
   const hasDamage = readyPower.attack + readyPower.ranged + readyPower.dismantle > 0;
   return hasDamage && readyPower.score >= threatProfile.total.score && readyPower.partCount >= threatProfile.total.partCount;
+}
+
+function releaseReadyDefenseAssistMembers(readyMembers: Creep[], reason: DefenseAssistReleaseReason): void {
+  for (const member of readyMembers) {
+    markDefenseAssistReleased(member.memory as unknown as SwarmCreepMemory, reason);
+  }
 }
 
 function getDefenseAssistRequestCreatedAt(request: DefenseAssistRequestMemory): number {
@@ -196,8 +208,7 @@ function getDefenseAssistRequestCreatedAt(request: DefenseAssistRequestMemory): 
 
 function shouldAcquireDefenseAssistRequest(
   request: DefenseAssistRequestMemory,
-  role: DefenseAssistRole,
-  homeRoom: string
+  role: DefenseAssistRole
 ): boolean {
   const requestedRoleNeed = getDefenseAssistRequestNeed(request, role);
   if (requestedRoleNeed > countDefenseAssistMembersForRole(request.roomName, role)) return true;
@@ -205,7 +216,7 @@ function shouldAcquireDefenseAssistRequest(
   return (
     getTotalDefenseAssistRequestNeed(request) > 0 &&
     hasVisibleHardDefenseAssistThreat(request.roomName) &&
-    countReadyDefenseAssistTargetMembers(request.roomName, homeRoom) < DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM
+    countReadyDefenseAssistTargetMembers(request.roomName) < DEFENSE_ASSIST_HARD_THREAT_RELEASE_QUORUM
   );
 }
 
@@ -219,7 +230,7 @@ function tryAcquireDefenseAssistAssignment(ctx: CreepContext, mem: SwarmCreepMem
   for (const request of getActiveDefenseAssistRequests()) {
     const targetRoom = Game.rooms[request.roomName];
     if (!targetRoom || getActualHostileCreeps(targetRoom).length === 0) continue;
-    if (!shouldAcquireDefenseAssistRequest(request, mem.role, ctx.homeRoom)) continue;
+    if (!shouldAcquireDefenseAssistRequest(request, mem.role)) continue;
 
     const requestCreatedAt = getDefenseAssistRequestCreatedAt(request);
     stageDefenseAssistCreep(ctx.creep, {
@@ -246,7 +257,7 @@ function isReadyDefenseAssistSquadMember(
   homeRoom: string
 ): boolean {
   const memory = creep.memory as unknown as SwarmCreepMemory;
-  return memory.defenseSquadId === squadId && isReadyDefenseAssistTargetMember(creep, assistTarget, homeRoom);
+  return memory.defenseSquadId === squadId && memory.homeRoom === homeRoom && isReadyDefenseAssistTargetMember(creep, assistTarget);
 }
 
 function countReadyDefenseAssistSquadMembers(mem: SwarmCreepMemory, homeRoom: string): number {
@@ -304,19 +315,20 @@ function getDefenseAssistSquadStagingAction(ctx: CreepContext, mem: SwarmCreepMe
 
   const threatProfile = getVisibleDefenseAssistThreatProfile(assistTarget);
   const hardThreat = isDefenseAssistThreatProfileHard(threatProfile);
-  const readyTargetMembers = hardThreat ? getReadyDefenseAssistTargetMembers(assistTarget, ctx.homeRoom) : [];
+  const readyTargetMembers = hardThreat ? getReadyDefenseAssistTargetMembers(assistTarget) : [];
   const readyMembers = hardThreat ? readyTargetMembers.length : countReadyDefenseAssistSquadMembers(mem, ctx.homeRoom);
 
   const releaseQuorum = getDefenseAssistSquadReleaseQuorum(mem, hardThreat);
   const stagingExpired = isDefenseAssistSquadStagingExpired(mem, hardThreat);
 
   if (threatProfile) {
-    if (hasReadyDefenseAssistParity(assistTarget, ctx.homeRoom, threatProfile)) {
-      markDefenseAssistReleased(mem, "parity-ready");
+    if (hasReadyDefenseAssistParity(readyTargetMembers, threatProfile)) {
+      releaseReadyDefenseAssistMembers(readyTargetMembers, "parity-ready");
       return null;
     }
     if (readyMembers >= releaseQuorum) {
-      markDefenseAssistReleased(mem, "squad-quorum");
+      if (hardThreat) releaseReadyDefenseAssistMembers(readyTargetMembers, "squad-quorum");
+      else markDefenseAssistReleased(mem, "squad-quorum");
       return null;
     }
     if (stagingExpired) {

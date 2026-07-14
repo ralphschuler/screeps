@@ -292,6 +292,100 @@ describe("military assistance behavior", () => {
     expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
   });
 
+  it("releases hard-threat assistance when multiple helper rooms form the staging quorum", () => {
+    createHardThreatRoom("W2N1");
+    const ctx = createAssistContext("guard", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        defenseSquadId: "assist:W1N1:W2N1:wave-a",
+        defenseSquadSize: 5,
+        defenseSquadCreatedAt: Game.time
+      }
+    });
+    const otherHelper = createMockRoom("W3N1");
+    const alliedVisitor = { owner: { username: "TooAngel" }, body: [{ type: MOVE, hits: 100 }] } as unknown as Creep;
+    (otherHelper as any).find = (type: number) => type === FIND_HOSTILE_CREEPS ? [alliedVisitor] : [];
+    Game.rooms.W3N1 = otherHelper;
+    const mates = Array.from({ length: 4 }, (_, index) => {
+      const room = index < 2 ? ctx.room : otherHelper;
+      const homeRoom = room.name;
+      return createMockCreep(`distributedMate${index}`, {
+        room,
+        memory: {
+          role: index === 0 ? "healer" : "ranger",
+          family: "military",
+          homeRoom,
+          assistTarget: "W2N1",
+          defenseSquadId: `assist:${homeRoom}:W2N1:wave-${index + 2}`,
+          defenseSquadSize: 5,
+          defenseSquadCreatedAt: Game.time
+        },
+        body: index === 0 ? [{ type: HEAL, hits: 100 }, { type: MOVE, hits: 100 }] : [{ type: RANGED_ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+      });
+    });
+    Game.creeps = { [ctx.creep.name]: ctx.creep, ...Object.fromEntries(mates.map(creep => [creep.name, creep])) } as typeof Game.creeps;
+
+    const action = guard(ctx);
+
+    expect(action).to.deep.equal({ type: "moveToRoom", roomName: "W2N1" });
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal("squad-quorum");
+    expect(mates.every(creep =>
+      (creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason === "squad-quorum"
+    )).to.equal(true);
+
+    const followup = createAssistContext("ranger", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        defenseSquadId: "assist:W1N1:W2N1:wave-followup",
+        defenseSquadSize: 5,
+        defenseSquadCreatedAt: Game.time
+      }
+    });
+    const followupAction = ranger(followup);
+
+    expect(followupAction.type).to.equal("wait");
+  });
+
+  it("excludes staged members whose helper room is under non-allied attack", () => {
+    createHardThreatRoom("W2N1");
+    const ctx = createAssistContext("guard", [], {
+      roomName: "W1N1",
+      assistTarget: "W2N1",
+      extraMemory: {
+        defenseSquadId: "assist:W1N1:W2N1:wave-a",
+        defenseSquadSize: 5,
+        defenseSquadCreatedAt: Game.time
+      }
+    });
+    const threatenedHelper = createThreatRoom("W3N1");
+    const mates = Array.from({ length: 4 }, (_, index) => {
+      const room = index < 2 ? ctx.room : threatenedHelper;
+      return createMockCreep(`threatenedHelperMate${index}`, {
+        room,
+        memory: {
+          role: index === 0 ? "healer" : "ranger",
+          family: "military",
+          homeRoom: room.name,
+          assistTarget: "W2N1",
+          defenseSquadId: `assist:${room.name}:W2N1:wave-${index + 2}`,
+          defenseSquadSize: 5,
+          defenseSquadCreatedAt: Game.time
+        },
+        body: index === 0 ? [{ type: HEAL, hits: 100 }, { type: MOVE, hits: 100 }] : [{ type: RANGED_ATTACK, hits: 100 }, { type: MOVE, hits: 100 }]
+      });
+    });
+    Game.creeps = { [ctx.creep.name]: ctx.creep, ...Object.fromEntries(mates.map(creep => [creep.name, creep])) } as typeof Game.creeps;
+
+    const action = guard(ctx);
+
+    expect(action.type).to.equal("wait");
+    expect((ctx.creep.memory as { defenseAssistReleaseReason?: string }).defenseAssistReleaseReason)
+      .to.equal(undefined);
+  });
+
   it("stages guard assistance at home until its squad quorum is ready", () => {
     const ctx = createAssistContext("guard", [], {
       roomName: "W1N1",
