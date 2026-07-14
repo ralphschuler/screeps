@@ -47,6 +47,8 @@ export interface CompactPortal {
   th: number;
   s: number;
   tc: number;
+  ls?: number;
+  dt?: number;
 }
 
 export interface CompactCpuHistory {

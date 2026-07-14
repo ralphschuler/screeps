@@ -103,6 +103,10 @@ export interface SwarmCreepMemory {
   targetShard?: string;
   /** Portal room for intershard operation creeps. */
   portalRoom?: string;
+  /** Exact source portal position for intershard operation creeps. */
+  portalPos?: { x: number; y: number };
+  /** Expected destination room of the source portal. */
+  portalTargetRoom?: string;
   /** Last explored room (for scouts to avoid cycling) */
   lastExploredRoom?: string;
   /** Current task */

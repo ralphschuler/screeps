@@ -388,18 +388,24 @@ export class ShardManager {
           const targetRoom = (destination as { room: string }).room;
 
           // Check if already tracked
+          const sourcePos = { x: portal.pos.x, y: portal.pos.y };
           const existing = shardState.portals.find(
-            p => p.sourceRoom === roomName && p.targetShard === targetShard
+            p =>
+              p.sourceRoom === roomName &&
+              p.sourcePos.x === sourcePos.x &&
+              p.sourcePos.y === sourcePos.y &&
+              p.targetShard === targetShard &&
+              p.targetRoom === targetRoom
           );
 
           if (existing) {
-            // Update existing portal
+            existing.sourcePos = sourcePos;
+            existing.targetRoom = targetRoom;
             existing.lastScouted = Game.time;
             // Determine stability: portals without decay tick are stable
             existing.isStable = portal.ticksToDecay === undefined;
-            if (portal.ticksToDecay !== undefined) {
-              existing.decayTick = Game.time + portal.ticksToDecay;
-            }
+            existing.decayTick =
+              portal.ticksToDecay === undefined ? undefined : Game.time + portal.ticksToDecay;
           } else {
             const portalInfo: PortalInfo = {
               sourceRoom: roomName,

@@ -10,6 +10,8 @@ import type { CreepAction, CreepContext } from "./types";
 interface InterShardClaimMemory {
   targetShard?: string;
   portalRoom?: string;
+  portalPos?: { x: number; y: number };
+  portalTargetRoom?: string;
   targetRoom?: string;
   workflowState?: string;
 }
@@ -34,19 +36,28 @@ function updateFootprint(status: "reached" | "claimTargetSelected" | "claimed" |
   }
 }
 
-function findPortal(room: Room, targetShard: string): StructurePortal | undefined {
+function findPortal(room: Room, memory: InterShardClaimMemory): StructurePortal | undefined {
+  if (!memory.targetShard) return undefined;
   const portals = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_PORTAL }) as StructurePortal[];
-  return portals.find(portal => {
+  const matching = portals.filter(portal => {
     const destination = portal.destination;
-    return "shard" in destination && destination.shard === targetShard;
+    return (
+      "shard" in destination &&
+      destination.shard === memory.targetShard &&
+      (!memory.portalTargetRoom || destination.room === memory.portalTargetRoom)
+    );
   });
+  if (!memory.portalPos) return matching.length === 1 ? matching[0] : undefined;
+  return matching.find(
+    portal => portal.pos.x === memory.portalPos?.x && portal.pos.y === memory.portalPos?.y
+  );
 }
 
 function moveToPortal(ctx: CreepContext, memory: InterShardClaimMemory): CreepAction {
   if (!memory.targetShard || !memory.portalRoom) return { type: "idle" };
   if (ctx.room.name !== memory.portalRoom) return { type: "moveToRoom", roomName: memory.portalRoom };
-  const portal = findPortal(ctx.room, memory.targetShard);
-  if (!portal) return { type: "idle" };
+  const portal = findPortal(ctx.room, memory);
+  if (!portal || (portal.ticksToDecay !== undefined && portal.ticksToDecay <= 25)) return { type: "idle" };
   if (!stageInterShardCreepMemory([ctx.creep]).written) return { type: "idle" };
   // A portal only transfers a creep standing on its tile. Cartographer's
   // default target range is 1, which leaves inter-shard creeps adjacent forever.
