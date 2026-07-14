@@ -244,6 +244,21 @@ function runtimeAssertCounterAfter(counters: AssertionCounters, input: BackendAs
   assertCounter(counters, name, tags, predicate, message);
 }
 
+function runtimeAssertCounterAfterScenarioTicks(counters: AssertionCounters, input: BackendAssertionInput, minElapsedTicks: number, name: string, tags: string[], predicate: () => boolean, message: string): void {
+  if (!input.botRuntimeWarmed) {
+    counters.skipped += 1;
+    return;
+  }
+
+  const seededAt = Number(input.scenarioSeedConfirmation?.seededAt ?? input.memory.screepsmodTestingScenarios?.seededAt);
+  if (!Number.isFinite(seededAt) || input.tick - seededAt < minElapsedTicks) {
+    counters.skipped += 1;
+    return;
+  }
+
+  assertCounter(counters, name, tags, predicate, message);
+}
+
 function ensureScenarioMemory(
   memory: any,
   scenarios: string[],
@@ -372,6 +387,14 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
   const initialTerminalEnergy = Number(input.scenarioSeedConfirmation?.spawnlessSiege?.homeTerminalEnergy ?? 0);
   const seededSpawnCount = Number(input.scenarioSeedConfirmation?.spawnlessSiege?.spawnCount ?? -1);
   const seededTowerCount = Number(input.scenarioSeedConfirmation?.spawnlessSiege?.towerCount ?? -1);
+  const seededDefenders = Array.isArray(input.scenarioSeedConfirmation?.spawnlessSiege?.seededDefenders)
+    ? input.scenarioSeedConfirmation.spawnlessSiege.seededDefenders
+    : [];
+  const seededDefenderRooms = new Set(seededDefenders.map((defender: any) => defender?.room).filter(Boolean));
+  const spawnlessHostileSeedConfirmed = Boolean(input.scenarioSeedConfirmation?.spawnlessSiege?.enemy)
+    || input.memory.screepsmodTestingScenarios?.spawnlessSiege?.hostileSeeded === true;
+  const pressureResolved = spawnlessHostileSeedConfirmed && recoveryHostiles.length === 0;
+  const spawnSiteProgress = recoverySites.reduce((maximum, site) => Math.max(maximum, Number(site?.progress ?? 0)), 0);
   const refuelers = values(input.memory.creeps ?? {}).filter(creep => creep?.role === 'hauler' && creep?.task === 'defenseRefuel').length;
   const emergencyQueue = Number(input.memory.stats?.rooms?.[homeRoom]?.spawn_queue?.emergency ?? 0);
   const hasRefuelEvidence = refuelers > 0
@@ -386,6 +409,10 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
     hostileSeed: recoveryHostiles.length,
     seededSpawnCount,
     seededTowerCount,
+    seededDefenders: seededDefenders.length,
+    seededDefenderRooms: seededDefenderRooms.size,
+    spawnSiteProgress,
+    pressureResolved,
     defenseRequest: hasRecoveryRequest,
     emergencyQueue,
     refuelers,
@@ -447,14 +474,22 @@ async function assertScenarios(counters: AssertionCounters, input: BackendAssert
         hasRefuelEvidence?: boolean;
         seededSpawnCount?: number;
         seededTowerCount?: number;
+        seededDefenders?: number;
+        seededDefenderRooms?: number;
+        pressureResolved?: boolean;
       };
       return recoveryControllers.length > 0
         && recoveryPlan
-        && (spawnlessDiagnostics.defenseRequest === true || recoveryDanger)
+        && (spawnlessDiagnostics.defenseRequest === true || recoveryDanger || spawnlessDiagnostics.pressureResolved === true)
         && spawnlessDiagnostics.hasRefuelEvidence === true
         && spawnlessDiagnostics.seededSpawnCount === 0
-        && spawnlessDiagnostics.seededTowerCount === 0;
+        && spawnlessDiagnostics.seededTowerCount === 0
+        && (spawnlessDiagnostics.seededDefenders ?? 0) >= 5
+        && (spawnlessDiagnostics.seededDefenderRooms ?? 0) >= 2;
     }, `spawnless-siege recovery signal missing; diagnostics=${JSON.stringify(diagnostics.spawnlessSiege)}`);
+    runtimeAssertCounterAfterScenarioTicks(counters, input, 1200, 'scenario spawnless-siege resolves hard pressure after distributed defense staging', ['scenario','spawnless-siege','recovery','reinforcement'], () => {
+      return pressureResolved;
+    }, `spawnless-siege hard pressure remained after distributed defense staging; diagnostics=${JSON.stringify(diagnostics.spawnlessSiege)}`);
   }
   if (input.scenarios.indexOf('defense-hard-invader') >= 0) {
     runtimeAssertCounter(

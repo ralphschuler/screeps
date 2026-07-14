@@ -332,6 +332,8 @@ Key fields:
 - `released.by_reason`, `last_reason`, `last_released_at`: why staged creeps started traveling
 - `block_reason`: `none`, `unaffordable`, `waiting-for-parity`, `waiting-for-quorum`, or `no-local-assist`
 
+Hard-threat staging pools ready, unreleased military members across all safe helper rooms assigned to the same target. Reaching target-wide parity or quorum atomically releases the ready cohort, preventing distributed waves from waiting indefinitely in any single helper room while excluding members whose home room is under attack.
+
 Use this during post-deploy defense checks to distinguish queued, unaffordable, staged, traveling, and released defense assists without polling raw `Memory.defenseRequests` or creep memory.
 
 ---

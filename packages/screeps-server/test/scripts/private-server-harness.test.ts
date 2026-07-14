@@ -1147,13 +1147,18 @@ describe("private-server harness module", () => {
     expect(command).to.not.include("const defenseRoom=hasScenario('remote-mining')?remoteRoom:homeRoom;");
   });
 
-  it("seeds a spawnless recovery room with coordinated pressure and helper terminal energy", () => {
+  it("seeds a spawnless recovery room with distributed helper staging and terminal energy", () => {
     const options = parseHarnessArgs(["--room=E1N1", "--scenarios=spawnless-siege"], {});
     const command = buildSeedRuntimeScenariosCommand(options);
 
     expect(command).to.include("const recoveryRoom='W1N4'");
+    expect(command).to.include("const recoverySupportRoom='W2N4'");
     expect(command).to.include("hasScenario('spawnless-siege')");
     expect(command).to.include("ScenarioSpawnlessSiege");
+    expect(command).to.include("ScenarioRecoveryGuardA");
+    expect(command).to.include("ScenarioRecoveryHealer");
+    expect(command).to.include("supportSpawnCount:1");
+    expect(command).to.include("spawnlessSiege:hasScenario('spawnless-siege')?{hostileSeeded:true");
     expect(command).to.include("structureType:'spawn',progress:0");
     expect(command).to.include("{$and:[{room:recoveryRoom},{type:'spawn'},{user:userId}]}");
     expect(command).to.include("{$and:[{room:recoveryRoom},{type:'tower'},{user:userId}]}");

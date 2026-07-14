@@ -19,7 +19,7 @@ Available scenarios:
 - `remote-mining` (accepts room remote assignments, remote stats, or active remote-role creeps as runtime telemetry)
 - `defense-hostile`
 - `defense-hard-invader` (clears bootstrap safe-mode while seeding and records 50-part hostile seed metadata for runtime assertions)
-- `spawnless-siege` (seeds an owned RCL5 recovery room without a spawn or tower, adds a spawn site and coordinated hostile pressure, and verifies defensive recovery/refuel telemetry)
+- `spawnless-siege` (seeds an owned RCL5 recovery room without a spawn or tower, a safe second helper room, five military helpers distributed across two rooms, a spawn site, and hard hostile pressure; verifies defense/refuel signals and bounded pressure resolution)
 - `nukerless-nuke` (seeds an incoming nuke without an owned nuker and verifies defensive alert memory plus critical room-process telemetry)
 - `stacked-nukes` (seeds two same-tile incoming nukes and verifies distinct object-ID alerts plus critical room-process telemetry)
 - `alliance-safety`
