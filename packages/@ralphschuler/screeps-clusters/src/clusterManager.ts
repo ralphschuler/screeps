@@ -40,6 +40,7 @@ import {
   type ClusterOperationName,
   buildClusterOperationIntent
 } from "./clusterIntent";
+import { createDefaultSwarmState } from "@ralphschuler/screeps-memory";
 import { logger } from "@ralphschuler/screeps-core";
 import { MediumFrequencyProcess, ProcessClass, ProcessPriority } from "@ralphschuler/screeps-kernel";
 import { unifiedStats } from "@ralphschuler/screeps-stats";
@@ -68,6 +69,7 @@ import {
 import { queueDefenseReinforcementSpawns } from "./defenseReinforcements";
 import { updateClusterRallyPoints } from "./rallyPointManager";
 import { assignDefendersToDefenseRequests } from "./defenderAssignments";
+import { planOwnedRoomClusterMembership } from "./clusterMembership";
 import { getActualHostileCreeps, getActualHostileStructures } from "@ralphschuler/screeps-defense";
 import {
   calculateMilitaryReadinessRatio,
@@ -130,6 +132,7 @@ export class ClusterManager {
     cpuBudget: 0.03
   })
   public run(): void {
+    this.reconcileOwnedRoomClusters();
     const clusters = memoryManager.getClusters();
 
     for (const clusterId in clusters) {
@@ -147,6 +150,53 @@ export class ClusterManager {
         const errorMessage = err instanceof Error ? err.message : String(err);
         logger.error(`Cluster ${clusterId} error: ${errorMessage}`, { subsystem: "Cluster" });
       }
+    }
+  }
+
+  /**
+   * Ensure newly owned/recovered rooms enter a nearby cluster before defense
+   * requests are processed. Without this reconciliation a spawnless room can
+   * detect a threat locally but never reach cross-room assistance planning.
+   */
+  private reconcileOwnedRoomClusters(): void {
+    const ownedRooms = Object.values(Game.rooms)
+      .filter(room => room.controller?.my === true)
+      .map(room => room.name)
+      .sort();
+    if (ownedRooms.length === 0) return;
+
+    const clusters = memoryManager.getClusters();
+    const empire = memoryManager.getEmpire();
+    const preferredClusterByRoom: Record<string, string | undefined> = {};
+    for (const roomName of ownedRooms) {
+      const swarm = memoryManager.getSwarmState(roomName);
+      preferredClusterByRoom[roomName] = swarm?.clusterId ?? empire.ownedRooms[roomName]?.clusterId;
+    }
+
+    const plan = planOwnedRoomClusterMembership({
+      roomNames: ownedRooms,
+      clusters,
+      preferredClusterByRoom,
+      distance: (fromRoom, toRoom) => Game.map.getRoomLinearDistance(fromRoom, toRoom)
+    });
+
+    for (const created of plan.createdClusters) {
+      memoryManager.getCluster(created.id, created.coreRoom);
+    }
+
+    for (const roomName of ownedRooms) {
+      const clusterId = plan.clusterByRoom[roomName];
+      const cluster = memoryManager.getCluster(clusterId, roomName);
+      if (!cluster) continue;
+      if (!cluster.memberRooms.includes(roomName)) {
+        cluster.memberRooms.push(roomName);
+      }
+
+      const roomMemory = Memory.rooms?.[roomName] as ({ swarm?: ReturnType<typeof createDefaultSwarmState> } | undefined);
+      const swarm = roomMemory?.swarm ?? (roomMemory ? (roomMemory.swarm = createDefaultSwarmState()) : undefined);
+      if (swarm) swarm.clusterId = clusterId;
+      const ownedRoom = empire.ownedRooms[roomName];
+      if (ownedRoom) ownedRoom.clusterId = clusterId;
     }
   }
 

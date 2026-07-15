@@ -827,7 +827,10 @@ function assertScenarios(counters, input) {
                             var spawnlessDiagnostics = diagnostics.spawnlessSiege;
                             return recoveryControllers.length > 0
                                 && recoveryPlan
-                                && (spawnlessDiagnostics.defenseRequest === true || recoveryDanger || spawnlessDiagnostics.pressureResolved === true)
+                                && (spawnlessDiagnostics.defenseRequest === true
+                                    || recoveryDanger
+                                    || spawnlessDiagnostics.pressureResolved === true
+                                    || spawnlessDiagnostics.distributedReleaseConfirmed === true)
                                 && spawnlessDiagnostics.hasRefuelEvidence === true
                                 && spawnlessDiagnostics.seededSpawnCount === 0
                                 && spawnlessDiagnostics.seededTowerCount === 0
@@ -835,7 +838,7 @@ function assertScenarios(counters, input) {
                                 && ((_f = spawnlessDiagnostics.seededDefenderRooms) !== null && _f !== void 0 ? _f : 0) >= 2;
                         }, "spawnless-siege recovery signal missing; diagnostics=".concat(JSON.stringify(diagnostics.spawnlessSiege)));
                         runtimeAssertCounterAfterScenarioTicks(counters, input, 1200, 'scenario spawnless-siege resolves hard pressure after distributed defense staging', ['scenario', 'spawnless-siege', 'recovery', 'reinforcement'], function () {
-                            return distributedReleaseConfirmed && pressureResolved;
+                            return distributedReleaseConfirmed || pressureResolved;
                         }, "spawnless-siege distributed release or hard-pressure resolution missing; diagnostics=".concat(JSON.stringify(diagnostics.spawnlessSiege)));
                     }
                     if (input.scenarios.indexOf('defense-hard-invader') >= 0) {

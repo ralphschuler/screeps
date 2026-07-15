@@ -11,6 +11,10 @@ Framework package for multi-room colony coordination. `packages/screeps-bot` sho
 - Defense reinforcement spawn planning through `@ralphschuler/screeps-spawn` contracts.
 - Offensive operation planning behind doctrine and alliance-safety checks.
 
+## Owned-room cluster recovery
+
+Before defense requests are processed, `ClusterManager` reconciles visible owned rooms into reset-safe cluster membership. Existing assignments are preserved; newly visible rooms join the nearest owned cluster within three rooms or receive a deterministic singleton cluster. The wider boundary keeps a frontier recovery room connected to its nearest core for defense assistance. This prevents a spawnless recovery room from detecting a hostile threat without entering cross-room assistance planning.
+
 ## Defense assistance assignment
 
 `ClusterManager` assigns idle military creeps from safe helper rooms to active `defenseRequests` before asking spawn policy to create new reinforcements.
