@@ -25,6 +25,13 @@ const SCOUT_BODY: BodyTemplate = { parts: [MOVE], cost: 50, minCapacity: 50 };
 const MAX_SCOUTS_PER_TARGET = 1;
 const MAX_CLAIMERS_PER_TARGET = 1;
 const MAX_PIONEERS_PER_TARGET = 3;
+const PORTAL_STALE_AFTER = 500;
+
+interface InterShardPortalTarget {
+  room: string;
+  pos: { x: number; y: number };
+  targetRoom: string;
+}
 
 interface OperationMemory {
   enabled?: boolean;
@@ -154,12 +161,16 @@ function countCreepsFor(role: string, targetShard: string): number {
   return count;
 }
 
-function getPortalForTarget(targetShard: string): { room: string; pos: { x: number; y: number }; targetRoom: string } | null {
+function getPortalForTarget(targetShard: string): InterShardPortalTarget | null {
   for (const room of Object.values(Game.rooms)) {
     const portals = room.find(FIND_STRUCTURES, { filter: s => s.structureType === STRUCTURE_PORTAL }) as StructurePortal[];
     for (const portal of portals) {
       const destination = portal.destination;
-      if ("shard" in destination && destination.shard === targetShard) {
+      if (
+        "shard" in destination &&
+        destination.shard === targetShard &&
+        (portal.ticksToDecay === undefined || portal.ticksToDecay > 25)
+      ) {
         return { room: room.name, pos: { x: portal.pos.x, y: portal.pos.y }, targetRoom: destination.room };
       }
     }
@@ -167,7 +178,13 @@ function getPortalForTarget(targetShard: string): { room: string; pos: { x: numb
 
   const local = loadLocalInterShardMemory();
   const shard = local.shards[getCurrentShard()];
-  const known = shard?.portals.find(portal => portal.targetShard === targetShard && portal.threatRating <= 1);
+  const known = shard?.portals.find(
+    portal =>
+      portal.targetShard === targetShard &&
+      portal.threatRating <= 1 &&
+      (portal.decayTick === undefined || portal.decayTick > Game.time + 25) &&
+      Game.time - portal.lastScouted <= PORTAL_STALE_AFTER
+  );
   if (!known) return null;
   return { room: known.sourceRoom, pos: known.sourcePos, targetRoom: known.targetRoom };
 }
@@ -221,6 +238,8 @@ function requestClaimer(home: Room, targetShard: string, portal: NonNullable<Ret
     additionalMemory: {
       targetShard,
       portalRoom: portal.room,
+      portalPos: portal.pos,
+      portalTargetRoom: portal.targetRoom,
       targetRoom: portal.targetRoom,
       task: "interShardClaim",
       workflowState: "movingToPortal"
@@ -242,6 +261,8 @@ function requestFootprintScout(home: Room, targetShard: string, portal: NonNulla
     additionalMemory: {
       targetShard,
       portalRoom: portal.room,
+      portalPos: portal.pos,
+      portalTargetRoom: portal.targetRoom,
       targetRoom: portal.targetRoom,
       task: "interShardFootprint",
       workflowState: "movingToPortal"
@@ -264,6 +285,8 @@ function requestPioneer(home: Room, target: InterShardFootprintTarget, portal: N
     additionalMemory: {
       targetShard: target.shard,
       portalRoom: portal.room,
+      portalPos: portal.pos,
+      portalTargetRoom: portal.targetRoom,
       targetRoom: target.claimTargetRoom ?? portal.targetRoom,
       task: "interShardBootstrap",
       workflowState: "movingToPortal"
@@ -345,9 +368,10 @@ function updateLocalTargetStatus(): void {
   if (!op || !target) return;
 
   const ownedRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
-  const operationCreepPresent = Object.values(Game.creeps).some(creep =>
-    (creep.memory as CreepMemory).role?.startsWith?.("interShard")
-  );
+  const operationCreepPresent = Object.values(Game.creeps).some(creep => {
+    const memory = creep.memory as CreepMemory & { targetShard?: string };
+    return memory.role?.startsWith?.("interShard") && memory.targetShard === currentShard;
+  });
   if (ownedRooms.length > 0) {
     target.status = ownedRooms.some(room => room.find(FIND_MY_SPAWNS).length > 0) ? "established" : "claimed";
     target.claimTargetRoom = ownedRooms[0]?.name ?? target.claimTargetRoom;

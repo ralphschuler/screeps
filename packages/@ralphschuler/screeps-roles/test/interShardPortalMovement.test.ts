@@ -119,6 +119,65 @@ describe("inter-shard portal movement", () => {
     expect(localMemory).to.equal(oversizedPayload);
   });
 
+  it("selects the persisted shard0 portal instead of another portal in the same room", () => {
+    const room = createMockRoom("W20S20");
+    const shard2Portal = {
+      structureType: STRUCTURE_PORTAL,
+      pos: new RoomPosition(28, 40, room.name),
+      destination: { shard: "shard2", room: room.name },
+    } as unknown as StructurePortal;
+    const shard0Portal = {
+      structureType: STRUCTURE_PORTAL,
+      pos: new RoomPosition(29, 12, room.name),
+      destination: { shard: "shard0", room: room.name },
+    } as unknown as StructurePortal;
+    room.find = (_type: number, options?: { filter?: (value: Structure) => boolean }) =>
+      options?.filter
+        ? [shard2Portal, shard0Portal].filter(options.filter)
+        : [shard2Portal, shard0Portal];
+    const creep = createMockCreep("interShardScout", {
+      room,
+      memory: {
+        role: "interShardScout",
+        homeRoom: "W1N1",
+        targetShard: "shard0",
+        portalRoom: room.name,
+        portalPos: { x: 29, y: 12 },
+        portalTargetRoom: room.name,
+      },
+    });
+
+    const action = interShardClaimer(createContext(creep, room));
+
+    expect(action.type).to.equal("moveTo");
+    expect((action as Extract<CreepAction, { type: "moveTo" }>).target).to.deep.equal({
+      pos: shard0Portal.pos,
+      range: 0,
+    });
+  });
+
+  it("fails closed when legacy memory cannot disambiguate duplicate target portals", () => {
+    const room = createMockRoom("W20S20");
+    const portals = [28, 29].map(x => ({
+      structureType: STRUCTURE_PORTAL,
+      pos: new RoomPosition(x, 12, room.name),
+      destination: { shard: "shard0", room: room.name },
+    })) as unknown as StructurePortal[];
+    room.find = (_type: number, options?: { filter?: (value: Structure) => boolean }) =>
+      options?.filter ? portals.filter(options.filter) : portals;
+    const creep = createMockCreep("interShardScout", {
+      room,
+      memory: {
+        role: "interShardScout",
+        homeRoom: "W1N1",
+        targetShard: "shard0",
+        portalRoom: room.name,
+      },
+    });
+
+    expect(interShardClaimer(createContext(creep, room))).to.deep.equal({ type: "idle" });
+  });
+
   it("stages pioneer memory before asking it to step onto the portal tile", () => {
     const { room, portal } = createPortalRoom();
     const creep = createMockCreep("interShardPioneer", {

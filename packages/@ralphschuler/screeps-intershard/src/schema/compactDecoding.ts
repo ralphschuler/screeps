@@ -82,7 +82,8 @@ function expandPortal(portal: CompactPortal): PortalInfo {
     targetShard: portal.ts,
     targetRoom: portal.tr,
     threatRating: portal.th,
-    lastScouted: 0,
+    lastScouted: portal.ls ?? 0,
+    decayTick: portal.dt,
     isStable: portal.s === 1,
     traversalCount: portal.tc ?? 0
   };

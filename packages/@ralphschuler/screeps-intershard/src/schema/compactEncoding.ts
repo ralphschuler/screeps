@@ -73,7 +73,9 @@ function toCompactPortal(portal: PortalInfo): CompactPortal {
     tr: portal.targetRoom,
     th: portal.threatRating,
     s: portal.isStable ? 1 : 0,
-    tc: portal.traversalCount ?? 0
+    tc: portal.traversalCount ?? 0,
+    ls: portal.lastScouted,
+    dt: portal.decayTick
   };
 }
 

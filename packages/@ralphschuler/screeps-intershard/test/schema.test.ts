@@ -60,6 +60,7 @@ describe("InterShardMemory Schema", () => {
       targetRoom: "W9N9",
       threatRating: 2,
       lastScouted: 999,
+      decayTick: 1200,
       isStable: false,
       traversalCount: 7
     }];
@@ -112,7 +113,8 @@ describe("InterShardMemory Schema", () => {
       targetShard: "shard1",
       targetRoom: "W9N9",
       threatRating: 2,
-      lastScouted: 0,
+      lastScouted: 999,
+      decayTick: 1200,
       isStable: false,
       traversalCount: 7
     });
