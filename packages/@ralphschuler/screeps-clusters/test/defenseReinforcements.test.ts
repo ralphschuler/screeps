@@ -160,6 +160,32 @@ describe("defense reinforcements", () => {
     }
   });
 
+  it("queues emergency reinforcement behind a busy but safe helper spawn", async () => {
+    const { planDefenseReinforcementSpawns } = await import("../src/defenseReinforcements.ts");
+
+    const intents = planDefenseReinforcementSpawns({
+      cluster: clusterWithAttack(),
+      now: 1234,
+      rooms: {
+        W1N1: { roomName: "W1N1", owned: true, safe: false, availableSpawns: 0, spawnCount: 0, energyCapacityAvailable: 800, distances: {} },
+        W2N1: {
+          roomName: "W2N1",
+          owned: true,
+          safe: true,
+          availableSpawns: 0,
+          spawnCount: 1,
+          energyCapacityAvailable: 800,
+          distances: { W1N1: 1 }
+        }
+      }
+    });
+
+    expect(intents.map(intent => [intent.roomName, intent.role, intent.targetRoom])).to.deep.equal([
+      ["W2N1", "guard", "W1N1"],
+      ["W2N1", "ranger", "W1N1"]
+    ]);
+  });
+
   it("does not duplicate an already pending reinforcement for the same helper, role, and target", async () => {
     const { planDefenseReinforcementSpawns } = await import("../src/defenseReinforcements.ts");
 

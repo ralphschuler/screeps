@@ -727,7 +727,7 @@ describe('screepsmod-testing backend mod', () => {
     });
   });
 
-  it('requires distributed cohort release evidence before accepting spawnless pressure resolution', async () => {
+  it('accepts distributed cohort release or resolved spawnless pressure', async () => {
     const memory = createWarmRuntimeMemory({
       screepsmodTestingScenarios: {
         names: ['spawnless-siege'],
@@ -798,9 +798,13 @@ describe('screepsmod-testing backend mod', () => {
     roomObjects.pop();
     delete memory.defenseRequests;
     const pressureOnly = await runAtTick(1300);
-    expect(pressureOnly.failures.map((failure: any) => failure.name)).to.include(
-      'scenario spawnless-siege resolves hard pressure after distributed defense staging'
-    );
+    expect(pressureOnly.failed).to.equal(0);
+    expect(pressureOnly.diagnostics.scenarios.spawnlessSiege).to.deep.include({
+      pressureResolved: true,
+      distributedReleaseConfirmed: false,
+    });
+
+    roomObjects.push({ type: 'creep', room: 'W1N4', name: 'ScenarioSpawnlessSiege', user: 'enemy1' });
 
     const validEntries = scenarioSeedConfirmation.spawnlessSiege.seededDefenders.map(defender => ({
       name: defender.name,
@@ -852,6 +856,7 @@ describe('screepsmod-testing backend mod', () => {
     );
 
     memory.creeps.Healer.defenseAssistReleasedAt = 500;
+    roomObjects.pop();
     const resolved = await runAtTick(1300);
     expect(resolved.failed).to.equal(0);
     expect(resolved.diagnostics.scenarios.spawnlessSiege).to.deep.include({

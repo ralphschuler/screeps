@@ -34,6 +34,8 @@ export interface DefenseReinforcementRoomState {
   owned: boolean;
   safe: boolean;
   availableSpawns: number;
+  /** Total owned spawns, including busy spawns that can accept a queued emergency request. */
+  spawnCount?: number;
   energyCapacityAvailable: number;
   distances: Record<string, number>;
   pendingAssist?: PendingDefenseAssistSpawn[];
@@ -161,7 +163,11 @@ function getHelperCandidates(
   return cluster.memberRooms
     .filter(roomName => roomName !== targetRoom)
     .map(roomName => rooms[roomName])
-    .filter((room): room is DefenseReinforcementRoomState => Boolean(room?.owned && room.safe && room.availableSpawns > 0))
+    .filter((room): room is DefenseReinforcementRoomState => Boolean(
+      room?.owned &&
+      room.safe &&
+      (room.spawnCount !== undefined ? room.spawnCount > 0 : room.availableSpawns > 0)
+    ))
     .sort((a, b) => {
       const distanceA = a.distances[targetRoom] ?? DISTANT_ROOM_PENALTY;
       const distanceB = b.distances[targetRoom] ?? DISTANT_ROOM_PENALTY;
@@ -358,6 +364,7 @@ function buildRoomState(
     owned: Boolean(room.controller?.my),
     safe: getActualHostileCreeps(room).length === 0,
     availableSpawns: spawns.filter(spawn => !spawn.spawning).length,
+    spawnCount: spawns.length,
     energyCapacityAvailable: room.energyCapacityAvailable,
     distances,
     pendingAssist: getPendingAssistSpawns(roomName, queue)
